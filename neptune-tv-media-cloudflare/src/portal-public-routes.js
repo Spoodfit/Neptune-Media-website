@@ -146,7 +146,7 @@ export async function handlePortalPublicRoute(request, env, studio) {
     const response = await callStore(studio, '/portal/order-upsert', normalized);
     const result = await response.json().catch(() => ({}));
     if (!response.ok) return json(result, response.status);
-    if (result.created && result.email) {
+    if (result.created && result.email && !result.workflowManaged) {
       const sent = await sendOrderConfirmation(env, request.url, result.email, source);
       if (!sent.ok) console.error('client_order_confirmation_failed', sent.error);
     }
@@ -174,8 +174,10 @@ export async function handlePortalPublicRoute(request, env, studio) {
     const response = await callStore(studio, '/portal/appointment-upsert', source);
     const result = await response.json().catch(() => ({}));
     if (!response.ok) return json(result, response.status);
-    const sent = await sendAppointmentConfirmation(env, request.url, result.email, result);
-    if (!sent.ok) console.error('client_appointment_confirmation_failed', sent.error);
+    if (!result.workflowManaged) {
+      const sent = await sendAppointmentConfirmation(env, request.url, result.email, result);
+      if (!sent.ok) console.error('client_appointment_confirmation_failed', sent.error);
+    }
     return json(result);
   }
   return null;

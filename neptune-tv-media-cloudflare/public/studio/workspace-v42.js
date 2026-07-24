@@ -2,6 +2,7 @@ const detailDialog=document.getElementById('clientDialog');
 const sidebar=document.querySelector('.studio-sidebar');
 const shell=document.querySelector('.studio-shell');
 const nativeShowModal=HTMLDialogElement.prototype.showModal;
+let detailResizeObserver=null;
 
 bootWorkspace();
 
@@ -11,6 +12,7 @@ function bootWorkspace(){
   installIntegratedDialog();
   installDateComposer();
   observeCommandCenter();
+  window.addEventListener('resize',syncDetailOffsets,{passive:true});
 }
 
 function installSidebarToggle(){
@@ -19,19 +21,29 @@ function installSidebarToggle(){
   button.id='studioSidebarToggle';
   button.className='studio-sidebar-toggle';
   button.type='button';
-  button.setAttribute('aria-label','Réduire ou ouvrir le menu');
-  button.innerHTML='<span>‹</span>';
+  button.setAttribute('aria-label','Réduire le menu latéral');
+  button.setAttribute('aria-controls','studioPrimaryNavigation');
+  button.innerHTML='<span aria-hidden="true">‹</span>';
+  const navigation=sidebar.querySelector('.studio-nav');
+  if(navigation)navigation.id='studioPrimaryNavigation';
   sidebar.append(button);
   const collapsed=localStorage.getItem('neptune_studio_sidebar_collapsed')==='1';
-  setSidebar(collapsed);
-  button.addEventListener('click',()=>setSidebar(!document.body.classList.contains('studio-sidebar-collapsed')));
+  setSidebar(collapsed,false);
+  button.addEventListener('click',()=>setSidebar(!document.body.classList.contains('studio-sidebar-collapsed'),true));
 }
 
-function setSidebar(collapsed){
+function setSidebar(collapsed,focusButton=false){
   document.body.classList.toggle('studio-sidebar-collapsed',collapsed);
   localStorage.setItem('neptune_studio_sidebar_collapsed',collapsed?'1':'0');
   const button=document.getElementById('studioSidebarToggle');
-  if(button)button.querySelector('span').textContent=collapsed?'›':'‹';
+  if(button){
+    button.querySelector('span').textContent=collapsed?'›':'‹';
+    button.setAttribute('aria-expanded',collapsed?'false':'true');
+    button.setAttribute('aria-label',collapsed?'Ouvrir le menu latéral':'Réduire le menu latéral');
+    button.title=collapsed?'Ouvrir le menu':'Réduire le menu';
+    if(focusButton)button.focus({preventScroll:true});
+  }
+  window.setTimeout(syncDetailOffsets,230);
 }
 
 function installIntegratedDialog(){
@@ -39,12 +51,15 @@ function installIntegratedDialog(){
   HTMLDialogElement.prototype.showModal=function(){
     if(this!==detailDialog)return nativeShowModal.call(this);
     this.setAttribute('open','');
+    this.setAttribute('aria-modal','false');
     document.body.classList.add('studio-detail-open');
     enhanceDetailHeader();
+    syncDetailOffsets();
     this.dispatchEvent(new Event('studio-open'));
   };
   detailDialog.addEventListener('close',()=>{
     document.body.classList.remove('studio-detail-open');
+    detailResizeObserver?.disconnect();
     history.replaceState({},'',location.pathname);
   });
   detailDialog.addEventListener('cancel',(event)=>{
@@ -52,22 +67,38 @@ function installIntegratedDialog(){
     detailDialog.close();
   });
   new MutationObserver(()=>{
-    if(detailDialog.open){document.body.classList.add('studio-detail-open');enhanceDetailHeader();}
+    if(detailDialog.open){
+      document.body.classList.add('studio-detail-open');
+      enhanceDetailHeader();
+      syncDetailOffsets();
+    }
   }).observe(detailDialog,{attributes:true,attributeFilter:['open'],childList:true,subtree:true});
 }
 
 function enhanceDetailHeader(){
   const title=detailDialog?.querySelector('.detail-title');
-  if(!title||title.dataset.workspaceV42)return;
-  title.dataset.workspaceV42='1';
-  const back=document.createElement('button');
-  back.type='button';
-  back.className='studio-detail-back';
-  back.innerHTML='<span>←</span> Parcours clients';
-  back.addEventListener('click',()=>detailDialog.close());
-  title.prepend(back);
-  const close=title.querySelector('.close');
-  if(close)close.setAttribute('aria-label','Revenir aux parcours clients');
+  if(!title)return;
+  if(!title.dataset.workspaceV42){
+    title.dataset.workspaceV42='1';
+    const back=document.createElement('button');
+    back.type='button';
+    back.className='studio-detail-back';
+    back.innerHTML='<span aria-hidden="true">←</span> Parcours clients';
+    back.addEventListener('click',()=>detailDialog.close());
+    title.prepend(back);
+    const close=title.querySelector('.close');
+    if(close)close.setAttribute('aria-label','Revenir aux parcours clients');
+  }
+  detailResizeObserver?.disconnect();
+  detailResizeObserver=new ResizeObserver(syncDetailOffsets);
+  detailResizeObserver.observe(title);
+}
+
+function syncDetailOffsets(){
+  const title=detailDialog?.querySelector('.detail-title');
+  if(!title)return;
+  const height=Math.ceil(title.getBoundingClientRect().height);
+  if(height>0)document.documentElement.style.setProperty('--studio-detail-title-height',`${height}px`);
 }
 
 function observeCommandCenter(){
@@ -89,13 +120,13 @@ function upgradeFilmingForm(form){
   form.dataset.dateUiV42='1';
   const original=form.querySelector('[name="filmingAt"]')?.value||'';
   const [date,time]=splitLocal(original);
-  form.innerHTML=`<div class="date-action-head"><span>DATE DU PASSAGE</span><strong>Confirmer en quelques secondes</strong></div><div class="date-action-grid"><label><span>Jour</span><input name="filmingDate" type="date" value="${escapeAttr(date)}" required></label><label><span>Heure</span><select name="filmingTime">${timeOptions(time)}</select></label></div><input name="filmingAt" type="hidden" value="${escapeAttr(original)}"><button type="submit">Confirmer et notifier</button>`;
+  form.innerHTML=`<div class="date-action-head"><span>DATE DU PASSAGE</span><strong>Confirmer en quelques secondes</strong></div><div class="date-action-grid"><label><span>Jour</span><input name="filmingDate" type="date" value="${escapeAttr(date)}" required></label><label><span>Heure</span><select name="filmingTime" aria-label="Heure du passage">${timeOptions(time)}</select></label></div><input name="filmingAt" type="hidden" value="${escapeAttr(original)}"><button type="submit">Confirmer et notifier</button>`;
 }
 
 function upgradeBroadcastForm(form){
   form.dataset.dateUiV42='1';
   const [date,time]=splitLocal('');
-  form.innerHTML=`<div class="date-action-head"><span>DIFFUSION</span><strong>Planifier la publication</strong></div><div class="date-action-grid"><label><span>Jour</span><input name="broadcastDate" type="date" value="${escapeAttr(date)}" required></label><label><span>Heure</span><select name="broadcastTime">${timeOptions(time||'18:00')}</select></label></div><label><span>Lien de diffusion</span><input name="broadcastUrl" type="url" placeholder="https://…"></label><input name="broadcastAt" type="hidden"><button type="submit">Programmer et notifier</button>`;
+  form.innerHTML=`<div class="date-action-head"><span>DIFFUSION</span><strong>Planifier la publication</strong></div><div class="date-action-grid"><label><span>Jour</span><input name="broadcastDate" type="date" value="${escapeAttr(date)}" required></label><label><span>Heure</span><select name="broadcastTime" aria-label="Heure de diffusion">${timeOptions(time||'18:00')}</select></label></div><label><span>Lien de diffusion</span><input name="broadcastUrl" type="url" inputmode="url" placeholder="https://…"></label><input name="broadcastAt" type="hidden"><button type="submit">Programmer et notifier</button>`;
 }
 
 function installDateComposer(){

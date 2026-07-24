@@ -3,15 +3,18 @@ let workflowAdminState=null;
 let controlState=null;
 let rendering=false;
 let activeStage='confirm';
+let initialStageChosen=false;
+let userSelectedStage=false;
+let enhanceTimer=0;
 
 const STAGES=[
-  {id:'confirm',label:'À confirmer',statuses:['payment_confirmed','reservation_confirmed','preparation_booking_pending','appointment_confirmed','appointment_booked','studio_date_confirmation_pending']},
-  {id:'prepare',label:'Préparation',statuses:['preparation','preparation_complete']},
-  {id:'studio',label:'Passage studio',statuses:['filming_scheduled','filming_confirmed']},
-  {id:'sources',label:'Sources',statuses:['filmed','videos_pending','videos_received']},
-  {id:'editing',label:'Montage',statuses:['editing','approval']},
-  {id:'broadcast',label:'Diffusion',statuses:['delivered']},
-  {id:'done',label:'Terminé',statuses:['completed']},
+  {id:'confirm',label:'À confirmer'},
+  {id:'prepare',label:'Préparation'},
+  {id:'studio',label:'Passage studio'},
+  {id:'sources',label:'Sources'},
+  {id:'editing',label:'Montage'},
+  {id:'broadcast',label:'Diffusion'},
+  {id:'done',label:'Terminé'},
 ];
 
 boot();
@@ -46,8 +49,14 @@ function prepareShell(){
   });
   const main=$('.clients-main');
   if(main&&!$('#workflowFocusBar')){
-    const focus=document.createElement('section');focus.id='workflowFocusBar';focus.className='workflow-focus-bar';
-    const tabs=document.createElement('nav');tabs.id='workflowStageTabs';tabs.className='workflow-stage-tabs';tabs.setAttribute('aria-label','Étapes des parcours clients');
+    const focus=document.createElement('section');
+    focus.id='workflowFocusBar';
+    focus.className='workflow-focus-bar';
+    focus.setAttribute('aria-live','polite');
+    const tabs=document.createElement('nav');
+    tabs.id='workflowStageTabs';
+    tabs.className='workflow-stage-tabs';
+    tabs.setAttribute('aria-label','Étapes des parcours clients');
     const anchor=$('.full-monitoring')||$('.controls')||$('#pipeline');
     anchor?.before(focus,tabs);
   }
@@ -55,15 +64,22 @@ function prepareShell(){
 
 async function refreshState(){
   try{
-    [workflowAdminState,controlState]=await Promise.all([api('/api/admin/clients'),api('/api/admin/control-room').catch(()=>({actions:[],summary:{}}))]);
+    [workflowAdminState,controlState]=await Promise.all([
+      api('/api/admin/clients'),
+      api('/api/admin/control-room').catch(()=>({actions:[],summary:{}})),
+    ]);
     chooseInitialStage();
     renderFocus();
     renderStageTabs();
     scheduleEnhance();
-  }catch{}
+  }catch(error){
+    console.error('workflow_admin_refresh_failed',error);
+  }
 }
 
 function chooseInitialStage(){
+  if(userSelectedStage||initialStageChosen)return;
+  initialStageChosen=true;
   const action=(controlState?.actions||[]).find((item)=>item.type==='order');
   const order=action?(workflowAdminState?.orders||[]).find((item)=>item.id===action.orderId):null;
   if(order)activeStage=stageFor(order);
@@ -80,16 +96,31 @@ function renderFocus(){
     return;
   }
   focus.className='workflow-focus-bar has-action';
-  focus.innerHTML=`<div><i></i><span><small>${actions.length} ACTION${actions.length>1?'S':''} REQUISE${actions.length>1?'S':''}</small><strong>${esc(first.title||'Vérification nécessaire')}</strong></span></div><p>${esc(first.reason||first.subtitle||'Ouvrez le dossier concerné.')}</p><button type="button" data-focus-order="${esc(first.orderId||'')}">Ouvrir</button>`;
+  focus.innerHTML=`<div><i></i><span><small>${actions.length} ACTION${actions.length>1?'S':''} REQUISE${actions.length>1?'S':''}</small><strong>${esc(first.title||'Vérification nécessaire')}</strong></span></div><p>${esc(first.reason||first.subtitle||'Ouvrez le dossier concerné.')}</p><button type="button" data-focus-order="${esc(first.orderId||'')}">Voir le dossier</button>`;
   focus.querySelector('[data-focus-order]')?.addEventListener('click',()=>openFocusedOrder(first.orderId));
 }
 
 function openFocusedOrder(orderId){
   const order=(workflowAdminState?.orders||[]).find((item)=>item.id===orderId);
-  if(order){activeStage=stageFor(order);renderStageTabs();applyActiveStage();}
+  if(order){
+    activeStage=stageFor(order);
+    userSelectedStage=true;
+    renderStageTabs();
+    applyActiveStage();
+  }
+  openCardWhenReady(orderId,0);
+}
+
+function openCardWhenReady(orderId,attempt){
   const card=document.querySelector(`[data-order-card="${cssEsc(orderId)}"]`);
-  if(card){card.click();return;}
-  location.hash=encodeURIComponent(orderId||'');location.reload();
+  if(card){
+    card.scrollIntoView({behavior:'smooth',block:'center'});
+    window.setTimeout(()=>card.click(),120);
+    return;
+  }
+  if(attempt===0)scheduleEnhance();
+  if(attempt<8){window.setTimeout(()=>openCardWhenReady(orderId,attempt+1),80);return;}
+  history.replaceState({},'',`#${encodeURIComponent(orderId||'')}`);
 }
 
 function renderStageTabs(){
@@ -99,12 +130,22 @@ function renderStageTabs(){
   const orders=(workflowAdminState.orders||[]).filter((order)=>!query||[order.email,order.fullName,order.company,order.title,order.format].join(' ').toLowerCase().includes(query));
   tabs.innerHTML=STAGES.map((stage)=>{
     const count=orders.filter((order)=>stageFor(order)===stage.id).length;
-    return `<button type="button" class="${activeStage===stage.id?'active':''}" data-workflow-stage="${stage.id}"><span>${esc(stage.label)}</span><b>${count}</b></button>`;
+    return `<button type="button" class="${activeStage===stage.id?'active':''}" data-workflow-stage="${stage.id}" aria-pressed="${activeStage===stage.id?'true':'false'}"><span>${esc(stage.label)}</span><b>${count}</b></button>`;
   }).join('');
-  tabs.querySelectorAll('[data-workflow-stage]').forEach((button)=>button.addEventListener('click',()=>{activeStage=button.dataset.workflowStage;renderStageTabs();applyActiveStage();}));
+  tabs.querySelectorAll('[data-workflow-stage]').forEach((button)=>button.addEventListener('click',()=>{
+    activeStage=button.dataset.workflowStage;
+    userSelectedStage=true;
+    renderStageTabs();
+    applyActiveStage();
+    $('#pipeline')?.scrollIntoView({behavior:'smooth',block:'start'});
+  }));
 }
 
-function scheduleEnhance(){if(rendering)return;setTimeout(()=>{enhancePipeline();enhanceDrawer();},25);}
+function scheduleEnhance(){
+  if(rendering)return;
+  clearTimeout(enhanceTimer);
+  enhanceTimer=window.setTimeout(()=>{enhancePipeline();enhanceDrawer();},35);
+}
 
 function enhancePipeline(){
   if(!workflowAdminState)return;
@@ -115,7 +156,10 @@ function enhancePipeline(){
   rendering=true;
   const shell=document.createElement('div');shell.className='workflow-stage-shell';
   STAGES.forEach((stage)=>{
-    const panel=document.createElement('section');panel.className='workflow-stage-panel';panel.dataset.stagePanel=stage.id;
+    const panel=document.createElement('section');
+    panel.className='workflow-stage-panel';
+    panel.dataset.stagePanel=stage.id;
+    panel.setAttribute('aria-label',stage.label);
     const grid=document.createElement('div');grid.className='workflow-stage-grid';
     const cards=sourceCards.filter((card)=>{
       const order=(workflowAdminState.orders||[]).find((item)=>item.id===card.dataset.orderCard);
@@ -131,24 +175,50 @@ function enhancePipeline(){
 }
 
 function applyActiveStage(){
-  document.querySelectorAll('[data-stage-panel]').forEach((panel)=>panel.hidden=panel.dataset.stagePanel!==activeStage);
+  document.querySelectorAll('[data-stage-panel]').forEach((panel)=>{
+    const active=panel.dataset.stagePanel===activeStage;
+    panel.hidden=!active;
+    panel.setAttribute('aria-hidden',active?'false':'true');
+  });
 }
 
 function decorateCard(card){
-  const order=(workflowAdminState.orders||[]).find((item)=>item.id===card.dataset.orderCard);
+  const order=(workflowAdminState?.orders||[]).find((item)=>item.id===card.dataset.orderCard);
   if(!order?.workflow)return;
   const w=order.workflow;
   const appointment=validDate(order.appointmentAt)?order.appointmentAt:null;
   const filming=validDate(order.filmingAt)?order.filmingAt:null;
   const requested=validDate(w.requestedFilmingAt)?w.requestedFilmingAt:null;
   const studioConfirmed=w.supplierStatus==='confirmed'&&filming;
-  const title=$('h3',card);if(title)title.textContent=w.currentLabel||title.textContent;
-  const next=card.querySelector('h3+p');if(next)next.textContent=w.nextAction||order.nextAction||'Aucune action manuelle.';
-  card.querySelector('.workflow-card-dates')?.remove();
-  const dates=document.createElement('div');dates.className='workflow-card-dates';
-  dates.innerHTML=`<span><small>Visio</small><b>${esc(appointment?shortDate(appointment):'À réserver')}</b></span><span><small>Studio</small><b>${esc(studioConfirmed?shortDate(filming):requested?`${shortDate(requested)} · attente`:'À définir')}</b></span>`;
-  card.querySelector('.card-actions')?.before(dates);
-  const actions=card.querySelector('.card-actions');if(actions)actions.innerHTML='<button class="button workflow-open-button" type="button">Ouvrir</button>';
+  const appointmentSource=order.appointmentSource==='google_calendar'||w.appointmentSource==='google_calendar'?'Google Agenda':'Saisie Studio';
+  const clientName=order.fullName||order.email||'Client';
+  const company=order.company||order.email||'';
+  card.setAttribute('role','button');
+  card.setAttribute('tabindex','0');
+  card.setAttribute('aria-label',`Ouvrir le dossier de ${clientName}`);
+  card.innerHTML=`
+    <div class="workflow-card-identity">
+      <div class="workflow-card-identity-row"><strong>${esc(clientName)}</strong><span class="workflow-card-format">${esc(order.format||'Format')}</span></div>
+      <span>${esc(company)}</span>
+    </div>
+    <div class="workflow-card-status">
+      <small>Étape actuelle</small>
+      <strong>${esc(w.currentLabel||'Parcours client')}</strong>
+      <p>${esc(w.nextAction||order.nextAction||'Aucune action manuelle requise.')}</p>
+    </div>
+    <div class="workflow-card-dates">
+      <span><small>Visio</small><b>${esc(appointment?shortDate(appointment):'À réserver')}</b><em>${esc(appointment?appointmentSource:'')}</em></span>
+      <span><small>Studio</small><b>${esc(studioConfirmed?shortDate(filming):requested?`${shortDate(requested)} · en attente`:'À définir')}</b><em>${esc(studioConfirmed?'Confirmé':requested?'Provisoire':'')}</em></span>
+    </div>
+    <button class="button workflow-open-button" type="button" aria-label="Ouvrir le dossier de ${esc(clientName)}">Voir le dossier</button>`;
+  if(!card.dataset.keyboardBound){
+    card.dataset.keyboardBound='1';
+    card.addEventListener('keydown',(event)=>{
+      if(event.key!=='Enter'&&event.key!==' ')return;
+      event.preventDefault();
+      card.click();
+    });
+  }
 }
 
 function stageFor(order){
@@ -157,8 +227,10 @@ function stageFor(order){
   if(w.deliveredAt||order.status==='delivered')return'broadcast';
   if(w.editingStartedAt||['editing','approval'].includes(order.status))return'editing';
   if(w.sourceReceivedAt||['filmed','videos_pending','videos_received'].includes(order.status))return'sources';
+  const confirmationPending=['pending','alternate_proposed','rejected'].includes(w.supplierStatus)||order.status==='studio_date_confirmation_pending';
+  if(confirmationPending)return'confirm';
+  if(w.preparationStatus!=='completed'||['preparation','preparation_complete'].includes(order.status))return'prepare';
   if(w.supplierStatus==='confirmed'||['filming_scheduled','filming_confirmed'].includes(order.status))return'studio';
-  if(['preparation','preparation_complete'].includes(order.status)||w.preparationStatus==='completed')return'prepare';
   return'confirm';
 }
 
@@ -171,10 +243,18 @@ async function enhanceDrawer(){
   const orderId=decodeURIComponent(location.hash.slice(1));
   const order=(workflowAdminState.orders||[]).find((item)=>item.id===orderId);
   if(!order?.workflow)return;
-  if(existing&&existing.dataset.version==='40')return;
-  rendering=true;existing?.remove();
-  const panel=document.createElement('section');panel.id='workflowCommandCenter';panel.dataset.version='40';panel.className='workflow-command-center';panel.innerHTML=commandMarkup(order);
-  $('.tabs',root)?.after(panel);bindPanel(order,panel);loadEvents(order.id,panel);rendering=false;
+  if(existing&&existing.dataset.version==='43')return;
+  rendering=true;
+  existing?.remove();
+  const panel=document.createElement('section');
+  panel.id='workflowCommandCenter';
+  panel.dataset.version='43';
+  panel.className='workflow-command-center';
+  panel.innerHTML=commandMarkup(order);
+  $('.tabs',root)?.after(panel);
+  bindPanel(order,panel);
+  loadEvents(order.id,panel);
+  rendering=false;
 }
 
 function commandMarkup(order){
@@ -189,28 +269,75 @@ function commandMarkup(order){
   if(w.deliveredAt&&w.broadcastStatus==='not_scheduled')actions.push(`<form data-workflow-form="schedule_broadcast" class="workflow-inline-form"><label><span>Date de diffusion</span><input name="broadcastAt" type="datetime-local" required></label><label><span>Lien de diffusion</span><input name="broadcastUrl" type="url" placeholder="https://…"></label><button type="submit">Programmer</button></form>`);
   if(w.broadcastStatus==='scheduled')actions.push(button('mark_broadcast_published','Marquer comme diffusée'));
   const appointment=validDate(order.appointmentAt)?dateLabel(order.appointmentAt):'À réserver';
+  const appointmentSource=order.appointmentSource==='google_calendar'||w.appointmentSource==='google_calendar'?' · Google Agenda':'';
   const filming=validDate(order.filmingAt)?dateLabel(order.filmingAt):validDate(w.requestedFilmingAt)?`${dateLabel(w.requestedFilmingAt)} · provisoire`:'À définir';
-  return `<header><div><p class="eyebrow">ÉTAPE ACTUELLE</p><h3>${esc(w.currentLabel||'Parcours client')}</h3><p>${esc(w.nextAction||order.nextAction||'Aucune action manuelle requise.')}</p></div><span class="workflow-live"><i></i> Synchronisé</span></header><div class="workflow-essential"><article><small>Visio</small><strong>${esc(appointment)}</strong></article><article><small>Studio</small><strong>${esc(filming)}</strong></article><article><small>Parcours</small><strong>${esc(STAGES.find((stage)=>stage.id===stageFor(order))?.label||'En cours')}</strong></article></div><div class="workflow-actions"><div><small>ACTION DISPONIBLE</small>${actions.length?actions.join(''):'<p class="workflow-clear">Aucune action. Le parcours continue automatiquement.</p>'}</div></div><details class="workflow-more"><summary>Historique et informations avancées</summary><div data-workflow-events><p>Chargement…</p></div></details><p class="workflow-message" aria-live="polite"></p>`;
+  return `<header><div><p class="eyebrow">ÉTAPE ACTUELLE</p><h3>${esc(w.currentLabel||'Parcours client')}</h3><p>${esc(w.nextAction||order.nextAction||'Aucune action manuelle requise.')}</p></div><span class="workflow-live"><i></i> Synchronisé</span></header><div class="workflow-essential"><article><small>Visio</small><strong>${esc(appointment+appointmentSource)}</strong></article><article><small>Studio</small><strong>${esc(filming)}</strong></article><article><small>Parcours</small><strong>${esc(STAGES.find((stage)=>stage.id===stageFor(order))?.label||'En cours')}</strong></article></div><div class="workflow-actions"><div><small>ACTION DISPONIBLE</small>${actions.length?actions.join(''):'<p class="workflow-clear">Aucune action. Le parcours continue automatiquement.</p>'}<div data-inline-confirm></div></div></div><details class="workflow-more"><summary>Historique et informations avancées</summary><div data-workflow-events><p>Chargement…</p></div></details><p class="workflow-message" aria-live="polite"></p>`;
 }
 
 function bindPanel(order,panel){
   panel.querySelectorAll('[data-workflow-action]').forEach((buttonElement)=>buttonElement.addEventListener('click',()=>runAction(order,buttonElement.dataset.workflowAction,{},buttonElement,panel)));
-  panel.querySelectorAll('[data-workflow-form]').forEach((form)=>form.addEventListener('submit',(event)=>{event.preventDefault();const data=Object.fromEntries(new FormData(form));runAction(order,form.dataset.workflowForm,data,form.querySelector('button'),panel);}));
+  panel.querySelectorAll('[data-workflow-form]').forEach((form)=>form.addEventListener('submit',(event)=>{
+    event.preventDefault();
+    const data=Object.fromEntries(new FormData(form));
+    runAction(order,form.dataset.workflowForm,data,form.querySelector('button[type="submit"]'),panel);
+  }));
 }
+
 async function runAction(order,action,payload,buttonElement,panel){
-  if(action==='source_qc_failed'){const note=prompt('Précisez les fichiers manquants ou non exploitables :','');if(note===null)return;payload.note=note;}
-  if(!confirm(confirmText(action)))return;
-  buttonElement.disabled=true;const original=buttonElement.textContent;buttonElement.textContent='Validation…';
-  try{const result=await api('/api/admin/workflow/action',{method:'POST',body:JSON.stringify({orderId:order.id,action,...payload})});$('.workflow-message',panel).textContent=result.emailWarning?'Étape enregistrée. Certains e-mails seront réessayés.':'Étape enregistrée et notifications déclenchées.';await refreshState();setTimeout(()=>location.reload(),350);}catch(error){$('.workflow-message',panel).textContent=errorText(error.message);buttonElement.disabled=false;buttonElement.textContent=original;}
+  const confirmation=await inlineConfirmation(panel,action,action==='source_qc_failed');
+  if(!confirmation.confirmed)return;
+  if(confirmation.note)payload.note=confirmation.note;
+  buttonElement.disabled=true;
+  const original=buttonElement.textContent;
+  buttonElement.textContent='Validation…';
+  try{
+    const result=await api('/api/admin/workflow/action',{method:'POST',body:JSON.stringify({orderId:order.id,action,...payload})});
+    $('.workflow-message',panel).textContent=result.emailWarning?'Étape enregistrée. Certains e-mails seront réessayés.':'Étape enregistrée et notifications déclenchées.';
+    $('#refresh')?.click();
+    await sleep(350);
+    await refreshState();
+  }catch(error){
+    $('.workflow-message',panel).textContent=errorText(error.message);
+    buttonElement.disabled=false;
+    buttonElement.textContent=original;
+  }
 }
-async function loadEvents(orderId,panel){try{const result=await api(`/api/admin/workflow/events?orderId=${encodeURIComponent(orderId)}`);const target=panel.querySelector('[data-workflow-events]');if(!target)return;target.innerHTML=(result.events||[]).slice(0,8).map((event)=>`<article><i></i><div><strong>${esc(eventLabel(event.eventKey))}</strong><small>${dateLabel(event.createdAt)} · ${esc(event.actorType||'system')}</small></div></article>`).join('')||'<p>Aucun événement enregistré.</p>';}catch{}}
+
+function inlineConfirmation(panel,action,requiresNote=false){
+  return new Promise((resolve)=>{
+    const host=panel.querySelector('[data-inline-confirm]');
+    if(!host){resolve({confirmed:true,note:''});return;}
+    host.innerHTML=`<div class="workflow-inline-confirm"><p>${esc(confirmText(action))}</p>${requiresNote?'<textarea rows="3" maxlength="1200" placeholder="Précisez les fichiers manquants ou non exploitables" data-confirm-note required></textarea>':''}<div class="workflow-inline-confirm-actions"><button type="button" class="secondary" data-confirm-cancel>Annuler</button><button type="button" data-confirm-accept>Confirmer</button></div></div>`;
+    const cancel=host.querySelector('[data-confirm-cancel]');
+    const accept=host.querySelector('[data-confirm-accept]');
+    const note=host.querySelector('[data-confirm-note]');
+    cancel?.focus();
+    cancel?.addEventListener('click',()=>{host.replaceChildren();resolve({confirmed:false,note:''});},{once:true});
+    accept?.addEventListener('click',()=>{
+      const value=String(note?.value||'').trim();
+      if(requiresNote&&!value){note?.focus();return;}
+      host.replaceChildren();
+      resolve({confirmed:true,note:value});
+    },{once:true});
+  });
+}
+
+async function loadEvents(orderId,panel){
+  try{
+    const result=await api(`/api/admin/workflow/events?orderId=${encodeURIComponent(orderId)}`);
+    const target=panel.querySelector('[data-workflow-events]');if(!target)return;
+    target.innerHTML=(result.events||[]).slice(0,8).map((event)=>`<article><i></i><div><strong>${esc(eventLabel(event.eventKey))}</strong><small>${dateLabel(event.createdAt)} · ${esc(event.actorType||'system')}</small></div></article>`).join('')||'<p>Aucun événement enregistré.</p>';
+  }catch{}
+}
+
 function button(action,label,style=''){return `<button type="button" class="${style}" data-workflow-action="${action}">${esc(label)}</button>`;}
 function confirmText(action){return({confirm_supplier_date:'Confirmer cette date et notifier toutes les parties ?',resend_supplier_confirmation:'Renvoyer la demande au studio ?',preparation_completed:'Confirmer que la visio a été réalisée ?',filming_completed:'Confirmer que le passage est terminé ?',source_received:'Confirmer la réception des sources ?',source_qc_passed:'Valider les sources et démarrer le montage ?',source_qc_failed:'Signaler une correction au fournisseur ?',delivery_complete:'Confirmer que les contenus sont disponibles ?',schedule_broadcast:'Programmer la diffusion et notifier les parties ?',mark_broadcast_published:'Confirmer la diffusion ?'})[action]||'Valider cette action ?';}
 function eventLabel(value){return String(value||'').replaceAll('_',' ').replace(/^./u,(letter)=>letter.toUpperCase());}
 function isoLocal(value){const date=new Date(value||'');if(Number.isNaN(date.getTime()))return'';const local=new Date(date.getTime()-date.getTimezoneOffset()*60000);return local.toISOString().slice(0,16);}
 function validDate(value){return !Number.isNaN(new Date(value||'').getTime());}
-function shortDate(value){const date=new Date(value||'');return Number.isNaN(date.getTime())?'À définir':new Intl.DateTimeFormat('fr-FR',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Paris'}).format(date).replace(' à ',' · ');}
+function shortDate(value){const date=new Date(value||'');return Number.isNaN(date.getTime())?'À définir':new Intl.DateTimeFormat('fr-FR',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Paris'}).format(date).replace(' à ',' · ');}
 function dateLabel(value){const date=new Date(value||'');return Number.isNaN(date.getTime())?'À définir':new Intl.DateTimeFormat('fr-FR',{dateStyle:'medium',timeStyle:'short',timeZone:'Europe/Paris'}).format(date);}
+function sleep(ms){return new Promise((resolve)=>window.setTimeout(resolve,ms));}
 async function api(url,options={}){const headers={Accept:'application/json',...(options.headers||{}),'X-CSRF-Token':sessionStorage.getItem('neptune_csrf')||''};if(options.body)headers['Content-Type']='application/json';const response=await fetch(url,{...options,headers,credentials:'same-origin'});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||`http_${response.status}`);return data;}
 function errorText(value){return({delivery_assets_incomplete:'Ajoutez une émission complète et au moins un contenu court.',filming_date_required:'Renseignez une date définitive.',broadcast_date_required:'Renseignez la date de diffusion.',forbidden:'Votre rôle ne permet pas cette action.',unauthorized:'Votre session a expiré.'})[value]||'L’action a échoué. Vérifiez le dossier et réessayez.';}
 function cssEsc(value){return String(value||'').replace(/["\\]/gu,'\\$&');}

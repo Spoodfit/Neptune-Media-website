@@ -1,0 +1,58 @@
+name: Verify Minimal Workflow Production
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/verify-minimal-workflow-production.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Verify deployed release
+        shell: bash
+        run: |
+          set -euo pipefail
+          public='https://tv.neptunebusiness.com'
+          workers='https://neptune-media-webtv.neptunebusinessclub.workers.dev'
+          expected='neptune-workflow-minimal-20260724-v9'
+          for base in "$workers" "$public"; do
+            for attempt in 1 2 3 4 5 6; do
+              curl --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/api/public/release?attempt=$attempt" > /tmp/release.json || true
+              if grep -Fq "\"release\":\"$expected\"" /tmp/release.json; then break; fi
+              sleep 10
+            done
+            cat /tmp/release.json
+            grep -Fq "\"release\":\"$expected\"" /tmp/release.json
+            grep -Fq '"workflowStore":"store-v5"' /tmp/release.json
+            grep -Fq '"clientWorkflowUi":"workflow-v45-minimal"' /tmp/release.json
+            grep -Fq '"studioWorkflowUi":"clients-workflow-v37-stage-tabs"' /tmp/release.json
+          done
+
+      - name: Verify minimal client interface
+        shell: bash
+        run: |
+          set -euo pipefail
+          public='https://tv.neptunebusiness.com'
+          curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$public/espace-client/?verify=minimal-v9" > /tmp/client.html
+          grep -Fq '/espace-client/workflow-v45.js?v=2' /tmp/client.html
+          curl --fail --silent --show-error "$public/espace-client/workflow-v45.js?v=2" > /tmp/client.js
+          grep -Fq 'client-minimal-flow' /tmp/client.js
+          grep -Fq 'PROCHAINE ÉTAPE' /tmp/client.js
+          grep -Fq 'Aucune action n’est requise de votre part' /tmp/client.js
+
+      - name: Verify stage-based Studio interface
+        shell: bash
+        run: |
+          set -euo pipefail
+          public='https://tv.neptunebusiness.com'
+          curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$public/studio/clients?verify=minimal-v9" > /tmp/studio.html
+          grep -Fq '/studio/clients-workflow-v37.js?v=2' /tmp/studio.html
+          curl --fail --silent --show-error "$public/studio/clients-workflow-v37.js?v=2" > /tmp/studio.js
+          grep -Fq 'workflow-stage-tabs' /tmp/studio.js
+          grep -Fq "label:'Passage studio'" /tmp/studio.js
+          grep -Fq "label:'Diffusion'" /tmp/studio.js

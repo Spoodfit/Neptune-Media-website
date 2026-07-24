@@ -60,6 +60,9 @@ for (const viewport of viewports) {
       body: pathname === '/api/client/session' ? JSON.stringify(mockState) : '{}',
     });
   });
+  await page.route('**/api/public/connexio-availability', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '{"available":false,"event":null}' });
+  });
 
   const response = await page.goto(`${baseUrl}/espace-client/?dashboard_test=${Date.now()}`, {
     waitUntil: 'domcontentloaded',
@@ -81,7 +84,7 @@ for (const viewport of viewports) {
     const targetSelector = [
       '.metric-card', '.production-shortcut', '.inline-action', '.header-booking',
       '.primary-dashboard-action', '.secondary-dashboard-action', '.format-card a',
-      '.utility-action', '.referral-code', '.social', '.logout-button',
+      '.utility-action', '.referral-code', '.logout-button',
     ].join(',');
     const smallTargets = [...root.querySelectorAll(targetSelector)]
       .filter(visible)

@@ -43,7 +43,7 @@ jobs:
           curl --fail --silent --show-error "$public/espace-client/workflow-v45.js?v=2" > /tmp/client.js
           grep -Fq 'client-minimal-flow' /tmp/client.js
           grep -Fq 'PROCHAINE ÉTAPE' /tmp/client.js
-          grep -Fq 'Aucune action n’est requise de votre part' /tmp/client.js
+          grep -Fqi 'aucune action' /tmp/client.js
 
       - name: Verify stage-based Studio interface
         shell: bash

@@ -1,9 +1,9 @@
 import base from './entry-v8.js';
-import { StudioStore } from './store-v4.js';
+import { StudioStore } from './store-v5.js';
 
 export { StudioStore };
 
-const RELEASE_ID = 'neptune-client-test-access-20260724-v6';
+const RELEASE_ID = 'neptune-workflow-visible-20260724-v7';
 const RELEASE_PATH = '/api/public/release';
 const ORDER_WEBHOOKS = new Set(['/api/webhooks/client-order', '/api/webhooks/conversion']);
 
@@ -34,18 +34,21 @@ export default {
 
 function releaseResponse(request, env) {
   const resendSecretPresent = typeof env?.RESEND_API_KEY === 'string' && env.RESEND_API_KEY.trim().length > 0;
+  const webhookSecretPresent = typeof env?.CONVERSION_WEBHOOK_SECRET === 'string' && env.CONVERSION_WEBHOOK_SECRET.trim().length > 0;
 
   return new Response(JSON.stringify({
-    ok: true,
+    ok: resendSecretPresent && webhookSecretPresent,
     release: RELEASE_ID,
     worker: 'neptune-media-webtv',
     host: new URL(request.url).host,
     resendSecretPresent,
+    webhookSecretPresent,
+    workflowStore: 'store-v5',
     emailTransport: 'resend-rest-v1',
     sender: 'Neptune Media <contact@neptunebusiness.com>',
     trustedTestClient: 'contact@neptunebusiness.com',
   }), {
-    status: resendSecretPresent ? 200 : 503,
+    status: resendSecretPresent && webhookSecretPresent ? 200 : 503,
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
       'Cache-Control': 'no-store',

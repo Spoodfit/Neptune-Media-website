@@ -1,0 +1,104 @@
+import { StudioStore as LegacyStore } from './store-v4.js';
+import { json } from './security.js';
+import { ensurePortalSchema } from './portal-schema.js';
+import {
+  ensureWorkflowSchema,
+  enrichOrderCollection,
+  initializeWorkflowForOrder,
+  reconcileWorkflowFromLegacyUpdate,
+  supplierContext,
+  supplierRespond,
+  updateAppointmentWorkflow,
+  workflowAction,
+  workflowControlSnapshot,
+  workflowEmailDue,
+  workflowEmailMark,
+  workflowEvents,
+  workflowReconcile,
+} from './portal-workflow-v5.js';
+
+export class StudioStore extends LegacyStore {
+  async fetch(request) {
+    const url = new URL(request.url);
+    const method = request.method.toUpperCase();
+
+    if (url.pathname.startsWith('/portal/workflow-') || url.pathname === '/portal/autopilot-snapshot' || url.pathname === '/portal/autopilot-reconcile') {
+      ensurePortalSchema(this);
+      ensureWorkflowSchema(this);
+      const body = method === 'GET' ? {} : await request.clone().json().catch(() => ({}));
+      try {
+        if (url.pathname === '/portal/workflow-supplier-context' && method === 'POST') return supplierContext(this, body.token);
+        if (url.pathname === '/portal/workflow-supplier-respond' && method === 'POST') return supplierRespond(this, body);
+        if (url.pathname === '/portal/workflow-action' && method === 'POST') return workflowAction(this, body);
+        if (url.pathname === '/portal/workflow-reconcile' && method === 'POST') return workflowReconcile(this, body);
+        if (url.pathname === '/portal/workflow-email-due' && method === 'POST') return workflowEmailDue(this);
+        if (url.pathname === '/portal/workflow-email-mark' && method === 'POST') return workflowEmailMark(this, body);
+        if (url.pathname === '/portal/workflow-events' && method === 'POST') return workflowEvents(this, body);
+        if (url.pathname === '/portal/autopilot-snapshot' && method === 'POST') return workflowControlSnapshot(this, body);
+        if (url.pathname === '/portal/autopilot-reconcile' && method === 'POST') return workflowReconcile(this, body);
+      } catch (error) {
+        console.error('workflow_store_route_failed', {
+          path: url.pathname,
+          name: error?.name || 'Error',
+          message: String(error?.message || error || 'unknown').slice(0, 500),
+        });
+        return json({ error: 'workflow_operation_failed' }, 500);
+      }
+    }
+
+    const relevant = new Set([
+      '/portal/order-upsert',
+      '/portal/appointment-upsert',
+      '/portal/session',
+      '/portal/admin-list',
+      '/portal/admin-file',
+      '/portal/admin-update',
+    ]);
+    if (!relevant.has(url.pathname)) return super.fetch(request);
+
+    const body = method === 'GET' ? {} : await request.clone().json().catch(() => ({}));
+    const response = await super.fetch(request);
+    if (!response.ok) return response;
+    const result = await response.json().catch(() => ({}));
+
+    try {
+      ensureWorkflowSchema(this);
+      if (url.pathname === '/portal/order-upsert' && result.orderId) {
+        const workflow = await initializeWorkflowForOrder(this, result.orderId, body, { created: Boolean(result.created) });
+        return json({ ...result, ...workflow });
+      }
+      if (url.pathname === '/portal/appointment-upsert' && result.orderId) {
+        const workflow = updateAppointmentWorkflow(this, result.orderId, result.appointmentAt || body.appointmentAt || body.start);
+        return json({ ...result, ...workflow, status: this.currentOrderStatus(result.orderId) });
+      }
+      if (url.pathname === '/portal/session') {
+        return json({ ...result, orders: enrichOrderCollection(this, Array.isArray(result.orders) ? result.orders : []) });
+      }
+      if (url.pathname === '/portal/admin-list') {
+        return json({ ...result, orders: enrichOrderCollection(this, Array.isArray(result.orders) ? result.orders : []) });
+      }
+      if (url.pathname === '/portal/admin-file' && result.fileId) {
+        const reconciled = await workflowReconcile(this, { system: true });
+        const reconciliation = await reconciled.json().catch(() => ({}));
+        return json({ ...result, workflowReconciled: true, workflowTransitions: reconciliation.transitions || [] });
+      }
+      if (url.pathname === '/portal/admin-update' && result.orderId) {
+        reconcileWorkflowFromLegacyUpdate(this, result.orderId, body.payload || body);
+        return json({ ...result, workflow: enrichOrderCollection(this, [{ ...result, id: result.orderId }])[0]?.workflow || null });
+      }
+    } catch (error) {
+      console.error('workflow_store_enrichment_failed', {
+        path: url.pathname,
+        name: error?.name || 'Error',
+        message: String(error?.message || error || 'unknown').slice(0, 500),
+      });
+      return json({ ...result, workflowWarning: 'workflow_enrichment_failed' });
+    }
+
+    return json(result);
+  }
+
+  currentOrderStatus(orderId) {
+    return this.sql.exec('SELECT status FROM portal_orders WHERE id=?', orderId).toArray()[0]?.status || '';
+  }
+}

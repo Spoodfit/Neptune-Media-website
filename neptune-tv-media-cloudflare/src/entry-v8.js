@@ -1,8 +1,9 @@
 import base from './entry-v7.js';
-import { StudioStore } from './store-v4.js';
+import { StudioStore } from './store-v5.js';
 import { emailHealthResponse } from './email-service.js';
 import { handleClientCodeRequest } from './portal-code-login.js';
 import { json, securityHeaders } from './security.js';
+import { flushWorkflowOutbox, handleWorkflowRoute } from './portal-workflow-routes-v5.js';
 
 export { StudioStore };
 
@@ -10,6 +11,14 @@ const REQUEST_CODE_PATH = '/api/client/request-code';
 const EMAIL_HEALTH_PATH = '/api/public/email-health';
 const PROSPECT_START_PATH = '/api/public/prospect/start';
 const PROSPECT_CONTEXT_PATH = '/api/public/prospect/context';
+const FLUSH_AFTER = new Set([
+  '/api/webhooks/client-order',
+  '/api/webhooks/conversion',
+  '/api/webhooks/client-appointment',
+  '/api/admin/client-update',
+  '/api/admin/client-file',
+  '/api/admin/client-upload',
+]);
 const TUNNEL_ORIGINS = new Set([
   'https://media.neptunebusiness.com',
   'https://www.media.neptunebusiness.com',
@@ -24,29 +33,34 @@ export default {
       if (request.method === 'OPTIONS' && [PROSPECT_START_PATH, PROSPECT_CONTEXT_PATH].includes(url.pathname)) {
         return secure(corsResponse(request, new Response(null, { status: 204 })));
       }
-      if (request.method === 'GET' && url.pathname === EMAIL_HEALTH_PATH) {
-        return secure(await emailHealthResponse(env));
-      }
-      if (request.method === 'POST' && url.pathname === REQUEST_CODE_PATH) {
-        return secure(await handleClientCodeRequest(request, env));
-      }
-      if (request.method === 'POST' && url.pathname === PROSPECT_START_PATH) {
-        return secure(await startPublicProspect(request, env));
-      }
-      if (request.method === 'GET' && url.pathname === PROSPECT_CONTEXT_PATH) {
-        return secure(await getPublicProspectContext(request, env));
-      }
+      if (request.method === 'GET' && url.pathname === EMAIL_HEALTH_PATH) return secure(await emailHealthResponse(env));
+      if (request.method === 'POST' && url.pathname === REQUEST_CODE_PATH) return secure(await handleClientCodeRequest(request, env));
+      if (request.method === 'POST' && url.pathname === PROSPECT_START_PATH) return secure(await startPublicProspect(request, env));
+      if (request.method === 'GET' && url.pathname === PROSPECT_CONTEXT_PATH) return secure(await getPublicProspectContext(request, env));
 
-      const response = await base.fetch(request, env, ctx);
-      if (shouldInjectProspectCapture(request, response)) return secure(await injectProspectCapture(response));
+      const studio = env.STUDIO.get(env.STUDIO.idFromName('neptune-media-main'));
+      const workflow = await handleWorkflowRoute(request, env, studio);
+      if (workflow) return secure(workflow);
+
+      let response = await base.fetch(request, env, ctx);
+      if (shouldInjectProspectCapture(request, response)) response = await injectProspectCapture(response);
+      if (request.method === 'GET' && (response.headers.get('Content-Type') || '').includes('text/html')) {
+        response = await injectWorkflowAssets(response, url.pathname);
+      }
+      if (response.ok && FLUSH_AFTER.has(url.pathname)) {
+        ctx.waitUntil(flushWorkflowOutbox(env, request.url, studio).catch((error) => console.error('workflow_immediate_flush_failed', safeError(error))));
+      }
       return response;
     } catch (error) {
       console.error('entry_v8_failed', safeError(error));
       return secure(json({ error: 'internal_error' }, 500));
     }
   },
+
   async scheduled(controller, env, ctx) {
-    if (typeof base.scheduled === 'function') return base.scheduled(controller, env, ctx);
+    if (typeof base.scheduled === 'function') await base.scheduled(controller, env, ctx);
+    const studio = env.STUDIO.get(env.STUDIO.idFromName('neptune-media-main'));
+    ctx.waitUntil(runWorkflowScheduled(env, studio).catch((error) => console.error('workflow_scheduled_failed', safeError(error))));
   },
 };
 
@@ -66,6 +80,15 @@ async function getPublicProspectContext(request, env) {
   const response = await callStore(studio, '/portal/prospect-context', { token });
   const result = await response.json().catch(() => ({}));
   return corsResponse(request, json(result, response.status));
+}
+
+async function runWorkflowScheduled(env, studio) {
+  const response = await callStore(studio, '/portal/workflow-reconcile', { system: true });
+  if (!response.ok) {
+    const result = await response.json().catch(() => ({}));
+    throw new Error(result.error || `workflow_reconcile_http_${response.status}`);
+  }
+  return flushWorkflowOutbox(env, env.PUBLIC_ORIGIN || 'https://tv.neptunebusiness.com', studio);
 }
 
 function allowedProspectOrigin(request) {
@@ -105,6 +128,26 @@ async function injectProspectCapture(response) {
   return new Response(body, { status: response.status, statusText: response.statusText, headers });
 }
 
+async function injectWorkflowAssets(response, pathname) {
+  const clientPaths = new Set(['/espace-client', '/espace-client/', '/espace-client/index.html']);
+  const studioPaths = new Set(['/studio/clients', '/studio/clients/', '/studio/clients.html']);
+  if (!clientPaths.has(pathname) && !studioPaths.has(pathname)) return response;
+  let body = await response.text();
+  if (clientPaths.has(pathname)) {
+    if (!body.includes('/espace-client/workflow-v45.css')) body = body.replace('</head>', '<link rel="stylesheet" href="/espace-client/workflow-v45.css?v=1"></head>');
+    if (!body.includes('/espace-client/workflow-v45.js')) body = body.replace('</body>', '<script type="module" src="/espace-client/workflow-v45.js?v=1"></script></body>');
+  }
+  if (studioPaths.has(pathname)) {
+    if (!body.includes('/studio/clients-workflow-v37.css')) body = body.replace('</head>', '<link rel="stylesheet" href="/studio/clients-workflow-v37.css?v=1"></head>');
+    if (!body.includes('/studio/clients-autopilot-v36.js')) body = body.replace('</body>', '<script type="module" src="/studio/clients-autopilot-v36.js?v=1"></script></body>');
+    if (!body.includes('/studio/clients-workflow-v37.js')) body = body.replace('</body>', '<script type="module" src="/studio/clients-workflow-v37.js?v=1"></script></body>');
+  }
+  const headers = new Headers(response.headers);
+  headers.delete('Content-Length');
+  headers.set('Cache-Control', 'private, no-store, max-age=0');
+  return new Response(body, { status: response.status, statusText: response.statusText, headers });
+}
+
 function callStore(studio, path, body) {
   return studio.fetch(`https://store${path}`, {
     method: 'POST',
@@ -116,16 +159,9 @@ function callStore(studio, path, body) {
 function secure(response) {
   const headers = new Headers(response.headers);
   for (const [key, value] of Object.entries(securityHeaders())) headers.set(key, value);
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers,
-  });
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }
 
 function safeError(error) {
-  return {
-    name: error?.name || 'Error',
-    message: String(error?.message || error || 'unknown').slice(0, 500),
-  };
+  return { name: error?.name || 'Error', message: String(error?.message || error || 'unknown').slice(0, 500) };
 }

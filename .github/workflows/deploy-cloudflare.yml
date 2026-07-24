@@ -27,7 +27,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       PUBLIC_URL: https://tv.neptunebusiness.com
       WORKERS_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
-      RELEASE_ID: neptune-studio-responsive-final-20260724-v12-1
+      RELEASE_ID: neptune-studio-responsive-final-20260724-v12-2
 
     steps:
       - name: Checkout
@@ -67,9 +67,9 @@ jobs:
                 && grep -Fq '"clientWorkflowUi":"workflow-v45-google-authoritative"' /tmp/release.json \
                 && grep -Fq '"studioWorkflowUi":"workspace-v42-responsive-final"' /tmp/release.json \
                 && grep -Fq '"appointmentAuthority":"google_calendar_event"' /tmp/release.json \
-                && grep -Fq '"responsiveAudit":"studio-v12-1"' /tmp/release.json \
+                && grep -Fq '"responsiveAudit":"studio-v12-2"' /tmp/release.json \
                 && grep -Fq '"interactionModel":"inline-confirmation-no-native-popup"' /tmp/release.json \
-                && grep -Fq '"legacyAutopilot":"removed"' /tmp/release.json; then
+                && grep -Fq '"legacyAutopilot":"removed-direct-and-transitive"' /tmp/release.json; then
                 break
               fi
               sleep 10
@@ -82,9 +82,9 @@ jobs:
             grep -Fq '"clientWorkflowUi":"workflow-v45-google-authoritative"' /tmp/release.json
             grep -Fq '"studioWorkflowUi":"workspace-v42-responsive-final"' /tmp/release.json
             grep -Fq '"appointmentAuthority":"google_calendar_event"' /tmp/release.json
-            grep -Fq '"responsiveAudit":"studio-v12-1"' /tmp/release.json
+            grep -Fq '"responsiveAudit":"studio-v12-2"' /tmp/release.json
             grep -Fq '"interactionModel":"inline-confirmation-no-native-popup"' /tmp/release.json
-            grep -Fq '"legacyAutopilot":"removed"' /tmp/release.json
+            grep -Fq '"legacyAutopilot":"removed-direct-and-transitive"' /tmp/release.json
           done
 
       - name: Verify client and Studio workflow interfaces
@@ -108,6 +108,10 @@ jobs:
           grep -Fq '/studio/workspace-v42.js?v=3' /tmp/studio.html
           grep -Fq '/studio/workflow-runtime-v44.css?v=1' /tmp/studio.html
           ! grep -Fq '/studio/clients-autopilot-v36.js' /tmp/studio.html
+
+          curl --fail --silent --show-error "$PUBLIC_URL/studio/clients-automation-v35.js?v=1" > /tmp/studio-automation.js
+          grep -Fq 'legacyAutomationDisabled' /tmp/studio-automation.js
+          ! grep -Fq 'clients-autopilot-v36.js' /tmp/studio-automation.js
 
           curl --fail --silent --show-error "$PUBLIC_URL/studio/clients-workflow-v37.js?v=5" > /tmp/studio-workflow.js
           grep -Fq 'workflow-card-identity' /tmp/studio-workflow.js

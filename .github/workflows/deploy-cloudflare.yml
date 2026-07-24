@@ -27,7 +27,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       PUBLIC_URL: https://tv.neptunebusiness.com
       WORKERS_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
-      RELEASE_ID: neptune-studio-responsive-final-20260724-v12-2
+      RELEASE_ID: neptune-studio-responsive-final-20260724-v12-3
 
     steps:
       - name: Checkout
@@ -67,7 +67,8 @@ jobs:
                 && grep -Fq '"clientWorkflowUi":"workflow-v45-google-authoritative"' /tmp/release.json \
                 && grep -Fq '"studioWorkflowUi":"workspace-v42-responsive-final"' /tmp/release.json \
                 && grep -Fq '"appointmentAuthority":"google_calendar_event"' /tmp/release.json \
-                && grep -Fq '"responsiveAudit":"studio-v12-2"' /tmp/release.json \
+                && grep -Fq '"responsiveAudit":"studio-v12-3"' /tmp/release.json \
+                && grep -Fq '"tabletTopbar":"aligned-no-overlap"' /tmp/release.json \
                 && grep -Fq '"interactionModel":"inline-confirmation-no-native-popup"' /tmp/release.json \
                 && grep -Fq '"legacyAutopilot":"removed-direct-and-transitive"' /tmp/release.json; then
                 break
@@ -82,7 +83,8 @@ jobs:
             grep -Fq '"clientWorkflowUi":"workflow-v45-google-authoritative"' /tmp/release.json
             grep -Fq '"studioWorkflowUi":"workspace-v42-responsive-final"' /tmp/release.json
             grep -Fq '"appointmentAuthority":"google_calendar_event"' /tmp/release.json
-            grep -Fq '"responsiveAudit":"studio-v12-2"' /tmp/release.json
+            grep -Fq '"responsiveAudit":"studio-v12-3"' /tmp/release.json
+            grep -Fq '"tabletTopbar":"aligned-no-overlap"' /tmp/release.json
             grep -Fq '"interactionModel":"inline-confirmation-no-native-popup"' /tmp/release.json
             grep -Fq '"legacyAutopilot":"removed-direct-and-transitive"' /tmp/release.json
           done
@@ -102,12 +104,18 @@ jobs:
 
           curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
             "$PUBLIC_URL/studio/clients?release=$GITHUB_SHA" > /tmp/studio.html
+          grep -Fq '/studio/workspace-v43.css?v=2' /tmp/studio.html
           grep -Fq '/studio/clients-workflow-v37.css?v=5' /tmp/studio.html
           grep -Fq '/studio/clients-workflow-v37.js?v=5' /tmp/studio.html
           grep -Fq '/studio/workspace-v42.css?v=3' /tmp/studio.html
           grep -Fq '/studio/workspace-v42.js?v=3' /tmp/studio.html
           grep -Fq '/studio/workflow-runtime-v44.css?v=1' /tmp/studio.html
           ! grep -Fq '/studio/clients-autopilot-v36.js' /tmp/studio.html
+
+          curl --fail --silent --show-error "$PUBLIC_URL/studio/workspace-v43.css?v=2" > /tmp/studio-tablet.css
+          grep -Fq '.clients-topbar{' /tmp/studio-tablet.css
+          grep -Fq 'top:0!important' /tmp/studio-tablet.css
+          grep -Fq 'padding-top:18px!important' /tmp/studio-tablet.css
 
           curl --fail --silent --show-error "$PUBLIC_URL/studio/clients-automation-v35.js?v=1" > /tmp/studio-automation.js
           grep -Fq 'legacyAutomationDisabled' /tmp/studio-automation.js

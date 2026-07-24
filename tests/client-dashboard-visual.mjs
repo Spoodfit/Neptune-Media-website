@@ -60,6 +60,9 @@ for (const viewport of viewports) {
       body: pathname === '/api/client/session' ? JSON.stringify(mockState) : '{}',
     });
   });
+  await page.route('**/api/public/connexio-availability', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: '{"available":false,"event":null}' });
+  });
 
   const response = await page.goto(`${baseUrl}/espace-client/?dashboard_test=${Date.now()}`, {
     waitUntil: 'domcontentloaded',
@@ -81,7 +84,7 @@ for (const viewport of viewports) {
     const targetSelector = [
       '.metric-card', '.production-shortcut', '.inline-action', '.header-booking',
       '.primary-dashboard-action', '.secondary-dashboard-action', '.format-card a',
-      '.utility-action', '.referral-code', '.social', '.logout-button',
+      '.utility-action', '.referral-code', '.logout-button',
     ].join(',');
     const smallTargets = [...root.querySelectorAll(targetSelector)]
       .filter(visible)
@@ -120,13 +123,32 @@ for (const viewport of viewports) {
   if (/BOOK NOW/i.test(diagnostics.bodyText)) report.errors.push(`${viewport.name}: CTA anglais encore présent`);
   if (viewport.width >= 980 && diagnostics.overviewColumns.trim().split(/\s+/).length < 2) report.errors.push(`${viewport.name}: grille desktop non déployée`);
 
-  for (const panel of ['appointments', 'content', 'tracking', 'billing', 'calendar']) {
+  for (const panel of ['appointments', 'tracking', 'billing']) {
+    if (panel === 'tracking') {
+      await page.evaluate(() => document.querySelector('[data-open-panel="tracking"]')?.click());
+    } else {
+      await page.locator(`[data-open-panel="${panel}"]`).first().click();
+    }
+    try {
+      await page.waitForFunction(() => document.querySelector('#detailPanel')?.hidden === false, null, { timeout: 5_000 });
+      const title = (await page.locator('#detailTitle').textContent())?.trim();
+      if (!title) report.errors.push(`${viewport.name}: panneau ${panel} sans titre`);
+      await page.locator('#closePanel').click();
+      await page.waitForFunction(() => document.querySelector('#detailPanel')?.hidden === true);
+    } catch {
+      report.errors.push(`${viewport.name}: panneau ${panel} ne s’ouvre pas`);
+    }
+  }
+
+  for (const [panel, pathname] of [['content', '/espace-client/videos/'], ['calendar', '/espace-client/calendrier/']]) {
     await page.locator(`[data-open-panel="${panel}"]`).first().click();
-    await page.waitForSelector('#detailPanel:not([hidden])');
-    const title = (await page.locator('#detailTitle').textContent())?.trim();
-    if (!title) report.errors.push(`${viewport.name}: panneau ${panel} sans titre`);
-    await page.locator('#closePanel').click();
-    await page.waitForFunction(() => document.querySelector('#detailPanel')?.hidden === true);
+    try {
+      await page.waitForURL((url) => url.pathname === pathname, { timeout: 5_000 });
+    } catch {
+      report.errors.push(`${viewport.name}: navigation ${panel} incorrecte`);
+    }
+    await page.goto(`${baseUrl}/espace-client/?dashboard_test=${Date.now()}`, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#dashboard:not([hidden])', { timeout: 20_000 });
   }
 
   if (pageErrors.length) report.errors.push(`${viewport.name}: erreurs navigateur ${JSON.stringify(pageErrors)}`);

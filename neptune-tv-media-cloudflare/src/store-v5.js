@@ -1,5 +1,6 @@
 import { StudioStore as LegacyStore } from './store-v4.js';
 import { json } from './security.js';
+import { ensurePortalSchema } from './portal-schema.js';
 import {
   ensureWorkflowSchema,
   enrichOrderCollection,
@@ -22,6 +23,7 @@ export class StudioStore extends LegacyStore {
     const method = request.method.toUpperCase();
 
     if (url.pathname.startsWith('/portal/workflow-') || url.pathname === '/portal/autopilot-snapshot' || url.pathname === '/portal/autopilot-reconcile') {
+      ensurePortalSchema(this);
       ensureWorkflowSchema(this);
       const body = method === 'GET' ? {} : await request.clone().json().catch(() => ({}));
       try {

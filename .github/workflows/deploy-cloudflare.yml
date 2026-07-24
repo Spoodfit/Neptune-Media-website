@@ -25,10 +25,9 @@ jobs:
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      RESEND_API: ${{ secrets.RESEND_API }}
       PUBLIC_URL: https://tv.neptunebusiness.com
       WORKERS_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
-      RELEASE_ID: neptune-client-test-access-20260724-v6
+      RELEASE_ID: neptune-workflow-clear-20260724-v8
 
     steps:
       - name: Checkout
@@ -49,46 +48,10 @@ jobs:
       - name: Validate Worker bundle
         run: npx wrangler deploy --dry-run
 
-      - name: Validate Resend repository secret
-        working-directory: .
-        shell: bash
-        run: |
-          set -euo pipefail
-          key="$(printf '%s' "${RESEND_API:-}" | tr -d '\r\n' | sed -E 's/^[[:space:]]+|[[:space:]]+$//g; s/^[Bb]earer[[:space:]]+//; s/^"(.*)"$/\1/; s/^'\''(.*)'\''$/\1/')"
-
-          if [ -z "$key" ]; then
-            echo 'GitHub repository secret RESEND_API is missing.' >&2
-            exit 1
-          fi
-
-          if [[ "$key" != re_* ]]; then
-            echo 'GitHub repository secret RESEND_API does not look like a Resend API key.' >&2
-            exit 1
-          fi
-
-          status="$(curl --silent --show-error --output /tmp/resend-auth.json --write-out '%{http_code}' \
-            -X POST 'https://api.resend.com/emails' \
-            -H "Authorization: Bearer $key" \
-            -H 'Content-Type: application/json' \
-            -H 'User-Agent: Neptune-Media-Deploy/4.0.0' \
-            --data '{}')"
-          cat /tmp/resend-auth.json
-
-          if [ "$status" != '400' ] && [ "$status" != '422' ]; then
-            echo "Resend rejected RESEND_API with HTTP $status." >&2
-            exit 1
-          fi
-
-          printf '%s' "$key" > /tmp/resend-api-key
-          chmod 600 /tmp/resend-api-key
-
-      - name: Replace Cloudflare RESEND_API_KEY
-        run: npx wrangler secret put RESEND_API_KEY < /tmp/resend-api-key
-
       - name: Deploy Worker and assets
         run: npx wrangler deploy
 
-      - name: Verify deployed release
+      - name: Verify deployed release and preserved secrets
         working-directory: .
         shell: bash
         run: |
@@ -98,7 +61,9 @@ jobs:
               curl --silent --show-error -H 'Cache-Control: no-cache, no-store' \
                 "$base/api/public/release?attempt=$attempt" > /tmp/release.json || true
               if grep -Fq "\"release\":\"$RELEASE_ID\"" /tmp/release.json \
-                && grep -Fq '"resendSecretPresent":true' /tmp/release.json; then
+                && grep -Fq '"resendSecretPresent":true' /tmp/release.json \
+                && grep -Fq '"webhookSecretPresent":true' /tmp/release.json \
+                && grep -Fq '"workflowStore":"store-v5"' /tmp/release.json; then
                 break
               fi
               sleep 10
@@ -106,8 +71,24 @@ jobs:
             cat /tmp/release.json
             grep -Fq "\"release\":\"$RELEASE_ID\"" /tmp/release.json
             grep -Fq '"resendSecretPresent":true' /tmp/release.json
-            grep -Fq '"trustedTestClient":"contact@neptunebusiness.com"' /tmp/release.json
+            grep -Fq '"webhookSecretPresent":true' /tmp/release.json
+            grep -Fq '"workflowStore":"store-v5"' /tmp/release.json
           done
+
+      - name: Verify client and Studio workflow interfaces
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
+            "$PUBLIC_URL/espace-client/?release=$GITHUB_SHA" > /tmp/client.html
+          grep -Fq '/espace-client/workflow-v45.css' /tmp/client.html
+          grep -Fq '/espace-client/workflow-v45.js' /tmp/client.html
+
+          curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
+            "$PUBLIC_URL/studio/clients?release=$GITHUB_SHA" > /tmp/studio.html
+          grep -Fq '/studio/clients-workflow-v37.css' /tmp/studio.html
+          grep -Fq '/studio/clients-workflow-v37.js' /tmp/studio.html
 
       - name: Verify Resend authentication from production
         working-directory: .

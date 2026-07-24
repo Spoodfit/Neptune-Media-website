@@ -24,14 +24,18 @@ function enhancePipeline(){
   document.querySelectorAll('[data-order-card]').forEach((card)=>{
     const order=(workflowAdminState.orders||[]).find((item)=>item.id===card.dataset.orderCard);
     if(!order?.workflow)return;
-    card.querySelector('.workflow-card-dates')?.remove();
     const w=order.workflow;
     const appointment=validDate(order.appointmentAt)?order.appointmentAt:null;
     const filming=validDate(order.filmingAt)?order.filmingAt:null;
     const requested=validDate(w.requestedFilmingAt)?w.requestedFilmingAt:null;
     const studioConfirmed=w.supplierStatus==='confirmed'&&filming;
+    const signature=[appointment||'',filming||'',requested||'',w.supplierStatus||'',w.preparationStatus||''].join('|');
+    const existing=card.querySelector('.workflow-card-dates');
+    if(existing?.dataset.signature===signature)return;
+    existing?.remove();
     const block=document.createElement('div');
     block.className='workflow-card-dates';
+    block.dataset.signature=signature;
     block.innerHTML=`
       <div class="${appointment?'ready':'pending'}"><small>PRÉPARATION</small><strong>${esc(appointment?dateLabel(appointment):'À réserver')}</strong><span>${esc(preparationLabel(w.preparationStatus))}</span></div>
       <div class="${studioConfirmed?'ready':'pending'}"><small>PASSAGE STUDIO</small><strong>${esc(studioConfirmed?dateLabel(filming):requested?dateLabel(requested):'À confirmer')}</strong><span>${esc(studioConfirmed?'Confirmé':requested?'Demandé · non confirmé':'Aucune date')}</span></div>`;

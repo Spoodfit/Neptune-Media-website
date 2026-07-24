@@ -88,12 +88,7 @@ export class StudioStore extends LegacyStore {
       }
       if (url.pathname === '/portal/appointment-upsert' && result.orderId) {
         const appointmentAt = result.appointmentAt || body.appointmentAt || body.appointment_at || body.start || body.startAt;
-        const workflow = updateAppointmentWorkflow(this, result.orderId, {
-          appointmentAt,
-          calendarEventId: body.calendarEventId || body.eventId || body.id || '',
-          title: body.title || '',
-          source: 'google_calendar',
-        });
+        const workflow = updateAppointmentWorkflow(this, result.orderId, appointmentAt);
         return json({ ...result, ...workflow, appointmentAt, appointmentSource: 'google_calendar', status: this.currentOrderStatus(result.orderId) });
       }
       if (url.pathname === '/portal/session') {

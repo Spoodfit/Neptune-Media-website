@@ -1,7 +1,6 @@
 const detailDialog=document.getElementById('clientDialog');
 const sidebar=document.querySelector('.studio-sidebar');
-const shell=document.querySelector('.studio-shell');
-const nativeShowModal=HTMLDialogElement.prototype.showModal;
+const nativeShowModal=typeof HTMLDialogElement!=='undefined'?HTMLDialogElement.prototype.showModal:null;
 let detailResizeObserver=null;
 
 bootWorkspace();
@@ -11,6 +10,7 @@ function bootWorkspace(){
   installSidebarToggle();
   installIntegratedDialog();
   installDateComposer();
+  installInlineValidationGuard();
   observeCommandCenter();
   window.addEventListener('resize',syncDetailOffsets,{passive:true});
 }
@@ -47,7 +47,7 @@ function setSidebar(collapsed,focusButton=false){
 }
 
 function installIntegratedDialog(){
-  if(!detailDialog)return;
+  if(!detailDialog||!nativeShowModal)return;
   HTMLDialogElement.prototype.showModal=function(){
     if(this!==detailDialog)return nativeShowModal.call(this);
     this.setAttribute('open','');
@@ -90,8 +90,10 @@ function enhanceDetailHeader(){
     if(close)close.setAttribute('aria-label','Revenir aux parcours clients');
   }
   detailResizeObserver?.disconnect();
-  detailResizeObserver=new ResizeObserver(syncDetailOffsets);
-  detailResizeObserver.observe(title);
+  if(typeof ResizeObserver==='function'){
+    detailResizeObserver=new ResizeObserver(syncDetailOffsets);
+    detailResizeObserver.observe(title);
+  }
 }
 
 function syncDetailOffsets(){
@@ -136,6 +138,24 @@ function installDateComposer(){
     if(form.dataset.workflowForm==='confirm_supplier_date')compose(form,'filmingDate','filmingTime','filmingAt');
     if(form.dataset.workflowForm==='schedule_broadcast')compose(form,'broadcastDate','broadcastTime','broadcastAt');
   },true);
+}
+
+function installInlineValidationGuard(){
+  document.addEventListener('click',(event)=>{
+    const accept=event.target.closest?.('[data-confirm-accept]');
+    if(!accept)return;
+    const confirmation=accept.closest('.workflow-inline-confirm');
+    const note=confirmation?.querySelector('[data-confirm-note]');
+    if(note&&String(note.value||'').trim()===''){
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      note.setAttribute('aria-invalid','true');
+      note.focus();
+    }
+  },true);
+  document.addEventListener('input',(event)=>{
+    if(event.target.matches?.('[data-confirm-note]'))event.target.removeAttribute('aria-invalid');
+  });
 }
 
 function compose(form,dateName,timeName,targetName){

@@ -50,7 +50,7 @@ jobs:
           cd /tmp/neptune-ui-audit
           npm init -y >/dev/null
           npm install --silent playwright@1.55.0
-          npx playwright install --with-deps chromium
+          npx playwright install chromium
 
       - name: Audit desktop, tablet and mobile layouts
         shell: bash

@@ -19,7 +19,7 @@ jobs:
           set -euo pipefail
           public='https://tv.neptunebusiness.com'
           workers='https://neptune-media-webtv.neptunebusinessclub.workers.dev'
-          expected='neptune-studio-responsive-final-20260724-v12-1'
+          expected='neptune-studio-responsive-final-20260724-v12-2'
           for base in "$workers" "$public"; do
             for attempt in $(seq 1 18); do
               curl --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/api/public/release?attempt=$attempt" > /tmp/release.json || true
@@ -30,7 +30,7 @@ jobs:
             grep -Fq "\"release\":\"$expected\"" /tmp/release.json
             grep -Fq '"studioWorkflowUi":"workspace-v42-responsive-final"' /tmp/release.json
             grep -Fq '"interactionModel":"inline-confirmation-no-native-popup"' /tmp/release.json
-            grep -Fq '"legacyAutopilot":"removed"' /tmp/release.json
+            grep -Fq '"legacyAutopilot":"removed-direct-and-transitive"' /tmp/release.json
           done
           for attempt in $(seq 1 18); do
             curl --silent --show-error -H 'Cache-Control: no-cache, no-store' "$public/studio/clients?asset=$attempt" > /tmp/studio.html || true
@@ -44,6 +44,9 @@ jobs:
           grep -Fq '/studio/workspace-v42.js?v=3' /tmp/studio.html
           grep -Fq '/studio/workflow-runtime-v44.css?v=1' /tmp/studio.html
           ! grep -Fq '/studio/clients-autopilot-v36.js' /tmp/studio.html
+          curl --fail --silent --show-error "$public/studio/clients-automation-v35.js?v=1" > /tmp/automation.js
+          grep -Fq 'legacyAutomationDisabled' /tmp/automation.js
+          ! grep -Fq 'clients-autopilot-v36.js' /tmp/automation.js
 
       - uses: actions/setup-node@v4
         with:

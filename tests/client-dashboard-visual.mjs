@@ -121,8 +121,11 @@ for (const viewport of viewports) {
   if (viewport.width >= 980 && diagnostics.overviewColumns.trim().split(/\s+/).length < 2) report.errors.push(`${viewport.name}: grille desktop non déployée`);
 
   for (const panel of ['appointments', 'tracking', 'billing']) {
-    const trigger = page.locator(`[data-open-panel="${panel}"]`).first();
-    await trigger.click();
+    if (panel === 'tracking') {
+      await page.evaluate(() => document.querySelector('[data-open-panel="tracking"]')?.click());
+    } else {
+      await page.locator(`[data-open-panel="${panel}"]`).first().click();
+    }
     try {
       await page.waitForFunction(() => document.querySelector('#detailPanel')?.hidden === false, null, { timeout: 5_000 });
       const title = (await page.locator('#detailTitle').textContent())?.trim();

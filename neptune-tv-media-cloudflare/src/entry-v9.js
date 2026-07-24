@@ -3,7 +3,7 @@ import { StudioStore } from './store-v5.js';
 
 export { StudioStore };
 
-const RELEASE_ID = 'neptune-workflow-clear-20260724-v8';
+const RELEASE_ID = 'neptune-workflow-minimal-20260724-v9';
 const RELEASE_PATH = '/api/public/release';
 const ORDER_WEBHOOKS = new Set(['/api/webhooks/client-order', '/api/webhooks/conversion']);
 
@@ -44,8 +44,8 @@ function releaseResponse(request, env) {
     resendSecretPresent,
     webhookSecretPresent,
     workflowStore: 'store-v5',
-    clientWorkflowUi: 'workflow-v45-clear',
-    studioWorkflowUi: 'clients-workflow-v37-clear',
+    clientWorkflowUi: 'workflow-v45-minimal',
+    studioWorkflowUi: 'clients-workflow-v37-stage-tabs',
     emailTransport: 'resend-rest-v1',
     sender: 'Neptune Media <contact@neptunebusiness.com>',
     trustedTestClient: 'contact@neptunebusiness.com',

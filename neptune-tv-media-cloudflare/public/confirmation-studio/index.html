@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#071739">
+  <title>Confirmation studio · Neptune Media</title>
+  <link rel="icon" href="/assets/logo-neptune.svg">
+  <link rel="stylesheet" href="/confirmation-studio/style.css?v=1">
+</head>
+<body>
+  <main class="page">
+    <section class="card" aria-live="polite">
+      <header class="brand"><img src="/assets/logo-neptune.svg" alt=""><span><b>Neptune Media</b><small>Confirmation fournisseur</small></span></header>
+      <div id="loading" class="state"><span class="spinner"></span><h1>Vérification de la réservation…</h1></div>
+      <div id="content" hidden>
+        <p class="eyebrow">NOUVELLE RÉSERVATION HORS NORME</p>
+        <h1>Confirmer le créneau studio</h1>
+        <p class="lead">Votre réponse synchronise immédiatement Neptune, l’espace client et la campagne de préparation.</p>
+        <dl class="summary">
+          <div><dt>Client</dt><dd id="clientName">—</dd></div>
+          <div><dt>Entreprise</dt><dd id="company">—</dd></div>
+          <div><dt>Format</dt><dd id="format">HORS NORME</dd></div>
+          <div class="date"><dt>Date demandée</dt><dd id="requestedDate">—</dd></div>
+        </dl>
+        <form id="responseForm">
+          <fieldset>
+            <legend>Votre réponse</legend>
+            <label class="choice"><input type="radio" name="decision" value="confirm" checked><span><b>Confirmer cette date</b><small>Le créneau devient définitif pour toutes les parties.</small></span></label>
+            <label class="choice"><input type="radio" name="decision" value="alternate"><span><b>Proposer une autre date</b><small>Neptune vérifiera la proposition avec le client.</small></span></label>
+            <label class="choice"><input type="radio" name="decision" value="reject"><span><b>Indisponible</b><small>Neptune organisera un autre créneau.</small></span></label>
+          </fieldset>
+          <label id="alternateField" class="field" hidden><span>Nouvelle date proposée *</span><input id="proposedAt" name="proposedAt" type="datetime-local"></label>
+          <label class="field"><span>Note facultative</span><textarea name="note" rows="3" maxlength="1200" placeholder="Précision utile pour Neptune…"></textarea></label>
+          <button id="submitButton" type="submit">Envoyer ma réponse</button>
+          <p id="message" class="message"></p>
+        </form>
+      </div>
+      <div id="success" class="state success" hidden><span>✓</span><h1>Réponse enregistrée</h1><p>Neptune et le client sont mis à jour. Aucune autre action n’est nécessaire.</p></div>
+      <div id="error" class="state error" hidden><span>!</span><h1>Ce lien n’est plus valide</h1><p>Demandez à Neptune Media de renvoyer une demande de confirmation.</p><a href="mailto:contact@neptunebusiness.com">Contacter Neptune Media</a></div>
+    </section>
+  </main>
+  <script type="module" src="/confirmation-studio/app.js?v=1"></script>
+</body>
+</html>

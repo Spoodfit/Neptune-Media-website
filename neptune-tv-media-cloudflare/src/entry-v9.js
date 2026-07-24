@@ -3,7 +3,7 @@ import { StudioStore } from './store-v5.js';
 
 export { StudioStore };
 
-const RELEASE_ID = 'neptune-studio-responsive-final-20260724-v12-2';
+const RELEASE_ID = 'neptune-studio-responsive-final-20260724-v12-3';
 const RELEASE_PATH = '/api/public/release';
 const ORDER_WEBHOOKS = new Set(['/api/webhooks/client-order', '/api/webhooks/conversion']);
 
@@ -47,7 +47,8 @@ function releaseResponse(request, env) {
     clientWorkflowUi: 'workflow-v45-google-authoritative',
     studioWorkflowUi: 'workspace-v42-responsive-final',
     appointmentAuthority: 'google_calendar_event',
-    responsiveAudit: 'studio-v12-2',
+    responsiveAudit: 'studio-v12-3',
+    tabletTopbar: 'aligned-no-overlap',
     interactionModel: 'inline-confirmation-no-native-popup',
     legacyAutopilot: 'removed-direct-and-transitive',
     emailTransport: 'resend-rest-v1',

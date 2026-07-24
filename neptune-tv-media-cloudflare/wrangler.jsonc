@@ -21,6 +21,8 @@
     "run_worker_first": [
       "/",
       "/studio/*",
+      "/espace-client/*",
+      "/confirmation-studio/*",
       "/api/*",
       "/media/*",
       "/direct/*",
@@ -49,10 +51,13 @@
   "ai": { "binding": "AI" },
   "vars": {
     "BOOKING_URL": "https://media.neptunebusiness.com",
+    "PREPARATION_BOOKING_URL": "https://calendar.app.google/nkYDeheuV8qjSMcRA",
     "PUBLIC_ORIGIN": "https://tv.neptunebusiness.com",
     "AI_MODEL": "@cf/openai/gpt-oss-120b",
     "AUTH_FROM_EMAIL": "Neptune Media <contact@neptunebusiness.com>",
-    "PORTAL_INTERNAL_EMAILS": "neptunebusinessclub@gmail.com"
+    "PORTAL_INTERNAL_EMAILS": "neptunebusinessclub@gmail.com",
+    "STUDIO_SUPPLIER_EMAIL": "contact@recbox.fr",
+    "STUDIO_SUPPLIER_NAME": "REC BOX Studio"
   },
   "observability": { "enabled": true }
 }

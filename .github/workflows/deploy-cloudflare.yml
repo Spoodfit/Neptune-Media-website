@@ -27,7 +27,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       PUBLIC_URL: https://tv.neptunebusiness.com
       WORKERS_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
-      RELEASE_ID: neptune-workflow-clear-20260724-v8
+      RELEASE_ID: neptune-workflow-minimal-20260724-v9
 
     steps:
       - name: Checkout
@@ -63,7 +63,9 @@ jobs:
               if grep -Fq "\"release\":\"$RELEASE_ID\"" /tmp/release.json \
                 && grep -Fq '"resendSecretPresent":true' /tmp/release.json \
                 && grep -Fq '"webhookSecretPresent":true' /tmp/release.json \
-                && grep -Fq '"workflowStore":"store-v5"' /tmp/release.json; then
+                && grep -Fq '"workflowStore":"store-v5"' /tmp/release.json \
+                && grep -Fq '"clientWorkflowUi":"workflow-v45-minimal"' /tmp/release.json \
+                && grep -Fq '"studioWorkflowUi":"clients-workflow-v37-stage-tabs"' /tmp/release.json; then
                 break
               fi
               sleep 10
@@ -73,6 +75,8 @@ jobs:
             grep -Fq '"resendSecretPresent":true' /tmp/release.json
             grep -Fq '"webhookSecretPresent":true' /tmp/release.json
             grep -Fq '"workflowStore":"store-v5"' /tmp/release.json
+            grep -Fq '"clientWorkflowUi":"workflow-v45-minimal"' /tmp/release.json
+            grep -Fq '"studioWorkflowUi":"clients-workflow-v37-stage-tabs"' /tmp/release.json
           done
 
       - name: Verify client and Studio workflow interfaces
@@ -82,13 +86,19 @@ jobs:
           set -euo pipefail
           curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
             "$PUBLIC_URL/espace-client/?release=$GITHUB_SHA" > /tmp/client.html
-          grep -Fq '/espace-client/workflow-v45.css' /tmp/client.html
-          grep -Fq '/espace-client/workflow-v45.js' /tmp/client.html
+          grep -Fq '/espace-client/workflow-v45.css?v=2' /tmp/client.html
+          grep -Fq '/espace-client/workflow-v45.js?v=2' /tmp/client.html
+          curl --fail --silent --show-error "$PUBLIC_URL/espace-client/workflow-v45.js?v=2" > /tmp/client-workflow.js
+          grep -Fq 'client-minimal-flow' /tmp/client-workflow.js
+          grep -Fq 'Aucune action n’est requise de votre part' /tmp/client-workflow.js
 
           curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
             "$PUBLIC_URL/studio/clients?release=$GITHUB_SHA" > /tmp/studio.html
-          grep -Fq '/studio/clients-workflow-v37.css' /tmp/studio.html
-          grep -Fq '/studio/clients-workflow-v37.js' /tmp/studio.html
+          grep -Fq '/studio/clients-workflow-v37.css?v=2' /tmp/studio.html
+          grep -Fq '/studio/clients-workflow-v37.js?v=2' /tmp/studio.html
+          curl --fail --silent --show-error "$PUBLIC_URL/studio/clients-workflow-v37.js?v=2" > /tmp/studio-workflow.js
+          grep -Fq 'workflow-stage-tabs' /tmp/studio-workflow.js
+          grep -Fq 'Parcours clients' /tmp/studio-workflow.js
 
       - name: Verify Resend authentication from production
         working-directory: .

@@ -34,10 +34,14 @@ function renderDashboard(){
   const order=(workflowState?.orders||[]).find((item)=>item.status!=='completed')||(workflowState?.orders||[])[0];
   const flow=order?.workflow;
   if(!flow)return;
+
   setText($('#projectPhaseValue'),flow.currentLabel||'Parcours en cours');
   setText($('#countdownText'),flow.currentLabel||'Votre passage avance');
   setText($('#passageBadge'),flow.currentLabel||'Suivi');
   setText($('#projectNextAction'),flow.nextAction||order.nextAction||'Consultez votre suivi.');
+
+  renderAppointmentSummary(order,flow);
+
   const steps=Array.isArray(flow.steps)?flow.steps:[];
   const list=$('.project-stage-list');
   if(list&&steps.length){
@@ -48,13 +52,65 @@ function renderDashboard(){
     setText($('#projectProgressLabel'),`${current} sur ${steps.length}`);
     const fill=$('#projectProgressFill');if(fill)fill.style.width=`${Math.max(0,Math.min(100,(done/(steps.length-1))*100))}%`;
   }
+
   const deadline=nextDeadline(flow);
   if(deadline){
     setText($('#deadlineLabel'),deadline.label);
     setText($('#deadlineValue'),deadline.value);
     setText($('#deadlineDateValue'),formatDate(deadline.at));
     $('#projectDeadlineCard')?.classList.toggle('is-urgent',new Date(deadline.at)-Date.now()<48*3600_000);
+  }else{
+    setText($('#deadlineLabel'),'Prochaine échéance');
+    setText($('#deadlineValue'),'Aucune urgence');
+    setText($('#deadlineDateValue'),'Le parcours est à jour');
   }
+}
+
+function renderAppointmentSummary(order,flow){
+  const appointmentAt=validDate(order.appointmentAt)?order.appointmentAt:null;
+  const filmingAt=validDate(order.filmingAt)?order.filmingAt:null;
+  const requestedAt=validDate(flow.requestedFilmingAt)?flow.requestedFilmingAt:null;
+  const studioConfirmed=flow.supplierStatus==='confirmed'&&filmingAt;
+
+  setText($('#appointmentBadge'),appointmentAt?`Préparation · ${formatCompact(appointmentAt)}`:'Préparation à réserver');
+
+  if(studioConfirmed){
+    setText($('#studioDateValue'),formatDay(filmingAt));
+    setText($('#studioTimeValue'),`Confirmé · ${formatTime(filmingAt)}`);
+  }else if(requestedAt){
+    setText($('#studioDateValue'),formatDay(requestedAt));
+    setText($('#studioTimeValue'),'Date demandée · confirmation du studio en attente');
+  }else{
+    setText($('#studioDateValue'),'À confirmer');
+    setText($('#studioTimeValue'),'Aucune date studio validée');
+  }
+
+  const snapshot=$('.project-snapshot');
+  if(!snapshot)return;
+  let panel=$('#workflowDatesSummary');
+  if(!panel){
+    panel=document.createElement('section');
+    panel.id='workflowDatesSummary';
+    panel.className='workflow-dates-summary';
+    snapshot.after(panel);
+  }
+
+  const prepStatus=flow.preparationStatus==='completed'?'Réalisé':appointmentAt?'Réservé':'À réserver';
+  const prepDetail=appointmentAt?formatDate(appointmentAt):'Aucun rendez-vous de préparation enregistré';
+  const studioStatus=studioConfirmed?'Confirmé':requestedAt?'En attente du studio':'À définir';
+  const studioDetail=studioConfirmed?formatDate(filmingAt):requestedAt?`${formatDate(requestedAt)} · date demandée, non définitive`:'Aucune date de tournage enregistrée';
+
+  panel.innerHTML=`
+    <article class="workflow-date-card ${appointmentAt?'is-ready':'is-pending'}">
+      <header><span>1</span><div><small>RENDEZ-VOUS DE PRÉPARATION</small><strong>${esc(prepStatus)}</strong></div></header>
+      <p>${esc(prepDetail)}</p>
+      <em>Visio de préparation, distincte du passage au studio.</em>
+    </article>
+    <article class="workflow-date-card ${studioConfirmed?'is-ready':'is-pending'}">
+      <header><span>2</span><div><small>PASSAGE AU STUDIO</small><strong>${esc(studioStatus)}</strong></div></header>
+      <p>${esc(studioDetail)}</p>
+      <em>${studioConfirmed?'Créneau définitif confirmé par le studio.':'Ce créneau ne devient définitif qu’après validation du studio.'}</em>
+    </article>`;
 }
 
 function enhanceTracking(){
@@ -89,6 +145,10 @@ function nextDeadline(flow){
   return {...selected,value};
 }
 function shortLabel(label){return String(label||'').replace('Date du passage confirmée','Date confirmée').replace('Date du passage en confirmation','Date en confirmation').replace('Rendez-vous de préparation','Préparation').replace('Fichiers du studio','Sources studio').replace('Programmation de diffusion','Programmation').replace('Émission diffusée','Diffusée').replace('Diffusion à venir','À diffuser');}
+function validDate(value){const date=new Date(value||'');return !Number.isNaN(date.getTime());}
 function formatDate(value){const date=new Date(value||'');return Number.isNaN(date.getTime())?'À confirmer':new Intl.DateTimeFormat('fr-FR',{dateStyle:'long',timeStyle:'short',timeZone:'Europe/Paris'}).format(date);}
+function formatCompact(value){const date=new Date(value||'');return Number.isNaN(date.getTime())?'À confirmer':new Intl.DateTimeFormat('fr-FR',{day:'2-digit',month:'short',year:'numeric',timeZone:'Europe/Paris'}).format(date);}
+function formatDay(value){const date=new Date(value||'');return Number.isNaN(date.getTime())?'À confirmer':new Intl.DateTimeFormat('fr-FR',{day:'numeric',month:'short',year:'numeric',timeZone:'Europe/Paris'}).format(date);}
+function formatTime(value){const date=new Date(value||'');return Number.isNaN(date.getTime())?'':new Intl.DateTimeFormat('fr-FR',{hour:'2-digit',minute:'2-digit',timeZone:'Europe/Paris'}).format(date);}
 function setText(element,value){if(element)element.textContent=value;}
 function esc(value){return String(value??'').replace(/[&<>"']/gu,(character)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));}

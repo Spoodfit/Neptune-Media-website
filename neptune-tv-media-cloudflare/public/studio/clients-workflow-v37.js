@@ -21,6 +21,14 @@ function scheduleEnhance(){if(rendering)return;setTimeout(()=>{enhancePipeline()
 
 function enhancePipeline(){
   if(!workflowAdminState)return;
+  const pipeline=$('#pipeline');
+  if(pipeline&&!$('#workflowReadingGuide')){
+    const guide=document.createElement('section');
+    guide.id='workflowReadingGuide';
+    guide.className='workflow-reading-guide';
+    guide.innerHTML='<div><small>LECTURE IMMÉDIATE</small><strong>Chaque dossier affiche séparément la visio de préparation et le passage studio.</strong></div><ol><li><b>1</b><span>Vérifier la préparation</span></li><li><b>2</b><span>Vérifier la date studio</span></li><li><b>3</b><span>Ouvrir uniquement si une action est requise</span></li></ol>';
+    pipeline.before(guide);
+  }
   document.querySelectorAll('[data-order-card]').forEach((card)=>{
     const order=(workflowAdminState.orders||[]).find((item)=>item.id===card.dataset.orderCard);
     if(!order?.workflow)return;
@@ -29,17 +37,21 @@ function enhancePipeline(){
     const filming=validDate(order.filmingAt)?order.filmingAt:null;
     const requested=validDate(w.requestedFilmingAt)?w.requestedFilmingAt:null;
     const studioConfirmed=w.supplierStatus==='confirmed'&&filming;
-    const signature=[appointment||'',filming||'',requested||'',w.supplierStatus||'',w.preparationStatus||''].join('|');
+    const signature=[appointment||'',filming||'',requested||'',w.supplierStatus||'',w.preparationStatus||'',w.currentLabel||''].join('|');
     const existing=card.querySelector('.workflow-card-dates');
     if(existing?.dataset.signature===signature)return;
     existing?.remove();
+    const title=card.querySelector('h3');if(title)title.textContent=w.currentLabel||title.textContent;
+    const next=card.querySelector('h3+p');if(next)next.textContent=w.nextAction||order.nextAction||'Aucune action manuelle requise.';
     const block=document.createElement('div');
     block.className='workflow-card-dates';
     block.dataset.signature=signature;
     block.innerHTML=`
-      <div class="${appointment?'ready':'pending'}"><small>PRÉPARATION</small><strong>${esc(appointment?dateLabel(appointment):'À réserver')}</strong><span>${esc(preparationLabel(w.preparationStatus))}</span></div>
-      <div class="${studioConfirmed?'ready':'pending'}"><small>PASSAGE STUDIO</small><strong>${esc(studioConfirmed?dateLabel(filming):requested?dateLabel(requested):'À confirmer')}</strong><span>${esc(studioConfirmed?'Confirmé':requested?'Demandé · non confirmé':'Aucune date')}</span></div>`;
-    card.querySelector('.card-actions')?.before(block);
+      <div class="${appointment?'ready':'pending'}"><small>1 · VISIO DE PRÉPARATION</small><strong>${esc(appointment?dateLabel(appointment):'À réserver')}</strong><span>${esc(preparationLabel(w.preparationStatus))}</span></div>
+      <div class="${studioConfirmed?'ready':'pending'}"><small>2 · PASSAGE STUDIO</small><strong>${esc(studioConfirmed?dateLabel(filming):requested?dateLabel(requested):'À confirmer')}</strong><span>${esc(studioConfirmed?'Confirmé':requested?'Demandé · non définitif':'Aucune date')}</span></div>`;
+    const actions=card.querySelector('.card-actions');
+    actions?.before(block);
+    if(actions)actions.innerHTML='<button class="button workflow-open-button" type="button">Ouvrir le dossier</button>';
   });
 }
 
@@ -50,11 +62,11 @@ async function enhanceDrawer(){
   const order=(workflowAdminState.orders||[]).find((item)=>item.id===orderId);
   if(!order?.workflow)return;
   const existing=$('#workflowCommandCenter',root);
-  if(existing&&existing.dataset.version==='38')return;
+  if(existing&&existing.dataset.version==='39')return;
   rendering=true;
   existing?.remove();
   const panel=document.createElement('section');
-  panel.id='workflowCommandCenter';panel.dataset.version='38';panel.className='workflow-command-center';
+  panel.id='workflowCommandCenter';panel.dataset.version='39';panel.className='workflow-command-center';
   panel.innerHTML=commandMarkup(order);
   const tabs=$('.tabs',root);tabs?.after(panel);
   bindPanel(order,panel);
@@ -75,13 +87,13 @@ function commandMarkup(order){
   if(w.broadcastStatus==='scheduled')actions.push(button('mark_broadcast_published','Émission diffusée'));
   const requested=validDate(w.requestedFilmingAt)?dateLabel(w.requestedFilmingAt):'';
   const statusCards=[
-    ['Préparation',preparationLabel(w.preparationStatus),order.appointmentAt?dateLabel(order.appointmentAt):'Aucun créneau'],
-    ['Passage studio',supplierLabel(w.supplierStatus),order.filmingAt?dateLabel(order.filmingAt):requested?`${requested} · demandé`:'Aucune date'],
+    ['1 · Visio de préparation',preparationLabel(w.preparationStatus),order.appointmentAt?dateLabel(order.appointmentAt):'Aucun créneau'],
+    ['2 · Passage studio',supplierLabel(w.supplierStatus),order.filmingAt?dateLabel(order.filmingAt):requested?`${requested} · demandé`:'Aucune date'],
     ['Sources',w.sourceReceivedAt?'Reçues':w.sourceDeliveryDueAt?'Attendues':'Non déclenchées',w.sourceDeliveryDueAt?dateLabel(w.sourceDeliveryDueAt):''],
     ['Montage',w.deliveredAt?'Terminé':w.editingStartedAt?'En cours':'À venir',w.deliveryDueAt?dateLabel(w.deliveryDueAt):''],
     ['Diffusion',w.broadcastStatus==='published'?'Diffusée':w.broadcastStatus==='scheduled'?'Programmée':'À programmer',w.broadcastAt?dateLabel(w.broadcastAt):''],
   ];
-  return `<header><div><p class="eyebrow">MOTEUR DE PARCOURS SYNCHRONISÉ</p><h3>${esc(w.currentLabel||'Parcours client')}</h3><p>${esc(w.nextAction||order.nextAction||'Aucune action client requise.')}</p></div><span class="workflow-live"><i></i> Automatisations actives</span></header><div class="workflow-date-explainer"><strong>Deux rendez-vous distincts</strong><span>La préparation en visio et le passage au studio sont affichés séparément pour éviter toute confusion.</span></div><div class="workflow-status-grid">${statusCards.map(([label,value,detail])=>`<article><small>${esc(label)}</small><strong>${esc(value)}</strong>${detail?`<span>${esc(detail)}</span>`:''}</article>`).join('')}</div><div class="workflow-actions"><div><small>ACTIONS DISPONIBLES</small>${actions.length?actions.join(''):'<p class="workflow-clear">Aucune action manuelle. Le système poursuit le parcours.</p>'}</div><aside><small>HISTORIQUE</small><div data-workflow-events><p>Chargement…</p></div></aside></div><p class="workflow-message" aria-live="polite"></p>`;
+  return `<header><div><p class="eyebrow">DOSSIER SYNCHRONISÉ</p><h3>${esc(w.currentLabel||'Parcours client')}</h3><p>${esc(w.nextAction||order.nextAction||'Aucune action client requise.')}</p></div><span class="workflow-live"><i></i> Automatisations actives</span></header><div class="workflow-date-explainer"><strong>Les deux rendez-vous ne sont pas la même chose</strong><span>La visio prépare l’intervention. Le passage studio correspond au tournage et doit être confirmé par le fournisseur.</span></div><div class="workflow-status-grid">${statusCards.map(([label,value,detail])=>`<article><small>${esc(label)}</small><strong>${esc(value)}</strong>${detail?`<span>${esc(detail)}</span>`:''}</article>`).join('')}</div><div class="workflow-actions"><div><small>ACTION À EFFECTUER</small>${actions.length?actions.join(''):'<p class="workflow-clear">Aucune action manuelle. Le système poursuit le parcours.</p>'}</div><aside><small>HISTORIQUE</small><div data-workflow-events><p>Chargement…</p></div></aside></div><p class="workflow-message" aria-live="polite"></p>`;
 }
 
 function bindPanel(order,panel){

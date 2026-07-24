@@ -36,12 +36,19 @@ jobs:
           const report=[];
           for(const viewport of [{name:'desktop',width:1440,height:900},{name:'laptop',width:1180,height:820},{name:'tablet',width:768,height:900},{name:'mobile',width:390,height:844}]){
             let context,page;
+            const messages=[];
             try{
               context=await browser.newContext({viewport:{width:viewport.width,height:viewport.height}});
               await context.addInitScript(()=>localStorage.setItem('neptune_studio_sidebar_collapsed','1'));
               page=await context.newPage();
-              const pageErrors=[];
-              page.on('pageerror',(error)=>pageErrors.push(error.message));
+              page.on('pageerror',(error)=>messages.push(`pageerror:${error.message}`));
+              page.on('console',(message)=>messages.push(`${message.type()}:${message.text()}`));
+              await page.route('**/studio/clients.js*',async(route)=>{
+                const response=await route.fetch();
+                let body=await response.text();
+                body=body.replace("catch(error){if(['unauthorized','http_401'].includes(error.message))", "catch(error){console.error('BASE_LOAD_ERROR',error&&error.stack||error&&error.message||String(error));if(['unauthorized','http_401'].includes(error.message))");
+                await route.fulfill({response,body,headers:{...response.headers(),'content-type':'application/javascript; charset=utf-8'}});
+              });
               await page.route('**/api/**',async(route)=>{
                 const path=new URL(route.request().url()).pathname;
                 const json=(body)=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
@@ -63,12 +70,12 @@ jobs:
                 const panels=[...document.querySelectorAll('[data-stage-panel]')].map((item)=>({id:item.dataset.stagePanel,hidden:item.hidden,display:getComputedStyle(item).display,cards:item.querySelectorAll('[data-order-card]').length}));
                 return {active:document.querySelector('.workflow-stage-tabs button.active')?.dataset.workflowStage||'',activeLabel:document.querySelector('.workflow-stage-tabs button.active span')?.textContent||'',cardDisplay:card?getComputedStyle(card).display:'missing',cardVisibility:card?getComputedStyle(card).visibility:'missing',cardRect:cardRect?{x:cardRect.x,y:cardRect.y,width:cardRect.width,height:cardRect.height}:null,panel:panel?{id:panel.dataset.stagePanel,hidden:panel.hidden,display:getComputedStyle(panel).display}:null,panels,docWidth:document.documentElement.scrollWidth,innerWidth,pipeline:document.querySelector('#pipeline')?.innerHTML.slice(0,1000)};
               });
-              state.pageErrors=pageErrors;
+              state.messages=messages;
               report.push({viewport,state});
               await page.screenshot({path:`${viewport.name}.png`,fullPage:true});
             }catch(error){
-              const state=page?await page.evaluate(()=>({active:document.querySelector('.workflow-stage-tabs button.active')?.dataset.workflowStage||'',panels:[...document.querySelectorAll('[data-stage-panel]')].map((item)=>({id:item.dataset.stagePanel,hidden:item.hidden,display:getComputedStyle(item).display,cards:item.querySelectorAll('[data-order-card]').length})),pipeline:document.querySelector('#pipeline')?.innerHTML.slice(0,1600)||'',body:document.body.innerHTML.slice(-1200)})).catch(()=>null):null;
-              report.push({viewport,error:String(error.stack||error.message||error),state});
+              const state=page?await page.evaluate(()=>({active:document.querySelector('.workflow-stage-tabs button.active')?.dataset.workflowStage||'',panels:[...document.querySelectorAll('[data-stage-panel]')].map((item)=>({id:item.dataset.stagePanel,hidden:item.hidden,display:getComputedStyle(item).display,cards:item.querySelectorAll('[data-order-card]').length})),pipeline:document.querySelector('#pipeline')?.innerHTML.slice(0,1600)||''})).catch(()=>null):null;
+              report.push({viewport,error:String(error.stack||error.message||error),state,messages});
               await page?.screenshot({path:`${viewport.name}-failure.png`,fullPage:true}).catch(()=>{});
             }finally{
               await context?.close().catch(()=>{});

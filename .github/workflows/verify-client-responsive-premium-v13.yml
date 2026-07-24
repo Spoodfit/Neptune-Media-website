@@ -1,0 +1,141 @@
+name: Verify Client Responsive Premium v13
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/verify-client-responsive-premium-v13.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify-client:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Wait for production release
+        shell: bash
+        run: |
+          set -euo pipefail
+          public='https://tv.neptunebusiness.com'
+          expected='neptune-client-responsive-premium-20260724-v13'
+          for attempt in $(seq 1 24); do
+            curl --silent --show-error -H 'Cache-Control: no-cache, no-store' "$public/api/public/release?attempt=$attempt" > /tmp/release.json || true
+            if grep -Fq "\"release\":\"$expected\"" /tmp/release.json \
+              && grep -Fq '"premiumIconSystem":"neptune-premium-icons-v46"' /tmp/release.json \
+              && grep -Fq '"clientResponsiveAudit":"desktop-laptop-tablet-mobile"' /tmp/release.json; then
+              break
+            fi
+            sleep 10
+          done
+          cat /tmp/release.json
+          grep -Fq "\"release\":\"$expected\"" /tmp/release.json
+          grep -Fq '"premiumIconSystem":"neptune-premium-icons-v46"' /tmp/release.json
+          grep -Fq '"clientResponsiveAudit":"desktop-laptop-tablet-mobile"' /tmp/release.json
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Playwright
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/neptune-client-v13
+          cd /tmp/neptune-client-v13
+          npm init -y >/dev/null
+          npm install --silent playwright@1.55.0
+          npx playwright install chromium
+
+      - name: Audit authentication, dashboard, icons and panel
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/neptune-client-v13
+          mkdir -p screenshots
+          cat > audit.mjs <<'EOF'
+          import fs from 'node:fs';
+          import { chromium } from 'playwright';
+
+          const base='https://tv.neptunebusiness.com';
+          const viewports=[
+            {name:'desktop-1440',width:1440,height:900},
+            {name:'laptop-1180',width:1180,height:820},
+            {name:'tablet-768',width:768,height:900},
+            {name:'mobile-390',width:390,height:844},
+          ];
+          const browser=await chromium.launch({headless:true});
+          const failures=[];
+
+          const inspect=async(page,label)=>{
+            const result=await page.evaluate(()=>{
+              const visible=(element)=>{const style=getComputedStyle(element),rect=element.getBoundingClientRect();return style.display!=='none'&&style.visibility!=='hidden'&&rect.width>0&&rect.height>0;};
+              const clipped=[...document.querySelectorAll('button,a,input,select,[role="button"]')]
+                .filter((element)=>{if(!visible(element))return false;const rect=element.getBoundingClientRect();return rect.left<-1||rect.right>innerWidth+1;})
+                .map((element)=>({tag:element.tagName,className:String(element.className),left:element.getBoundingClientRect().left,right:element.getBoundingClientRect().right}))
+                .slice(0,12);
+              return {innerWidth,docWidth:document.documentElement.scrollWidth,bodyWidth:document.body.scrollWidth,clipped};
+            });
+            if(Math.max(result.docWidth,result.bodyWidth)>result.innerWidth+1)failures.push(`${label}: débordement horizontal ${JSON.stringify(result)}`);
+            if(result.clipped.length)failures.push(`${label}: contrôle coupé ${JSON.stringify(result.clipped)}`);
+          };
+
+          for(const viewport of viewports){
+            const context=await browser.newContext({viewport:{width:viewport.width,height:viewport.height},deviceScaleFactor:1});
+            const page=await context.newPage();
+            const pageErrors=[];
+            page.on('pageerror',(error)=>pageErrors.push(String(error.message||error)));
+            try{
+              await page.goto(`${base}/espace-client/?audit=${viewport.name}`,{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForSelector('#auth:not([hidden])',{timeout:20000});
+              await page.screenshot({path:`screenshots/${viewport.name}-auth.png`,fullPage:true});
+              await inspect(page,`${viewport.name}-auth`);
+
+              await page.locator('#email').fill('contact@neptunebusiness.com');
+              await page.locator('#sendCode').click();
+              await page.waitForSelector('#dashboard:not([hidden])',{timeout:30000});
+              await page.waitForSelector('.metric-card .neptune-icon',{timeout:15000});
+              await page.waitForTimeout(700);
+              await page.screenshot({path:`screenshots/${viewport.name}-dashboard.png`,fullPage:true});
+              await inspect(page,`${viewport.name}-dashboard`);
+
+              const iconState=await page.evaluate(()=>({
+                metricIcons:document.querySelectorAll('.metric-card .neptune-icon').length,
+                formatIcons:document.querySelectorAll('.format-card .neptune-icon').length,
+                logoutIcon:Boolean(document.querySelector('[data-logout] .neptune-icon')),
+                clientPremium:Boolean(document.querySelector('link[href*="client-premium-v46.css"]')),
+                iconCss:Boolean(document.querySelector('link[href*="neptune-premium-icons-v46.css"]')),
+              }));
+              if(iconState.metricIcons<4||iconState.formatIcons<3||!iconState.logoutIcon||!iconState.clientPremium||!iconState.iconCss)failures.push(`${viewport.name}: icônes premium incomplètes ${JSON.stringify(iconState)}`);
+
+              await page.locator('.metric-card[data-open-panel="appointments"]').click();
+              await page.waitForSelector('#detailPanel:not([hidden])',{timeout:10000});
+              await page.waitForTimeout(250);
+              await page.screenshot({path:`screenshots/${viewport.name}-panel.png`,fullPage:true});
+              const panel=await page.evaluate(()=>{const rect=document.querySelector('#detailPanel')?.getBoundingClientRect();return{left:rect?.left||0,right:rect?.right||0,width:rect?.width||0,innerWidth};});
+              if(Math.abs(panel.right-panel.innerWidth)>2)failures.push(`${viewport.name}: panneau mal aligné ${JSON.stringify(panel)}`);
+              if(viewport.width<=720&&(Math.abs(panel.left)>2||Math.abs(panel.width-panel.innerWidth)>2))failures.push(`${viewport.name}: panneau mobile non plein écran ${JSON.stringify(panel)}`);
+              await inspect(page,`${viewport.name}-panel`);
+              await page.locator('#closePanel').click();
+              if(pageErrors.length)failures.push(`${viewport.name}: erreurs JavaScript ${pageErrors.join(' | ')}`);
+            }catch(error){
+              failures.push(`${viewport.name}: exception ${error.stack||error.message}`);
+            }finally{
+              await context.close();
+            }
+          }
+
+          await browser.close();
+          fs.writeFileSync('screenshots/failures.txt',failures.join('\n')||'OK');
+          if(failures.length){console.error(failures.join('\n'));process.exit(1);}
+          console.log('Audit espace client v13 réussi sur 1440, 1180, 768 et 390 px.');
+          EOF
+          node audit.mjs
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-responsive-premium-v13
+          path: /tmp/neptune-client-v13/screenshots
+          if-no-files-found: error

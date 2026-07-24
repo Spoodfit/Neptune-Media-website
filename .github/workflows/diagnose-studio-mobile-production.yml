@@ -35,33 +35,41 @@ jobs:
           const browser=await chromium.launch({headless:true});
           const report=[];
           for(const viewport of [{name:'desktop',width:1440,height:900},{name:'laptop',width:1180,height:820},{name:'tablet',width:768,height:900},{name:'mobile',width:390,height:844}]){
-            const context=await browser.newContext({viewport:{width:viewport.width,height:viewport.height}});
-            await context.addInitScript(()=>localStorage.setItem('neptune_studio_sidebar_collapsed','1'));
-            const page=await context.newPage();
-            await page.route('**/api/**',async(route)=>{
-              const path=new URL(route.request().url()).pathname;
-              const json=(body)=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
-              if(path==='/api/auth/status')return json({authenticated:true,csrfToken:'audit',user:{id:'a',email:'audit@neptunebusiness.com',role:'admin'}});
-              if(path==='/api/admin/clients')return json(clients);
-              if(path==='/api/admin/control-room')return json(control);
-              if(path==='/api/admin/workflow/events')return json({ok:true,events:[]});
-              if(path==='/api/admin/feedback')return json({items:[]});
-              return json({ok:true});
-            });
-            await page.goto(`https://tv.neptunebusiness.com/studio/clients?diagnose=${viewport.name}`,{waitUntil:'domcontentloaded',timeout:60000});
-            await page.waitForSelector('.workflow-stage-tabs',{timeout:30000});
-            await page.waitForSelector('[data-order-card="audit-order-v12"]',{state:'attached',timeout:30000});
-            await page.waitForTimeout(800);
-            const state=await page.evaluate(()=>{
-              const card=document.querySelector('[data-order-card="audit-order-v12"]');
-              const cardRect=card?.getBoundingClientRect();
-              const panel=card?.closest('[data-stage-panel]');
-              const panels=[...document.querySelectorAll('[data-stage-panel]')].map((item)=>({id:item.dataset.stagePanel,hidden:item.hidden,display:getComputedStyle(item).display,cards:item.querySelectorAll('[data-order-card]').length}));
-              return {active:document.querySelector('.workflow-stage-tabs button.active')?.dataset.workflowStage||'',activeLabel:document.querySelector('.workflow-stage-tabs button.active span')?.textContent||'',cardDisplay:card?getComputedStyle(card).display:'missing',cardVisibility:card?getComputedStyle(card).visibility:'missing',cardRect:cardRect?{x:cardRect.x,y:cardRect.y,width:cardRect.width,height:cardRect.height}:null,panel:panel?{id:panel.dataset.stagePanel,hidden:panel.hidden,display:getComputedStyle(panel).display}:null,panels,html:document.querySelector('#pipeline')?.innerHTML.slice(0,500)};
-            });
-            report.push({viewport,state});
-            await page.screenshot({path:`${viewport.name}.png`,fullPage:true});
-            await context.close();
+            let context;
+            try{
+              context=await browser.newContext({viewport:{width:viewport.width,height:viewport.height}});
+              await context.addInitScript(()=>localStorage.setItem('neptune_studio_sidebar_collapsed','1'));
+              const page=await context.newPage();
+              const pageErrors=[];
+              page.on('pageerror',(error)=>pageErrors.push(error.message));
+              await page.route('**/api/**',async(route)=>{
+                const path=new URL(route.request().url()).pathname;
+                const json=(body)=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
+                if(path==='/api/auth/status')return json({authenticated:true,csrfToken:'audit',user:{id:'a',email:'audit@neptunebusiness.com',role:'admin'}});
+                if(path==='/api/admin/clients')return json(clients);
+                if(path==='/api/admin/control-room')return json(control);
+                if(path==='/api/admin/workflow/events')return json({ok:true,events:[]});
+                if(path==='/api/admin/feedback')return json({items:[]});
+                return json({ok:true});
+              });
+              await page.goto(`https://tv.neptunebusiness.com/studio/clients?diagnose=${viewport.name}`,{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForSelector('.workflow-stage-tabs',{timeout:30000});
+              await page.waitForSelector('[data-order-card="audit-order-v12"]',{state:'attached',timeout:30000});
+              await page.waitForTimeout(1000);
+              const state=await page.evaluate(()=>{
+                const card=document.querySelector('[data-order-card="audit-order-v12"]');
+                const cardRect=card?.getBoundingClientRect();
+                const panel=card?.closest('[data-stage-panel]');
+                const panels=[...document.querySelectorAll('[data-stage-panel]')].map((item)=>({id:item.dataset.stagePanel,hidden:item.hidden,display:getComputedStyle(item).display,cards:item.querySelectorAll('[data-order-card]').length}));
+                return {active:document.querySelector('.workflow-stage-tabs button.active')?.dataset.workflowStage||'',activeLabel:document.querySelector('.workflow-stage-tabs button.active span')?.textContent||'',cardDisplay:card?getComputedStyle(card).display:'missing',cardVisibility:card?getComputedStyle(card).visibility:'missing',cardRect:cardRect?{x:cardRect.x,y:cardRect.y,width:cardRect.width,height:cardRect.height}:null,panel:panel?{id:panel.dataset.stagePanel,hidden:panel.hidden,display:getComputedStyle(panel).display}:null,panels,docWidth:document.documentElement.scrollWidth,innerWidth,errors:pageErrors};
+              });
+              report.push({viewport,state});
+              await page.screenshot({path:`${viewport.name}.png`,fullPage:true});
+            }catch(error){
+              report.push({viewport,error:String(error.stack||error.message||error)});
+            }finally{
+              await context?.close().catch(()=>{});
+            }
           }
           await browser.close();
           fs.writeFileSync('report.json',JSON.stringify(report,null,2));
@@ -76,4 +84,4 @@ jobs:
           path: |
             /tmp/neptune-panels/*.png
             /tmp/neptune-panels/report.json
-          if-no-files-found: warn
+          if-no-files-found: error

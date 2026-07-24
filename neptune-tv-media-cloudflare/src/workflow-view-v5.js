@@ -2,7 +2,19 @@ import { json } from './security.js';
 import { addHours, businessDaysRemaining, canAct, fileInventory, formatDate, getWorkflow, latestCalendarAppointment, listOrders, requireViewer } from './workflow-db-v5.js';
 
 export function enrichOrderCollection(store,orders=[]){return orders.map((o)=>decorateOrder(store,o));}
-export function decorateOrder(store,order){if(!order)return order;const w=getWorkflow(store,order.id);if(!w)return order;const calendar=latestCalendarAppointment(store,order.id);const effective={...order,appointmentAt:calendar?.appointmentAt||order.appointmentAt,appointmentSource:calendar?'google_calendar':order.appointmentSource||'manual',appointmentSyncedAt:calendar?.syncedAt||null,calendarEventId:calendar?.calendarEventId||''};const view=buildView(store,effective,w);return{...effective,workflow:view,steps:view.steps};}
+export function decorateOrder(store,order){if(!order)return order;const storedWorkflow=getWorkflow(store,order.id);if(!storedWorkflow)return order;const calendar=latestCalendarAppointment(store,order.id);const normalized=normalizePreparationFromCalendar(store,order,storedWorkflow,calendar);const effective={...order,...normalized.order,appointmentAt:calendar?.appointmentAt||order.appointmentAt,appointmentSource:calendar?'google_calendar':order.appointmentSource||'manual',appointmentSyncedAt:calendar?.syncedAt||null,calendarEventId:calendar?.calendarEventId||''};const view=buildView(store,effective,normalized.workflow);return{...effective,workflow:view,steps:view.steps};}
+
+function normalizePreparationFromCalendar(store,order,w,calendar){
+  if(!calendar?.appointmentAt||w.preparationStatus!=='completed')return{order,workflow:w};
+  const appointment=new Date(calendar.appointmentAt),completed=new Date(w.preparationCompletedAt||''),synced=new Date(calendar.syncedAt||'');
+  const future=appointment.getTime()>Date.now();
+  const completionPredatesSync=Number.isNaN(completed.getTime())||Number.isNaN(synced.getTime())||completed.getTime()<=synced.getTime();
+  if(!future||!completionPredatesSync)return{order,workflow:w};
+  const now=new Date().toISOString(),status=w.supplierStatus==='confirmed'?'filming_scheduled':'studio_date_confirmation_pending',next=w.supplierStatus==='confirmed'?'Votre visio est réservée. Préparez maintenant votre passage au studio.':'Votre visio est réservée. Neptune attend la confirmation définitive du studio.';
+  store.sql.exec("UPDATE portal_workflows SET preparation_status='booked',preparation_completed_at=NULL,updated_at=? WHERE order_id=?",now,order.id);
+  store.sql.exec('UPDATE portal_orders SET status=?,next_action=?,updated_at=? WHERE id=?',status,next,now,order.id);
+  return{order:{...order,status,nextAction:next,updatedAt:now},workflow:{...w,preparationStatus:'booked',preparationCompletedAt:null,updatedAt:now}};
+}
 
 function buildView(store,o,w){return{...w,currentLabel:currentLabel(o,w),nextAction:o.nextAction,appointmentSource:o.appointmentSource||'manual',appointmentSyncedAt:o.appointmentSyncedAt||null,supplierDeadlineAt:w.supplierStatus==='pending'?addHours(o.createdAt,48)?.toISOString()||null:null,sourceDeliveryRemainingBusinessDays:businessDaysRemaining(w.sourceDeliveryDueAt),deliveryRemainingBusinessDays:businessDaysRemaining(w.deliveryDueAt),inventory:fileInventory(store,o.id,o.filmingAt||o.createdAt),steps:steps(store,o,w)};}
 function steps(store,o,w){const inv=fileInventory(store,o.id,o.filmingAt||o.createdAt),filmed=['videos_pending','videos_received','editing','approval','delivered','completed'].includes(o.status),sources=Boolean(w.sourceReceivedAt),scheduled=['scheduled','published'].includes(w.broadcastStatus),published=w.broadcastStatus==='published',dateDone=w.supplierStatus==='confirmed',prepDone=w.preparationStatus==='completed';const rows=[

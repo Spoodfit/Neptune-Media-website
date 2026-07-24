@@ -1,1 +1,278 @@
-:root{--studio-sidebar-width:306px}.studio-workspace-v42 .studio-shell{grid-template-columns:var(--studio-sidebar-width) minmax(0,1fr);transition:grid-template-columns .22s ease}.studio-workspace-v42 .studio-sidebar{position:relative;width:auto;transition:width .22s ease,padding .22s ease}.studio-sidebar-toggle{position:absolute;right:-15px;top:92px;z-index:40;width:31px;height:31px;border:1px solid rgba(255,255,255,.18);border-radius:50%;background:#152d62;color:#fff;box-shadow:0 8px 24px rgba(3,16,49,.25);cursor:pointer;font-size:20px;line-height:1}.studio-sidebar-collapsed{--studio-sidebar-width:82px}.studio-sidebar-collapsed .studio-sidebar{padding-inline:13px}.studio-sidebar-collapsed .studio-brand div,.studio-sidebar-collapsed .studio-status span,.studio-sidebar-collapsed .studio-nav-link strong,.studio-sidebar-collapsed .studio-nav-link em,.studio-sidebar-collapsed .studio-account>span:nth-child(2),.studio-sidebar-collapsed .studio-account>i{display:none}.studio-sidebar-collapsed .studio-brand,.studio-sidebar-collapsed .studio-status,.studio-sidebar-collapsed .studio-nav-link,.studio-sidebar-collapsed .studio-account{justify-content:center}.studio-sidebar-collapsed .studio-nav-link{padding-inline:0}.studio-workspace-v42 #clientDialog[open]{position:fixed;inset:0 0 0 var(--studio-sidebar-width);z-index:80;width:auto;max-width:none;height:100dvh;max-height:none;margin:0;padding:0;border:0;background:#f4f6fb;overflow:auto;transition:left .22s ease}.studio-workspace-v42 #clientDialog::backdrop{display:none}.studio-workspace-v42 #clientDialog .drawer-card{width:100%;max-width:none;min-height:100dvh;margin:0;border:0;border-radius:0;background:#f4f6fb;box-shadow:none}.studio-workspace-v42 #clientDialog .detail-title{position:sticky;top:0;z-index:8;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:18px;padding:22px 34px;border-bottom:1px solid #e2e6ef;background:rgba(255,255,255,.96);backdrop-filter:blur(14px)}.studio-workspace-v42 #clientDialog .detail-title>div{min-width:0}.studio-detail-back{display:flex;align-items:center;gap:8px;border:0;background:transparent;color:#4d5870;font:inherit;font-size:13px;font-weight:800;cursor:pointer}.studio-detail-back span{font-size:18px}.studio-workspace-v42 #clientDialog .tabs{position:sticky;top:101px;z-index:7;margin:0;padding:12px 34px;border-bottom:1px solid #e2e6ef;background:rgba(244,246,251,.96);backdrop-filter:blur(12px)}.studio-workspace-v42 #clientDialog #detailBody,.studio-workspace-v42 #clientDialog #workflowCommandCenter{max-width:1440px;margin-inline:auto}.studio-workspace-v42 #clientDialog #detailBody{padding:24px 34px 42px}.studio-workspace-v42 #clientDialog #workflowCommandCenter{margin-top:22px;margin-bottom:0}.studio-workspace-v42 #clientDialog .calendar-grid{min-width:0}.studio-workspace-v42 #clientDialog .panel{box-shadow:none}.studio-workspace-v42 .workflow-command-center{padding:20px;border-radius:18px}.studio-workspace-v42 .workflow-essential{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.studio-workspace-v42 .workflow-essential article{min-height:88px}.studio-workspace-v42 .workflow-actions{grid-template-columns:minmax(0,720px)}.studio-workspace-v42 .workflow-more{margin-top:14px}.date-action-head{display:grid;gap:3px}.date-action-head span{font-size:9px;font-weight:900;letter-spacing:.12em;color:#7062d9}.date-action-head strong{font-size:14px;color:#17213f}.date-action-grid{display:grid;grid-template-columns:1.4fr .8fr;gap:10px}.date-action-grid label{display:grid;gap:5px}.date-action-grid input,.date-action-grid select{width:100%;min-height:44px;padding:10px 12px;border:1px solid #d8deea;border-radius:11px;background:#fff;font:inherit;color:#17213f}.studio-workspace-v42 .workflow-inline-form{padding:14px;border:1px solid #e5e8f0;border-radius:14px;background:#fafbff}.studio-workspace-v42 .workflow-inline-form>button{min-height:46px}.studio-detail-open{overflow:hidden}@media(max-width:980px){:root{--studio-sidebar-width:82px}.studio-workspace-v42 .studio-sidebar{padding-inline:13px}.studio-workspace-v42 .studio-brand div,.studio-workspace-v42 .studio-status span,.studio-workspace-v42 .studio-nav-link strong,.studio-workspace-v42 .studio-nav-link em,.studio-workspace-v42 .studio-account>span:nth-child(2),.studio-workspace-v42 .studio-account>i{display:none}.studio-workspace-v42 .studio-brand,.studio-workspace-v42 .studio-status,.studio-workspace-v42 .studio-nav-link,.studio-workspace-v42 .studio-account{justify-content:center}.studio-sidebar-toggle{display:none}.studio-workspace-v42 #clientDialog .detail-title{grid-template-columns:1fr auto;padding:18px}.studio-detail-back{grid-column:1/-1}.studio-workspace-v42 #clientDialog .tabs{top:139px;padding-inline:18px;overflow-x:auto;white-space:nowrap}.studio-workspace-v42 #clientDialog #detailBody{padding:18px}.studio-workspace-v42 .workflow-essential{grid-template-columns:1fr}.date-action-grid{grid-template-columns:1fr 130px}}@media(max-width:640px){:root{--studio-sidebar-width:0px}.studio-workspace-v42 .studio-sidebar{display:none}.studio-workspace-v42 .studio-shell{grid-template-columns:1fr}.studio-workspace-v42 #clientDialog[open]{left:0}.studio-workspace-v42 #clientDialog .detail-title{padding:14px}.studio-workspace-v42 #clientDialog .tabs{top:130px;padding:10px 14px}.studio-workspace-v42 #clientDialog #detailBody{padding:14px}.date-action-grid{grid-template-columns:1fr}}
+/* Neptune Studio — workspace intégré */
+:root{
+  --studio-sidebar-width:272px;
+  --studio-sidebar-collapsed-width:82px;
+  --studio-detail-title-height:96px;
+  --studio-mobile-nav-height:72px;
+}
+html{overflow-x:hidden}
+.studio-workspace-v42 .studio-shell{
+  grid-template-columns:var(--studio-sidebar-width) minmax(0,1fr);
+  width:100%;
+  min-width:0;
+  transition:grid-template-columns .22s ease;
+}
+.studio-workspace-v42 .clients-workspace{min-width:0;overflow:clip}
+.studio-workspace-v42 .studio-sidebar{
+  position:sticky;
+  top:0;
+  width:auto;
+  min-width:0;
+  overflow:visible;
+  transition:width .22s ease,padding .22s ease;
+}
+.studio-workspace-v42 .studio-nav{overflow-y:auto;overflow-x:hidden}
+.studio-sidebar-toggle{
+  position:absolute;
+  right:-16px;
+  top:86px;
+  z-index:60;
+  width:34px;
+  height:34px;
+  display:grid;
+  place-items:center;
+  padding:0;
+  border:1px solid rgba(255,255,255,.22);
+  border-radius:50%;
+  background:#152d62;
+  color:#fff;
+  box-shadow:0 8px 24px rgba(3,16,49,.25);
+  cursor:pointer;
+  font-size:20px;
+  line-height:1;
+  transition:transform .16s ease,background .16s ease;
+}
+.studio-sidebar-toggle:hover{transform:scale(1.05);background:#1c3b7e}
+.studio-sidebar-toggle:focus-visible{outline:3px solid rgba(73,216,255,.38);outline-offset:2px}
+.studio-sidebar-collapsed{--studio-sidebar-width:var(--studio-sidebar-collapsed-width)}
+.studio-sidebar-collapsed .studio-sidebar{padding-inline:12px}
+.studio-sidebar-collapsed .studio-brand div,
+.studio-sidebar-collapsed .studio-status span,
+.studio-sidebar-collapsed .studio-nav-link strong,
+.studio-sidebar-collapsed .studio-nav-link em,
+.studio-sidebar-collapsed .studio-account>span:nth-child(2),
+.studio-sidebar-collapsed .studio-account>i{display:none!important}
+.studio-sidebar-collapsed .studio-brand,
+.studio-sidebar-collapsed .studio-status,
+.studio-sidebar-collapsed .studio-nav-link{justify-content:center}
+.studio-sidebar-collapsed .studio-brand{padding-inline:0}
+.studio-sidebar-collapsed .studio-status{margin-inline:0;padding-inline:0}
+.studio-sidebar-collapsed .studio-nav-link{width:100%;padding-inline:0;overflow:hidden}
+.studio-sidebar-collapsed .studio-nav-link>span:first-child{margin:0}
+.studio-sidebar-collapsed .studio-account{
+  left:12px;
+  right:12px;
+  min-height:58px;
+  display:grid;
+  grid-template-columns:1fr;
+  place-items:center;
+  padding:10px;
+}
+.studio-sidebar-collapsed .studio-avatar{margin:0}
+
+/* Barre supérieure */
+.studio-workspace-v42 .clients-topbar{min-width:0}
+.studio-workspace-v42 .clients-topbar>div:first-child{min-width:0}
+.studio-workspace-v42 .clients-top-actions{min-width:0;flex-wrap:wrap;justify-content:flex-end}
+
+/* Dossier client intégré */
+.studio-workspace-v42 #clientDialog[open]{
+  position:fixed;
+  inset:0 0 0 var(--studio-sidebar-width);
+  z-index:80;
+  width:auto;
+  max-width:none;
+  height:100dvh;
+  max-height:none;
+  margin:0;
+  padding:0;
+  border:0;
+  border-radius:0;
+  background:#f4f6fb;
+  overflow:auto;
+  overscroll-behavior:contain;
+  transition:left .22s ease;
+}
+.studio-workspace-v42 #clientDialog::backdrop{display:none}
+.studio-workspace-v42 #clientDialog .drawer-card{
+  width:100%;
+  max-width:none;
+  min-height:100dvh;
+  margin:0;
+  padding:0!important;
+  overflow:visible;
+  border:0;
+  border-radius:0;
+  background:#f4f6fb;
+  box-shadow:none;
+}
+.studio-workspace-v42 #clientDialog #clientDetail{min-height:100dvh}
+.studio-workspace-v42 #clientDialog .detail-title{
+  position:sticky;
+  top:0;
+  z-index:8;
+  min-height:var(--studio-detail-title-height);
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  align-items:center;
+  gap:18px;
+  margin:0!important;
+  padding:18px clamp(20px,2.6vw,38px);
+  border-bottom:1px solid #e2e6ef;
+  background:rgba(255,255,255,.97);
+  backdrop-filter:blur(14px);
+}
+.studio-workspace-v42 #clientDialog .detail-title>div{min-width:0}
+.studio-workspace-v42 #clientDialog .detail-title h2{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.studio-workspace-v42 #clientDialog .detail-title p:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.studio-detail-back{
+  min-height:42px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:0 10px;
+  border:0;
+  border-radius:10px;
+  background:transparent;
+  color:#4d5870;
+  font:inherit;
+  font-size:13px;
+  font-weight:800;
+  cursor:pointer;
+}
+.studio-detail-back:hover{background:#f1f4f9;color:#14295f}
+.studio-detail-back span{font-size:18px}
+.studio-workspace-v42 #clientDialog .close{flex:0 0 auto}
+.studio-workspace-v42 #clientDialog .tabs{
+  position:sticky;
+  top:var(--studio-detail-title-height);
+  z-index:7;
+  display:flex;
+  gap:7px;
+  margin:0!important;
+  padding:11px clamp(20px,2.6vw,38px);
+  overflow-x:auto;
+  overflow-y:hidden;
+  border-bottom:1px solid #e2e6ef;
+  background:rgba(244,246,251,.97);
+  backdrop-filter:blur(12px);
+  scrollbar-width:thin;
+}
+.studio-workspace-v42 #clientDialog .tabs button{min-height:40px;flex:0 0 auto}
+.studio-workspace-v42 #clientDialog #detailBody,
+.studio-workspace-v42 #clientDialog #workflowCommandCenter{width:min(1440px,100%);margin-inline:auto}
+.studio-workspace-v42 #clientDialog #detailBody{padding:22px clamp(20px,2.6vw,38px) 48px}
+.studio-workspace-v42 #clientDialog #workflowCommandCenter{margin-top:20px;margin-bottom:0}
+.studio-workspace-v42 #clientDialog .calendar{min-width:0}
+.studio-workspace-v42 #clientDialog .calendar-grid{min-width:0}
+.studio-workspace-v42 #clientDialog .panel{min-width:0;box-shadow:none}
+.studio-workspace-v42 #clientDialog .detail-grid{min-width:0}
+.studio-workspace-v42 .workflow-command-center{padding:20px;border-radius:18px}
+.studio-workspace-v42 .workflow-essential{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.studio-workspace-v42 .workflow-essential article{min-height:84px}
+.studio-workspace-v42 .workflow-actions{grid-template-columns:minmax(0,720px)}
+.studio-workspace-v42 .workflow-more{margin-top:14px}
+
+/* Sélection de dates */
+.date-action-head{display:grid;gap:3px}
+.date-action-head span{font-size:9px;font-weight:900;letter-spacing:.12em;color:#7062d9}
+.date-action-head strong{font-size:14px;color:#17213f}
+.date-action-grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(110px,.8fr);gap:10px}
+.date-action-grid label{display:grid;gap:5px;min-width:0}
+.date-action-grid input,.date-action-grid select{width:100%;min-width:0;min-height:44px;padding:10px 12px;border:1px solid #d8deea;border-radius:11px;background:#fff;font:inherit;color:#17213f}
+.studio-workspace-v42 .workflow-inline-form{padding:14px;border:1px solid #e5e8f0;border-radius:14px;background:#fafbff}
+.studio-workspace-v42 .workflow-inline-form>button{min-height:46px}
+.studio-detail-open{overflow:hidden}
+
+@media(max-width:1080px){
+  :root{--studio-sidebar-width:var(--studio-sidebar-collapsed-width)}
+  .studio-workspace-v42 .studio-sidebar{padding-inline:12px}
+  .studio-workspace-v42 .studio-brand div,
+  .studio-workspace-v42 .studio-status span,
+  .studio-workspace-v42 .studio-nav-link strong,
+  .studio-workspace-v42 .studio-nav-link em,
+  .studio-workspace-v42 .studio-account>span:nth-child(2),
+  .studio-workspace-v42 .studio-account>i{display:none!important}
+  .studio-workspace-v42 .studio-brand,
+  .studio-workspace-v42 .studio-status,
+  .studio-workspace-v42 .studio-nav-link{justify-content:center}
+  .studio-workspace-v42 .studio-nav-link{padding-inline:0;overflow:hidden}
+  .studio-workspace-v42 .studio-account{left:12px;right:12px;display:grid;grid-template-columns:1fr;place-items:center}
+  .studio-sidebar-toggle{display:none}
+  .studio-workspace-v42 #clientDialog .detail-title{grid-template-columns:1fr auto;gap:10px;padding:16px 20px}
+  .studio-detail-back{grid-column:1/-1;justify-self:start}
+  .studio-workspace-v42 #clientDialog .tabs{padding-inline:20px}
+  .studio-workspace-v42 #clientDialog #detailBody{padding:20px}
+  .studio-workspace-v42 .workflow-essential{grid-template-columns:1fr}
+  .date-action-grid{grid-template-columns:minmax(0,1fr) 130px}
+}
+
+@media(max-width:720px){
+  :root{--studio-sidebar-width:0px}
+  .studio-workspace-v42 .studio-shell{display:block;grid-template-columns:1fr;padding-bottom:var(--studio-mobile-nav-height)}
+  .studio-workspace-v42 .studio-sidebar{
+    position:fixed;
+    inset:auto 0 0;
+    z-index:100;
+    width:100%;
+    height:var(--studio-mobile-nav-height);
+    display:block;
+    padding:8px max(8px,env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));
+    overflow:hidden;
+    border-top:1px solid rgba(255,255,255,.12);
+    border-right:0;
+    box-shadow:0 -10px 30px rgba(3,16,49,.18);
+  }
+  .studio-workspace-v42 .studio-sidebar::before,
+  .studio-workspace-v42 .studio-brand,
+  .studio-workspace-v42 .studio-status,
+  .studio-workspace-v42 .studio-account,
+  .studio-workspace-v42 .studio-nav-label{display:none!important}
+  .studio-workspace-v42 .studio-nav{
+    width:100%;
+    height:100%;
+    display:grid;
+    grid-auto-flow:column;
+    grid-auto-columns:minmax(58px,1fr);
+    gap:5px;
+    padding:0;
+    overflow-x:auto;
+    overflow-y:hidden;
+    scroll-snap-type:x proximity;
+  }
+  .studio-workspace-v42 .studio-nav-link{
+    width:100%;
+    min-width:58px;
+    min-height:54px;
+    display:grid;
+    place-items:center;
+    padding:4px;
+    border-radius:11px;
+    scroll-snap-align:start;
+  }
+  .studio-workspace-v42 .studio-nav-link>span:first-child{width:30px;height:30px}
+  .studio-workspace-v42 .studio-nav-link strong,.studio-workspace-v42 .studio-nav-link em{display:none!important}
+  .studio-workspace-v42 .clients-topbar{position:sticky;top:0;min-height:64px;padding:9px 12px}
+  .studio-workspace-v42 .clients-topbar .eyebrow{display:none}
+  .studio-workspace-v42 .clients-top-actions{gap:6px}
+  .studio-workspace-v42 .clients-top-actions .studio-sync,.studio-workspace-v42 .clients-top-actions .secondary{display:none}
+  .studio-workspace-v42 .clients-top-actions .button{min-height:40px;padding-inline:11px;font-size:11px}
+  .studio-workspace-v42 #clientDialog[open]{left:0;padding-bottom:var(--studio-mobile-nav-height)}
+  .studio-workspace-v42 #clientDialog .detail-title{padding:12px 14px}
+  .studio-workspace-v42 #clientDialog .detail-title h2{font-size:1.35rem}
+  .studio-workspace-v42 #clientDialog .detail-title p:last-child{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+  .studio-workspace-v42 #clientDialog .tabs{padding:9px 14px}
+  .studio-workspace-v42 #clientDialog #detailBody{padding:14px 12px 28px}
+  .studio-workspace-v42 #clientDialog .calendar{grid-template-columns:repeat(7,minmax(72px,1fr));overflow-x:auto}
+  .date-action-grid{grid-template-columns:1fr}
+}
+
+@media(max-width:420px){
+  .studio-workspace-v42 .clients-topbar h1{font-size:1rem}
+  .studio-workspace-v42 .clients-top-actions .button{font-size:0;color:transparent;min-width:42px;padding:0}
+  .studio-workspace-v42 .clients-top-actions .button::before{content:'+';color:#fff;font-size:20px}
+}
+
+@media(prefers-reduced-motion:reduce){
+  .studio-workspace-v42 .studio-shell,.studio-workspace-v42 .studio-sidebar,.studio-sidebar-toggle,.studio-workspace-v42 #clientDialog[open]{transition:none}
+}

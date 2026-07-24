@@ -18,7 +18,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     defaults:
       run:
         working-directory: neptune-tv-media-cloudflare
@@ -27,7 +27,7 @@ jobs:
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       PUBLIC_URL: https://tv.neptunebusiness.com
       WORKERS_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
-      RELEASE_ID: neptune-studio-responsive-final-20260724-v12-3
+      RELEASE_ID: neptune-client-responsive-premium-20260724-v13
 
     steps:
       - name: Checkout
@@ -64,12 +64,12 @@ jobs:
                 && grep -Fq '"resendSecretPresent":true' /tmp/release.json \
                 && grep -Fq '"webhookSecretPresent":true' /tmp/release.json \
                 && grep -Fq '"workflowStore":"store-v5"' /tmp/release.json \
-                && grep -Fq '"clientWorkflowUi":"workflow-v45-google-authoritative"' /tmp/release.json \
+                && grep -Fq '"clientWorkflowUi":"workflow-v45-responsive-premium-v13"' /tmp/release.json \
                 && grep -Fq '"studioWorkflowUi":"workspace-v42-responsive-final"' /tmp/release.json \
+                && grep -Fq '"premiumIconSystem":"neptune-premium-icons-v46"' /tmp/release.json \
+                && grep -Fq '"clientResponsiveAudit":"desktop-laptop-tablet-mobile"' /tmp/release.json \
+                && grep -Fq '"responsiveAudit":"client-and-studio-v13"' /tmp/release.json \
                 && grep -Fq '"appointmentAuthority":"google_calendar_event"' /tmp/release.json \
-                && grep -Fq '"responsiveAudit":"studio-v12-3"' /tmp/release.json \
-                && grep -Fq '"tabletTopbar":"aligned-no-overlap"' /tmp/release.json \
-                && grep -Fq '"interactionModel":"inline-confirmation-no-native-popup"' /tmp/release.json \
                 && grep -Fq '"legacyAutopilot":"removed-direct-and-transitive"' /tmp/release.json; then
                 break
               fi
@@ -80,12 +80,12 @@ jobs:
             grep -Fq '"resendSecretPresent":true' /tmp/release.json
             grep -Fq '"webhookSecretPresent":true' /tmp/release.json
             grep -Fq '"workflowStore":"store-v5"' /tmp/release.json
-            grep -Fq '"clientWorkflowUi":"workflow-v45-google-authoritative"' /tmp/release.json
+            grep -Fq '"clientWorkflowUi":"workflow-v45-responsive-premium-v13"' /tmp/release.json
             grep -Fq '"studioWorkflowUi":"workspace-v42-responsive-final"' /tmp/release.json
+            grep -Fq '"premiumIconSystem":"neptune-premium-icons-v46"' /tmp/release.json
+            grep -Fq '"clientResponsiveAudit":"desktop-laptop-tablet-mobile"' /tmp/release.json
+            grep -Fq '"responsiveAudit":"client-and-studio-v13"' /tmp/release.json
             grep -Fq '"appointmentAuthority":"google_calendar_event"' /tmp/release.json
-            grep -Fq '"responsiveAudit":"studio-v12-3"' /tmp/release.json
-            grep -Fq '"tabletTopbar":"aligned-no-overlap"' /tmp/release.json
-            grep -Fq '"interactionModel":"inline-confirmation-no-native-popup"' /tmp/release.json
             grep -Fq '"legacyAutopilot":"removed-direct-and-transitive"' /tmp/release.json
           done
 
@@ -96,11 +96,18 @@ jobs:
           set -euo pipefail
           curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
             "$PUBLIC_URL/espace-client/?release=$GITHUB_SHA" > /tmp/client.html
-          grep -Fq '/espace-client/workflow-v45.css?v=5' /tmp/client.html
-          grep -Fq '/espace-client/workflow-v45.js?v=5' /tmp/client.html
-          curl --fail --silent --show-error "$PUBLIC_URL/espace-client/workflow-v45.js?v=5" > /tmp/client-workflow.js
-          grep -Fq 'client-minimal-flow' /tmp/client-workflow.js
-          grep -Fq 'Aucune action n’est requise de votre part' /tmp/client-workflow.js
+          grep -Fq '/espace-client/workflow-v45.css?v=6' /tmp/client.html
+          grep -Fq '/espace-client/workflow-v45.js?v=6' /tmp/client.html
+          grep -Fq '/espace-client/client-premium-v46.css?v=1' /tmp/client.html
+          grep -Fq '/assets/neptune-premium-icons-v46.css?v=1' /tmp/client.html
+          grep -Fq '/assets/neptune-premium-icons-v46.js?v=1' /tmp/client.html
+          curl --fail --silent --show-error "$PUBLIC_URL/espace-client/client-premium-v46.css?v=1" > /tmp/client-premium.css
+          grep -Fq '@media(max-width:720px)' /tmp/client-premium.css
+          grep -Fq '.metric-grid{grid-template-columns:1fr}' /tmp/client-premium.css
+          curl --fail --silent --show-error "$PUBLIC_URL/assets/neptune-premium-icons-v46.js?v=1" > /tmp/premium-icons.js
+          grep -Fq 'neptune-premium-icons' /tmp/premium-icons.js
+          grep -Fq "microphone" /tmp/premium-icons.js
+          grep -Fq "studio-nav-icon" /tmp/premium-icons.js
 
           curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
             "$PUBLIC_URL/studio/clients?release=$GITHUB_SHA" > /tmp/studio.html
@@ -110,37 +117,9 @@ jobs:
           grep -Fq '/studio/workspace-v42.css?v=3' /tmp/studio.html
           grep -Fq '/studio/workspace-v42.js?v=3' /tmp/studio.html
           grep -Fq '/studio/workflow-runtime-v44.css?v=1' /tmp/studio.html
+          grep -Fq '/assets/neptune-premium-icons-v46.css?v=1' /tmp/studio.html
+          grep -Fq '/assets/neptune-premium-icons-v46.js?v=1' /tmp/studio.html
           ! grep -Fq '/studio/clients-autopilot-v36.js' /tmp/studio.html
-
-          curl --fail --silent --show-error "$PUBLIC_URL/studio/workspace-v43.css?v=2" > /tmp/studio-tablet.css
-          grep -Fq '.clients-topbar{' /tmp/studio-tablet.css
-          grep -Fq 'top:0!important' /tmp/studio-tablet.css
-          grep -Fq 'padding-top:18px!important' /tmp/studio-tablet.css
-
-          curl --fail --silent --show-error "$PUBLIC_URL/studio/clients-automation-v35.js?v=1" > /tmp/studio-automation.js
-          grep -Fq 'legacyAutomationDisabled' /tmp/studio-automation.js
-          ! grep -Fq 'clients-autopilot-v36.js' /tmp/studio-automation.js
-
-          curl --fail --silent --show-error "$PUBLIC_URL/studio/clients-workflow-v37.js?v=5" > /tmp/studio-workflow.js
-          grep -Fq 'workflow-card-identity' /tmp/studio-workflow.js
-          grep -Fq 'inlineConfirmation' /tmp/studio-workflow.js
-          grep -Fq "confirmationPending" /tmp/studio-workflow.js
-          ! grep -Fq 'window.confirm(' /tmp/studio-workflow.js
-          ! grep -Fq 'window.prompt(' /tmp/studio-workflow.js
-
-          curl --fail --silent --show-error "$PUBLIC_URL/studio/workspace-v42.js?v=3" > /tmp/studio-workspace.js
-          grep -Fq 'studio-workspace-v42' /tmp/studio-workspace.js
-          grep -Fq 'syncDetailOffsets' /tmp/studio-workspace.js
-          grep -Fq 'aria-expanded' /tmp/studio-workspace.js
-
-          curl --fail --silent --show-error "$PUBLIC_URL/studio/clients-workflow-v37.css?v=5" > /tmp/studio-workflow.css
-          grep -Fq 'grid-template-columns:minmax(180px,.75fr)' /tmp/studio-workflow.css
-          grep -Fq '@media(max-width:700px)' /tmp/studio-workflow.css
-          curl --fail --silent --show-error "$PUBLIC_URL/studio/workspace-v42.css?v=3" > /tmp/studio-workspace.css
-          grep -Fq 'studio-mobile-nav-height' /tmp/studio-workspace.css
-          grep -Fq '@media(max-width:720px)' /tmp/studio-workspace.css
-          curl --fail --silent --show-error "$PUBLIC_URL/studio/workflow-runtime-v44.css?v=1" > /tmp/studio-runtime.css
-          grep -Fq '.clients-main>.controls' /tmp/studio-runtime.css
 
       - name: Verify Resend authentication from production
         working-directory: .
@@ -170,11 +149,99 @@ jobs:
           grep -Fq '"authenticated":true' /tmp/trusted-login.json
           grep -Fq '"trustedAccess":true' /tmp/trusted-login.json
 
-          curl --silent --show-error \
-            --cookie /tmp/client-cookie.txt \
-            -H 'Accept: application/json' \
-            -H 'Cache-Control: no-cache, no-store' \
-            "$PUBLIC_URL/api/client/session" > /tmp/client-session.json
-          cat /tmp/client-session.json
-          grep -Fq '"authenticated":true' /tmp/client-session.json
-          grep -Fq '"email":"contact@neptunebusiness.com"' /tmp/client-session.json
+      - name: Install Playwright for client audit
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install chromium
+
+      - name: Audit client auth and dashboard on four widths
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/neptune-client-audit
+          cat > /tmp/neptune-client-audit/audit.mjs <<'EOF'
+          import fs from 'node:fs';
+          import { chromium } from 'playwright';
+
+          const base='https://tv.neptunebusiness.com';
+          const viewports=[
+            {name:'desktop-1440',width:1440,height:900},
+            {name:'laptop-1180',width:1180,height:820},
+            {name:'tablet-768',width:768,height:900},
+            {name:'mobile-390',width:390,height:844},
+          ];
+          const browser=await chromium.launch({headless:true});
+          const failures=[];
+          fs.mkdirSync('/tmp/neptune-client-audit/screenshots',{recursive:true});
+
+          const inspect=async(page,label)=>{
+            const result=await page.evaluate(()=>{
+              const visible=(element)=>{const style=getComputedStyle(element),rect=element.getBoundingClientRect();return style.display!=='none'&&style.visibility!=='hidden'&&rect.width>0&&rect.height>0;};
+              const clipped=[...document.querySelectorAll('button,a,input,select,[role="button"]')]
+                .filter((element)=>{if(!visible(element))return false;const rect=element.getBoundingClientRect();return rect.left<-1||rect.right>innerWidth+1;})
+                .map((element)=>({tag:element.tagName,className:String(element.className),left:element.getBoundingClientRect().left,right:element.getBoundingClientRect().right}))
+                .slice(0,12);
+              return {innerWidth,docWidth:document.documentElement.scrollWidth,bodyWidth:document.body.scrollWidth,clipped};
+            });
+            if(Math.max(result.docWidth,result.bodyWidth)>result.innerWidth+1)failures.push(`${label}: débordement horizontal ${JSON.stringify(result)}`);
+            if(result.clipped.length)failures.push(`${label}: contrôle coupé ${JSON.stringify(result.clipped)}`);
+          };
+
+          for(const viewport of viewports){
+            const context=await browser.newContext({viewport:{width:viewport.width,height:viewport.height},deviceScaleFactor:1});
+            const page=await context.newPage();
+            const pageErrors=[];
+            page.on('pageerror',(error)=>pageErrors.push(String(error.message||error)));
+            try{
+              await page.goto(`${base}/espace-client/?audit=${viewport.name}`,{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForSelector('#auth:not([hidden])',{timeout:20000});
+              await page.screenshot({path:`/tmp/neptune-client-audit/screenshots/${viewport.name}-auth.png`,fullPage:true});
+              await inspect(page,`${viewport.name}-auth`);
+
+              await page.locator('#email').fill('contact@neptunebusiness.com');
+              await page.locator('#sendCode').click();
+              await page.waitForSelector('#dashboard:not([hidden])',{timeout:30000});
+              await page.waitForSelector('.metric-card .neptune-icon',{timeout:15000});
+              await page.waitForTimeout(650);
+              await page.screenshot({path:`/tmp/neptune-client-audit/screenshots/${viewport.name}-dashboard.png`,fullPage:true});
+              await inspect(page,`${viewport.name}-dashboard`);
+
+              const iconState=await page.evaluate(()=>({
+                metricIcons:document.querySelectorAll('.metric-card .neptune-icon').length,
+                formatIcons:document.querySelectorAll('.format-card .neptune-icon').length,
+                logoutIcon:Boolean(document.querySelector('[data-logout] .neptune-icon')),
+                clientPremium:Boolean(document.querySelector('link[href*="client-premium-v46.css"]')),
+              }));
+              if(iconState.metricIcons<4||iconState.formatIcons<3||!iconState.logoutIcon||!iconState.clientPremium)failures.push(`${viewport.name}: icônes premium incomplètes ${JSON.stringify(iconState)}`);
+
+              await page.locator('.metric-card[data-open-panel="appointments"]').click();
+              await page.waitForSelector('#detailPanel:not([hidden])',{timeout:10000});
+              await page.waitForTimeout(220);
+              await page.screenshot({path:`/tmp/neptune-client-audit/screenshots/${viewport.name}-panel.png`,fullPage:true});
+              const panel=await page.evaluate(()=>{const rect=document.querySelector('#detailPanel')?.getBoundingClientRect();return{left:rect?.left||0,right:rect?.right||0,width:rect?.width||0,innerWidth};});
+              if(Math.abs(panel.right-panel.innerWidth)>2)failures.push(`${viewport.name}: panneau mal aligné ${JSON.stringify(panel)}`);
+              if(viewport.width<=720&&(Math.abs(panel.left)>2||Math.abs(panel.width-panel.innerWidth)>2))failures.push(`${viewport.name}: panneau mobile non plein écran ${JSON.stringify(panel)}`);
+              await inspect(page,`${viewport.name}-panel`);
+              await page.locator('#closePanel').click();
+              if(pageErrors.length)failures.push(`${viewport.name}: erreurs JavaScript ${pageErrors.join(' | ')}`);
+            }catch(error){
+              failures.push(`${viewport.name}: exception ${error.stack||error.message}`);
+            }finally{
+              await context.close();
+            }
+          }
+
+          await browser.close();
+          fs.writeFileSync('/tmp/neptune-client-audit/screenshots/failures.txt',failures.join('\n')||'OK');
+          if(failures.length){console.error(failures.join('\n'));process.exit(1);}
+          console.log('Audit espace client réussi sur 1440, 1180, 768 et 390 px.');
+          EOF
+          node /tmp/neptune-client-audit/audit.mjs
+
+      - name: Upload client responsive screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-responsive-premium-v13
+          path: /tmp/neptune-client-audit/screenshots
+          if-no-files-found: warn

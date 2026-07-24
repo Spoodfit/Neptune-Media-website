@@ -1,0 +1,112 @@
+/* Neptune Media — audit responsive espace client */
+html,body,.page,.dashboard-v37,.dashboard-v37 .dashboard-canvas{max-width:100%;overflow-x:clip}
+.dashboard-v37 *{min-inline-size:0}
+.dashboard-v37 .media-header{padding-left:max(clamp(16px,3vw,44px),env(safe-area-inset-left));padding-right:max(clamp(16px,3vw,44px),env(safe-area-inset-right))}
+.dashboard-v37 .dashboard-canvas{padding-left:max(clamp(16px,3vw,44px),env(safe-area-inset-left));padding-right:max(clamp(16px,3vw,44px),env(safe-area-inset-right));padding-bottom:max(34px,env(safe-area-inset-bottom))}
+.dashboard-v37 .dashboard-heading-copy,.dashboard-v37 .countdown-wrap,.dashboard-v37 .client-focus-copy,.dashboard-v37 .metric-copy,.dashboard-v37 .utility-heading{overflow-wrap:anywhere}
+.dashboard-v37 .overview-grid,.dashboard-v37 .metric-grid,.dashboard-v37 .dashboard-content-grid,.dashboard-v37 .format-grid,.dashboard-v37 .client-date-row{max-width:100%}
+.dashboard-v37 .metric-card,.dashboard-v37 .format-card,.dashboard-v37 .production-card,.dashboard-v37 .show-card,.dashboard-v37 .formats-panel,.dashboard-v37 .referral-panel,.dashboard-v37 .support-card{max-width:100%}
+.dashboard-v37 .metric-card{isolation:isolate}
+.dashboard-v37 .metric-copy strong{line-height:1.35}
+.dashboard-v37 .format-card p{overflow-wrap:anywhere}
+.dashboard-v37 .format-card a{max-width:100%;justify-content:space-between}
+.dashboard-v37 .support-actions,.dashboard-v37 .support-actions a{max-width:100%}
+.dashboard-v37 .show-footer{flex-wrap:wrap}
+.dashboard-v37 .client-footer{gap:16px;flex-wrap:wrap}
+.dashboard-v37 .detail-panel{padding-right:env(safe-area-inset-right)}
+.dashboard-v37 .detail-panel>header{padding-top:max(22px,env(safe-area-inset-top))}
+.dashboard-v37 .detail-content{padding-bottom:max(40px,env(safe-area-inset-bottom))}
+.auth-shell{max-width:100%;overflow:hidden}
+.access-card,.auth-copy{min-width:0;max-width:100%}
+
+@media(max-width:1120px){
+  .dashboard-v37 .overview-grid{grid-template-columns:1fr}
+  .dashboard-v37 .show-card{grid-template-columns:minmax(240px,.65fr) minmax(0,1fr);grid-template-rows:auto auto;align-items:center}
+  .dashboard-v37 .show-card .card-heading{grid-column:1/-1}
+  .dashboard-v37 .show-card .show-footer{align-content:center}
+  .dashboard-v37 .dashboard-content-grid{grid-template-columns:1fr}
+  .dashboard-v37 .utility-column{grid-template-columns:repeat(2,minmax(0,1fr));display:grid;gap:16px}
+}
+
+@media(max-width:900px){
+  .dashboard-v37 .workspace-label{display:none}
+  .dashboard-v37 .dashboard-heading{align-items:flex-start;flex-direction:column;gap:16px}
+  .dashboard-v37 .header-booking{width:100%}
+  .dashboard-v37 .metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .dashboard-v37 .format-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .dashboard-v37 .format-card:last-child{grid-column:1/-1}
+  .dashboard-v37 .client-focus-row{align-items:stretch}
+  .dashboard-v37 .client-focus-action{align-self:center}
+}
+
+@media(max-width:720px){
+  .auth-header{min-height:62px;padding:9px max(14px,env(safe-area-inset-left)) 9px max(14px,env(safe-area-inset-right))}
+  .auth-brand img{width:36px;height:36px}
+  .auth-shell{grid-template-columns:1fr;gap:28px;padding:92px max(16px,env(safe-area-inset-left)) max(28px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-right))}
+  .auth-copy h1{font-size:clamp(2.55rem,13vw,4.35rem);line-height:.96;letter-spacing:-.06em}
+  .auth-copy>p:last-of-type{font-size:.94rem;line-height:1.55}
+  .access-card{padding:24px;border-radius:20px}
+  .access-secondary-actions{grid-template-columns:1fr}
+
+  .dashboard-v37 .media-header{height:62px;gap:10px;padding-inline:max(12px,env(safe-area-inset-left)) max(12px,env(safe-area-inset-right))}
+  .dashboard-v37 .media-brand img{width:35px;height:35px}
+  .dashboard-v37 .media-wordmark b{font-size:1.28rem}
+  .dashboard-v37 .media-wordmark small{display:none}
+  .dashboard-v37 .social-nav{gap:5px}
+  .dashboard-v37 .social{display:none}
+  .dashboard-v37 .social-youtube{display:grid;width:36px;min-width:36px;height:36px}
+  .dashboard-v37 .logout-button{width:36px;height:36px}
+  .dashboard-v37 .dashboard-canvas{min-height:calc(100dvh - 62px);padding-top:18px;padding-inline:max(12px,env(safe-area-inset-left)) max(12px,env(safe-area-inset-right))}
+  .dashboard-v37 .dashboard-heading{margin-bottom:16px}
+  .dashboard-v37 .dashboard-heading h1{font-size:clamp(1.9rem,9vw,2.5rem)}
+  .dashboard-v37 .dashboard-heading-copy>p:last-child{font-size:.82rem}
+  .dashboard-v37 .production-card{padding:18px!important;border-radius:20px}
+  .dashboard-v37 .production-card-header{align-items:flex-start;flex-direction:column;gap:10px}
+  .dashboard-v37 .project-status{max-width:100%}
+  .dashboard-v37 .client-minimal-flow{margin-top:14px;gap:11px}
+  .dashboard-v37 .client-focus-row{display:grid!important;gap:18px;padding:18px!important;border-radius:17px}
+  .dashboard-v37 .client-focus-copy h2{font-size:clamp(1.35rem,7vw,1.8rem)!important}
+  .dashboard-v37 .client-focus-action{width:100%;min-height:48px}
+  .dashboard-v37 .client-date-row{grid-template-columns:1fr!important}
+  .dashboard-v37 .client-date-row article{padding:14px 15px}
+  .dashboard-v37 .client-progress-minimal{grid-template-columns:auto 1fr!important}
+  .dashboard-v37 .client-progress-minimal strong{grid-column:1/-1}
+  .dashboard-v37 .show-card{grid-template-columns:1fr;grid-template-rows:auto auto auto;padding:16px}
+  .dashboard-v37 .show-card .card-heading{grid-column:auto}
+  .dashboard-v37 .show-preview{min-height:170px}
+  .dashboard-v37 .metric-grid{gap:10px}
+  .dashboard-v37 .metric-card{min-height:96px;grid-template-columns:42px minmax(0,1fr) 20px;padding:14px;gap:11px}
+  .dashboard-v37 .formats-panel{padding:16px}
+  .dashboard-v37 .format-grid{grid-template-columns:1fr}
+  .dashboard-v37 .format-card,.dashboard-v37 .format-card:last-child{grid-column:auto;min-height:0;padding:16px}
+  .dashboard-v37 .utility-column{grid-template-columns:1fr}
+  .dashboard-v37 .section-heading{align-items:flex-start;flex-direction:column;gap:12px}
+  .dashboard-v37 .section-heading .inline-action{width:100%}
+  .dashboard-v37 .client-footer{align-items:flex-start;flex-direction:column}
+  .dashboard-v37 .detail-backdrop{display:none!important}
+  .dashboard-v37 .detail-panel{inset:0;width:100vw!important;max-width:100vw;height:100dvh;border-left:0;box-shadow:none}
+  .dashboard-v37 .detail-panel>header{padding-left:max(18px,env(safe-area-inset-left));padding-right:max(18px,env(safe-area-inset-right))}
+  .dashboard-v37 .detail-content{padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
+  .dashboard-v37 .appointment-card,.dashboard-v37 .order-card{grid-template-columns:1fr}
+  .dashboard-v37 .panel-action,.dashboard-v37 .ghost-action{width:100%}
+  .dashboard-v37 .calendar-wrap{margin-inline:-4px;padding-inline:4px}
+}
+
+@media(max-width:520px){
+  .trust-row{display:grid;grid-template-columns:1fr 1fr}
+  .trust-row span:last-child{grid-column:1/-1}
+  .dashboard-v37 .metric-grid{grid-template-columns:1fr}
+  .dashboard-v37 .metric-card{min-height:88px}
+  .dashboard-v37 .card-heading{align-items:flex-start;flex-direction:column}
+  .dashboard-v37 .show-card .inline-action{width:100%}
+  .dashboard-v37 .show-footer{align-items:flex-start;flex-direction:column}
+  .dashboard-v37 .referral-code{grid-template-columns:1fr}
+  .dashboard-v37 .referral-code small{justify-content:center}
+  .dashboard-v37 .detail-panel h2{font-size:1.55rem}
+}
+
+@media(max-width:360px){
+  .dashboard-v37 .media-wordmark{display:none}
+  .dashboard-v37 .dashboard-heading .eyebrow{font-size:.58rem}
+  .dashboard-v37 .production-card{padding:15px!important}
+}

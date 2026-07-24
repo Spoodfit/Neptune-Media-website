@@ -1,0 +1,32 @@
+.neptune-icon{width:1em;height:1em;display:block;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.studio-nav-icon{display:grid!important;place-items:center!important;color:rgba(255,255,255,.84)!important}
+.studio-nav-icon .neptune-icon{width:20px;height:20px}
+.studio-nav-link.active .studio-nav-icon,.studio-nav-link:hover .studio-nav-icon{color:#fff!important}
+.studio-nav-link--accent .studio-nav-icon{filter:drop-shadow(0 0 10px rgba(175,118,255,.45))}
+.studio-account>i .neptune-icon{width:17px;height:17px}
+#studioSidebarToggle .neptune-icon{width:18px;height:18px;transition:transform .22s ease}
+.studio-sidebar:not(.is-collapsed) #studioSidebarToggle .neptune-icon{transform:rotate(180deg)}
+.dashboard-v37 .logout-button .neptune-icon,.clients-app .logout-button .neptune-icon{width:20px;height:20px}
+.dashboard-v37 .header-booking>span{width:20px;height:20px;display:grid;place-items:center}
+.dashboard-v37 .header-booking>span .neptune-icon{width:17px;height:17px}
+.dashboard-v37 .metric-icon{position:relative;overflow:hidden;background:linear-gradient(145deg,#eef4ff,#f8fbff)!important;box-shadow:inset 0 0 0 1px rgba(41,112,255,.09),0 8px 20px rgba(41,112,255,.08)}
+.dashboard-v37 .metric-card:nth-child(2) .metric-icon{background:linear-gradient(145deg,#f2efff,#fbfaff)!important;box-shadow:inset 0 0 0 1px rgba(91,77,247,.1),0 8px 20px rgba(91,77,247,.08)}
+.dashboard-v37 .metric-card:nth-child(3) .metric-icon{background:linear-gradient(145deg,#fff3e9,#fffaf5)!important;box-shadow:inset 0 0 0 1px rgba(233,120,23,.1),0 8px 20px rgba(233,120,23,.08)}
+.dashboard-v37 .metric-card:nth-child(4) .metric-icon{background:linear-gradient(145deg,#eaf8f3,#f7fdfa)!important;box-shadow:inset 0 0 0 1px rgba(21,155,114,.1),0 8px 20px rgba(21,155,114,.08)}
+.dashboard-v37 .metric-icon::after{content:"";position:absolute;inset:-40% auto auto -25%;width:70%;aspect-ratio:1;border-radius:50%;background:rgba(255,255,255,.8);filter:blur(9px);pointer-events:none}
+.dashboard-v37 .metric-icon .neptune-icon{position:relative;z-index:1;width:22px;height:22px;stroke-width:1.7}
+.dashboard-v37 .metric-arrow{display:grid;place-items:center}
+.dashboard-v37 .metric-arrow .neptune-icon{width:17px;height:17px;stroke-width:1.8}
+.dashboard-v37 .format-symbol{width:48px!important;height:48px!important;border-radius:15px!important;background:linear-gradient(145deg,#f0edff,#faf9ff)!important;box-shadow:inset 0 0 0 1px rgba(91,77,247,.11),0 10px 22px rgba(91,77,247,.08)}
+.dashboard-v37 .format-card:nth-child(2) .format-symbol{background:linear-gradient(145deg,#fcecf8,#fff8fd)!important;box-shadow:inset 0 0 0 1px rgba(217,71,184,.1),0 10px 22px rgba(217,71,184,.08)}
+.dashboard-v37 .format-card:nth-child(3) .format-symbol{background:linear-gradient(145deg,#edf4ff,#f8fbff)!important;box-shadow:inset 0 0 0 1px rgba(41,112,255,.1),0 10px 22px rgba(41,112,255,.08)}
+.dashboard-v37 .format-symbol .neptune-icon{width:23px;height:23px;stroke-width:1.75}
+.dashboard-v37 .format-card a span{display:grid!important;place-items:center!important;width:18px;height:18px}
+.dashboard-v37 .format-card a span .neptune-icon{width:14px;height:14px}
+.dashboard-v37 .show-preview>span,.broadcast-screen>span{display:grid!important;place-items:center!important}
+.dashboard-v37 .show-preview>span .neptune-icon,.broadcast-screen>span .neptune-icon{width:19px;height:19px;margin-left:2px}
+#closePanel,#closeDetail{display:grid!important;place-items:center!important}
+#closePanel .neptune-icon,#closeDetail .neptune-icon{width:20px;height:20px}
+.referral-code small{display:inline-flex!important;align-items:center;gap:6px}
+.referral-code small .neptune-icon{width:13px;height:13px}
+@media(max-width:720px){.studio-nav-icon .neptune-icon{width:19px;height:19px}.dashboard-v37 .metric-icon{width:42px;height:42px}.dashboard-v37 .format-symbol{width:44px!important;height:44px!important}}

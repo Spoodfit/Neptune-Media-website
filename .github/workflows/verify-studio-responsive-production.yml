@@ -19,7 +19,7 @@ jobs:
           set -euo pipefail
           public='https://tv.neptunebusiness.com'
           workers='https://neptune-media-webtv.neptunebusinessclub.workers.dev'
-          expected='neptune-studio-responsive-audit-20260724-v12'
+          expected='neptune-studio-responsive-final-20260724-v12-1'
           for base in "$workers" "$public"; do
             for attempt in $(seq 1 18); do
               curl --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/api/public/release?attempt=$attempt" > /tmp/release.json || true
@@ -28,15 +28,22 @@ jobs:
             done
             cat /tmp/release.json
             grep -Fq "\"release\":\"$expected\"" /tmp/release.json
-            grep -Fq '"studioWorkflowUi":"workspace-v42-responsive-audit"' /tmp/release.json
+            grep -Fq '"studioWorkflowUi":"workspace-v42-responsive-final"' /tmp/release.json
             grep -Fq '"interactionModel":"inline-confirmation-no-native-popup"' /tmp/release.json
+            grep -Fq '"legacyAutopilot":"removed"' /tmp/release.json
           done
           for attempt in $(seq 1 18); do
             curl --silent --show-error -H 'Cache-Control: no-cache, no-store' "$public/studio/clients?asset=$attempt" > /tmp/studio.html || true
-            if grep -Fq '/studio/workspace-v43.css?v=1' /tmp/studio.html; then break; fi
+            if grep -Fq '/studio/clients-workflow-v37.js?v=5' /tmp/studio.html \
+              && grep -Fq '/studio/workspace-v42.js?v=3' /tmp/studio.html \
+              && grep -Fq '/studio/workflow-runtime-v44.css?v=1' /tmp/studio.html; then break; fi
             sleep 10
           done
           grep -Fq '/studio/workspace-v43.css?v=1' /tmp/studio.html
+          grep -Fq '/studio/clients-workflow-v37.js?v=5' /tmp/studio.html
+          grep -Fq '/studio/workspace-v42.js?v=3' /tmp/studio.html
+          grep -Fq '/studio/workflow-runtime-v44.css?v=1' /tmp/studio.html
+          ! grep -Fq '/studio/clients-autopilot-v36.js' /tmp/studio.html
 
       - uses: actions/setup-node@v4
         with:
@@ -92,8 +99,8 @@ jobs:
 
               await page.goto(`${base}/studio/clients?responsive-audit=${viewport.name}`,{waitUntil:'domcontentloaded',timeout:60000});
               await page.waitForSelector('.workflow-stage-tabs',{timeout:30000});
-              await page.waitForSelector('[data-order-card="audit-order-v12"]',{timeout:30000});
-              await page.waitForTimeout(350);
+              await page.waitForSelector('[data-order-card="audit-order-v12"]',{state:'visible',timeout:30000});
+              await page.waitForTimeout(500);
               await page.screenshot({path:`screenshots/${viewport.name}-list.png`,fullPage:true});
 
               const list=await page.evaluate(()=>{
@@ -124,7 +131,7 @@ jobs:
               await page.locator('[data-focus-order]').click({timeout:10000});
               await page.waitForSelector('#clientDialog[open]',{timeout:10000});
               await page.waitForSelector('#workflowCommandCenter',{timeout:10000});
-              await page.waitForTimeout(220);
+              await page.waitForTimeout(250);
               await page.screenshot({path:`screenshots/${viewport.name}-detail.png`,fullPage:true});
               const detail=await page.evaluate(()=>{const rect=document.querySelector('#clientDialog')?.getBoundingClientRect();return{left:rect?.left||0,right:rect?.right||0,bodyHidden:Boolean(document.querySelector('#detailBody')?.hidden),command:!!document.querySelector('#workflowCommandCenter')};});
               if(viewport.width>720&&detail.left<78)failures.push(`${viewport.name}: dossier recouvre la sidebar ${JSON.stringify(detail)}`);
@@ -156,6 +163,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: studio-responsive-v12
+          name: studio-responsive-v12-final
           path: /tmp/neptune-ui-audit/screenshots
-          if-no-files-found: warn
+          if-no-files-found: error

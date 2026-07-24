@@ -1,0 +1,224 @@
+name: Verify Studio Responsive Production
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/verify-studio-responsive-production.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - name: Verify release is deployed
+        shell: bash
+        run: |
+          set -euo pipefail
+          public='https://tv.neptunebusiness.com'
+          workers='https://neptune-media-webtv.neptunebusinessclub.workers.dev'
+          expected='neptune-studio-responsive-audit-20260724-v12'
+          for base in "$workers" "$public"; do
+            for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+              curl --silent --show-error -H 'Cache-Control: no-cache, no-store' \
+                "$base/api/public/release?attempt=$attempt" > /tmp/release.json || true
+              if grep -Fq "\"release\":\"$expected\"" /tmp/release.json; then break; fi
+              sleep 10
+            done
+            cat /tmp/release.json
+            grep -Fq "\"release\":\"$expected\"" /tmp/release.json
+            grep -Fq '"studioWorkflowUi":"workspace-v42-responsive-audit"' /tmp/release.json
+            grep -Fq '"responsiveAudit":"studio-v12"' /tmp/release.json
+            grep -Fq '"interactionModel":"inline-confirmation-no-native-popup"' /tmp/release.json
+          done
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Playwright
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/neptune-ui-audit
+          cd /tmp/neptune-ui-audit
+          npm init -y >/dev/null
+          npm install --silent playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Audit desktop, tablet and mobile layouts
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/neptune-ui-audit
+          mkdir -p screenshots
+          cat > audit.mjs <<'EOF'
+          import { chromium } from 'playwright';
+
+          const base='https://tv.neptunebusiness.com';
+          const now=new Date().toISOString();
+          const mockOrder={
+            id:'audit-order-v12',
+            clientId:'audit-client-v12',
+            email:'lea.audit@example.com',
+            fullName:'Léa Depoulain',
+            company:'Neptune business',
+            title:'Passage Neptune Media',
+            format:'Hors Norme',
+            paymentStatus:'paid',
+            amountTotal:180000,
+            currency:'eur',
+            status:'studio_date_confirmation_pending',
+            appointmentAt:'2026-07-27T06:00:00.000Z',
+            appointmentSource:'google_calendar',
+            filmingAt:null,
+            nextAction:'Neptune attend la confirmation définitive du studio.',
+            createdAt:now,
+            updatedAt:now,
+            steps:[],
+            files:[],
+            schedules:[],
+            workflow:{
+              supplierStatus:'pending',
+              preparationStatus:'completed',
+              currentLabel:'Date du passage en confirmation',
+              nextAction:'Neptune attend la confirmation définitive du studio.',
+              requestedFilmingAt:null,
+              appointmentSource:'google_calendar',
+              broadcastStatus:'not_scheduled',
+              sourceQcStatus:'not_started',
+              inventory:{sourceCount:0,finalCount:0,shortCount:0,hasSource:false,hasFinal:false,hasShort:false},
+            },
+          };
+          const clientsPayload={
+            clients:[{id:'audit-client-v12',email:mockOrder.email,fullName:mockOrder.fullName,company:mockOrder.company,active:true,orderCount:1}],
+            orders:[mockOrder],
+            supplierPayments:[],
+            refundRequests:[],
+            deletionRequests:[],
+            finance:{revenueCents:180000,supplierDueCents:0,supplierPaidCents:0,estimatedMarginCents:180000,payingClients:1},
+          };
+          const controlPayload={
+            ok:true,
+            summary:{active:1,actions:1,watching:0,automatic:0,production:0},
+            actions:[{
+              type:'order',
+              orderId:mockOrder.id,
+              title:'Confirmation du studio attendue',
+              reason:'REC BOX doit confirmer ou proposer une autre date sous 48 heures.',
+              severity:'warning',
+            }],
+            upcoming:[],
+          };
+
+          const viewports=[
+            {name:'desktop-1440',width:1440,height:900},
+            {name:'laptop-1180',width:1180,height:820},
+            {name:'tablet-768',width:768,height:900},
+            {name:'mobile-390',width:390,height:844},
+          ];
+
+          const browser=await chromium.launch({headless:true});
+          const failures=[];
+
+          for(const viewport of viewports){
+            const context=await browser.newContext({viewport:{width:viewport.width,height:viewport.height},deviceScaleFactor:1});
+            await context.addInitScript(()=>localStorage.setItem('neptune_studio_sidebar_collapsed','1'));
+            const page=await context.newPage();
+            const pageErrors=[];
+            page.on('pageerror',(error)=>pageErrors.push(String(error.message||error)));
+            await page.route('**/api/**',async(route)=>{
+              const path=new URL(route.request().url()).pathname;
+              const json=(body,status=200)=>route.fulfill({status,contentType:'application/json; charset=utf-8',body:JSON.stringify(body)});
+              if(path==='/api/auth/status')return json({authenticated:true,csrfToken:'audit-csrf',user:{id:'audit-admin',email:'audit@neptunebusiness.com',role:'admin'}});
+              if(path==='/api/admin/clients')return json(clientsPayload);
+              if(path==='/api/admin/control-room')return json(controlPayload);
+              if(path==='/api/admin/workflow/events')return json({ok:true,events:[]});
+              if(path==='/api/admin/feedback')return json({items:[]});
+              return json({ok:true});
+            });
+
+            await page.goto(`${base}/studio/clients?responsive-audit=${viewport.name}`,{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForSelector('.workflow-stage-tabs',{timeout:30000});
+            await page.waitForSelector('[data-order-card="audit-order-v12"]',{timeout:30000});
+            await page.waitForTimeout(350);
+
+            const geometry=await page.evaluate(()=>({
+              viewport:window.innerWidth,
+              documentWidth:document.documentElement.scrollWidth,
+              bodyWidth:document.body.scrollWidth,
+              activeStage:document.querySelector('.workflow-stage-tabs button.active span')?.textContent?.trim()||'',
+              cardWidth:document.querySelector('[data-order-card]')?.getBoundingClientRect().width||0,
+              pipelineWidth:document.querySelector('#pipeline')?.getBoundingClientRect().width||0,
+              clipped:[...document.querySelectorAll('button,a,input,select,[role="button"]')].filter((element)=>{
+                const style=getComputedStyle(element);
+                const rect=element.getBoundingClientRect();
+                if(style.display==='none'||style.visibility==='hidden'||rect.width<1||rect.height<1)return false;
+                if(element.closest('.workflow-stage-tabs,.studio-nav,.tabs'))return false;
+                return rect.left<-1||rect.right>window.innerWidth+1;
+              }).slice(0,10).map((element)=>({tag:element.tagName,className:element.className,left:element.getBoundingClientRect().left,right:element.getBoundingClientRect().right})),
+            }));
+
+            if(Math.max(geometry.documentWidth,geometry.bodyWidth)>geometry.viewport+1)failures.push(`${viewport.name}: débordement horizontal ${geometry.documentWidth}/${geometry.bodyWidth} > ${geometry.viewport}`);
+            if(geometry.activeStage!=='À confirmer')failures.push(`${viewport.name}: étape active incorrecte « ${geometry.activeStage} »`);
+            if(geometry.pipelineWidth&&geometry.cardWidth/geometry.pipelineWidth<.88)failures.push(`${viewport.name}: carte trop étroite (${geometry.cardWidth}/${geometry.pipelineWidth})`);
+            if(geometry.clipped.length)failures.push(`${viewport.name}: éléments interactifs hors écran ${JSON.stringify(geometry.clipped)}`);
+
+            if(viewport.width>=1081){
+              const before=await page.locator('.studio-sidebar').boundingBox();
+              await page.locator('#studioSidebarToggle').click();
+              await page.waitForTimeout(280);
+              const after=await page.locator('.studio-sidebar').boundingBox();
+              if(!before||!after||before.width>100||after.width<240)failures.push(`${viewport.name}: sidebar rétractable incohérente ${before?.width} -> ${after?.width}`);
+              await page.locator('#studioSidebarToggle').click();
+              await page.waitForTimeout(280);
+            }
+
+            await page.locator('[data-focus-order]').click();
+            await page.waitForSelector('#clientDialog[open]',{timeout:10000});
+            await page.waitForSelector('#workflowCommandCenter',{timeout:10000});
+            await page.waitForTimeout(200);
+
+            const detailState=await page.evaluate(()=>{
+              const dialog=document.querySelector('#clientDialog');
+              const rect=dialog?.getBoundingClientRect();
+              const body=document.querySelector('#detailBody');
+              const center=document.querySelector('#workflowCommandCenter');
+              return {left:rect?.left||0,right:rect?.right||0,bodyHidden:Boolean(body?.hidden),centerVisible:Boolean(center&&getComputedStyle(center).display!=='none')};
+            });
+            if(viewport.width>720&&detailState.left<70)failures.push(`${viewport.name}: dossier plein écran recouvre la sidebar (${detailState.left})`);
+            if(viewport.width<=720&&Math.abs(detailState.left)>1)failures.push(`${viewport.name}: dossier mobile décalé (${detailState.left})`);
+            if(!detailState.bodyHidden||!detailState.centerVisible)failures.push(`${viewport.name}: suivi hérité non masqué ou centre de commande absent`);
+
+            await page.locator('[data-detail-tab="calendar"]').click();
+            await page.waitForTimeout(250);
+            const calendarState=await page.evaluate(()=>({
+              bodyHidden:Boolean(document.querySelector('#detailBody')?.hidden),
+              commandCenter:Boolean(document.querySelector('#workflowCommandCenter')),
+            }));
+            if(calendarState.bodyHidden||calendarState.commandCenter)failures.push(`${viewport.name}: changement d’onglet incohérent ${JSON.stringify(calendarState)}`);
+
+            await page.screenshot({path:`screenshots/${viewport.name}.png`,fullPage:true});
+            if(pageErrors.length)failures.push(`${viewport.name}: erreurs JS ${pageErrors.join(' | ')}`);
+            await context.close();
+          }
+
+          await browser.close();
+          if(failures.length){
+            console.error(failures.join('\n'));
+            process.exit(1);
+          }
+          console.log('Audit responsive Studio réussi sur 1440, 1180, 768 et 390 px.');
+          EOF
+          node audit.mjs
+
+      - name: Upload responsive screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: studio-responsive-v12
+          path: /tmp/neptune-ui-audit/screenshots
+          if-no-files-found: warn

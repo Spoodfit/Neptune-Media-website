@@ -33,6 +33,27 @@ export function normalizeOrderPayload(raw = {}, env = {}) {
   const source = unwrapWebhookPayload(raw);
   const metadata = source.metadata && typeof source.metadata === 'object' ? source.metadata : {};
   const clientReference = String(source.client_reference_id || source.clientReferenceId || metadata.client_reference_id || '').trim();
+  const requestedFilmingAt = firstValue(
+    source.requestedFilmingAt,
+    source.requested_filming_at,
+    source.selectedDate,
+    source.selected_date,
+    source.shootingDate,
+    source.shooting_date,
+    source.dateSouhaitee,
+    source.date_souhaitee,
+    metadata.requestedFilmingAt,
+    metadata.requested_filming_at,
+    metadata.selectedDate,
+    metadata.selected_date,
+    metadata.shootingDate,
+    metadata.shooting_date,
+    metadata.dateSouhaitee,
+    metadata.date_souhaitee,
+    source.filmingAt,
+    source.filming_at,
+    metadata.filmingAt,
+  );
   return {
     email: String(
       source.email
@@ -69,13 +90,20 @@ export function normalizeOrderPayload(raw = {}, env = {}) {
     amountTotal: Number(source.amountTotal ?? source.amount_total ?? source.amount ?? 0),
     currency: String(source.currency || 'eur').trim().toLowerCase(),
     status: String(source.projectStatus || source.portalStatus || source.statusProject || 'reservation_confirmed').trim(),
+    requestedFilmingAt,
+    filmingAt: requestedFilmingAt,
     appointmentAt: source.appointmentAt || source.appointment_at || metadata.appointmentAt || null,
-    filmingAt: source.filmingAt || source.filming_at || metadata.filmingAt || null,
     nextAction: String(source.nextAction || metadata.nextAction || '').trim(),
     preparationUrl: String(source.preparationUrl || source.preparation_url || metadata.preparationUrl || '').trim(),
-    bookingUrl: String(source.bookingUrl || source.booking_url || metadata.bookingUrl || env.BOOKING_URL || '').trim(),
+    bookingUrl: String(source.bookingUrl || source.booking_url || metadata.bookingUrl || env.PREPARATION_BOOKING_URL || env.BOOKING_URL || '').trim(),
+    supplierEmail: String(source.supplierEmail || metadata.supplierEmail || env.STUDIO_SUPPLIER_EMAIL || '').trim().toLowerCase(),
+    supplierName: String(source.supplierName || metadata.supplierName || env.STUDIO_SUPPLIER_NAME || '').trim(),
     referralCode: referralCodeFrom(source, metadata, clientReference),
   };
+}
+
+function firstValue(...values) {
+  return values.find((value) => value !== undefined && value !== null && String(value).trim() !== '') || null;
 }
 
 function referralCodeFrom(source, metadata, clientReference) {

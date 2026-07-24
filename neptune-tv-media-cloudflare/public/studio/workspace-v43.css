@@ -74,6 +74,12 @@
   .studio-workspace-v42 .studio-account>i{display:none!important}
   .studio-workspace-v42 .studio-avatar{margin:0!important}
   .studio-workspace-v42 .clients-workspace{min-width:0!important}
+  .studio-workspace-v42 .clients-topbar{
+    top:0!important;
+    min-height:72px!important;
+    padding:10px 16px!important;
+  }
+  .studio-workspace-v42 .clients-main{padding-top:18px!important}
   .studio-workspace-v42 #clientDialog[open]{left:82px!important}
 }
 

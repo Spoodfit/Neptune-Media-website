@@ -1,6 +1,7 @@
 import { StudioStore as LegacyStore } from './store-v4.js';
 import { json } from './security.js';
 import { ensurePortalSchema } from './portal-schema.js';
+import { latestCalendarAppointment } from './workflow-db-v5.js';
 import {
   ensureWorkflowSchema,
   enrichOrderCollection,
@@ -56,8 +57,26 @@ export class StudioStore extends LegacyStore {
     ]);
     if (!relevant.has(url.pathname)) return super.fetch(request);
 
-    const body = method === 'GET' ? {} : await request.clone().json().catch(() => ({}));
-    const response = await super.fetch(request);
+    let body = method === 'GET' ? {} : await request.clone().json().catch(() => ({}));
+    let forwardedRequest = request;
+    let appointmentProtected = false;
+
+    if (url.pathname === '/portal/admin-update' && method === 'POST') {
+      ensurePortalSchema(this);
+      ensureWorkflowSchema(this);
+      const payload = body.payload && typeof body.payload === 'object' ? body.payload : body;
+      const orderId = String(payload.orderId || '').trim();
+      const calendar = orderId ? latestCalendarAppointment(this, orderId) : null;
+      const explicitOverride = payload.forceAppointmentOverride === true;
+      if (calendar?.appointmentAt && !explicitOverride && Object.hasOwn(payload, 'appointmentAt')) {
+        const protectedPayload = { ...payload, appointmentAt: calendar.appointmentAt };
+        body = body.payload && typeof body.payload === 'object' ? { ...body, payload: protectedPayload } : protectedPayload;
+        forwardedRequest = requestWithJson(request, body);
+        appointmentProtected = true;
+      }
+    }
+
+    const response = await super.fetch(forwardedRequest);
     if (!response.ok) return response;
     const result = await response.json().catch(() => ({}));
 
@@ -68,8 +87,14 @@ export class StudioStore extends LegacyStore {
         return json({ ...result, ...workflow });
       }
       if (url.pathname === '/portal/appointment-upsert' && result.orderId) {
-        const workflow = updateAppointmentWorkflow(this, result.orderId, result.appointmentAt || body.appointmentAt || body.start);
-        return json({ ...result, ...workflow, status: this.currentOrderStatus(result.orderId) });
+        const appointmentAt = result.appointmentAt || body.appointmentAt || body.appointment_at || body.start || body.startAt;
+        const workflow = updateAppointmentWorkflow(this, result.orderId, {
+          appointmentAt,
+          calendarEventId: body.calendarEventId || body.eventId || body.id || '',
+          title: body.title || '',
+          source: 'google_calendar',
+        });
+        return json({ ...result, ...workflow, appointmentAt, appointmentSource: 'google_calendar', status: this.currentOrderStatus(result.orderId) });
       }
       if (url.pathname === '/portal/session') {
         return json({ ...result, orders: enrichOrderCollection(this, Array.isArray(result.orders) ? result.orders : []) });
@@ -84,7 +109,8 @@ export class StudioStore extends LegacyStore {
       }
       if (url.pathname === '/portal/admin-update' && result.orderId) {
         reconcileWorkflowFromLegacyUpdate(this, result.orderId, body.payload || body);
-        return json({ ...result, workflow: enrichOrderCollection(this, [{ ...result, id: result.orderId }])[0]?.workflow || null });
+        const enriched = enrichOrderCollection(this, [{ ...result, id: result.orderId }])[0];
+        return json({ ...result, appointmentAt: enriched?.appointmentAt || result.appointmentAt, appointmentSource: enriched?.appointmentSource || null, appointmentProtected, workflow: enriched?.workflow || null });
       }
     } catch (error) {
       console.error('workflow_store_enrichment_failed', {
@@ -101,4 +127,15 @@ export class StudioStore extends LegacyStore {
   currentOrderStatus(orderId) {
     return this.sql.exec('SELECT status FROM portal_orders WHERE id=?', orderId).toArray()[0]?.status || '';
   }
+}
+
+function requestWithJson(request, body) {
+  const headers = new Headers(request.headers);
+  headers.set('Content-Type', 'application/json');
+  headers.delete('Content-Length');
+  return new Request(request.url, {
+    method: request.method,
+    headers,
+    body: JSON.stringify(body || {}),
+  });
 }

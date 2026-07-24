@@ -41,6 +41,7 @@ function renderDashboard(){
   setText($('#projectNextAction'),flow.nextAction||order.nextAction||'Consultez votre suivi.');
 
   renderAppointmentSummary(order,flow);
+  configurePrimaryAction(order,flow);
 
   const steps=Array.isArray(flow.steps)?flow.steps:[];
   const list=$('.project-stage-list');
@@ -72,17 +73,17 @@ function renderAppointmentSummary(order,flow){
   const requestedAt=validDate(flow.requestedFilmingAt)?flow.requestedFilmingAt:null;
   const studioConfirmed=flow.supplierStatus==='confirmed'&&filmingAt;
 
-  setText($('#appointmentBadge'),appointmentAt?`Préparation · ${formatCompact(appointmentAt)}`:'Préparation à réserver');
+  setText($('#appointmentBadge'),appointmentAt?`Visio · ${formatCompact(appointmentAt)}`:'Visio à réserver');
 
   if(studioConfirmed){
     setText($('#studioDateValue'),formatDay(filmingAt));
-    setText($('#studioTimeValue'),`Confirmé · ${formatTime(filmingAt)}`);
+    setText($('#studioTimeValue'),`Passage confirmé · ${formatTime(filmingAt)}`);
   }else if(requestedAt){
     setText($('#studioDateValue'),formatDay(requestedAt));
-    setText($('#studioTimeValue'),'Date demandée · confirmation du studio en attente');
+    setText($('#studioTimeValue'),'Passage demandé · validation du studio en attente');
   }else{
     setText($('#studioDateValue'),'À confirmer');
-    setText($('#studioTimeValue'),'Aucune date studio validée');
+    setText($('#studioTimeValue'),'Aucune date de passage studio validée');
   }
 
   const snapshot=$('.project-snapshot');
@@ -92,25 +93,48 @@ function renderAppointmentSummary(order,flow){
     panel=document.createElement('section');
     panel.id='workflowDatesSummary';
     panel.className='workflow-dates-summary';
-    snapshot.after(panel);
+    snapshot.before(panel);
   }
 
-  const prepStatus=flow.preparationStatus==='completed'?'Réalisé':appointmentAt?'Réservé':'À réserver';
+  const prepStatus=flow.preparationStatus==='completed'?'Visio réalisée':appointmentAt?'Visio réservée':'Visio à réserver';
   const prepDetail=appointmentAt?formatDate(appointmentAt):'Aucun rendez-vous de préparation enregistré';
-  const studioStatus=studioConfirmed?'Confirmé':requestedAt?'En attente du studio':'À définir';
-  const studioDetail=studioConfirmed?formatDate(filmingAt):requestedAt?`${formatDate(requestedAt)} · date demandée, non définitive`:'Aucune date de tournage enregistrée';
+  const studioStatus=studioConfirmed?'Passage confirmé':requestedAt?'Date demandée':'Date à définir';
+  const studioDetail=studioConfirmed?formatDate(filmingAt):requestedAt?`${formatDate(requestedAt)} · en attente de validation`:'Aucune date de passage studio enregistrée';
+  const next=flow.nextAction||order.nextAction||'Le parcours avance automatiquement.';
 
   panel.innerHTML=`
-    <article class="workflow-date-card ${appointmentAt?'is-ready':'is-pending'}">
-      <header><span>1</span><div><small>RENDEZ-VOUS DE PRÉPARATION</small><strong>${esc(prepStatus)}</strong></div></header>
-      <p>${esc(prepDetail)}</p>
-      <em>Visio de préparation, distincte du passage au studio.</em>
-    </article>
-    <article class="workflow-date-card ${studioConfirmed?'is-ready':'is-pending'}">
-      <header><span>2</span><div><small>PASSAGE AU STUDIO</small><strong>${esc(studioStatus)}</strong></div></header>
-      <p>${esc(studioDetail)}</p>
-      <em>${studioConfirmed?'Créneau définitif confirmé par le studio.':'Ce créneau ne devient définitif qu’après validation du studio.'}</em>
-    </article>`;
+    <header class="workflow-dates-head">
+      <div><small>VOS DEUX RENDEZ-VOUS</small><h3>Une visio de préparation, puis votre passage au studio</h3></div>
+      <span>Deux dates différentes</span>
+    </header>
+    <div class="workflow-dates-grid">
+      <article class="workflow-date-card ${appointmentAt?'is-ready':'is-pending'}">
+        <header><span>1</span><div><small>VISIO DE PRÉPARATION</small><strong>${esc(prepStatus)}</strong></div></header>
+        <p>${esc(prepDetail)}</p>
+        <em>Échange de 30 minutes pour préparer votre intervention.</em>
+      </article>
+      <article class="workflow-date-card ${studioConfirmed?'is-ready':'is-pending'}">
+        <header><span>2</span><div><small>PASSAGE AU STUDIO</small><strong>${esc(studioStatus)}</strong></div></header>
+        <p>${esc(studioDetail)}</p>
+        <em>${studioConfirmed?'Créneau définitif validé par le studio.':'La date affichée reste provisoire tant que le studio ne l’a pas confirmée.'}</em>
+      </article>
+    </div>
+    <div class="workflow-next-step"><small>CE QUI SE PASSE MAINTENANT</small><strong>${esc(next)}</strong></div>`;
+}
+
+function configurePrimaryAction(order,flow){
+  const link=$('#prepareLink');
+  if(!link)return;
+  const appointmentAt=validDate(order.appointmentAt)?order.appointmentAt:null;
+  if(!appointmentAt&&order.bookingUrl){
+    link.href=order.bookingUrl;
+    link.textContent='Réserver ma visio de préparation';
+    return;
+  }
+  link.href='#workflowDatesSummary';
+  link.removeAttribute('target');
+  link.removeAttribute('rel');
+  link.textContent='Voir mes deux rendez-vous';
 }
 
 function enhanceTracking(){

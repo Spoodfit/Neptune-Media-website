@@ -3,7 +3,7 @@ import { StudioStore } from './store-v5.js';
 
 export { StudioStore };
 
-const RELEASE_ID = 'neptune-workspace-google-appointment-20260724-v10';
+const RELEASE_ID = 'neptune-studio-responsive-audit-20260724-v12';
 const RELEASE_PATH = '/api/public/release';
 const ORDER_WEBHOOKS = new Set(['/api/webhooks/client-order', '/api/webhooks/conversion']);
 
@@ -45,8 +45,10 @@ function releaseResponse(request, env) {
     webhookSecretPresent,
     workflowStore: 'store-v5',
     clientWorkflowUi: 'workflow-v45-google-authoritative',
-    studioWorkflowUi: 'workspace-v42-fullscreen',
+    studioWorkflowUi: 'workspace-v42-responsive-audit',
     appointmentAuthority: 'google_calendar_event',
+    responsiveAudit: 'studio-v12',
+    interactionModel: 'inline-confirmation-no-native-popup',
     emailTransport: 'resend-rest-v1',
     sender: 'Neptune Media <contact@neptunebusiness.com>',
     trustedTestClient: 'contact@neptunebusiness.com',

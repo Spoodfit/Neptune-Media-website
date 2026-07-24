@@ -22,7 +22,8 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          registry-url: https://registry.npmjs.org
       - name: Install active worker dependencies
-        run: npm install --ignore-scripts --no-audit --no-fund
+        run: npm install --package-lock=false --registry=https://registry.npmjs.org --ignore-scripts --no-audit --no-fund
       - name: Validate active Cloudflare Worker
         run: npm run verify

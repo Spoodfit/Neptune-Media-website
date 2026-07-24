@@ -134,15 +134,15 @@ async function injectWorkflowAssets(response, pathname) {
   if (!clientPaths.has(pathname) && !studioPaths.has(pathname)) return response;
   let body = await response.text();
   if (clientPaths.has(pathname)) {
-    if (!body.includes('/espace-client/workflow-v45.css')) body = body.replace('</head>', '<link rel="stylesheet" href="/espace-client/workflow-v45.css?v=3"></head>');
-    if (!body.includes('/espace-client/workflow-v45.js')) body = body.replace('</body>', '<script type="module" src="/espace-client/workflow-v45.js?v=3"></script></body>');
+    if (!body.includes('/espace-client/workflow-v45.css')) body = body.replace('</head>', '<link rel="stylesheet" href="/espace-client/workflow-v45.css?v=4"></head>');
+    if (!body.includes('/espace-client/workflow-v45.js')) body = body.replace('</body>', '<script type="module" src="/espace-client/workflow-v45.js?v=4"></script></body>');
   }
   if (studioPaths.has(pathname)) {
-    if (!body.includes('/studio/clients-workflow-v37.css')) body = body.replace('</head>', '<link rel="stylesheet" href="/studio/clients-workflow-v37.css?v=3"></head>');
-    if (!body.includes('/studio/workspace-v42.css')) body = body.replace('</head>', '<link rel="stylesheet" href="/studio/workspace-v42.css?v=1"></head>');
+    if (!body.includes('/studio/clients-workflow-v37.css')) body = body.replace('</head>', '<link rel="stylesheet" href="/studio/clients-workflow-v37.css?v=4"></head>');
+    if (!body.includes('/studio/workspace-v42.css')) body = body.replace('</head>', '<link rel="stylesheet" href="/studio/workspace-v42.css?v=2"></head>');
     if (!body.includes('/studio/clients-autopilot-v36.js')) body = body.replace('</body>', '<script type="module" src="/studio/clients-autopilot-v36.js?v=1"></script></body>');
-    if (!body.includes('/studio/clients-workflow-v37.js')) body = body.replace('</body>', '<script type="module" src="/studio/clients-workflow-v37.js?v=3"></script></body>');
-    if (!body.includes('/studio/workspace-v42.js')) body = body.replace('</body>', '<script type="module" src="/studio/workspace-v42.js?v=1"></script></body>');
+    if (!body.includes('/studio/clients-workflow-v37.js')) body = body.replace('</body>', '<script type="module" src="/studio/clients-workflow-v37.js?v=4"></script></body>');
+    if (!body.includes('/studio/workspace-v42.js')) body = body.replace('</body>', '<script type="module" src="/studio/workspace-v42.js?v=2"></script></body>');
   }
   const headers = new Headers(response.headers);
   headers.delete('Content-Length');

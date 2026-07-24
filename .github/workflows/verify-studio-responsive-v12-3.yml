@@ -1,0 +1,157 @@
+name: Verify Studio Responsive v12.3
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/verify-studio-responsive-v12-3.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - name: Wait for production release
+        shell: bash
+        run: |
+          set -euo pipefail
+          public='https://tv.neptunebusiness.com'
+          workers='https://neptune-media-webtv.neptunebusinessclub.workers.dev'
+          expected='neptune-studio-responsive-final-20260724-v12-3'
+          for base in "$workers" "$public"; do
+            for attempt in $(seq 1 24); do
+              curl --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/api/public/release?attempt=$attempt" > /tmp/release.json || true
+              if grep -Fq "\"release\":\"$expected\"" /tmp/release.json; then break; fi
+              sleep 10
+            done
+            cat /tmp/release.json
+            grep -Fq "\"release\":\"$expected\"" /tmp/release.json
+            grep -Fq '"tabletTopbar":"aligned-no-overlap"' /tmp/release.json
+            grep -Fq '"legacyAutopilot":"removed-direct-and-transitive"' /tmp/release.json
+          done
+          for attempt in $(seq 1 24); do
+            curl --silent --show-error -H 'Cache-Control: no-cache, no-store' "$public/studio/clients?asset=$attempt" > /tmp/studio.html || true
+            if grep -Fq '/studio/workspace-v43.css?v=2' /tmp/studio.html; then break; fi
+            sleep 10
+          done
+          grep -Fq '/studio/workspace-v43.css?v=2' /tmp/studio.html
+          ! grep -Fq '/studio/clients-autopilot-v36.js' /tmp/studio.html
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Playwright
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/neptune-responsive-v123
+          cd /tmp/neptune-responsive-v123
+          npm init -y >/dev/null
+          npm install --silent playwright@1.55.0
+          npx playwright install chromium
+
+      - name: Audit four reference widths
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd /tmp/neptune-responsive-v123
+          mkdir -p screenshots
+          cat > audit.mjs <<'EOF'
+          import fs from 'node:fs';
+          import { chromium } from 'playwright';
+
+          const base='https://tv.neptunebusiness.com';
+          const now=new Date().toISOString();
+          const order={id:'audit-v123',clientId:'c1',email:'lea.audit@example.com',fullName:'Léa Depoulain',company:'Neptune business',title:'Passage Neptune Media',format:'Hors Norme',paymentStatus:'paid',amountTotal:180000,currency:'eur',status:'studio_date_confirmation_pending',appointmentAt:'2026-07-27T06:00:00.000Z',appointmentSource:'google_calendar',filmingAt:null,nextAction:'Neptune attend la confirmation définitive du studio.',createdAt:now,updatedAt:now,steps:[],files:[],schedules:[],workflow:{supplierStatus:'pending',preparationStatus:'completed',currentLabel:'Date du passage en confirmation',nextAction:'Neptune attend la confirmation définitive du studio.',requestedFilmingAt:null,appointmentSource:'google_calendar',broadcastStatus:'not_scheduled',sourceQcStatus:'not_started',inventory:{sourceCount:0,finalCount:0,shortCount:0,hasSource:false,hasFinal:false,hasShort:false}}};
+          const clients={clients:[{id:'c1',email:order.email,fullName:order.fullName,company:order.company,active:true,orderCount:1}],orders:[order],supplierPayments:[],refundRequests:[],deletionRequests:[],finance:{}};
+          const control={ok:true,summary:{active:1,actions:1},actions:[{type:'order',orderId:order.id,title:'Confirmation du studio attendue',reason:'REC BOX doit confirmer ou proposer une autre date sous 48 heures.'}],upcoming:[]};
+          const sizes=[{name:'desktop-1440',width:1440,height:900},{name:'laptop-1180',width:1180,height:820},{name:'tablet-768',width:768,height:900},{name:'mobile-390',width:390,height:844}];
+          const browser=await chromium.launch({headless:true});
+          const failures=[];
+
+          for(const size of sizes){
+            let context;
+            try{
+              context=await browser.newContext({viewport:{width:size.width,height:size.height}});
+              await context.addInitScript(()=>localStorage.setItem('neptune_studio_sidebar_collapsed','1'));
+              const page=await context.newPage();
+              const errors=[];
+              page.on('pageerror',(error)=>errors.push(error.message));
+              await page.route('**/api/**',async(route)=>{
+                const path=new URL(route.request().url()).pathname;
+                const json=(body)=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
+                if(path==='/api/auth/status')return json({authenticated:true,csrfToken:'audit',user:{id:'a',email:'audit@neptunebusiness.com',role:'admin'}});
+                if(path==='/api/admin/clients')return json(clients);
+                if(path==='/api/admin/control-room')return json(control);
+                if(path==='/api/admin/workflow/events')return json({ok:true,events:[]});
+                if(path==='/api/admin/feedback')return json({items:[]});
+                return json({ok:true});
+              });
+
+              await page.goto(`${base}/studio/clients?audit=v12-3-${size.name}`,{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForSelector('[data-order-card="audit-v123"]',{state:'visible',timeout:30000});
+              await page.waitForTimeout(500);
+              await page.screenshot({path:`screenshots/${size.name}-list.png`,fullPage:true});
+
+              const list=await page.evaluate(()=>{
+                const rect=(selector)=>{const item=document.querySelector(selector)?.getBoundingClientRect();return item?{top:item.top,bottom:item.bottom,left:item.left,right:item.right,width:item.width,height:item.height}:null};
+                const card=rect('[data-order-card]'),pipeline=rect('#pipeline'),sidebar=rect('.studio-sidebar'),topbar=rect('.clients-topbar'),focus=rect('#workflowFocusBar');
+                const clipped=[...document.querySelectorAll('button,a,input,select,[role="button"]')].filter((element)=>{const style=getComputedStyle(element),r=element.getBoundingClientRect();if(style.display==='none'||style.visibility==='hidden'||r.width<1||r.height<1||element.closest('.workflow-stage-tabs,.studio-nav,.tabs'))return false;return r.left<-1||r.right>innerWidth+1;}).map((element)=>String(element.className)).slice(0,8);
+                return {innerWidth,docWidth:document.documentElement.scrollWidth,bodyWidth:document.body.scrollWidth,card,pipeline,sidebar,topbar,focus,active:document.querySelector('.workflow-stage-tabs button.active span')?.textContent?.trim()||'',clipped};
+              });
+              if(Math.max(list.docWidth,list.bodyWidth)>list.innerWidth+1)failures.push(`${size.name}: horizontal overflow ${JSON.stringify(list)}`);
+              if(list.active!=='À confirmer')failures.push(`${size.name}: active stage ${list.active}`);
+              if(list.pipeline&&list.card&&list.card.width/list.pipeline.width<.88)failures.push(`${size.name}: narrow card`);
+              if(list.clipped.length)failures.push(`${size.name}: clipped controls ${list.clipped.join(',')}`);
+              if(list.topbar&&list.focus&&list.focus.top<list.topbar.bottom-1)failures.push(`${size.name}: topbar overlap ${JSON.stringify({topbar:list.topbar,focus:list.focus})}`);
+              if(size.width>=721&&size.width<=1080&&(list.sidebar?.width<78||list.sidebar?.height<size.height-2))failures.push(`${size.name}: tablet sidebar ${JSON.stringify(list.sidebar)}`);
+              if(size.width<=720&&(list.sidebar?.width<size.width-2||list.sidebar?.height<60))failures.push(`${size.name}: mobile nav ${JSON.stringify(list.sidebar)}`);
+
+              if(size.width>=1081){
+                const before=await page.locator('.studio-sidebar').boundingBox();
+                await page.locator('#studioSidebarToggle').click();
+                await page.waitForTimeout(280);
+                const after=await page.locator('.studio-sidebar').boundingBox();
+                if(!before||!after||before.width>100||after.width<240)failures.push(`${size.name}: sidebar toggle ${before?.width}->${after?.width}`);
+                await page.locator('#studioSidebarToggle').click();
+              }
+
+              await page.locator('[data-focus-order]').click();
+              await page.waitForSelector('#workflowCommandCenter',{timeout:10000});
+              await page.waitForTimeout(250);
+              await page.screenshot({path:`screenshots/${size.name}-detail.png`,fullPage:true});
+              const detail=await page.evaluate(()=>{const r=document.querySelector('#clientDialog')?.getBoundingClientRect();return{left:r?.left||0,bodyHidden:Boolean(document.querySelector('#detailBody')?.hidden),command:Boolean(document.querySelector('#workflowCommandCenter'))};});
+              if(size.width>720&&detail.left<78)failures.push(`${size.name}: detail covers sidebar`);
+              if(size.width<=720&&Math.abs(detail.left)>1)failures.push(`${size.name}: mobile detail offset ${detail.left}`);
+              if(!detail.bodyHidden||!detail.command)failures.push(`${size.name}: duplicate tracking`);
+
+              await page.locator('[data-detail-tab="calendar"]').click();
+              await page.waitForTimeout(250);
+              await page.screenshot({path:`screenshots/${size.name}-calendar.png`,fullPage:true});
+              const calendar=await page.evaluate(()=>({bodyHidden:Boolean(document.querySelector('#detailBody')?.hidden),command:Boolean(document.querySelector('#workflowCommandCenter')),docWidth:document.documentElement.scrollWidth,innerWidth}));
+              if(calendar.bodyHidden||calendar.command||calendar.docWidth>calendar.innerWidth+1)failures.push(`${size.name}: calendar state ${JSON.stringify(calendar)}`);
+              if(errors.length)failures.push(`${size.name}: JS ${errors.join(' | ')}`);
+            }catch(error){
+              failures.push(`${size.name}: ${error.stack||error.message}`);
+            }finally{
+              await context?.close().catch(()=>{});
+            }
+          }
+
+          await browser.close();
+          fs.writeFileSync('screenshots/failures.txt',failures.join('\n')||'OK');
+          if(failures.length){console.error(failures.join('\n'));process.exit(1);}
+          console.log('Studio v12.3 responsive audit passed.');
+          EOF
+          node audit.mjs
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: studio-responsive-v12-3
+          path: /tmp/neptune-responsive-v123/screenshots
+          if-no-files-found: error

@@ -133,9 +133,13 @@ async function injectWorkflowAssets(response, pathname) {
   const studioPaths = new Set(['/studio/clients', '/studio/clients/', '/studio/clients.html']);
   if (!clientPaths.has(pathname) && !studioPaths.has(pathname)) return response;
   let body = await response.text();
+  const sharedCss = '/assets/neptune-premium-icons-v46.css?v=1';
+  const sharedJs = '/assets/neptune-premium-icons-v46.js?v=1';
+  if (!body.includes(sharedCss)) body = body.replace('</head>', `<link rel="stylesheet" href="${sharedCss}"></head>`);
   if (clientPaths.has(pathname)) {
-    if (!body.includes('/espace-client/workflow-v45.css')) body = body.replace('</head>', '<link rel="stylesheet" href="/espace-client/workflow-v45.css?v=5"></head>');
-    if (!body.includes('/espace-client/workflow-v45.js')) body = body.replace('</body>', '<script type="module" src="/espace-client/workflow-v45.js?v=5"></script></body>');
+    if (!body.includes('/espace-client/workflow-v45.css')) body = body.replace('</head>', '<link rel="stylesheet" href="/espace-client/workflow-v45.css?v=6"></head>');
+    if (!body.includes('/espace-client/client-premium-v46.css')) body = body.replace('</head>', '<link rel="stylesheet" href="/espace-client/client-premium-v46.css?v=1"></head>');
+    if (!body.includes('/espace-client/workflow-v45.js')) body = body.replace('</body>', '<script type="module" src="/espace-client/workflow-v45.js?v=6"></script></body>');
   }
   if (studioPaths.has(pathname)) {
     if (!body.includes('/studio/clients-workflow-v37.css')) body = body.replace('</head>', '<link rel="stylesheet" href="/studio/clients-workflow-v37.css?v=5"></head>');
@@ -144,6 +148,7 @@ async function injectWorkflowAssets(response, pathname) {
     if (!body.includes('/studio/clients-workflow-v37.js')) body = body.replace('</body>', '<script type="module" src="/studio/clients-workflow-v37.js?v=5"></script></body>');
     if (!body.includes('/studio/workspace-v42.js')) body = body.replace('</body>', '<script type="module" src="/studio/workspace-v42.js?v=3"></script></body>');
   }
+  if (!body.includes(sharedJs)) body = body.replace('</body>', `<script type="module" src="${sharedJs}"></script></body>`);
   const headers = new Headers(response.headers);
   headers.delete('Content-Length');
   headers.set('Cache-Control', 'private, no-store, max-age=0');

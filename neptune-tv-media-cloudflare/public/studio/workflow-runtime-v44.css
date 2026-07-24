@@ -1,0 +1,22 @@
+/* Parcours Studio sans wrapper autopilot hérité */
+.studio-minimal-workflow .clients-main>.controls{
+  display:flex!important;
+  width:100%;
+  margin:14px 0 18px!important;
+  padding:0!important;
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+.studio-minimal-workflow .clients-main>#pipeline{
+  width:100%;
+  margin:0;
+}
+.studio-minimal-workflow .clients-main>.controls .search{
+  flex:1 1 auto;
+  width:100%;
+  min-width:0;
+}
+@media(max-width:700px){
+  .studio-minimal-workflow .clients-main>.controls{margin:12px 0 14px!important}
+}

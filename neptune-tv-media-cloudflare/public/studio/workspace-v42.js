@@ -71,6 +71,7 @@ function installIntegratedDialog(){
       document.body.classList.add('studio-detail-open');
       enhanceDetailHeader();
       syncDetailOffsets();
+      syncDetailView();
     }
   }).observe(detailDialog,{attributes:true,attributeFilter:['open'],childList:true,subtree:true});
 }
@@ -105,8 +106,24 @@ function syncDetailOffsets(){
 
 function observeCommandCenter(){
   if(!detailDialog)return;
-  new MutationObserver(()=>upgradeDateForms()).observe(detailDialog,{childList:true,subtree:true});
+  new MutationObserver(()=>{
+    upgradeDateForms();
+    syncDetailView();
+  }).observe(detailDialog,{childList:true,subtree:true});
+  detailDialog.addEventListener('click',(event)=>{
+    if(event.target.closest?.('[data-detail-tab]'))window.setTimeout(syncDetailView,0);
+  });
   upgradeDateForms();
+  syncDetailView();
+}
+
+function syncDetailView(){
+  const root=detailDialog?.querySelector('#clientDetail');
+  const body=root?.querySelector('#detailBody');
+  if(!body)return;
+  const activeTab=root.querySelector('.tabs button.active')?.dataset.detailTab||'tracking';
+  const commandCenter=root.querySelector('#workflowCommandCenter');
+  body.hidden=activeTab==='tracking'&&Boolean(commandCenter);
 }
 
 function upgradeDateForms(){

@@ -13,7 +13,7 @@
   <div id="auth" class="login">
     <form id="login" class="login-card">
       <div class="login-brand"><img src="/assets/logo-neptune.svg" alt=""><span><b>Neptune Media</b><small>Administration avancée</small></span></div>
-      <p class="eyebrow">ESPACE PRIVÉ</p><h1>Réglages et gestion<br><span>hors du quotidien.</span></h1><p>Cette zone contient les fonctions détaillées qui ne doivent pas encombrer la tour de contrôle.</p>
+      <p class="eyebrow">ESPACE PRIVÉ</p><h1>Réglages et gestion<br><span>hors du quotidien.</span></h1><p>Cette zone contient les fonctions détaillées qui ne doivent pas encombrer le parcours clients.</p>
       <label><span>Adresse e-mail</span><input name="email" type="email" autocomplete="username" value="contact@neptunebusiness.com" required></label>
       <label id="passwordField"><span>Mot de passe</span><input name="password" type="password" autocomplete="current-password" minlength="12" required></label>
       <label id="confirmField" hidden><span>Confirmer le mot de passe</span><input name="confirmPassword" type="password" autocomplete="new-password" minlength="12"></label>
@@ -23,17 +23,17 @@
   </div>
   <div id="app" class="shell" hidden>
     <aside class="sidebar">
-      <a class="brand" href="/studio/" aria-label="Retour au contrôle automatique"><img src="/assets/logo-neptune.svg" alt=""><div><b>Neptune</b><small>Media · Administration</small></div></a>
+      <a class="brand" href="/studio/clients" aria-label="Retour au parcours clients"><img src="/assets/logo-neptune.svg" alt=""><div><b>Neptune</b><small>Media · Administration</small></div></a>
       <div class="workspace-status"><i></i><span>Zone avancée</span></div>
       <nav id="nav" aria-label="Navigation avancée">
-        <p class="nav-label">Retour</p><a class="nav-btn" href="/studio/"><span>⌂</span><strong>Contrôle automatique</strong></a><a class="nav-btn" href="/studio/clients"><span>◎</span><strong>Clients</strong></a>
+        <p class="nav-label">Retour</p><a class="nav-btn" href="/studio/clients"><span>◎</span><strong>Parcours clients</strong></a>
         <p class="nav-label">Diffusion</p><button class="nav-btn" data-tab="episodes" data-role="admin,editor"><span>▶</span><strong>Programme</strong></button><button class="nav-btn" data-tab="programs" data-role="admin,editor"><span>▦</span><strong>Formats</strong></button><button class="nav-btn" data-tab="ads" data-role="admin"><span>◈</span><strong>Publicités</strong></button>
         <p class="nav-label">Analyse</p><button class="nav-btn" data-tab="insights"><span>↗</span><strong>Audience</strong></button><button class="nav-btn" data-tab="finances" data-role="admin"><span>€</span><strong>Finances</strong></button>
         <p class="nav-label">Système</p><button class="nav-btn" data-tab="users" data-role="admin"><span>◎</span><strong>Utilisateurs</strong></button><button class="nav-btn" data-tab="ai" data-role="admin,editor,analyst"><span>✦</span><strong>Neptune Copilot</strong></button><button class="nav-btn" data-tab="audit" data-role="admin"><span>≣</span><strong>Journal d’audit</strong></button><button class="nav-btn" data-tab="settings"><span>⚙</span><strong>Réglages</strong></button>
       </nav>
       <div class="sidebar-bottom account"><div class="user-card"><span class="avatar">NM</span><div class="user-meta"><b id="accountName"></b><small id="accountRole"></small></div><button class="logout-icon" id="logout" title="Déconnexion" aria-label="Déconnexion">↪</button></div></div>
     </aside>
-    <main class="main"><header class="topbar"><div><p class="eyebrow">ADMINISTRATION AVANCÉE</p><h1 id="title">Programme</h1></div><div class="top-actions"><span id="syncState" class="sync"><i></i> Synchronisé</span><a class="btn" href="/studio/">Retour au contrôle</a><button class="btn btn-primary" id="refresh">Actualiser</button></div></header><section id="content" class="content"></section></main>
+    <main class="main"><header class="topbar"><div><p class="eyebrow">ADMINISTRATION AVANCÉE</p><h1 id="title">Programme</h1></div><div class="top-actions"><span id="syncState" class="sync"><i></i> Synchronisé</span><a class="btn" href="/studio/clients">Retour au parcours</a><button class="btn btn-primary" id="refresh">Actualiser</button></div></header><section id="content" class="content"></section></main>
   </div>
   <div id="toast" class="toast" hidden></div>
   <script type="module" src="/studio/studio.js?v=32"></script>

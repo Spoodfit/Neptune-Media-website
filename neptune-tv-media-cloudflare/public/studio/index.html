@@ -5,64 +5,29 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="robots" content="noindex,nofollow">
   <meta name="theme-color" content="#06183f">
-  <title>Neptune Media · Contrôle automatique</title>
+  <title>Connexion · Neptune Media Studio</title>
   <link rel="icon" href="/assets/logo-neptune.svg">
-  <link rel="stylesheet" href="/studio/control-v36.css?v=1">
+  <link rel="stylesheet" href="/studio/studio-login-v48.css?v=1">
 </head>
 <body>
-  <div id="auth" class="login-shell">
-    <form id="login" class="login-card">
-      <a class="login-brand" href="/" aria-label="Neptune Media"><img src="/assets/logo-neptune.svg" alt=""><span><b>Neptune Media</b><small>Studio Admin</small></span></a>
-      <p class="eyebrow">POSTE DE CONTRÔLE PRIVÉ</p>
-      <h1>Ouvrez.<br><span>Comprenez. Fermez.</span></h1>
-      <p class="login-intro">Le Studio remonte uniquement ce qui nécessite une décision humaine.</p>
+  <main id="auth" class="login-shell">
+    <form id="login" class="login-card" novalidate>
+      <a class="login-brand" href="/studio/clients" aria-label="Neptune Media Studio">
+        <img src="/assets/logo-neptune.svg" alt="">
+        <span><b>Neptune Media</b><small>Studio Admin</small></span>
+      </a>
+      <p class="eyebrow">ACCÈS PRIVÉ</p>
+      <h1>Un seul Studio.<br><span>Un seul parcours.</span></h1>
+      <p class="login-intro">Connectez-vous pour accéder directement au dernier espace de pilotage des clients.</p>
       <label><span>Adresse e-mail</span><input name="email" type="email" autocomplete="username" value="contact@neptunebusiness.com" required></label>
       <label id="passwordField"><span>Mot de passe</span><input name="password" type="password" autocomplete="current-password" minlength="12" required></label>
       <label id="confirmField" hidden><span>Confirmer le mot de passe</span><input name="confirmPassword" type="password" autocomplete="new-password" minlength="12"></label>
-      <button id="loginSubmit" class="primary" type="submit">Ouvrir le Studio</button>
+      <button id="loginSubmit" class="primary" type="submit">Accéder au Studio</button>
       <button id="requestReset" class="quiet" type="button">Première connexion ou mot de passe oublié</button>
       <p id="authHint" class="hint">Un lien sécurisé sera envoyé à l’adresse administrateur.</p>
-      <p id="authMsg" class="message" aria-live="polite"></p>
+      <p id="authMsg" class="message" aria-live="polite">Vérification de votre session…</p>
     </form>
-  </div>
-  <div id="app" class="app-shell" hidden>
-    <aside class="sidebar">
-      <a class="brand" href="/studio/"><img src="/assets/logo-neptune.svg" alt=""><span><b>Neptune</b><small>Media · Contrôle</small></span></a>
-      <div class="live-status"><i></i><span>Surveillance active</span></div>
-      <nav aria-label="Navigation du Studio">
-        <p>Contrôle</p>
-        <a class="nav-link active" href="/studio/"><span>⌂</span><strong>Vue d’ensemble</strong></a>
-        <a class="nav-link" href="/studio/clients"><span>◎</span><strong>Surveillance clients</strong></a>
-        <p>Production</p>
-        <a class="nav-link" href="/studio/clients#contenus"><span>▣</span><strong>Contenus</strong></a>
-        <a class="nav-link" href="/studio/clients#calendrier"><span>▦</span><strong>Calendrier</strong></a>
-        <a class="nav-link accent" href="https://neptune-video-clean.neptunebusinessclub.workers.dev/" target="_blank" rel="noopener"><span>✦</span><strong>Video Studio</strong><em>↗</em></a>
-        <p>Administration</p>
-        <a class="nav-link" href="/studio/advanced.html#episodes"><span>▶</span><strong>Programme</strong></a>
-        <a class="nav-link" href="/studio/advanced.html#finances"><span>€</span><strong>Finances</strong></a>
-        <a class="nav-link" href="/studio/advanced.html#settings"><span>⚙</span><strong>Réglages avancés</strong></a>
-      </nav>
-      <div class="account-card">
-        <span class="avatar">NM</span>
-        <span><b id="accountName">Neptune Media</b><small id="accountRole">Équipe</small></span>
-        <button id="logout" type="button" aria-label="Déconnexion" title="Déconnexion">↪</button>
-      </div>
-    </aside>
-    <main class="workspace">
-      <header class="topbar">
-        <div><p class="eyebrow">ÉTAT DU STUDIO EN TEMPS RÉEL</p><h1>Contrôle automatique</h1></div>
-        <div class="top-actions">
-          <span id="roleBadge" class="role-badge">Équipe</span>
-          <span id="syncState" class="sync"><i></i><span>Vérification…</span></span>
-          <button id="refresh" class="secondary" type="button">Vérifier maintenant</button>
-        </div>
-      </header>
-      <section id="content" class="content" aria-live="polite">
-        <div class="loading-card"><span></span><strong>Vérification du Studio…</strong></div>
-      </section>
-    </main>
-  </div>
-  <div id="toast" class="toast" hidden aria-live="polite"><span id="toastText"></span><button id="toastUndo" type="button" hidden>Annuler</button></div>
-  <script type="module" src="/studio/control-v37.js?v=1"></script>
+  </main>
+  <script type="module" src="/studio/studio-login-v48.js?v=1"></script>
 </body>
 </html>

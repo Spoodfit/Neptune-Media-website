@@ -16,6 +16,10 @@ const LEGACY_STUDIO_PATHS = new Set([
   '/studio/dashboard/',
   '/studio/dashboard.html',
 ]);
+const RETIRED_STUDIO_ASSETS = new Set([
+  '/studio/control-v37.js',
+  '/studio/control-v36.css',
+]);
 
 export default {
   async fetch(request, env, ctx) {
@@ -23,6 +27,10 @@ export default {
 
     if (request.method === 'GET' && url.pathname === RELEASE_PATH) {
       return releaseResponse(request, env);
+    }
+
+    if (request.method === 'GET' && RETIRED_STUDIO_ASSETS.has(url.pathname)) {
+      return retiredStudioAssetResponse();
     }
 
     if (request.method === 'GET' && LEGACY_STUDIO_PATHS.has(url.pathname)) {
@@ -45,6 +53,16 @@ export default {
     if (typeof base.scheduled === 'function') return base.scheduled(controller, env, ctx);
   },
 };
+
+function retiredStudioAssetResponse() {
+  return withReleaseHeader(new Response('Not Found', {
+    status: 404,
+    headers: {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'no-store',
+    },
+  }));
+}
 
 function studioRedirect(url) {
   const target = new URL(STUDIO_CANONICAL_PATH, url.origin);
@@ -75,6 +93,7 @@ function releaseResponse(request, env) {
     studioCanonicalPath: STUDIO_CANONICAL_PATH,
     studioEntryMode: 'login-gateway-to-canonical-workspace',
     legacyStudioDashboard: 'removed',
+    retiredStudioAssets: 'blocked-with-404',
     premiumIconSystem: 'neptune-premium-icons-v46',
     clientResponsiveAudit: 'desktop-laptop-tablet-mobile',
     appointmentAuthority: 'google_calendar_event',

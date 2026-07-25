@@ -57,8 +57,9 @@ function decorate(){
     if(!order)return;
     if(currentOrderId!==orderId){currentOrderId=orderId;activeFilter='all';activePage=1;}
     const detailGrid=$('#detailBody .detail-grid',root);
+    if(!detailGrid)return;
     const panel=$(':scope > .panel',detailGrid);
-    if(!detailGrid||!panel)return;
+    if(!panel)return;
     compactUpload(detailGrid);
     renderPanel(panel,order);
   }finally{
@@ -68,8 +69,9 @@ function decorate(){
 
 function compactUpload(detailGrid){
   const aside=$(':scope > aside',detailGrid);
+  if(!aside)return;
   const form=$('#uploadForm',aside);
-  if(!aside||!form||form.closest('.studio-upload-details'))return;
+  if(!form||form.closest('.studio-upload-details'))return;
   aside.classList.add('studio-content-side');
   const details=document.createElement('details');
   details.className='studio-upload-details';

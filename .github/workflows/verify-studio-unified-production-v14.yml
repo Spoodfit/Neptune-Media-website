@@ -26,7 +26,8 @@ jobs:
               "$PUBLIC_URL/api/public/release?studio-unified=$attempt" > /tmp/release.json || true
             if grep -Fq '"studioCanonicalPath":"/studio/clients"' /tmp/release.json \
               && grep -Fq '"studioEntryMode":"login-gateway-to-canonical-workspace"' /tmp/release.json \
-              && grep -Fq '"legacyStudioDashboard":"removed"' /tmp/release.json; then
+              && grep -Fq '"legacyStudioDashboard":"removed"' /tmp/release.json \
+              && grep -Fq '"retiredStudioAssets":"blocked-with-404"' /tmp/release.json; then
               cat /tmp/release.json
               exit 0
             fi

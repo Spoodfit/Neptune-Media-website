@@ -43,44 +43,64 @@ jobs:
         run: |
           set -euo pipefail
           cat > /tmp/verify-studio-v14-2.mjs <<'EOF'
+          import fs from 'node:fs';
           import { chromium } from 'playwright';
+
           const browser = await chromium.launch({ headless: true });
           const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
           const page = await context.newPage();
           const pageErrors = [];
+          const requests = [];
           page.on('pageerror', (error) => pageErrors.push(String(error.message || error)));
+          page.on('request', (request) => {
+            const url = new URL(request.url());
+            if (url.pathname.startsWith('/api/')) requests.push(url.pathname);
+          });
 
-          await page.route('**/api/auth/status**', (route) => route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({ authenticated: true, csrfToken: 'verification-token', user: { email: 'contact@neptunebusiness.com', role: 'admin' } }),
-          }));
-          await page.route('**/api/admin/clients**', (route) => route.fulfill({
-            status: 200,
-            contentType: 'application/json',
-            body: JSON.stringify({ clients: [], orders: [], supplierPayments: [], refundRequests: [], deletionRequests: [], finance: {} }),
-          }));
+          await page.route('**/api/**', async (route) => {
+            const pathname = new URL(route.request().url()).pathname;
+            const body = pathname === '/api/auth/status'
+              ? { authenticated: true, csrfToken: 'verification-token', user: { email: 'contact@neptunebusiness.com', role: 'admin' } }
+              : pathname === '/api/admin/clients'
+                ? { clients: [], orders: [], supplierPayments: [], refundRequests: [], deletionRequests: [], finance: {} }
+                : {};
+            await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+          });
 
-          await page.goto('https://tv.neptunebusiness.com/studio/?behavior=unified-v14-2', { waitUntil: 'domcontentloaded', timeout: 60000 });
-          await page.waitForURL((url) => url.pathname === '/studio/clients', { timeout: 20000 });
-          await page.waitForSelector('.clients-topbar h1', { state: 'visible', timeout: 20000 });
-          await page.waitForFunction(() => document.querySelector('.clients-topbar h1')?.textContent?.trim() === 'Parcours clients', null, { timeout: 10000 });
+          let state = {};
+          let failure = '';
+          try {
+            await page.goto('https://tv.neptunebusiness.com/studio/?behavior=unified-v14-2', { waitUntil: 'domcontentloaded', timeout: 60000 });
+            await page.waitForURL((url) => /^\/studio\/clients\/?$/u.test(url.pathname), { timeout: 20000 });
+            await page.waitForSelector('.clients-topbar h1', { state: 'visible', timeout: 20000 });
+            await page.waitForFunction(() => document.querySelector('.clients-topbar h1')?.textContent?.trim() === 'Parcours clients', null, { timeout: 10000 });
+            state = await page.evaluate(() => ({
+              path: location.pathname,
+              title: document.title,
+              heading: document.querySelector('.clients-topbar h1')?.textContent?.trim() || '',
+              oldControlTitle: document.body.textContent?.includes('Contrôle automatique') || false,
+              oldSecureCard: document.body.textContent?.includes('points à sécuriser') || false,
+              loginGatewayStillVisible: Boolean(document.querySelector('.login-shell')),
+            }));
+            if (!/^\/studio\/clients\/?$/u.test(state.path)) failure = `Chemin final incorrect: ${JSON.stringify(state)}`;
+            else if (state.heading !== 'Parcours clients') failure = `Workspace incorrect: ${JSON.stringify(state)}`;
+            else if (state.oldControlTitle || state.oldSecureCard || state.loginGatewayStillVisible) failure = `Ancienne interface encore visible: ${JSON.stringify(state)}`;
+          } catch (error) {
+            failure = String(error.stack || error.message || error);
+            state = await page.evaluate(() => ({
+              path: location.pathname,
+              title: document.title,
+              heading: document.querySelector('.clients-topbar h1')?.textContent?.trim() || '',
+              bodyStart: document.body.textContent?.trim().slice(0, 500) || '',
+            })).catch(() => ({}));
+          }
 
-          const state = await page.evaluate(() => ({
-            path: location.pathname,
-            title: document.title,
-            heading: document.querySelector('.clients-topbar h1')?.textContent?.trim() || '',
-            oldControlTitle: document.body.textContent?.includes('Contrôle automatique') || false,
-            oldSecureCard: document.body.textContent?.includes('points à sécuriser') || false,
-            loginGatewayStillVisible: Boolean(document.querySelector('.login-shell')),
-          }));
-          console.log(JSON.stringify({ state, pageErrors }));
-          if (state.path !== '/studio/clients') throw new Error(`Chemin final incorrect: ${JSON.stringify(state)}`);
-          if (state.heading !== 'Parcours clients') throw new Error(`Workspace incorrect: ${JSON.stringify(state)}`);
-          if (state.oldControlTitle || state.oldSecureCard || state.loginGatewayStillVisible) throw new Error(`Ancienne interface encore visible: ${JSON.stringify(state)}`);
-
-          await page.screenshot({ path: '/tmp/studio-unified-v14-2.png', fullPage: true });
+          const report = { state, pageErrors, requests, failure };
+          fs.writeFileSync('/tmp/studio-unified-v14-2.json', JSON.stringify(report, null, 2));
+          console.log(JSON.stringify(report));
+          await page.screenshot({ path: '/tmp/studio-unified-v14-2.png', fullPage: true }).catch(() => {});
           await browser.close();
+          if (failure) throw new Error(failure);
           EOF
           node /tmp/verify-studio-v14-2.mjs
 
@@ -89,5 +109,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: studio-unified-production-v14-2
-          path: /tmp/studio-unified-v14-2.png
+          path: |
+            /tmp/studio-unified-v14-2.png
+            /tmp/studio-unified-v14-2.json
           if-no-files-found: warn

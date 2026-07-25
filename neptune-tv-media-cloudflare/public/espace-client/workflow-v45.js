@@ -78,7 +78,55 @@ function render(){
   setText($('#passageBadge'),stage.label);
   setText($('#appointmentBadge'),appointmentAt?`Visio · ${formatCompact(appointmentAt)}`:'Visio à réserver');
   panel.querySelector('[data-minimal-tracking]')?.addEventListener('click',()=>openTracking(order));
+  renderDeliveries();
 }
+
+function renderDeliveries(){
+  const orders=state?.orders||[];
+  const total=orders.reduce((sum,item)=>sum+(item.files||[]).length,0);
+  setText($('#videoBadge'),`${total} contenu${total>1?'s':''}`);
+  const anchor=$('.overview-grid');
+  if(!anchor)return;
+  let section=$('#clientDriveDeliveries');
+  if(!section){
+    section=document.createElement('section');
+    section.id='clientDriveDeliveries';
+    section.className='client-drive-deliveries';
+    anchor.after(section);
+  }
+
+  const passages=orders.filter((item)=>(item.files||[]).length||item.drive?.syncStatus==='ready');
+  if(!passages.length){section.hidden=true;return;}
+  section.hidden=false;
+  section.innerHTML=`<header><div><p class="section-label">VOS LIVRAISONS</p><h2>Vos contenus, classés par passage</h2><p>Chaque ajout dans votre dossier Neptune Media apparaît automatiquement ici.</p></div><span class="drive-sync-pill"><i></i> Synchronisé</span></header><div class="client-passage-list">${passages.map((item,index)=>passageMarkup(item,index===0)).join('')}</div>`;
+
+  const latestLong=passages.flatMap((item)=>(item.files||[]).filter((file)=>isLong(file.fileType)).map((file)=>({...file,order:item}))).sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0))[0];
+  const preview=$('#broadcastPreview');
+  if(preview&&latestLong){
+    preview.innerHTML=`<a href="${esc(latestLong.downloadUrl)}"><span>▶</span><small>${esc(latestLong.name)}</small></a>`;
+  }
+}
+
+function passageMarkup(order,open){
+  const files=order.files||[];
+  const longFiles=files.filter((file)=>isLong(file.fileType));
+  const shorts=files.filter((file)=>isShort(file.fileType));
+  const number=Math.max(1,Number(order.drive?.passageNumber||passageNumber(order)));
+  const summary=[longFiles.length?`${longFiles.length} long format${longFiles.length>1?'s':''}`:'',shorts.length?`${shorts.length} short${shorts.length>1?'s':''}`:''].filter(Boolean).join(' · ')||'Dossier prêt';
+  return `<details class="client-passage-card" ${open?'open':''}><summary><span><small>PASSAGE ${String(number).padStart(2,'0')}</small><strong>${esc(order.title||order.format||'Passage Neptune Media')}</strong></span><b>${esc(summary)}</b></summary><div class="client-passage-content">${fileGroup('Long format',longFiles,'Votre émission complète apparaîtra ici.')}${fileGroup('Shorts',shorts,'Les formats courts seront ajoutés progressivement.')}${order.drive?.passageFolderUrl?`<p class="client-drive-meta">Dernière synchronisation : ${esc(order.drive.lastScanAt?formatDate(order.drive.lastScanAt):'en attente du premier contrôle')}</p>`:''}</div></details>`;
+}
+
+function fileGroup(label,files,emptyText){
+  return `<section class="client-file-group"><header><span>${esc(label)}</span><b>${files.length}</b></header>${files.length?`<div>${files.map((file)=>`<a class="client-file-row" href="${esc(file.downloadUrl)}"><span><strong>${esc(file.name)}</strong><small>${esc(file.sizeLabel||'Fichier vidéo')}</small></span><b>Télécharger</b></a>`).join('')}</div>`:`<p>${esc(emptyText)}</p>`}</section>`;
+}
+
+function passageNumber(order){
+  const orders=(state?.orders||[]).slice().sort((a,b)=>new Date(a.createdAt||0)-new Date(b.createdAt||0));
+  return orders.findIndex((item)=>item.id===order.id)+1;
+}
+
+function isShort(value){return ['short','shorts','reel','teaser'].includes(String(value||'').toLowerCase());}
+function isLong(value){return ['final','emission','full','master','episode','long'].includes(String(value||'').toLowerCase());}
 
 function openTracking(order){
   const trigger=document.querySelector('[data-open-panel="tracking"]');

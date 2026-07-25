@@ -3,6 +3,14 @@ import { json } from './security.js';
 import { ensurePortalSchema } from './portal-schema.js';
 import { latestCalendarAppointment } from './workflow-db-v5.js';
 import {
+  driveFilesUpsert,
+  driveMarkNotified,
+  driveProvisioned,
+  driveSyncPlan,
+  enrichDriveOrders,
+  ensureDriveSchema,
+} from './portal-drive.js';
+import {
   ensureWorkflowSchema,
   enrichOrderCollection,
   initializeWorkflowForOrder,
@@ -22,6 +30,25 @@ export class StudioStore extends LegacyStore {
   async fetch(request) {
     const url = new URL(request.url);
     const method = request.method.toUpperCase();
+
+    if (url.pathname.startsWith('/portal/drive-')) {
+      ensurePortalSchema(this);
+      ensureDriveSchema(this);
+      const body = method === 'GET' ? {} : await request.clone().json().catch(() => ({}));
+      try {
+        if (url.pathname === '/portal/drive-sync-plan' && method === 'POST') return driveSyncPlan(this);
+        if (url.pathname === '/portal/drive-provisioned' && method === 'POST') return driveProvisioned(this, body);
+        if (url.pathname === '/portal/drive-files' && method === 'POST') return driveFilesUpsert(this, body);
+        if (url.pathname === '/portal/drive-notified' && method === 'POST') return driveMarkNotified(this, body);
+      } catch (error) {
+        console.error('drive_store_route_failed', {
+          path: url.pathname,
+          name: error?.name || 'Error',
+          message: String(error?.message || error || 'unknown').slice(0, 500),
+        });
+        return json({ error: 'drive_operation_failed' }, 500);
+      }
+    }
 
     if (url.pathname.startsWith('/portal/workflow-') || url.pathname === '/portal/autopilot-snapshot' || url.pathname === '/portal/autopilot-reconcile') {
       ensurePortalSchema(this);
@@ -82,9 +109,10 @@ export class StudioStore extends LegacyStore {
 
     try {
       ensureWorkflowSchema(this);
+      ensureDriveSchema(this);
       if (url.pathname === '/portal/order-upsert' && result.orderId) {
         const workflow = await initializeWorkflowForOrder(this, result.orderId, body, { created: Boolean(result.created) });
-        return json({ ...result, ...workflow });
+        return json({ ...result, ...workflow, driveProvisionPending: Boolean(result.created) });
       }
       if (url.pathname === '/portal/appointment-upsert' && result.orderId) {
         const appointmentAt = result.appointmentAt || body.appointmentAt || body.appointment_at || body.start || body.startAt;
@@ -92,10 +120,12 @@ export class StudioStore extends LegacyStore {
         return json({ ...result, ...workflow, appointmentAt, appointmentSource: 'google_calendar', status: this.currentOrderStatus(result.orderId) });
       }
       if (url.pathname === '/portal/session') {
-        return json({ ...result, orders: enrichOrderCollection(this, Array.isArray(result.orders) ? result.orders : []) });
+        const enriched = enrichOrderCollection(this, Array.isArray(result.orders) ? result.orders : []);
+        return json({ ...result, orders: enrichDriveOrders(this, enriched) });
       }
       if (url.pathname === '/portal/admin-list') {
-        return json({ ...result, orders: enrichOrderCollection(this, Array.isArray(result.orders) ? result.orders : []) });
+        const enriched = enrichOrderCollection(this, Array.isArray(result.orders) ? result.orders : []);
+        return json({ ...result, orders: enrichDriveOrders(this, enriched) });
       }
       if (url.pathname === '/portal/admin-file' && result.fileId) {
         const reconciled = await workflowReconcile(this, { system: true });
@@ -104,8 +134,8 @@ export class StudioStore extends LegacyStore {
       }
       if (url.pathname === '/portal/admin-update' && result.orderId) {
         reconcileWorkflowFromLegacyUpdate(this, result.orderId, body.payload || body);
-        const enriched = enrichOrderCollection(this, [{ ...result, id: result.orderId }])[0];
-        return json({ ...result, appointmentAt: enriched?.appointmentAt || result.appointmentAt, appointmentSource: enriched?.appointmentSource || null, appointmentProtected, workflow: enriched?.workflow || null });
+        const enriched = enrichDriveOrders(this, enrichOrderCollection(this, [{ ...result, id: result.orderId }]))[0];
+        return json({ ...result, appointmentAt: enriched?.appointmentAt || result.appointmentAt, appointmentSource: enriched?.appointmentSource || null, appointmentProtected, workflow: enriched?.workflow || null, drive: enriched?.drive || null });
       }
     } catch (error) {
       console.error('workflow_store_enrichment_failed', {

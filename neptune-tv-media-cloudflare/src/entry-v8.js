@@ -2,6 +2,7 @@ import base from './entry-v7.js';
 import { StudioStore } from './store-v5.js';
 import { emailHealthResponse } from './email-service.js';
 import { handleClientCodeRequest } from './portal-code-login.js';
+import { handleDriveRoute } from './portal-drive-routes.js';
 import { json, securityHeaders } from './security.js';
 import { flushWorkflowOutbox, handleWorkflowRoute } from './portal-workflow-routes-v5.js';
 
@@ -39,6 +40,8 @@ export default {
       if (request.method === 'GET' && url.pathname === PROSPECT_CONTEXT_PATH) return secure(await getPublicProspectContext(request, env));
 
       const studio = env.STUDIO.get(env.STUDIO.idFromName('neptune-media-main'));
+      const drive = await handleDriveRoute(request, env, studio);
+      if (drive) return secure(drive);
       const workflow = await handleWorkflowRoute(request, env, studio);
       if (workflow) return secure(workflow);
 
@@ -137,16 +140,18 @@ async function injectWorkflowAssets(response, pathname) {
   const sharedJs = '/assets/neptune-premium-icons-v46.js?v=1';
   if (!body.includes(sharedCss)) body = body.replace('</head>', `<link rel="stylesheet" href="${sharedCss}"></head>`);
   if (clientPaths.has(pathname)) {
-    if (!body.includes('/espace-client/workflow-v45.css')) body = body.replace('</head>', '<link rel="stylesheet" href="/espace-client/workflow-v45.css?v=6"></head>');
+    if (!body.includes('/espace-client/workflow-v45.css')) body = body.replace('</head>', '<link rel="stylesheet" href="/espace-client/workflow-v45.css?v=7"></head>');
     if (!body.includes('/espace-client/client-premium-v46.css')) body = body.replace('</head>', '<link rel="stylesheet" href="/espace-client/client-premium-v46.css?v=1"></head>');
-    if (!body.includes('/espace-client/workflow-v45.js')) body = body.replace('</body>', '<script type="module" src="/espace-client/workflow-v45.js?v=6"></script></body>');
+    if (!body.includes('/espace-client/workflow-v45.js')) body = body.replace('</body>', '<script type="module" src="/espace-client/workflow-v45.js?v=7"></script></body>');
   }
   if (studioPaths.has(pathname)) {
-    if (!body.includes('/studio/clients-workflow-v37.css')) body = body.replace('</head>', '<link rel="stylesheet" href="/studio/clients-workflow-v37.css?v=5"></head>');
+    if (!body.includes('/studio/clients-workflow-v37.css')) body = body.replace('</head>', '<link rel="stylesheet" href="/studio/clients-workflow-v37.css?v=6"></head>');
     if (!body.includes('/studio/workspace-v42.css')) body = body.replace('</head>', '<link rel="stylesheet" href="/studio/workspace-v42.css?v=3"></head>');
     if (!body.includes('/studio/workflow-runtime-v44.css')) body = body.replace('</head>', '<link rel="stylesheet" href="/studio/workflow-runtime-v44.css?v=1"></head>');
-    if (!body.includes('/studio/clients-workflow-v37.js')) body = body.replace('</body>', '<script type="module" src="/studio/clients-workflow-v37.js?v=5"></script></body>');
+    if (!body.includes('/studio/drive-sync-v47.css')) body = body.replace('</head>', '<link rel="stylesheet" href="/studio/drive-sync-v47.css?v=1"></head>');
+    if (!body.includes('/studio/clients-workflow-v37.js')) body = body.replace('</body>', '<script type="module" src="/studio/clients-workflow-v37.js?v=6"></script></body>');
     if (!body.includes('/studio/workspace-v42.js')) body = body.replace('</body>', '<script type="module" src="/studio/workspace-v42.js?v=3"></script></body>');
+    if (!body.includes('/studio/drive-sync-v47.js')) body = body.replace('</body>', '<script type="module" src="/studio/drive-sync-v47.js?v=1"></script></body>');
   }
   if (!body.includes(sharedJs)) body = body.replace('</body>', `<script type="module" src="${sharedJs}"></script></body>`);
   const headers = new Headers(response.headers);

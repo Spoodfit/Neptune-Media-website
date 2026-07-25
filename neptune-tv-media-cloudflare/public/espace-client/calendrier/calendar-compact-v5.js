@@ -19,7 +19,7 @@ async function boot(){
     const response=await fetch('/api/client/content-calendar',{headers:{Accept:'application/json'},credentials:'same-origin'});
     const data=await response.json().catch(()=>({}));
     (data.assets||data.items||[]).forEach((asset)=>assetMap.set(String(asset.fileId||asset.id),asset));
-  }catch(error){console.error('calendar_compact_assets_failed',error);}
+  }catch{}
   observer=new MutationObserver(schedule);
   observe();
   schedule();

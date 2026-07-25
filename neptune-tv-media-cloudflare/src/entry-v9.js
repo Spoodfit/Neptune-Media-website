@@ -3,9 +3,19 @@ import { StudioStore } from './store-v5.js';
 
 export { StudioStore };
 
-const RELEASE_ID = 'neptune-client-responsive-premium-20260724-v13';
+const RELEASE_ID = 'neptune-studio-unified-20260725-v14';
 const RELEASE_PATH = '/api/public/release';
 const ORDER_WEBHOOKS = new Set(['/api/webhooks/client-order', '/api/webhooks/conversion']);
+const STUDIO_CANONICAL_PATH = '/studio/clients';
+const LEGACY_STUDIO_PATHS = new Set([
+  '/studio/index.html',
+  '/studio/control',
+  '/studio/control/',
+  '/studio/control.html',
+  '/studio/dashboard',
+  '/studio/dashboard/',
+  '/studio/dashboard.html',
+]);
 
 export default {
   async fetch(request, env, ctx) {
@@ -13,6 +23,10 @@ export default {
 
     if (request.method === 'GET' && url.pathname === RELEASE_PATH) {
       return releaseResponse(request, env);
+    }
+
+    if (request.method === 'GET' && LEGACY_STUDIO_PATHS.has(url.pathname)) {
+      return studioRedirect(url);
     }
 
     const tracked = request.method === 'POST' && ORDER_WEBHOOKS.has(url.pathname) ? request.clone() : null;
@@ -32,6 +46,18 @@ export default {
   },
 };
 
+function studioRedirect(url) {
+  const target = new URL(STUDIO_CANONICAL_PATH, url.origin);
+  target.search = url.search;
+  return withReleaseHeader(new Response(null, {
+    status: 302,
+    headers: {
+      Location: target.toString(),
+      'Cache-Control': 'no-store',
+    },
+  }));
+}
+
 function releaseResponse(request, env) {
   const resendSecretPresent = typeof env?.RESEND_API_KEY === 'string' && env.RESEND_API_KEY.trim().length > 0;
   const webhookSecretPresent = typeof env?.CONVERSION_WEBHOOK_SECRET === 'string' && env.CONVERSION_WEBHOOK_SECRET.trim().length > 0;
@@ -45,11 +71,14 @@ function releaseResponse(request, env) {
     webhookSecretPresent,
     workflowStore: 'store-v5',
     clientWorkflowUi: 'workflow-v45-responsive-premium-v13',
-    studioWorkflowUi: 'workspace-v42-responsive-final',
+    studioWorkflowUi: 'workspace-v42-unified-v14',
+    studioCanonicalPath: STUDIO_CANONICAL_PATH,
+    studioEntryMode: 'login-gateway-to-canonical-workspace',
+    legacyStudioDashboard: 'removed',
     premiumIconSystem: 'neptune-premium-icons-v46',
     clientResponsiveAudit: 'desktop-laptop-tablet-mobile',
     appointmentAuthority: 'google_calendar_event',
-    responsiveAudit: 'client-and-studio-v13',
+    responsiveAudit: 'client-and-studio-v14',
     tabletTopbar: 'aligned-no-overlap',
     interactionModel: 'inline-confirmation-no-native-popup',
     legacyAutopilot: 'removed-direct-and-transitive',

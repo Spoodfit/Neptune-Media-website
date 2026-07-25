@@ -1,0 +1,93 @@
+name: Verify Studio Unified Production v14.2
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-studio-unified-production-v14-2.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-behavior:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check production contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
+            'https://tv.neptunebusiness.com/api/public/release?verify=v14-2' > /tmp/release.json
+          cat /tmp/release.json
+          grep -Fq '"studioCanonicalPath":"/studio/clients"' /tmp/release.json
+          grep -Fq '"legacyStudioDashboard":"removed"' /tmp/release.json
+          grep -Fq '"retiredStudioAssets":"blocked-with-404"' /tmp/release.json
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' 'https://tv.neptunebusiness.com/studio/control-v37.js')" = '404'
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' 'https://tv.neptunebusiness.com/studio/control-v36.css')" = '404'
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install chromium
+
+      - name: Verify canonical authenticated landing
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/verify-studio-v14-2.mjs <<'EOF'
+          import { chromium } from 'playwright';
+          const browser = await chromium.launch({ headless: true });
+          const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+          const page = await context.newPage();
+          const pageErrors = [];
+          page.on('pageerror', (error) => pageErrors.push(String(error.message || error)));
+
+          await page.route('**/api/auth/status**', (route) => route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ authenticated: true, csrfToken: 'verification-token', user: { email: 'contact@neptunebusiness.com', role: 'admin' } }),
+          }));
+          await page.route('**/api/admin/clients**', (route) => route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ clients: [], orders: [], supplierPayments: [], refundRequests: [], deletionRequests: [], finance: {} }),
+          }));
+
+          await page.goto('https://tv.neptunebusiness.com/studio/?behavior=unified-v14-2', { waitUntil: 'domcontentloaded', timeout: 60000 });
+          await page.waitForURL((url) => url.pathname === '/studio/clients', { timeout: 20000 });
+          await page.waitForSelector('.clients-topbar h1', { state: 'visible', timeout: 20000 });
+          await page.waitForFunction(() => document.querySelector('.clients-topbar h1')?.textContent?.trim() === 'Parcours clients', null, { timeout: 10000 });
+
+          const state = await page.evaluate(() => ({
+            path: location.pathname,
+            title: document.title,
+            heading: document.querySelector('.clients-topbar h1')?.textContent?.trim() || '',
+            oldControlTitle: document.body.textContent?.includes('Contrôle automatique') || false,
+            oldSecureCard: document.body.textContent?.includes('points à sécuriser') || false,
+            loginGatewayStillVisible: Boolean(document.querySelector('.login-shell')),
+          }));
+          console.log(JSON.stringify({ state, pageErrors }));
+          if (state.path !== '/studio/clients') throw new Error(`Chemin final incorrect: ${JSON.stringify(state)}`);
+          if (state.heading !== 'Parcours clients') throw new Error(`Workspace incorrect: ${JSON.stringify(state)}`);
+          if (state.oldControlTitle || state.oldSecureCard || state.loginGatewayStillVisible) throw new Error(`Ancienne interface encore visible: ${JSON.stringify(state)}`);
+
+          await page.screenshot({ path: '/tmp/studio-unified-v14-2.png', fullPage: true });
+          await browser.close();
+          EOF
+          node /tmp/verify-studio-v14-2.mjs
+
+      - name: Upload proof
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: studio-unified-production-v14-2
+          path: /tmp/studio-unified-v14-2.png
+          if-no-files-found: warn

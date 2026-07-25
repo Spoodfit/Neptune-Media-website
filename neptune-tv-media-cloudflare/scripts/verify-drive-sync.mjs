@@ -25,11 +25,16 @@ check(files.driveRoutes, 'drive_delivery_email_failed', 'retry e-mail Drive abse
 check(files.driveEmail, 'Accéder à mes contenus', 'CTA e-mail livraison absent');
 check(files.store, "'/portal/drive-sync-plan'", 'store ne route pas le plan Drive');
 check(files.entry, 'handleDriveRoute', 'Worker ne charge pas les routes Drive');
-check(files.entry, '/studio/drive-sync-v47.js', 'interface Studio Drive non injectée');
+check(files.entry, '/studio/drive-sync-v47.js?v=2', 'version corrigée de l’interface Studio Drive non injectée');
 check(files.release, 'driveSecretPresent', 'diagnostic secret Drive absent');
 check(files.release, 'client/passage/long-and-shorts', 'architecture Drive absente du diagnostic');
+check(files.release, 'studioDriveObserver', 'diagnostic de protection anti-boucle absent');
 check(files.clientUi, 'clientDriveDeliveries', 'livraisons Drive absentes de l’espace client');
 check(files.studioUi, 'studioDrivePanel', 'suivi Drive absent du Studio');
+check(files.studioUi, 'driveObserver?.disconnect()', 'observateur Studio non suspendu pendant le rendu');
+check(files.studioUi, 'driveRenderKey', 'rendu Studio Drive non idempotent');
+check(files.studioUi, 'requestAnimationFrame', 'rafraîchissement DOM Studio non limité par frame');
+forbid(files.studioUi, 'new MutationObserver(decorateDriveUi)', 'boucle MutationObserver directe réintroduite');
 check(files.appsScript, 'installerSynchronisationDrive', 'installateur Apps Script absent');
 check(files.appsScript, 'everyMinutes(5)', 'déclencheur Drive 5 minutes absent');
 check(files.appsScript, 'sendNotificationEmail=false', 'partage silencieux Drive absent');
@@ -53,4 +58,8 @@ async function read(path) {
 
 function check(content, needle, message) {
   if (!content.includes(needle)) failures.push(message);
+}
+
+function forbid(content, needle, message) {
+  if (content.includes(needle)) failures.push(message);
 }

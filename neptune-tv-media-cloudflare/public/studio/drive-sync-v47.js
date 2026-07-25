@@ -1,6 +1,9 @@
 const $=(selector,root=document)=>root.querySelector(selector);
 let driveAdminState=null;
 let refreshTimer=0;
+let decorateFrame=0;
+let driveObserver=null;
+let observedRoot=null;
 
 bootDriveStudio();
 
@@ -9,27 +12,45 @@ function bootDriveStudio(){
 }
 
 function startDriveStudio(){
-  const root=$('.clients-main');
-  if(!root)return;
-  new MutationObserver(decorateDriveUi).observe(root,{childList:true,subtree:true});
+  observedRoot=$('.clients-main');
+  if(!observedRoot)return;
+  driveObserver=new MutationObserver(()=>scheduleDriveDecoration());
+  observeDriveRoot();
   window.addEventListener('focus',refreshDriveState);
   $('#refresh')?.addEventListener('click',()=>setTimeout(refreshDriveState,180));
   refreshDriveState();
+}
+
+function observeDriveRoot(){
+  if(driveObserver&&observedRoot)driveObserver.observe(observedRoot,{childList:true,subtree:true});
+}
+
+function scheduleDriveDecoration(){
+  if(!driveAdminState||decorateFrame)return;
+  decorateFrame=requestAnimationFrame(()=>{
+    decorateFrame=0;
+    decorateDriveUi();
+  });
 }
 
 async function refreshDriveState(){
   clearTimeout(refreshTimer);
   try{
     driveAdminState=await api('/api/admin/clients');
-    decorateDriveUi();
+    scheduleDriveDecoration();
   }catch(error){console.error('studio_drive_state_failed',error);}
   refreshTimer=setTimeout(refreshDriveState,60_000);
 }
 
 function decorateDriveUi(){
   if(!driveAdminState)return;
-  document.querySelectorAll('[data-order-card]').forEach((card)=>decorateCard(card));
-  decorateDrawer();
+  driveObserver?.disconnect();
+  try{
+    document.querySelectorAll('[data-order-card]').forEach((card)=>decorateCard(card));
+    decorateDrawer();
+  }finally{
+    observeDriveRoot();
+  }
 }
 
 function decorateCard(card){
@@ -45,6 +66,9 @@ function decorateCard(card){
   const drive=order.drive||{};
   const ready=drive.syncStatus==='ready';
   const content=Number(drive.totalCount||0);
+  const key=[ready,content,Number(drive.longCount||0),Number(drive.shortCount||0),drive.lastScanAt||''].join('|');
+  if(summary.dataset.driveRenderKey===key)return;
+  summary.dataset.driveRenderKey=key;
   summary.classList.toggle('is-ready',ready);
   summary.classList.toggle('has-content',content>0);
   summary.innerHTML=`<small>Drive client</small><strong>${esc(content?`${drive.longCount||0} long · ${drive.shortCount||0} shorts`:ready?'Dossier prêt':'Création en attente')}</strong><span>${esc(drive.lastScanAt?`Synchronisé ${relativeDate(drive.lastScanAt)}`:'Automatique')}</span>`;
@@ -68,6 +92,9 @@ function decorateDrawer(){
   }
   const drive=order.drive||{};
   const ready=drive.syncStatus==='ready';
+  const key=[ready,Number(drive.longCount||0),Number(drive.shortCount||0),drive.lastScanAt||'',drive.passageFolderUrl||''].join('|');
+  if(panel.dataset.driveRenderKey===key)return;
+  panel.dataset.driveRenderKey=key;
   panel.innerHTML=`<header><div><small>SYNCHRONISATION DRIVE</small><strong>${esc(ready?'Dossier du passage connecté':'Création automatique en attente')}</strong></div><span class="${ready?'is-ok':'is-pending'}"><i></i>${ready?'Actif':'En attente'}</span></header><div class="studio-drive-stats"><article><small>Long format</small><strong>${Number(drive.longCount||0)}</strong></article><article><small>Shorts</small><strong>${Number(drive.shortCount||0)}</strong></article><article><small>Dernier contrôle</small><strong>${esc(drive.lastScanAt?relativeDate(drive.lastScanAt):'À venir')}</strong></article></div><footer>${drive.passageFolderUrl?`<a href="${esc(drive.passageFolderUrl)}" target="_blank" rel="noopener">Ouvrir le dossier Drive</a>`:'<span>Le dossier sera créé lors du prochain cycle Apps Script.</span>'}<small>Contrôle automatique toutes les 5 minutes</small></footer>`;
 }
 

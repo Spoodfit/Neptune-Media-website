@@ -3,7 +3,7 @@ import { StudioStore } from './store-v5.js';
 
 export { StudioStore };
 
-const RELEASE_ID = 'neptune-drive-delivery-sync-20260725-v15';
+const RELEASE_ID = 'neptune-studio-drive-loop-fix-20260725-v16';
 const RELEASE_PATH = '/api/public/release';
 const ORDER_WEBHOOKS = new Set(['/api/webhooks/client-order', '/api/webhooks/conversion']);
 const STUDIO_CANONICAL_PATH = '/studio/clients';
@@ -92,11 +92,12 @@ function releaseResponse(request, env) {
     driveSecretPresent,
     workflowStore: 'store-v5',
     clientWorkflowUi: 'workflow-v45-drive-deliveries-v15',
-    studioWorkflowUi: 'workspace-v42-drive-sync-v47',
+    studioWorkflowUi: 'workspace-v42-drive-sync-v47-loop-safe-v16',
     driveSynchronization: 'apps-script-polling-5-minutes',
     driveFolderArchitecture: 'client/passage/long-and-shorts',
     driveDeliveryEmail: 'resend-grouped-idempotent',
     driveFileAuthority: 'google-drive-file-id-and-modified-at',
+    studioDriveObserver: 'disconnect-during-render-and-fingerprint',
     studioCanonicalPath: STUDIO_CANONICAL_PATH,
     studioEntryMode: 'login-gateway-to-canonical-workspace',
     legacyStudioDashboard: 'removed',
@@ -104,7 +105,7 @@ function releaseResponse(request, env) {
     premiumIconSystem: 'neptune-premium-icons-v46',
     clientResponsiveAudit: 'desktop-laptop-tablet-mobile',
     appointmentAuthority: 'google_calendar_event',
-    responsiveAudit: 'client-and-studio-v15',
+    responsiveAudit: 'client-and-studio-v16',
     tabletTopbar: 'aligned-no-overlap',
     interactionModel: 'inline-confirmation-no-native-popup',
     legacyAutopilot: 'removed-direct-and-transitive',

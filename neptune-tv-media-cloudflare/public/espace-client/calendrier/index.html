@@ -8,6 +8,7 @@
   <title>Calendrier de contenu · Neptune Media</title>
   <link rel="icon" href="/assets/logo-neptune.svg">
   <link rel="stylesheet" href="/espace-client/calendrier/calendar.css?v=4">
+  <link rel="stylesheet" href="/espace-client/calendrier/calendar-compact-v5.css?v=1">
 </head>
 <body>
   <header class="calendar-header">
@@ -44,7 +45,7 @@
 
     <section id="libraryView" class="view-panel" role="tabpanel" hidden>
       <section class="shorts-section" aria-labelledby="shortsTitle">
-        <header class="section-heading"><div><p class="eyebrow">BIBLIOTHÈQUE</p><h2 id="shortsTitle">Mes shorts par passage</h2><p>Cliquez sur un contenu pour ouvrir sa fiche complète analysée par Neptune IA.</p></div></header>
+        <header class="section-heading"><div><p class="eyebrow">BIBLIOTHÈQUE</p><h2 id="shortsTitle">Mes shorts par passage</h2><p>Un passage à la fois, avec huit contenus maximum par écran.</p></div></header>
         <div id="projectLibrary" class="project-library" aria-live="polite"></div>
       </section>
     </section>
@@ -58,5 +59,6 @@
 
   <div id="toast" class="toast" hidden></div>
   <script type="module" src="/espace-client/calendrier/calendar.js?v=4"></script>
+  <script type="module" src="/espace-client/calendrier/calendar-compact-v5.js?v=1"></script>
 </body>
 </html>

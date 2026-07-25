@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#081d4e">
   <title>Mes vidéos · Neptune Media</title>
   <link rel="icon" href="/assets/logo-neptune.svg">
-  <link rel="stylesheet" href="/espace-client/videos/videos.css?v=2">
+  <link rel="stylesheet" href="/espace-client/videos/videos-compact-v3.css?v=1">
 </head>
 <body>
   <header class="library-header">
@@ -24,7 +24,7 @@
       <div class="intro-copy">
         <p class="eyebrow">VOS CONTENUS</p>
         <h1>Toutes mes vidéos.</h1>
-        <p>Chaque passage conserve son émission et ses contenus courts au même endroit.</p>
+        <p>Un passage à la fois, avec un aperçu visuel et huit contenus maximum par écran.</p>
       </div>
       <div class="library-summary" aria-label="Résumé de la bibliothèque">
         <div><strong id="contentCount">0</strong><span>vidéos</span></div>
@@ -37,15 +37,15 @@
       <header class="section-heading content-toolbar">
         <div><p class="eyebrow">BIBLIOTHÈQUE</p><h2 id="libraryTitle">Mes passages</h2><p id="resultLabel">Chargement de vos vidéos…</p></div>
         <div id="filters" class="filters" aria-label="Choisir le type de vidéo">
-          <button class="active" type="button" data-filter="final">Émissions</button>
-          <button type="button" data-filter="short">Shorts</button>
+          <button class="active" type="button" data-filter="final" aria-pressed="true">Émissions</button>
+          <button type="button" data-filter="short" aria-pressed="false">Shorts</button>
         </div>
       </header>
-      <div id="contentGrid" class="passage-list" data-view="final" aria-live="polite"></div>
+      <div id="contentGrid" aria-live="polite"></div>
     </section>
   </main>
 
   <div id="toast" class="toast" hidden></div>
-  <script type="module" src="/espace-client/videos/videos.js?v=2"></script>
+  <script type="module" src="/espace-client/videos/videos-compact-v3.js?v=1"></script>
 </body>
 </html>

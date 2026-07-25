@@ -142,16 +142,20 @@ async function injectWorkflowAssets(response, pathname) {
   if (clientPaths.has(pathname)) {
     if (!body.includes('/espace-client/workflow-v45.css')) body = body.replace('</head>', '<link rel="stylesheet" href="/espace-client/workflow-v45.css?v=7"></head>');
     if (!body.includes('/espace-client/client-premium-v46.css')) body = body.replace('</head>', '<link rel="stylesheet" href="/espace-client/client-premium-v46.css?v=1"></head>');
+    if (!body.includes('/espace-client/content-snapshot-v48.css')) body = body.replace('</head>', '<link rel="stylesheet" href="/espace-client/content-snapshot-v48.css?v=1"></head>');
     if (!body.includes('/espace-client/workflow-v45.js')) body = body.replace('</body>', '<script type="module" src="/espace-client/workflow-v45.js?v=7"></script></body>');
+    if (!body.includes('/espace-client/content-snapshot-v48.js')) body = body.replace('</body>', '<script type="module" src="/espace-client/content-snapshot-v48.js?v=1"></script></body>');
   }
   if (studioPaths.has(pathname)) {
     if (!body.includes('/studio/clients-workflow-v37.css')) body = body.replace('</head>', '<link rel="stylesheet" href="/studio/clients-workflow-v37.css?v=6"></head>');
     if (!body.includes('/studio/workspace-v42.css')) body = body.replace('</head>', '<link rel="stylesheet" href="/studio/workspace-v42.css?v=3"></head>');
     if (!body.includes('/studio/workflow-runtime-v44.css')) body = body.replace('</head>', '<link rel="stylesheet" href="/studio/workflow-runtime-v44.css?v=1"></head>');
     if (!body.includes('/studio/drive-sync-v47.css')) body = body.replace('</head>', '<link rel="stylesheet" href="/studio/drive-sync-v47.css?v=1"></head>');
+    if (!body.includes('/studio/content-gallery-v49.css')) body = body.replace('</head>', '<link rel="stylesheet" href="/studio/content-gallery-v49.css?v=1"></head>');
     if (!body.includes('/studio/clients-workflow-v37.js')) body = body.replace('</body>', '<script type="module" src="/studio/clients-workflow-v37.js?v=6"></script></body>');
     if (!body.includes('/studio/workspace-v42.js')) body = body.replace('</body>', '<script type="module" src="/studio/workspace-v42.js?v=3"></script></body>');
     if (!body.includes('/studio/drive-sync-v47.js')) body = body.replace('</body>', '<script type="module" src="/studio/drive-sync-v47.js?v=2"></script></body>');
+    if (!body.includes('/studio/content-gallery-v49.js')) body = body.replace('</body>', '<script type="module" src="/studio/content-gallery-v49.js?v=1"></script></body>');
   }
   if (!body.includes(sharedJs)) body = body.replace('</body>', `<script type="module" src="${sharedJs}"></script></body>`);
   const headers = new Headers(response.headers);

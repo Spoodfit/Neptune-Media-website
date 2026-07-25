@@ -1,0 +1,42 @@
+name: Verify Studio Drive Loop Fix v16
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/verify-studio-drive-loop-fix-v16.yml'
+
+jobs:
+  verify-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Wait for production release
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 24); do
+            body="$(curl -fsSL --max-time 20 https://tv.neptunebusiness.com/api/public/release || true)"
+            if printf '%s' "$body" | grep -q 'neptune-studio-drive-loop-fix-20260725-v16'; then
+              printf '%s\n' "$body"
+              exit 0
+            fi
+            echo "Attempt ${attempt}: release v16 not active yet"
+            sleep 10
+          done
+          echo 'Release v16 was not observed in production' >&2
+          exit 1
+
+      - name: Verify loop-safe Studio runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          html="$(curl -fsSL --max-time 20 https://tv.neptunebusiness.com/studio/clients)"
+          printf '%s' "$html" | grep -q '/studio/drive-sync-v47.js?v=2'
+          runtime="$(curl -fsSL --max-time 20 'https://tv.neptunebusiness.com/studio/drive-sync-v47.js?v=2')"
+          printf '%s' "$runtime" | grep -Fq 'driveObserver?.disconnect()'
+          printf '%s' "$runtime" | grep -Fq 'driveRenderKey'
+          printf '%s' "$runtime" | grep -Fq 'requestAnimationFrame'
+          if printf '%s' "$runtime" | grep -Fq 'new MutationObserver(decorateDriveUi)'; then
+            echo 'Unsafe direct MutationObserver loop is still deployed' >&2
+            exit 1
+          fi

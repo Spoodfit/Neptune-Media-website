@@ -3,7 +3,7 @@ import { StudioStore } from './store-v5.js';
 
 export { StudioStore };
 
-const RELEASE_ID = 'neptune-client-responsive-premium-20260724-v13';
+const RELEASE_ID = 'neptune-drive-delivery-sync-20260725-v15';
 const RELEASE_PATH = '/api/public/release';
 const ORDER_WEBHOOKS = new Set(['/api/webhooks/client-order', '/api/webhooks/conversion']);
 const STUDIO_CANONICAL_PATH = '/studio/clients';
@@ -79,17 +79,24 @@ function studioRedirect(url) {
 function releaseResponse(request, env) {
   const resendSecretPresent = typeof env?.RESEND_API_KEY === 'string' && env.RESEND_API_KEY.trim().length > 0;
   const webhookSecretPresent = typeof env?.CONVERSION_WEBHOOK_SECRET === 'string' && env.CONVERSION_WEBHOOK_SECRET.trim().length > 0;
+  const driveSecretPresent = typeof env?.DRIVE_WEBHOOK_SECRET === 'string' && env.DRIVE_WEBHOOK_SECRET.trim().length > 0;
+  const healthy = resendSecretPresent && webhookSecretPresent && driveSecretPresent;
 
   return new Response(JSON.stringify({
-    ok: resendSecretPresent && webhookSecretPresent,
+    ok: healthy,
     release: RELEASE_ID,
     worker: 'neptune-media-webtv',
     host: new URL(request.url).host,
     resendSecretPresent,
     webhookSecretPresent,
+    driveSecretPresent,
     workflowStore: 'store-v5',
-    clientWorkflowUi: 'workflow-v45-responsive-premium-v13',
-    studioWorkflowUi: 'workspace-v42-responsive-final',
+    clientWorkflowUi: 'workflow-v45-drive-deliveries-v15',
+    studioWorkflowUi: 'workspace-v42-drive-sync-v47',
+    driveSynchronization: 'apps-script-polling-5-minutes',
+    driveFolderArchitecture: 'client/passage/long-and-shorts',
+    driveDeliveryEmail: 'resend-grouped-idempotent',
+    driveFileAuthority: 'google-drive-file-id-and-modified-at',
     studioCanonicalPath: STUDIO_CANONICAL_PATH,
     studioEntryMode: 'login-gateway-to-canonical-workspace',
     legacyStudioDashboard: 'removed',
@@ -97,7 +104,7 @@ function releaseResponse(request, env) {
     premiumIconSystem: 'neptune-premium-icons-v46',
     clientResponsiveAudit: 'desktop-laptop-tablet-mobile',
     appointmentAuthority: 'google_calendar_event',
-    responsiveAudit: 'client-and-studio-v13',
+    responsiveAudit: 'client-and-studio-v15',
     tabletTopbar: 'aligned-no-overlap',
     interactionModel: 'inline-confirmation-no-native-popup',
     legacyAutopilot: 'removed-direct-and-transitive',
@@ -105,7 +112,7 @@ function releaseResponse(request, env) {
     sender: 'Neptune Media <contact@neptunebusiness.com>',
     trustedTestClient: 'contact@neptunebusiness.com',
   }), {
-    status: resendSecretPresent && webhookSecretPresent ? 200 : 503,
+    status: healthy ? 200 : 503,
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
       'Cache-Control': 'no-store',

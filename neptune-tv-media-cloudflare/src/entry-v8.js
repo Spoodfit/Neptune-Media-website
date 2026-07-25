@@ -151,7 +151,7 @@ async function injectWorkflowAssets(response, pathname) {
     if (!body.includes('/studio/drive-sync-v47.css')) body = body.replace('</head>', '<link rel="stylesheet" href="/studio/drive-sync-v47.css?v=1"></head>');
     if (!body.includes('/studio/clients-workflow-v37.js')) body = body.replace('</body>', '<script type="module" src="/studio/clients-workflow-v37.js?v=6"></script></body>');
     if (!body.includes('/studio/workspace-v42.js')) body = body.replace('</body>', '<script type="module" src="/studio/workspace-v42.js?v=3"></script></body>');
-    if (!body.includes('/studio/drive-sync-v47.js')) body = body.replace('</body>', '<script type="module" src="/studio/drive-sync-v47.js?v=1"></script></body>');
+    if (!body.includes('/studio/drive-sync-v47.js')) body = body.replace('</body>', '<script type="module" src="/studio/drive-sync-v47.js?v=2"></script></body>');
   }
   if (!body.includes(sharedJs)) body = body.replace('</body>', `<script type="module" src="${sharedJs}"></script></body>`);
   const headers = new Headers(response.headers);

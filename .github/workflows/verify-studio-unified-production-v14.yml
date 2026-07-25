@@ -61,10 +61,15 @@ jobs:
           ! grep -Fq '>Vue d’ensemble<' /tmp/studio-clients.html
           ! grep -Fq '>Surveillance clients<' /tmp/studio-clients.html
 
-          test "$(curl --silent --output /dev/null --write-out '%{http_code}' "$PUBLIC_URL/studio/control-v37.js")" = '404'
-          test "$(curl --silent --output /dev/null --write-out '%{http_code}' "$PUBLIC_URL/studio/control-v36.css")" = '404'
+          status_js="$(curl --silent --output /dev/null --write-out '%{http_code}' "$PUBLIC_URL/studio/control-v37.js")"
+          status_css="$(curl --silent --output /dev/null --write-out '%{http_code}' "$PUBLIC_URL/studio/control-v36.css")"
+          echo "control-v37.js=$status_js control-v36.css=$status_css"
+          test "$status_js" = '404'
+          test "$status_css" = '404'
 
-          curl --silent --show-error --head "$PUBLIC_URL/studio/control.html?verify=$GITHUB_SHA" > /tmp/legacy-headers.txt
+          curl --silent --show-error --get --dump-header /tmp/legacy-headers.txt --output /dev/null \
+            --data-urlencode "verify=$GITHUB_SHA" "$PUBLIC_URL/studio/control.html"
+          cat /tmp/legacy-headers.txt
           grep -Eiq '^location: https://tv\.neptunebusiness\.com/studio/clients\?verify=' /tmp/legacy-headers.txt
 
       - name: Setup Node

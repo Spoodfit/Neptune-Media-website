@@ -1,5 +1,8 @@
 import { syncSteps } from './portal-utils.js';
 
+const DATA_MIGRATION_KEY = 'portal_schema_data_migration';
+const DATA_MIGRATION_VERSION = 'portal-schema-20260729-efficiency-v1';
+
 export function ensurePortalSchema(store){
   if(store.portalSchemaReady)return;
   store.sql.exec(`
@@ -49,15 +52,27 @@ export function ensurePortalSchema(store){
     CREATE INDEX IF NOT EXISTS idx_portal_referrals_order ON portal_referrals(order_id);
     CREATE INDEX IF NOT EXISTS idx_portal_referral_alias_client ON portal_referral_aliases(client_id);
   `);
-  store.sql.exec(`
-    INSERT OR IGNORE INTO portal_content_occurrences
-      (id,order_id,file_id,source_schedule_id,publish_at,network,status,title,description,hashtags,caption,use_index,created_at,updated_at)
-    SELECT 'occ-' || s.id,s.order_id,s.file_id,s.id,s.publish_at,s.network,s.status,
-           COALESCE(a.title,''),COALESCE(a.description,''),COALESCE(a.hashtags,'[]'),s.caption,1,s.created_at,s.updated_at
-    FROM portal_content_schedule s
-    LEFT JOIN portal_content_ai a ON a.file_id=s.file_id;
-  `);
-  const now=new Date().toISOString();
-  for(const order of store.sql.exec('SELECT id,status,updated_at AS updatedAt FROM portal_orders').toArray())syncSteps(store,order.id,order.status,order.updatedAt||now);
+
+  const applied = store.sql.exec('SELECT value FROM meta WHERE key=?', DATA_MIGRATION_KEY).toArray()[0]?.value;
+  if (applied !== DATA_MIGRATION_VERSION) {
+    store.sql.exec("DELETE FROM portal_steps WHERE step_key='approval'");
+    store.sql.exec(`
+      INSERT OR IGNORE INTO portal_content_occurrences
+        (id,order_id,file_id,source_schedule_id,publish_at,network,status,title,description,hashtags,caption,use_index,created_at,updated_at)
+      SELECT 'occ-' || s.id,s.order_id,s.file_id,s.id,s.publish_at,s.network,s.status,
+             COALESCE(a.title,''),COALESCE(a.description,''),COALESCE(a.hashtags,'[]'),s.caption,1,s.created_at,s.updated_at
+      FROM portal_content_schedule s
+      LEFT JOIN portal_content_ai a ON a.file_id=s.file_id;
+    `);
+    const now=new Date().toISOString();
+    for(const order of store.sql.exec('SELECT id,status,updated_at AS updatedAt FROM portal_orders').toArray()){
+      syncSteps(store,order.id,order.status,order.updatedAt||now);
+    }
+    store.sql.exec(`
+      INSERT INTO meta(key,value) VALUES(?,?)
+      ON CONFLICT(key) DO UPDATE SET value=excluded.value
+      WHERE meta.value IS NOT excluded.value
+    `,DATA_MIGRATION_KEY,DATA_MIGRATION_VERSION);
+  }
   store.portalSchemaReady=true;
 }

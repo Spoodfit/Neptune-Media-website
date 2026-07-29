@@ -36,7 +36,7 @@ function initFormatPreviews() {
 }
 
 function installFormatPreview(card, preview) {
-  if (!card || card.querySelector('.format-preview')) return;
+  if (!card || card.querySelector('.format-preview, .format-video, iframe')) return;
   const bookingLink = card.querySelector('a');
   if (!bookingLink) return;
 

@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "neptune-media-webtv",
-  "main": "neptune-tv-media-cloudflare/src/entry-v9.js",
+  "main": "neptune-tv-media-cloudflare/src/entry-v10.js",
   "compatibility_date": "2026-07-16",
   "workers_dev": true,
   "keep_vars": true,

@@ -51,7 +51,7 @@ export const STATUS_LABELS = {
   filming_confirmed:'Passage confirmé',
   filmed:'Passage réalisé',
   videos_pending:'Vidéos du studio attendues',
-  videos_received:'Vidéos reçues par Neptune',
+  videos_received:'Vidéos reçues',
   editing:'Vidéos en cours de traitement',
   approval:'Vidéos en cours de traitement',
   delivered:'Vidéos montées et livrées',
@@ -116,19 +116,35 @@ export function cleanOrderPayload(payload={}){return {
   nextAction:sanitizeText(payload.nextAction,320),preparationUrl:sanitizeUrl(payload.preparationUrl,1200),bookingUrl:sanitizeUrl(payload.bookingUrl,1200),
 };}
 export function createSteps(store,orderId,status,now){
-  store.sql.exec("DELETE FROM portal_steps WHERE order_id=? AND step_key='approval'",orderId);
   const progress=statusRank(status);
   for(let i=0;i<ORDER_STEPS.length;i+=1){
     const [key,label]=ORDER_STEPS[i],pos=i+1,state=pos<progress?'done':pos===progress?'current':'pending';
-    store.sql.exec(`INSERT OR IGNORE INTO portal_steps (id,order_id,step_key,label,state,display_order,completed_at,note) VALUES (?,?,?,?,?,?,?,?)`,crypto.randomUUID(),orderId,key,label,state,pos*10,state==='done'?now:null,'');
-    store.sql.exec('UPDATE portal_steps SET label=?,display_order=? WHERE order_id=? AND step_key=?',label,pos*10,orderId,key);
+    store.sql.exec(`
+      INSERT INTO portal_steps (id,order_id,step_key,label,state,display_order,completed_at,note)
+      VALUES (?,?,?,?,?,?,?,?)
+      ON CONFLICT(order_id,step_key) DO UPDATE SET
+        label=excluded.label,
+        display_order=excluded.display_order
+      WHERE portal_steps.label IS NOT excluded.label
+         OR portal_steps.display_order IS NOT excluded.display_order
+    `,crypto.randomUUID(),orderId,key,label,state,pos*10,state==='done'?now:null,'');
   }
 }
 export function syncSteps(store,orderId,status,now){
   createSteps(store,orderId,status,now);
   const progress=statusRank(status);
   for(let i=0;i<ORDER_STEPS.length;i+=1){
-    const pos=i+1,state=pos<progress?'done':pos===progress?'current':'pending';
-    store.sql.exec(`UPDATE portal_steps SET state=?,completed_at=CASE WHEN ?='done' THEN COALESCE(completed_at,?) ELSE NULL END WHERE order_id=? AND step_key=?`,state,state,now,orderId,ORDER_STEPS[i][0]);
+    const key=ORDER_STEPS[i][0],pos=i+1,state=pos<progress?'done':pos===progress?'current':'pending';
+    store.sql.exec(`
+      UPDATE portal_steps
+      SET state=?,
+          completed_at=CASE WHEN ?='done' THEN COALESCE(completed_at,?) ELSE NULL END
+      WHERE order_id=? AND step_key=?
+        AND (
+          state<>?
+          OR (?='done' AND completed_at IS NULL)
+          OR (?<>'done' AND completed_at IS NOT NULL)
+        )
+    `,state,state,now,orderId,key,state,state,state);
   }
 }

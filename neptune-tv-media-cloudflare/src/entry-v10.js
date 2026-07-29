@@ -9,14 +9,24 @@ const STORAGE_RELEASE = 'rows-written-efficiency-20260729-v1';
 
 export default {
   async fetch(request, env, ctx) {
+    const url = new URL(request.url);
     const response = await base.fetch(request, env, ctx);
-    const headers = new Headers(response.headers);
-    headers.set('X-Neptune-Storage-Efficiency', STORAGE_RELEASE);
-    return new Response(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers,
-    });
+    if (request.method === 'GET' && url.pathname === '/api/public/release' && response.ok) {
+      const release = await response.json().catch(() => ({}));
+      return withReleaseHeaders(new Response(JSON.stringify({
+        ...release,
+        storageEfficiency: STORAGE_RELEASE,
+        workflowStore: 'store-v6',
+        driveSynchronization: 'apps-script-polling-5-minutes-idempotent',
+        sessionHeartbeat: '15-minutes',
+        stepSynchronization: 'conditional-idempotent',
+        legacyAutopilotScheduledReconcile: false,
+      }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
+      }));
+    }
+    return withReleaseHeaders(response);
   },
 
   async scheduled(controller, env, ctx) {
@@ -59,6 +69,16 @@ async function runScheduled(env, studio) {
     }).catch(() => {});
     throw error;
   }
+}
+
+function withReleaseHeaders(response) {
+  const headers = new Headers(response.headers);
+  headers.set('X-Neptune-Storage-Efficiency', STORAGE_RELEASE);
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 }
 
 function callStore(studio, path, body) {

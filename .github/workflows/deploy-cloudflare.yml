@@ -28,7 +28,7 @@ jobs:
       PUBLIC_URL: https://tv.neptunebusiness.com
       WORKERS_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
       RELEASE_ID: neptune-verified-content-runtime-20260730-v18
-      EFFICIENCY_RELEASE: neptune-efficiency-delta-analytics-20260730-v4
+      EFFICIENCY_RELEASE: neptune-efficiency-operational-fallback-20260730-v5
 
     steps:
       - name: Checkout
@@ -70,7 +70,9 @@ jobs:
                 && grep -Fq '"clientVideoLibrary":"passage-selector-horizontal-rails-4-long-8-short-v4"' /tmp/release.json \
                 && grep -Fq '"clientCalendarLibrary":"passage-selector-paginated-eight-shorts-v5"' /tmp/release.json \
                 && grep -Fq '"studioContentLibrary":"visual-grid-paginated-eight-items"' /tmp/release.json \
-                && grep -Fq '"contentScrollModel":"bounded-by-passage-horizontal-rails-and-pagination"' /tmp/release.json; then
+                && grep -Fq '"contentScrollModel":"bounded-by-passage-horizontal-rails-and-pagination"' /tmp/release.json \
+                && grep -Fq '"telemetryStorage":"operational-sqlite-with-optional-analytics-engine"' /tmp/release.json \
+                && grep -Fq '"analyticsEngineBinding":"optional-not-required-for-deployment"' /tmp/release.json; then
                 ok=1
                 break
               fi

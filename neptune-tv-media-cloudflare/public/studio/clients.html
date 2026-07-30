@@ -15,10 +15,11 @@
   <link rel="stylesheet" href="/studio/clients-automation-v35.css?v=1">
   <link rel="stylesheet" href="/studio/workspace-v43.css?v=2">
   <link rel="stylesheet" href="/studio/responsive-stability-v60.css?v=1">
+  <link rel="stylesheet" href="/studio/studio-clients-polish-v63.css?v=1">
 </head>
-<body class="clients-app">
+<body class="clients-app studio-clients-v63">
   <div class="studio-shell">
-    <aside class="studio-sidebar">
+    <aside id="studioSidebar" class="studio-sidebar">
       <a class="studio-brand" href="/studio/clients" aria-label="Parcours clients Neptune Media"><img src="/assets/logo-neptune.svg" alt=""><div><b>Neptune</b><small>Media · Studio</small></div></a>
       <div class="studio-status"><i></i><span>Synchronisation active</span></div>
       <nav class="studio-nav" aria-label="Navigation du Studio">
@@ -34,7 +35,7 @@
         <a class="studio-nav-link" href="/studio/advanced.html#finances"><span>€</span><strong>Finances</strong></a>
         <a class="studio-nav-link" href="/studio/advanced.html#settings"><span>⚙</span><strong>Réglages avancés</strong></a>
       </nav>
-      <a class="studio-account" href="/studio/clients" aria-label="Rester dans le parcours clients"><span class="studio-avatar">NM</span><span><b>Neptune Media</b><small>Studio unifié</small></span><i>→</i></a>
+      <a class="studio-account" href="/studio/advanced.html#settings" aria-label="Ouvrir les réglages du Studio"><span class="studio-avatar">NM</span><span><b>Compte Studio</b><small>Réglages et accès</small></span><i>→</i></a>
     </aside>
     <section class="clients-workspace">
       <header class="clients-topbar">
@@ -44,7 +45,7 @@
       <main class="clients-main">
         <section class="clients-hero">
           <div class="clients-hero-copy"><p class="eyebrow">PARCOURS CLIENTS</p><h2>Neptune surveille.<br><span>Vous validez l’exception.</span></h2><p>Les parcours avancent automatiquement. Cet écran ne remonte que les éléments qui méritent réellement votre attention.</p></div>
-          <div class="stats" aria-label="Résumé"><div><b id="clientCount">0</b><span>actions</span></div><div><b id="activeCount">0</b><span>à surveiller</span></div><div><b id="urgentCount">0</b><span>automatiques</span></div><button id="refresh" class="icon-button" type="button" aria-label="Vérifier maintenant">↻</button></div>
+          <div class="stats" aria-label="Résumé"><div><b id="clientCount">0</b><span>clients</span></div><div><b id="activeCount">0</b><span>parcours actifs</span></div><div><b id="urgentCount">0</b><span>urgences</span></div><button id="refresh" class="icon-button" type="button" aria-label="Vérifier maintenant">↻</button></div>
         </section>
         <section class="controls"><label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" aria-label="Rechercher un client, une entreprise ou un format" placeholder="Rechercher un client, une entreprise ou un format"></label><div class="view-links"><button type="button" data-open-section="contenus">Contenus</button><button type="button" data-open-section="calendrier">Calendrier</button><button type="button" data-open-section="finances">Facturation</button><button id="feedbackView" class="feedback-button" data-count="0" type="button">Avis clients</button></div></section>
         <section id="pipeline" class="pipeline" aria-live="polite"></section>
@@ -73,5 +74,6 @@
   <div id="toast" class="toast" hidden></div>
   <script type="module" src="/studio/clients.js?v=32"></script>
   <script type="module" src="/studio/clients-feedback-v31.js?v=2"></script>
+  <script type="module" src="/studio/studio-clients-polish-v63.js?v=1"></script>
 </body>
 </html>

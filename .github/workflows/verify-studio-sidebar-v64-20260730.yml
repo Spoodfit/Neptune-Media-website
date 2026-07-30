@@ -1,0 +1,87 @@
+name: Verify Studio Sidebar V64 20260730
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-studio-sidebar-v64-20260730.yml'
+      - 'neptune-tv-media-cloudflare/src/entry-v11.js'
+      - 'neptune-tv-media-cloudflare/public/studio/clients.html'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-sidebar-authority-v64.css'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-sidebar-authority-v64.js'
+      - 'neptune-tv-media-cloudflare/tests/audit-studio-sidebar-v64.mjs'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-studio-sidebar-v64-20260730.yml'
+      - 'neptune-tv-media-cloudflare/src/entry-v11.js'
+      - 'neptune-tv-media-cloudflare/public/studio/clients.html'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-sidebar-authority-v64.css'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-sidebar-authority-v64.js'
+      - 'neptune-tv-media-cloudflare/tests/audit-studio-sidebar-v64.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-sidebar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate source syntax
+        working-directory: neptune-tv-media-cloudflare
+        run: |
+          node --check src/entry-v11.js
+          node --check public/studio/studio-sidebar-authority-v64.js
+          node --check tests/audit-studio-sidebar-v64.mjs
+          grep -Fq 'single-authoritative-sidebar-v64' src/entry-v11.js
+          grep -Fq 'studio-sidebar-authority-v64.css' public/studio/clients.html
+          grep -Fq 'studio-sidebar-authority-v64.js' public/studio/clients.html
+
+      - name: Wait for production assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://neptune-media-webtv.neptunebusinessclub.workers.dev'
+          ready=0
+          for attempt in $(seq 1 60); do
+            curl --fail --silent --show-error --location \
+              -H 'Cache-Control: no-cache, no-store' \
+              "$BASE/studio/clients?sidebar_v64_ready=$attempt" > /tmp/studio-clients.html || true
+            if grep -Fq '/studio/studio-sidebar-authority-v64.css?v=1' /tmp/studio-clients.html \
+              && grep -Fq '/studio/studio-sidebar-authority-v64.js?v=1' /tmp/studio-clients.html; then
+              ready=1
+              break
+            fi
+            sleep 8
+          done
+          test "$ready" = 1
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Audit live sidebar cascade
+        env:
+          STUDIO_BASE_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
+          OUTPUT_DIR: test-results/studio-sidebar-v64
+        run: node neptune-tv-media-cloudflare/tests/audit-studio-sidebar-v64.mjs
+
+      - name: Upload screenshots and report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: studio-sidebar-v64-evidence
+          path: test-results/studio-sidebar-v64
+          if-no-files-found: error
+          retention-days: 14

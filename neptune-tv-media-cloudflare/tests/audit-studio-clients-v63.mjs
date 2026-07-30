@@ -88,6 +88,11 @@ try {
       assert(metrics.sidebar?.width >= 200, `${viewport.name}: desktop sidebar invalid`);
       assert(metrics.nav && metrics.account && metrics.nav.bottom <= metrics.account.top + 1, `${viewport.name}: navigation overlaps account card`);
       assert(metrics.menuToggleDisplay === 'none', `${viewport.name}: mobile toggle visible on desktop`);
+      const active = page.locator('.studio-nav-link.active').first();
+      const before = await active.boundingBox();
+      await active.hover();
+      const after = await active.boundingBox();
+      if (before && after) assert(Math.abs(before.x - after.x) < 1, `${viewport.name}: menu shifts on hover`);
     } else {
       assert(metrics.menuToggleDisplay === 'grid', `${viewport.name}: mobile toggle hidden`);
       const toggle = page.locator('#studioMenuToggle');
@@ -102,11 +107,6 @@ try {
     const refresh = page.locator('#refresh');
     await refresh.click();
     assert(await refresh.getAttribute('aria-busy') === 'true', `${viewport.name}: refresh progress not exposed`);
-    const active = page.locator('.studio-nav-link.active').first();
-    const before = await active.boundingBox();
-    await active.hover();
-    const after = await active.boundingBox();
-    if (before && after) assert(Math.abs(before.x - after.x) < 1, `${viewport.name}: menu shifts on hover`);
 
     await page.screenshot({ path: path.join(outputDir, `${viewport.name}-${viewport.width}x${viewport.height}.png`), fullPage: true });
     results.push({ viewport, metrics, errors });

@@ -1,4 +1,4 @@
-name: Verify Viewport Fit V55 20260730
+name: Verify Viewport Fit V55 V56 20260730
 
 on:
   pull_request:
@@ -6,6 +6,7 @@ on:
       - '.github/workflows/verify-viewport-fit-v55-20260730.yml'
       - 'tests/audit-viewport-v55.mjs'
       - 'neptune-tv-media-cloudflare/public/assets/neptune-viewport-fit-v55.css'
+      - 'neptune-tv-media-cloudflare/public/assets/neptune-dashboard-priority-v56.css'
       - 'neptune-tv-media-cloudflare/src/entry-v11.js'
 
 permissions:
@@ -24,17 +25,22 @@ jobs:
         run: |
           set -euo pipefail
           css='neptune-tv-media-cloudflare/public/assets/neptune-viewport-fit-v55.css'
+          dashboard_css='neptune-tv-media-cloudflare/public/assets/neptune-dashboard-priority-v56.css'
           entry='neptune-tv-media-cloudflare/src/entry-v11.js'
           node --check "$entry"
           node --check tests/audit-viewport-v55.mjs
           grep -Fq 'desktop-one-screen-task-layout-v55' "$entry"
+          grep -Fq 'current-project-delivery-actions-before-secondary-utilities-v56' "$entry"
           grep -Fq '/assets/neptune-viewport-fit-v55.css?v=1' "$entry"
+          grep -Fq '/assets/neptune-dashboard-priority-v56.css?v=1' "$entry"
           grep -Fq 'body:has(.dashboard-v37)' "$css"
           grep -Fq 'body:has(.library-shell)' "$css"
           grep -Fq 'body:has(.calendar-shell)' "$css"
           grep -Fq 'body.clients-app' "$css"
           grep -Fq 'overflow: hidden' "$css"
           grep -Fq 'grid-template-rows: auto minmax(0, 1fr)' "$css"
+          grep -Fq '.referral-panel.referral-challenge' "$dashboard_css"
+          grep -Fq 'minmax(230px, 1fr)' "$dashboard_css"
 
       - name: Verify deployment and asset injection
         shell: bash
@@ -46,6 +52,7 @@ jobs:
             curl --silent --show-error -H 'Cache-Control: no-cache, no-store' \
               "$BASE/api/public/release?viewport_fit=$GITHUB_RUN_ID-$attempt" > /tmp/release.json || true
             if grep -Fq '"viewportFit":"desktop-one-screen-task-layout-v55"' /tmp/release.json \
+              && grep -Fq '"dashboardPriority":"current-project-delivery-actions-before-secondary-utilities-v56"' /tmp/release.json \
               && grep -Fq '"verticalScrollPolicy":"document-scroll-disabled-desktop-local-data-regions-only"' /tmp/release.json; then
               ready=1
               break
@@ -59,12 +66,18 @@ jobs:
             curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
               "$BASE$path?viewport_asset=$GITHUB_RUN_ID" > /tmp/page.html
             grep -Fq '/assets/neptune-viewport-fit-v55.css?v=1' /tmp/page.html
+            if test "$path" = '/espace-client/'; then
+              grep -Fq '/assets/neptune-dashboard-priority-v56.css?v=1' /tmp/page.html
+            fi
           done
 
           curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
             "$BASE/assets/neptune-viewport-fit-v55.css?v=1" > /tmp/viewport.css
           grep -Fq 'body:has(.library-shell)' /tmp/viewport.css
           grep -Fq '.clients-app .pipeline' /tmp/viewport.css
+          curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
+            "$BASE/assets/neptune-dashboard-priority-v56.css?v=1" > /tmp/dashboard.css
+          grep -Fq '.referral-panel.referral-challenge' /tmp/dashboard.css
 
       - name: Install Playwright
         run: |
@@ -85,7 +98,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: neptune-viewport-fit-v55
+          name: neptune-viewport-fit-v55-v56
           path: test-results/viewport-fit-v55
           if-no-files-found: warn
           retention-days: 7

@@ -6,7 +6,7 @@ import { handleClientYoutubeRoute } from './portal-youtube-client-v53.js';
 
 export { StudioStore };
 
-const RELEASE = 'neptune-efficiency-operational-fallback-20260730-v11';
+const RELEASE = 'neptune-studio-sidebar-authority-20260730-v12';
 const BATCHER_ASSET = '/analytics-batcher-v1.js?v=3';
 const CLIENT_MEDIA_ASSET = '/espace-client/client-media-runtime-v51.js?v=2';
 const VIEWPORT_FIT_ASSET = '/assets/neptune-viewport-fit-v55.css?v=1';
@@ -19,6 +19,8 @@ const ADAPTIVE_INTERFACES_PRECISION_ASSET = '/assets/neptune-adaptive-interfaces
 const ADAPTIVE_DASHBOARD_CASCADE_ASSET = '/assets/neptune-adaptive-cascade-v58-1.js?v=4';
 const CLIENT_ARCHITECTURE_CSS = '/assets/client-architecture-v62.css?v=1';
 const CLIENT_ARCHITECTURE_JS = '/assets/client-architecture-v62.js?v=2';
+const STUDIO_SIDEBAR_AUTHORITY_CSS = '/studio/studio-sidebar-authority-v64.css?v=1';
+const STUDIO_SIDEBAR_AUTHORITY_JS = '/studio/studio-sidebar-authority-v64.js?v=1';
 
 export default {
   async fetch(request, env, ctx) {
@@ -69,12 +71,15 @@ async function augmentRelease(response) {
     dashboardDisclosure: 'formats-full-width-referral-and-support-responsive-row',
     videoLibraryBalance: 'airy-responsive-media-rails-and-adaptive-page-flow-v57',
     videoLibraryScrollPolicy: 'no-forced-compression-natural-flow-only-when-viewport-requires-it',
-    adaptiveInterfaces: 'balanced-responsive-client-calendar-auth-and-studio-v58.1',
-    adaptiveScreens: 'client-auth-dashboard-calendar-studio-clients-and-advanced-admin',
-    adaptiveCorrections: 'auth-title-card-separation-referral-primary-action-and-studio-sidebar-clearance',
+    adaptiveInterfaces: 'balanced-responsive-client-calendar-auth-and-advanced-admin-v58.1',
+    adaptiveScreens: 'client-auth-dashboard-calendar-and-advanced-admin',
+    adaptiveCorrections: 'auth-title-card-separation-and-referral-primary-action',
     adaptiveCascade: 'dashboard-precision-and-completeness-css-reloaded-after-referral-runtime-v4',
     verticalScrollPolicy: 'viewport-first-with-natural-overflow-only-when-content-requires-it',
     studioPipelinePolicy: 'readable-columns-horizontal-navigation-and-local-column-scroll',
+    studioClientsShell: 'single-authoritative-sidebar-v64',
+    studioClientsLegacyCollapse: 'disabled-and-normalized-v64',
+    studioClientsCascade: 'page-specific-authority-after-legacy-runtime-assets-v64',
     clientMediaTransport: 'authenticated-same-origin-drive-proxy-with-range-v1',
     clientMediaMetadata: 'drive-id-preview-thumbnail-and-download-v1',
     youtubePublicationDiscovery: 'public-channel-feed-client-title-matching-v1',
@@ -96,10 +101,13 @@ async function augmentRelease(response) {
 
 async function injectRuntimeAssets(response, pathname) {
   let body = await response.text();
+  const studioClients = isStudioClientsPath(pathname);
+  const adaptiveScope = (pathname.startsWith('/espace-client') || pathname.startsWith('/studio')) && !studioClients;
+
   if (!body.includes('/analytics-batcher-v1.js')) {
     body = body.replace('</head>', `<script src="${BATCHER_ASSET}"></script></head>`);
   }
-  if ((pathname.startsWith('/espace-client') || pathname.startsWith('/studio')) && !body.includes('/assets/neptune-viewport-fit-v55.css')) {
+  if (adaptiveScope && !body.includes('/assets/neptune-viewport-fit-v55.css')) {
     body = body.replace('</head>', `<link rel="stylesheet" href="${VIEWPORT_FIT_ASSET}"></head>`);
   }
   if (isClientDashboardPath(pathname)) {
@@ -118,10 +126,10 @@ async function injectRuntimeAssets(response, pathname) {
       body = body.replace('</body>', `<script type="module" src="${VIDEO_LIBRARY_BALANCE_JS}"></script></body>`);
     }
   }
-  if ((pathname.startsWith('/espace-client') || pathname.startsWith('/studio')) && !body.includes('/assets/neptune-adaptive-interfaces-v58.css')) {
+  if (adaptiveScope && !body.includes('/assets/neptune-adaptive-interfaces-v58.css')) {
     body = body.replace('</head>', `<link rel="stylesheet" href="${ADAPTIVE_INTERFACES_ASSET}"></head>`);
   }
-  if ((pathname.startsWith('/espace-client') || pathname.startsWith('/studio')) && !body.includes('/assets/neptune-adaptive-interfaces-v58-1.css')) {
+  if (adaptiveScope && !body.includes('/assets/neptune-adaptive-interfaces-v58-1.css')) {
     body = body.replace('</head>', `<link rel="stylesheet" href="${ADAPTIVE_INTERFACES_PRECISION_ASSET}"></head>`);
   }
   if (isClientDashboardPath(pathname) && !body.includes('/assets/neptune-adaptive-cascade-v58-1.js')) {
@@ -140,6 +148,8 @@ async function injectRuntimeAssets(response, pathname) {
       body = body.replace('</body>', `<script src="${CLIENT_ARCHITECTURE_JS}" defer></script></body>`);
     }
   }
+  if (studioClients) body = appendStudioSidebarAuthority(body);
+
   const headers = new Headers(response.headers);
   headers.delete('Content-Length');
   headers.set('Cache-Control', pathname.startsWith('/espace-client') ? 'private, no-store, max-age=0' : headers.get('Cache-Control') || 'no-store');
@@ -150,12 +160,26 @@ async function injectRuntimeAssets(response, pathname) {
   });
 }
 
+function appendStudioSidebarAuthority(body) {
+  const cssPattern = /<link\b[^>]*href=["'][^"']*\/studio\/studio-sidebar-authority-v64\.css[^"']*["'][^>]*>\s*/giu;
+  const jsPattern = /<script\b[^>]*src=["'][^"']*\/studio\/studio-sidebar-authority-v64\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu;
+  body = body.replace(cssPattern, '');
+  body = body.replace(jsPattern, '');
+  body = body.replace('</head>', `<link rel="stylesheet" href="${STUDIO_SIDEBAR_AUTHORITY_CSS}"></head>`);
+  body = body.replace('</body>', `<script type="module" src="${STUDIO_SIDEBAR_AUTHORITY_JS}"></script></body>`);
+  return body;
+}
+
 function isClientDashboardPath(pathname) {
   return pathname === '/espace-client' || pathname === '/espace-client/' || pathname === '/espace-client/index.html';
 }
 
 function isVideoLibraryPath(pathname) {
   return pathname === '/espace-client/videos' || pathname.startsWith('/espace-client/videos/');
+}
+
+function isStudioClientsPath(pathname) {
+  return pathname === '/studio/clients' || pathname === '/studio/clients/' || pathname === '/studio/clients.html';
 }
 
 function withRuntimeHeaders(response) {

@@ -168,14 +168,13 @@ function renderPassageSelector() {
 
 function cardMarkup(file, type) {
   const isShort = type === 'short';
-  const url = safeUrl(file.downloadUrl || file.externalUrl);
   const title = cleanName(file.name) || (isShort ? 'Short Neptune Media' : 'Émission complète');
   const identifier = file.id || file.driveFileId || title;
+  const media = mediaUrls(file);
 
   return `<article class="compact-media-card compact-media-card--${type}">
     <button type="button" class="compact-media-open" data-open-video="${esc(identifier)}" aria-label="Lire ${esc(title)}">
-      <span class="compact-media-preview">
-        <video muted playsinline preload="metadata" src="${esc(url)}" aria-hidden="true"></video>
+      <span class="compact-media-preview ${media.drive ? 'compact-media-preview--drive' : 'compact-media-preview--direct'}">
         <i aria-hidden="true">▶</i>
         <em>${isShort ? 'SHORT' : 'ÉMISSION'}</em>
       </span>
@@ -185,7 +184,7 @@ function cardMarkup(file, type) {
       </span>
     </button>
     <div class="compact-media-actions">
-      <a href="${esc(url)}" download>Télécharger</a>
+      <a href="${esc(media.download)}">Télécharger</a>
       ${isShort ? '<a href="/espace-client/calendrier/">Planifier</a>' : ''}
     </div>
   </article>`;
@@ -197,15 +196,58 @@ function openPreview(id, order) {
   const content = $('.preview-content', dialog);
   if (!file || !dialog || !content) return;
 
-  const url = safeUrl(file.downloadUrl || file.externalUrl);
-  const type = categoryOf(file) === 'short' ? 'SHORT / REEL' : 'ÉMISSION COMPLÈTE';
-  content.innerHTML = `<video controls autoplay playsinline preload="metadata" src="${esc(url)}"></video><section><span>${type}</span><h2>${esc(cleanName(file.name) || 'Contenu Neptune Media')}</h2><p>${esc(file.sizeLabel || 'Disponible dans votre espace Neptune Media')}</p><div><a href="${esc(url)}" download>Télécharger</a>${categoryOf(file) === 'short' ? '<a href="/espace-client/calendrier/">Planifier ce short</a>' : ''}</div></section>`;
+  const format = categoryOf(file) === 'short' ? 'short' : 'final';
+  const media = mediaUrls(file);
+  const type = format === 'short' ? 'SHORT / REEL' : 'ÉMISSION COMPLÈTE';
+  dialog.dataset.format = format;
+  content.className = `preview-content preview-content--${format}`;
+  content.innerHTML = `<div class="preview-player-shell preview-player-shell--${format}">${playerMarkup(media, format)}</div><section><span>${type}</span><h2>${esc(cleanName(file.name) || 'Contenu Neptune Media')}</h2><p>${esc(file.sizeLabel || 'Disponible dans votre espace Neptune Media')}</p><div><a href="${esc(media.download)}">Télécharger</a>${format === 'short' ? '<a href="/espace-client/calendrier/">Planifier ce short</a>' : ''}</div></section>`;
   dialog.showModal();
+}
+
+function playerMarkup(media, format) {
+  if (media.drive) {
+    return `<iframe class="preview-player preview-player--${format}" src="${esc(media.preview)}" title="Lecture du contenu Neptune Media" loading="eager" allow="autoplay; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>`;
+  }
+  return `<video class="preview-player preview-player--${format}" controls autoplay playsinline preload="metadata" src="${esc(media.preview)}"></video>`;
 }
 
 function closePreview(dialog) {
   dialog.querySelector('video')?.pause();
+  const iframe = dialog.querySelector('iframe');
+  if (iframe) iframe.src = 'about:blank';
   dialog.close();
+}
+
+function mediaUrls(file) {
+  const driveId = driveFileId(file);
+  const authorized = file.id ? `/api/client/files/${encodeURIComponent(file.id)}` : safeUrl(file.downloadUrl || file.externalUrl || file.webViewUrl);
+  return {
+    drive: Boolean(driveId),
+    download: authorized,
+    preview: driveId ? `https://drive.google.com/file/d/${encodeURIComponent(driveId)}/preview` : authorized,
+  };
+}
+
+function driveFileId(file) {
+  const direct = String(file.driveFileId || '').trim();
+  if (direct) return direct;
+  for (const raw of [file.downloadUrl, file.externalUrl, file.webViewUrl]) {
+    const value = String(raw || '').trim();
+    if (!value) continue;
+    const pathMatch = value.match(/\/file\/d\/([^/?#]+)/u);
+    if (pathMatch?.[1]) return decodeURIComponent(pathMatch[1]);
+    try {
+      const url = new URL(value, location.origin);
+      if (/drive\.google\.com$/iu.test(url.hostname)) {
+        const queryId = url.searchParams.get('id');
+        if (queryId) return queryId;
+      }
+    } catch {
+      // Une URL externe invalide est simplement ignorée.
+    }
+  }
+  return '';
 }
 
 function categoryOf(file) {

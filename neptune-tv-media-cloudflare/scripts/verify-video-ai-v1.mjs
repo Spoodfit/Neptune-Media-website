@@ -9,7 +9,7 @@ const appRoot=resolve(scriptDir,'..');
 const repoRoot=resolve(appRoot,'..');
 const read=async(path)=>readFile(resolve(appRoot,path),'utf8');
 
-const [wrangler,entry,routes,store,analysis,security,html,css,clientJs,containerJs,dockerfile,pythonApp,rootPackage,nestedPackage]=await Promise.all([
+const [wrangler,entry,routes,store,analysis,security,html,css,clientJs,containerJs,dockerfile,requirements,pythonApp,rootPackage,nestedPackage]=await Promise.all([
   readFile(resolve(repoRoot,'wrangler.jsonc'),'utf8'),
   read('src/entry-v14.js'),
   read('src/video-ai-routes-v1.js'),
@@ -21,6 +21,7 @@ const [wrangler,entry,routes,store,analysis,security,html,css,clientJs,container
   read('public/studio/video-ai-v1.js'),
   read('src/video-ai-container-v1.js'),
   read('containers/video-ai/Dockerfile'),
+  read('containers/video-ai/requirements.txt'),
   read('containers/video-ai/app.py'),
   readFile(resolve(repoRoot,'package.json'),'utf8'),
   read('package.json'),
@@ -89,7 +90,7 @@ assert.match(css,/@media\(max-width:600px\)/u);
 assert.match(css,/\.clips-grid/u);
 assert.match(css,/\.clip-preview video/u);
 
-for(const marker of ['ffmpeg','fonts-dejavu-core','opencv-python-headless','uvicorn']) assert.ok(`${dockerfile}\n${nestedPackage}`.includes(marker),`Missing container dependency: ${marker}`);
+for(const marker of ['ffmpeg','fonts-dejavu-core','opencv-python-headless','uvicorn']) assert.ok(`${dockerfile}\n${requirements}\n${nestedPackage}`.includes(marker),`Missing container dependency: ${marker}`);
 for(const marker of ['transcribe_source','analyze_visual_profile','request_analysis','render_clip','write_ass_subtitles','upload_output','haarcascade_frontalface_default.xml','libx264']) assert.ok(pythonApp.includes(marker),`Missing processor marker: ${marker}`);
 assert.match(rootPackage,/@cloudflare\/containers/u);
 assert.match(nestedPackage,/@cloudflare\/containers/u);

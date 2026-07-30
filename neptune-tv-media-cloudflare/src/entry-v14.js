@@ -20,7 +20,7 @@ export default {
 
     const response = await base.fetch(request, env, ctx);
     if (request.method === 'GET' && url.pathname === '/api/public/release' && response.ok) {
-      return withHeaders(await augmentRelease(response));
+      return withHeaders(await augmentRelease(response, env));
     }
     return withHeaders(response);
   },
@@ -42,7 +42,7 @@ export default {
   },
 };
 
-async function augmentRelease(response) {
+async function augmentRelease(response, env) {
   const current = await response.json().catch(() => ({}));
   return new Response(JSON.stringify({
     ...current,
@@ -56,6 +56,10 @@ async function augmentRelease(response) {
     videoAiRendering: 'cloudflare-container-ffmpeg-adaptive-ass-subtitles',
     videoAiTranscription: '@cf/openai/whisper-large-v3-turbo',
     videoAiStorage: 'r2-source-and-output-durable-object-metadata',
+    videoAiSecuritySecretPresent: Boolean(env.VIDEO_AI_INTERNAL_SECRET || env.DRIVE_WEBHOOK_SECRET || env.CONVERSION_WEBHOOK_SECRET),
+    videoAiContainerBindingPresent: Boolean(env.VIDEO_PROCESSOR),
+    videoAiStorageBindingPresent: Boolean(env.MEDIA),
+    videoAiWorkersAiBindingPresent: Boolean(env.AI),
   }), {
     status: response.status,
     headers: {

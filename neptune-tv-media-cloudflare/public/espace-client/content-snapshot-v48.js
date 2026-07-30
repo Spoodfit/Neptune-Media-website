@@ -1,5 +1,7 @@
 const $ = (selector, root = document) => root.querySelector(selector);
 
+const SNAPSHOT_LIMITS = { long: 4, short: 8 };
+
 let snapshotState = { orders: [] };
 let activeOrderId = '';
 let snapshotTimer = 0;
@@ -90,13 +92,10 @@ function renderSnapshot({ force = false } = {}) {
   section.dataset.snapshotSignature = signature;
 
   const passageOptions = orders.map((item, index) => `<option value="${esc(item.id)}" ${item.id === order.id ? 'selected' : ''}>Passage ${String(index + 1).padStart(2, '0')} · ${esc(item.title || item.format || 'Neptune Media')}</option>`).join('');
-  const hero = longFiles[0]
-    ? mediaTile(longFiles[0], 'hero')
-    : '<div class="snapshot-empty snapshot-empty--hero"><span>ÉMISSION</span><strong>La vidéo longue apparaîtra ici</strong></div>';
-  const shorts = shortFiles.slice(0, 4).map((file) => mediaTile(file, 'short')).join('')
-    || '<div class="snapshot-empty"><span>SHORTS</span><strong>Les formats courts seront ajoutés progressivement</strong></div>';
+  const longRail = renderRail(longFiles, 'long', SNAPSHOT_LIMITS.long);
+  const shortRail = renderRail(shortFiles, 'short', SNAPSHOT_LIMITS.short);
 
-  section.innerHTML = `<header><div><p>VOS CONTENUS</p><h2>Tout voir sans parcourir une longue liste</h2></div><a href="/espace-client/videos/">Ouvrir la bibliothèque</a></header><div class="snapshot-toolbar"><label><span>Passage</span><select data-snapshot-passage>${passageOptions}</select></label><div><span><b>${longFiles.length}</b> long</span><span><b>${shortFiles.length}</b> shorts</span></div></div><div class="snapshot-layout"><section class="snapshot-long"><div class="snapshot-section-head"><strong>Émission complète</strong><span>${longFiles.length}</span></div>${hero}</section><section class="snapshot-shorts"><div class="snapshot-section-head"><strong>Derniers shorts</strong><span>${shortFiles.length}</span></div><div>${shorts}</div>${shortFiles.length > 4 ? `<a class="snapshot-more" href="/espace-client/videos/">Voir les ${shortFiles.length} shorts</a>` : ''}</section></div><dialog class="snapshot-preview" data-snapshot-preview aria-modal="true"><button type="button" data-preview-close aria-label="Fermer">×</button><div data-preview-body></div></dialog>`;
+  section.innerHTML = `<header><div><p>VOS CONTENUS</p><h2>Tout voir sans parcourir une longue liste</h2></div><a href="/espace-client/videos/">Ouvrir la bibliothèque</a></header><div class="snapshot-toolbar"><label><span>Passage</span><select data-snapshot-passage>${passageOptions}</select></label><div><span><b>${longFiles.length}</b> long</span><span><b>${shortFiles.length}</b> shorts</span></div></div><div class="snapshot-layout"><section class="snapshot-row snapshot-long"><div class="snapshot-section-head"><strong>Émissions complètes</strong><span>${longFiles.length}</span></div><div class="snapshot-rail snapshot-rail--long">${longRail}</div></section><section class="snapshot-row snapshot-shorts"><div class="snapshot-section-head"><strong>Derniers shorts</strong><span>${shortFiles.length}</span></div><div class="snapshot-rail snapshot-rail--short">${shortRail}</div></section></div><dialog class="snapshot-preview" data-snapshot-preview aria-modal="true"><button type="button" data-preview-close aria-label="Fermer">×</button><div data-preview-body></div></dialog>`;
 
   section.querySelector('[data-snapshot-passage]')?.addEventListener('change', (event) => {
     activeOrderId = event.target.value;
@@ -112,10 +111,29 @@ function renderSnapshot({ force = false } = {}) {
   });
 }
 
+function renderRail(files, kind, limit) {
+  if (!files.length) {
+    const label = kind === 'long' ? 'ÉMISSION' : 'SHORTS';
+    const message = kind === 'long'
+      ? 'La vidéo longue apparaîtra ici'
+      : 'Les formats courts seront ajoutés progressivement';
+    return `<div class="snapshot-empty snapshot-empty--rail snapshot-empty--${kind}"><span>${label}</span><strong>${message}</strong></div>`;
+  }
+
+  const visible = files.slice(0, limit).map((file) => mediaTile(file, kind)).join('');
+  const remaining = files.length - limit;
+  return `${visible}${remaining > 0 ? moreTile(kind, remaining) : ''}`;
+}
+
+function moreTile(kind, remaining) {
+  const label = kind === 'long' ? 'émission' : 'short';
+  return `<a class="snapshot-rail-more snapshot-rail-more--${kind}" href="/espace-client/videos/"><small>VOIR PLUS</small><strong>${remaining} autre${remaining > 1 ? 's' : ''} ${label}${remaining > 1 ? 's' : ''}</strong><i aria-hidden="true">→</i></a>`;
+}
+
 function mediaTile(file, kind) {
   const media = mediaUrls(file);
-  const title = cleanName(file.name) || (kind === 'hero' ? 'Émission complète' : 'Short Neptune Media');
-  return `<button type="button" class="snapshot-media snapshot-media--${kind} ${media.drive ? 'snapshot-media--drive' : 'snapshot-media--direct'}" data-snapshot-file="${esc(file.id || file.driveFileId || title)}"><span class="snapshot-media-overlay"><i>▶</i><small>${kind === 'hero' ? 'ÉMISSION COMPLÈTE' : 'SHORT / REEL'}</small><strong>${esc(title)}</strong></span></button>`;
+  const title = cleanName(file.name) || (kind === 'long' ? 'Émission complète' : 'Short Neptune Media');
+  return `<button type="button" class="snapshot-media snapshot-media--${kind} ${media.drive ? 'snapshot-media--drive' : 'snapshot-media--direct'}" data-snapshot-file="${esc(file.id || file.driveFileId || title)}"><span class="snapshot-media-overlay"><i>▶</i><small>${kind === 'long' ? 'ÉMISSION COMPLÈTE' : 'SHORT / REEL'}</small><strong>${esc(title)}</strong></span></button>`;
 }
 
 function openPreview(id, order) {

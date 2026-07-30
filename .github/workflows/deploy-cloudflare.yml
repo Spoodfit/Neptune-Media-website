@@ -136,6 +136,9 @@ jobs:
           cat /tmp/email-health.json
           grep -Fq '"configured":true' /tmp/email-health.json
           grep -Fq '"providerKeyAccepted":true' /tmp/email-health.json
+          grep -Fq '"transport":"resend-node-6.18.0"' /tmp/email-health.json
+          grep -Fq '"retryPolicy":"3-attempts-idempotent"' /tmp/email-health.json
+          grep -Fq '"senderDomain":"neptunebusiness.com"' /tmp/email-health.json
 
       - name: Verify trusted Neptune client login
         shell: bash

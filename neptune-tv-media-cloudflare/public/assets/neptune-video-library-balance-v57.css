@@ -1,0 +1,265 @@
+/* Neptune video library balance v57
+   Keep the first screen readable without compressing a media library into miniature cards.
+   The page remains naturally responsive: generous spacing on large screens, controlled density on laptops,
+   horizontal rails for media volume and normal vertical flow only when the viewport genuinely requires it. */
+
+@media (min-width: 1024px) {
+  body:has(.library-shell) {
+    height: auto !important;
+    min-height: 100dvh !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+
+  .library-header {
+    position: sticky !important;
+    top: 0 !important;
+    height: 64px !important;
+    min-height: 64px !important;
+  }
+
+  .library-shell {
+    width: min(1680px, 100%) !important;
+    height: auto !important;
+    min-height: calc(100dvh - 64px) !important;
+    display: grid !important;
+    grid-template-rows: auto auto !important;
+    align-content: start !important;
+    gap: 16px !important;
+    padding: clamp(18px, 2vw, 30px) clamp(24px, 3vw, 48px) 30px !important;
+    overflow: visible !important;
+  }
+
+  .library-intro {
+    gap: clamp(24px, 3vw, 44px) !important;
+    margin: 0 !important;
+  }
+
+  .library-intro h1 {
+    margin-block: .2rem .35rem !important;
+    font-size: clamp(2.5rem, 3.45vw, 4rem) !important;
+    line-height: .98 !important;
+  }
+
+  .library-intro .intro-copy > p:last-child {
+    display: block !important;
+    max-width: 820px !important;
+    font-size: clamp(.84rem, .95vw, 1rem) !important;
+    line-height: 1.45 !important;
+  }
+
+  .library-summary {
+    gap: 10px !important;
+  }
+
+  .library-summary div {
+    min-width: 118px !important;
+    padding: 12px 14px !important;
+    border-radius: 16px !important;
+  }
+
+  .content-section {
+    min-height: 0 !important;
+    display: block !important;
+    padding: clamp(16px, 1.5vw, 22px) !important;
+    overflow: visible !important;
+    border-radius: 24px !important;
+  }
+
+  .content-section > .section-heading {
+    margin-bottom: 14px !important;
+  }
+
+  .content-section > .section-heading h2 {
+    font-size: clamp(1.35rem, 1.55vw, 1.65rem) !important;
+  }
+
+  .passage-selector {
+    max-height: none !important;
+    gap: 10px !important;
+    margin: 0 0 14px !important;
+    padding: 2px 2px 6px !important;
+    overflow-x: auto !important;
+  }
+
+  .passage-selector[hidden] {
+    display: none !important;
+  }
+
+  .passage-selector button {
+    flex-basis: clamp(260px, 20vw, 330px) !important;
+    min-height: 66px !important;
+    padding: 12px 14px !important;
+    border-radius: 15px !important;
+  }
+
+  #contentGrid {
+    min-height: 0 !important;
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  .active-passage-summary {
+    min-height: 76px !important;
+    margin: 0 0 14px !important;
+    padding: 13px 16px !important;
+    border-radius: 16px !important;
+  }
+
+  .active-passage-summary h3 {
+    font-size: 1.08rem !important;
+  }
+
+  .media-dashboard-section {
+    min-height: 0 !important;
+    display: grid !important;
+    grid-template-columns: minmax(560px, .82fr) minmax(0, 1.18fr) !important;
+    gap: 16px !important;
+    align-items: stretch !important;
+    overflow: visible !important;
+  }
+
+  .media-strip-section {
+    min-height: 0 !important;
+    display: grid !important;
+    grid-template-rows: auto auto !important;
+    align-content: start !important;
+    padding: 14px !important;
+    overflow: hidden !important;
+    border-radius: 19px !important;
+  }
+
+  .media-row-head {
+    margin-bottom: 10px !important;
+  }
+
+  .media-row-head h3 {
+    font-size: 1.08rem !important;
+  }
+
+  .media-row-head small {
+    display: block !important;
+    margin-top: 3px !important;
+  }
+
+  .media-strip {
+    min-height: 0 !important;
+    height: auto !important;
+    gap: 12px !important;
+    padding: 1px 1px 10px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+  }
+
+  .compact-media-card--final {
+    width: clamp(280px, 20vw, 330px) !important;
+  }
+
+  .compact-media-card--short {
+    width: clamp(154px, 11vw, 182px) !important;
+  }
+
+  .compact-media-copy {
+    gap: 4px !important;
+    padding: 10px !important;
+  }
+
+  .compact-media-copy strong {
+    min-height: 2.35em !important;
+    font-size: .76rem !important;
+    line-height: 1.18 !important;
+    -webkit-line-clamp: 2 !important;
+  }
+
+  .compact-media-card--short .compact-media-copy strong {
+    font-size: .7rem !important;
+  }
+
+  .compact-media-actions {
+    gap: 6px !important;
+    padding: 0 9px 9px !important;
+  }
+
+  .compact-media-actions a,
+  .compact-media-card--short .compact-media-actions a {
+    min-height: 34px !important;
+    padding: 6px 8px !important;
+    font-size: .58rem !important;
+  }
+}
+
+@media (min-width: 1600px) {
+  .media-dashboard-section {
+    grid-template-columns: minmax(650px, .9fr) minmax(0, 1.1fr) !important;
+    gap: 18px !important;
+  }
+
+  .compact-media-card--short {
+    width: clamp(164px, 10.4vw, 188px) !important;
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .library-shell {
+    gap: 14px !important;
+    padding-inline: 20px !important;
+  }
+
+  .library-intro {
+    gap: 18px !important;
+  }
+
+  .library-summary div {
+    min-width: 100px !important;
+  }
+
+  .media-dashboard-section {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  .compact-media-card--final {
+    width: clamp(260px, 30vw, 320px) !important;
+  }
+
+  .compact-media-card--short {
+    width: clamp(148px, 17vw, 178px) !important;
+  }
+}
+
+@media (min-width: 1024px) and (max-height: 780px) {
+  .library-shell {
+    gap: 11px !important;
+    padding-top: 13px !important;
+    padding-bottom: 18px !important;
+  }
+
+  .library-intro h1 {
+    font-size: clamp(2.2rem, 3vw, 3.25rem) !important;
+  }
+
+  .library-intro .intro-copy > p:last-child {
+    display: none !important;
+  }
+
+  .content-section {
+    padding: 14px !important;
+  }
+
+  .active-passage-summary {
+    min-height: 68px !important;
+    padding-block: 10px !important;
+  }
+
+  .media-strip-section {
+    padding: 11px !important;
+  }
+
+  .compact-media-card--final {
+    width: clamp(250px, 18vw, 300px) !important;
+  }
+
+  .compact-media-card--short {
+    width: clamp(145px, 10.5vw, 170px) !important;
+  }
+}

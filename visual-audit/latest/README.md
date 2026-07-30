@@ -1,10 +1,10 @@
 # Audit visuel Neptune Media
 
-Généré : 2026-07-30T11:02:32.968Z
+Généré : 2026-07-30T11:17:28.404Z
 
 - Captures : 15
 - Erreurs : 10
-- Avertissements : 337
+- Avertissements : 336
 
 ## Problèmes détectés
 
@@ -73,7 +73,6 @@ Généré : 2026-07-30T11:02:32.968Z
 | warning | desktop-1440 | direct | clipped-text | Aller au contenu principal |
 | warning | desktop-1440 | direct | clipped-text | Neptune Media en direct |
 | warning | desktop-1440 | direct | clipped-text | Neptune Media en direct |
-| warning | desktop-1440 | direct | console-error | Permissions policy violation: compute-pressure is not allowed in this document. |
 | warning | laptop-1280 | home | clipped-text | Aller au contenu principal |
 | warning | laptop-1280 | home | clipped-text | Créez votre futur aveccommunication |
 | warning | laptop-1280 | home | clipped-text | Créez votre futur avec |
@@ -129,4 +128,5 @@ Généré : 2026-07-30T11:02:32.968Z
 | warning | laptop-1280 | home | offscreen-element | span.visibility-short__label |
 | warning | laptop-1280 | home | offscreen-element | article.visibility-short.visibility-short--small |
 | warning | laptop-1280 | home | offscreen-element | video |
+| error | laptop-1280 | emissions | broken-image | img |
 | error | laptop-1280 | emissions | broken-image | img |

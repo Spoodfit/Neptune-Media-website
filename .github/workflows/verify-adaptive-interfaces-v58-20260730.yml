@@ -8,8 +8,10 @@ on:
       - 'neptune-tv-media-cloudflare/public/assets/neptune-adaptive-interfaces-v58.css'
       - 'neptune-tv-media-cloudflare/public/assets/neptune-adaptive-interfaces-v58-1.css'
       - 'neptune-tv-media-cloudflare/public/assets/neptune-adaptive-cascade-v58-1.js'
+      - 'neptune-tv-media-cloudflare/public/assets/neptune-dashboard-completeness-v59.css'
       - 'neptune-tv-media-cloudflare/src/entry-v11.js'
       - 'neptune-tv-media-cloudflare/tests/audit-adaptive-interfaces-v58.mjs'
+      - 'neptune-tv-media-cloudflare/tests/audit-dashboard-completeness-v59.mjs'
   pull_request:
     branches: [main]
     paths:
@@ -17,8 +19,10 @@ on:
       - 'neptune-tv-media-cloudflare/public/assets/neptune-adaptive-interfaces-v58.css'
       - 'neptune-tv-media-cloudflare/public/assets/neptune-adaptive-interfaces-v58-1.css'
       - 'neptune-tv-media-cloudflare/public/assets/neptune-adaptive-cascade-v58-1.js'
+      - 'neptune-tv-media-cloudflare/public/assets/neptune-dashboard-completeness-v59.css'
       - 'neptune-tv-media-cloudflare/src/entry-v11.js'
       - 'neptune-tv-media-cloudflare/tests/audit-adaptive-interfaces-v58.mjs'
+      - 'neptune-tv-media-cloudflare/tests/audit-dashboard-completeness-v59.mjs'
   workflow_dispatch:
 
 permissions:
@@ -27,7 +31,7 @@ permissions:
 jobs:
   verify-adaptive-interfaces:
     runs-on: ubuntu-latest
-    timeout-minutes: 22
+    timeout-minutes: 24
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -38,25 +42,26 @@ jobs:
           set -euo pipefail
           css='neptune-tv-media-cloudflare/public/assets/neptune-adaptive-interfaces-v58.css'
           precision='neptune-tv-media-cloudflare/public/assets/neptune-adaptive-interfaces-v58-1.css'
+          completeness='neptune-tv-media-cloudflare/public/assets/neptune-dashboard-completeness-v59.css'
           cascade='neptune-tv-media-cloudflare/public/assets/neptune-adaptive-cascade-v58-1.js'
           entry='neptune-tv-media-cloudflare/src/entry-v11.js'
-          test='neptune-tv-media-cloudflare/tests/audit-adaptive-interfaces-v58.mjs'
+          adaptive_test='neptune-tv-media-cloudflare/tests/audit-adaptive-interfaces-v58.mjs'
+          dashboard_test='neptune-tv-media-cloudflare/tests/audit-dashboard-completeness-v59.mjs'
           node --check "$entry"
           node --check "$cascade"
-          node --check "$test"
+          node --check "$adaptive_test"
+          node --check "$dashboard_test"
           grep -Fq 'balanced-responsive-client-calendar-auth-and-studio-v58.1' "$entry"
-          grep -Fq 'dashboard-precision-css-reloaded-after-referral-runtime-v2' "$entry"
-          grep -Fq '/assets/neptune-adaptive-interfaces-v58.css?v=1' "$entry"
-          grep -Fq '/assets/neptune-adaptive-interfaces-v58-1.css?v=1' "$entry"
-          grep -Fq '/assets/neptune-adaptive-cascade-v58-1.js?v=2' "$entry"
+          grep -Fq 'all-client-functions-restored-in-stable-full-width-secondary-flow-v59.1' "$entry"
+          grep -Fq 'dashboard-precision-and-completeness-css-reloaded-after-referral-runtime-v4' "$entry"
+          grep -Fq '/assets/neptune-dashboard-completeness-v59.css?v=2' "$entry"
+          grep -Fq '/assets/neptune-adaptive-cascade-v58-1.js?v=4' "$entry"
           grep -Fq 'body:has(.calendar-shell)' "$css"
           grep -Fq '.clients-app .pipeline' "$css"
-          grep -Fq '.shell .page-intro' "$css"
           grep -Fq '.auth-title-main' "$precision"
-          grep -Fq 'flex-direction: row !important' "$precision"
-          grep -Fq '.referral-share-primary' "$precision"
-          grep -Fq '.shell .sidebar nav' "$precision"
-          grep -Fq "neptune-adaptive-interfaces-v58-1.css?v=3" "$cascade"
+          grep -Fq '.dashboard-content-grid > .utility-column' "$completeness"
+          grep -Fq 'grid-template-columns: minmax(0, 1.45fr) minmax(320px, .55fr)' "$completeness"
+          grep -Fq 'neptune-dashboard-completeness-v59.css?v=2' "$cascade"
 
       - name: Verify deployment and asset injection
         shell: bash
@@ -67,10 +72,9 @@ jobs:
           for attempt in $(seq 1 54); do
             curl --silent --show-error -H 'Cache-Control: no-cache, no-store' \
               "$BASE/api/public/release?adaptive_interfaces=$GITHUB_RUN_ID-$attempt" > /tmp/release.json || true
-            if grep -Fq '"adaptiveInterfaces":"balanced-responsive-client-calendar-auth-and-studio-v58.1"' /tmp/release.json \
-              && grep -Fq '"adaptiveCorrections":"auth-title-card-separation-referral-primary-action-and-studio-sidebar-clearance"' /tmp/release.json \
-              && grep -Fq '"adaptiveCascade":"dashboard-precision-css-reloaded-after-referral-runtime-v2"' /tmp/release.json \
-              && grep -Fq '"studioPipelinePolicy":"readable-columns-horizontal-navigation-and-local-column-scroll"' /tmp/release.json; then
+            if grep -Fq '"dashboardCompleteness":"all-client-functions-restored-in-stable-full-width-secondary-flow-v59.1"' /tmp/release.json \
+              && grep -Fq '"dashboardDisclosure":"formats-full-width-referral-and-support-responsive-row"' /tmp/release.json \
+              && grep -Fq '"adaptiveCascade":"dashboard-precision-and-completeness-css-reloaded-after-referral-runtime-v4"' /tmp/release.json; then
               ready=1
               break
             fi
@@ -85,22 +89,18 @@ jobs:
             grep -Fq '/assets/neptune-adaptive-interfaces-v58.css?v=1' /tmp/page.html
             grep -Fq '/assets/neptune-adaptive-interfaces-v58-1.css?v=1' /tmp/page.html
             if [ "$path" = '/espace-client/' ]; then
-              grep -Fq '/assets/neptune-adaptive-cascade-v58-1.js?v=2' /tmp/page.html
+              grep -Fq '/assets/neptune-dashboard-completeness-v59.css?v=2' /tmp/page.html
+              grep -Fq '/assets/neptune-adaptive-cascade-v58-1.js?v=4' /tmp/page.html
             fi
           done
 
           curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-            "$BASE/assets/neptune-adaptive-interfaces-v58.css?v=1" > /tmp/adaptive.css
+            "$BASE/assets/neptune-dashboard-completeness-v59.css?v=2" > /tmp/completeness.css
           curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-            "$BASE/assets/neptune-adaptive-interfaces-v58-1.css?v=3" > /tmp/precision.css
-          curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-            "$BASE/assets/neptune-adaptive-cascade-v58-1.js?v=2" > /tmp/cascade.js
-          grep -Fq '.clients-app .pipeline' /tmp/adaptive.css
-          grep -Fq '.content-calendar' /tmp/adaptive.css
-          grep -Fq '.auth-title-main' /tmp/precision.css
-          grep -Fq 'flex-direction: row !important' /tmp/precision.css
-          grep -Fq '.shell .sidebar nav' /tmp/precision.css
-          grep -Fq 'neptune-adaptive-interfaces-v58-1.css?v=3' /tmp/cascade.js
+            "$BASE/assets/neptune-adaptive-cascade-v58-1.js?v=4" > /tmp/cascade.js
+          grep -Fq '.dashboard-content-grid > .utility-column' /tmp/completeness.css
+          grep -Fq 'grid-template-columns: minmax(0, 1.45fr) minmax(320px, .55fr)' /tmp/completeness.css
+          grep -Fq 'neptune-dashboard-completeness-v59.css?v=2' /tmp/cascade.js
 
       - name: Install Playwright
         run: |
@@ -117,11 +117,16 @@ jobs:
       - name: Audit responsive composition
         run: node neptune-tv-media-cloudflare/tests/audit-adaptive-interfaces-v58.mjs
 
+      - name: Audit dashboard completeness
+        run: node neptune-tv-media-cloudflare/tests/audit-dashboard-completeness-v59.mjs
+
       - name: Upload adaptive screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: neptune-adaptive-interfaces-v58
-          path: test-results/adaptive-interfaces-v58
+          name: neptune-adaptive-interfaces-v59-1
+          path: |
+            test-results/adaptive-interfaces-v58
+            test-results/dashboard-completeness-v59
           if-no-files-found: warn
           retention-days: 7

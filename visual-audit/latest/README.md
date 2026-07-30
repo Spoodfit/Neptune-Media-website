@@ -1,10 +1,10 @@
 # Audit visuel Neptune Media
 
-Généré : 2026-07-30T11:51:56.831Z
+Généré : 2026-07-30T11:59:05.833Z
 
 - Captures : 15
 - Erreurs : 10
-- Avertissements : 344
+- Avertissements : 346
 
 ## Problèmes détectés
 
@@ -73,6 +73,8 @@ Généré : 2026-07-30T11:51:56.831Z
 | warning | desktop-1440 | direct | clipped-text | Aller au contenu principal |
 | warning | desktop-1440 | direct | clipped-text | Neptune Media en direct |
 | warning | desktop-1440 | direct | clipped-text | Neptune Media en direct |
+| warning | desktop-1440 | direct | console-error | Failed to load resource: net::ERR_BLOCKED_BY_RESPONSE.NotSameSite |
+| warning | desktop-1440 | direct | console-error | Failed to load resource: net::ERR_BLOCKED_BY_RESPONSE.NotSameSite |
 | warning | laptop-1280 | home | clipped-text | Aller au contenu principal |
 | warning | laptop-1280 | home | clipped-text | Créez votre futur aveccommunication |
 | warning | laptop-1280 | home | clipped-text | Créez votre futur avec |
@@ -128,5 +130,3 @@ Généré : 2026-07-30T11:51:56.831Z
 | warning | laptop-1280 | home | offscreen-element | span.visibility-short__label |
 | warning | laptop-1280 | home | offscreen-element | article.visibility-short.visibility-short--small |
 | warning | laptop-1280 | home | offscreen-element | video |
-| error | laptop-1280 | emissions | broken-image | img |
-| error | laptop-1280 | emissions | broken-image | img |

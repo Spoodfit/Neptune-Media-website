@@ -1,0 +1,648 @@
+/* Neptune adaptive interfaces v58
+   Goal: preserve visual breathing room without forcing every screen into a compressed, no-scroll layout.
+   Large screens remain overview-first; laptops reduce secondary copy before reducing card legibility;
+   vertical flow is allowed only when the viewport genuinely cannot contain the useful composition. */
+
+@media (min-width: 1024px) {
+  /* ---------- Client access + dashboard ---------- */
+  body:has(.dashboard-v37) {
+    height: auto !important;
+    min-height: 100dvh !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+
+  body:has(.dashboard-v37) .page {
+    height: auto !important;
+    min-height: 100dvh !important;
+    overflow: visible !important;
+  }
+
+  .dashboard-v37:not([hidden]) {
+    height: auto !important;
+    min-height: 100dvh !important;
+    grid-template-rows: 64px auto !important;
+    overflow: visible !important;
+  }
+
+  .dashboard-v37 .media-header {
+    position: sticky !important;
+    top: 0 !important;
+    height: 64px !important;
+    min-height: 64px !important;
+  }
+
+  .dashboard-v37 .dashboard-canvas {
+    width: min(1640px, 100%) !important;
+    height: auto !important;
+    min-height: calc(100dvh - 64px) !important;
+    margin-inline: auto !important;
+    grid-template-rows: auto auto auto auto !important;
+    align-content: start !important;
+    gap: clamp(12px, 1.15vw, 18px) !important;
+    padding: clamp(16px, 1.8vw, 28px) clamp(22px, 2.8vw, 44px) 28px !important;
+    overflow: visible !important;
+  }
+
+  .dashboard-v37 .overview-grid {
+    height: auto !important;
+    min-height: 300px !important;
+    grid-template-columns: minmax(0, 1.45fr) minmax(310px, .55fr) !important;
+    gap: clamp(12px, 1.2vw, 18px) !important;
+    align-items: stretch !important;
+  }
+
+  .dashboard-v37 .production-card,
+  .dashboard-v37 .show-card {
+    height: auto !important;
+    min-height: 300px !important;
+    overflow: hidden !important;
+  }
+
+  .dashboard-v37 .metric-grid {
+    gap: 11px !important;
+  }
+
+  .dashboard-v37 .metric-card {
+    min-height: 76px !important;
+    padding: 11px 13px !important;
+  }
+
+  .dashboard-v37 .dashboard-content-grid {
+    min-height: 56px !important;
+  }
+
+  .auth-shell {
+    min-height: 100dvh;
+    align-items: center;
+    gap: clamp(36px, 5vw, 76px) !important;
+    padding: 86px clamp(28px, 5vw, 82px) 34px !important;
+  }
+
+  .auth-copy h1 {
+    font-size: clamp(3.25rem, 5.1vw, 5.6rem) !important;
+  }
+
+  .auth-shell .access-card {
+    width: min(100%, 460px);
+    padding: clamp(24px, 2vw, 30px) !important;
+  }
+
+  /* ---------- Client content calendar ---------- */
+  body:has(.calendar-shell) {
+    height: auto !important;
+    min-height: 100dvh !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+  }
+
+  .calendar-header {
+    position: sticky !important;
+    top: 0 !important;
+    height: 64px !important;
+    min-height: 64px !important;
+  }
+
+  .calendar-shell {
+    width: min(1640px, 100%) !important;
+    height: auto !important;
+    min-height: calc(100dvh - 64px) !important;
+    grid-template-rows: auto auto auto !important;
+    align-content: start !important;
+    gap: clamp(12px, 1.2vw, 18px) !important;
+    padding: clamp(18px, 2vw, 30px) clamp(22px, 2.8vw, 44px) 32px !important;
+    overflow: visible !important;
+  }
+
+  .calendar-intro {
+    gap: clamp(22px, 3vw, 46px) !important;
+  }
+
+  .calendar-intro h1 {
+    margin-block: .18rem .32rem !important;
+    font-size: clamp(2.4rem, 3.35vw, 3.75rem) !important;
+  }
+
+  .calendar-intro > div > p:last-child {
+    display: block !important;
+    max-width: 760px !important;
+    font-size: clamp(.78rem, .92vw, .94rem) !important;
+  }
+
+  .reuse-guide {
+    gap: 14px !important;
+    padding: 12px 15px !important;
+  }
+
+  .view-panel,
+  .calendar-section,
+  .shorts-section {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  .calendar-section,
+  .shorts-section {
+    padding: clamp(14px, 1.4vw, 20px) !important;
+  }
+
+  .content-calendar {
+    height: auto !important;
+    min-height: 0 !important;
+    grid-template-rows: auto repeat(6, minmax(90px, auto)) !important;
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+  }
+
+  .calendar-day {
+    min-height: 90px !important;
+    padding: 7px !important;
+    overflow: visible !important;
+  }
+
+  .calendar-entry {
+    padding: 6px 7px !important;
+  }
+
+  .shorts-section #projectLibrary,
+  .shorts-section .compact-library-stage,
+  .shorts-section .project-group {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  .shorts-section .project-short-grid {
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  /* ---------- Studio client command centre ---------- */
+  body.clients-app {
+    height: 100dvh !important;
+    min-height: 100dvh !important;
+    overflow: hidden !important;
+  }
+
+  .clients-app .studio-shell {
+    height: 100dvh !important;
+    min-height: 0 !important;
+    grid-template-columns: clamp(220px, 16.5vw, 242px) minmax(0, 1fr) !important;
+    overflow: hidden !important;
+  }
+
+  .clients-app .studio-sidebar {
+    height: 100dvh !important;
+    min-height: 0 !important;
+    padding: 17px 12px 14px !important;
+  }
+
+  .clients-app .clients-workspace {
+    height: 100dvh !important;
+    min-height: 0 !important;
+    grid-template-rows: 64px minmax(0, 1fr) !important;
+    overflow: hidden !important;
+  }
+
+  .clients-app .clients-topbar {
+    min-height: 64px !important;
+    padding: 10px clamp(18px, 2.2vw, 30px) !important;
+  }
+
+  .clients-app .clients-main {
+    width: min(1640px, 100%) !important;
+    height: auto !important;
+    min-height: 0 !important;
+    grid-template-rows: auto auto minmax(0, 1fr) !important;
+    gap: 12px !important;
+    padding: 14px clamp(18px, 2vw, 30px) 12px !important;
+    overflow: hidden !important;
+  }
+
+  .clients-app .clients-hero {
+    min-height: 132px !important;
+    height: auto !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(330px, .55fr) !important;
+    align-items: center !important;
+    gap: 22px !important;
+    padding: 20px 24px !important;
+    border-radius: 22px !important;
+  }
+
+  .clients-app .clients-hero-copy h1 {
+    max-width: 760px !important;
+    font-size: clamp(2rem, 3.25vw, 3.6rem) !important;
+    line-height: .94 !important;
+  }
+
+  .clients-app .clients-hero-copy > p:last-child {
+    display: block !important;
+    max-width: 660px !important;
+    margin-top: 9px !important;
+    font-size: .75rem !important;
+    line-height: 1.45 !important;
+  }
+
+  .clients-app .stats {
+    min-width: 0 !important;
+    align-self: center !important;
+    gap: 8px !important;
+  }
+
+  .clients-app .stats > div,
+  .clients-app .stats > .icon-button {
+    min-height: 82px !important;
+    padding: 11px !important;
+    border-radius: 14px !important;
+  }
+
+  .clients-app .stats b {
+    font-size: 1.55rem !important;
+  }
+
+  .clients-app .stats span {
+    margin-top: 6px !important;
+  }
+
+  .clients-app .controls {
+    min-height: 54px !important;
+    margin: 0 !important;
+    padding: 8px 10px !important;
+    border-radius: 15px !important;
+  }
+
+  .clients-app .search {
+    min-width: min(440px, 48%) !important;
+  }
+
+  .clients-app .search input {
+    height: 38px !important;
+  }
+
+  .clients-app .view-links {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    justify-content: flex-end !important;
+    scrollbar-width: none;
+  }
+
+  .clients-app .view-links::-webkit-scrollbar {
+    display: none;
+  }
+
+  .clients-app .view-links button {
+    min-width: max-content;
+    white-space: nowrap;
+  }
+
+  .clients-app .pipeline {
+    min-height: 0 !important;
+    height: 100% !important;
+    grid-template-columns: repeat(6, minmax(270px, 310px)) !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+    padding: 2px 2px 8px !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scroll-snap-type: x proximity;
+  }
+
+  .clients-app .column {
+    min-width: 0 !important;
+    min-height: 0 !important;
+    height: 100% !important;
+    padding: 11px !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    scroll-snap-align: start;
+  }
+
+  .clients-app .client-card {
+    padding: 13px !important;
+    border-radius: 14px !important;
+  }
+
+  /* ---------- Studio advanced administration ---------- */
+  .shell {
+    min-height: 100dvh !important;
+    grid-template-columns: clamp(220px, 16.5vw, 242px) minmax(0, 1fr) !important;
+  }
+
+  .shell .sidebar {
+    height: 100dvh !important;
+    padding: 17px 12px 14px !important;
+  }
+
+  .shell .main {
+    min-width: 0;
+  }
+
+  .shell .topbar {
+    min-height: 64px !important;
+    padding: 10px clamp(18px, 2.2vw, 30px) !important;
+  }
+
+  .shell .content {
+    width: min(1640px, 100%) !important;
+    padding: clamp(18px, 2vw, 28px) clamp(20px, 2.4vw, 36px) 48px !important;
+  }
+
+  .shell .page-intro {
+    min-height: 148px !important;
+    align-items: center !important;
+    margin-bottom: 16px !important;
+    padding: 24px 26px !important;
+    border-radius: 22px !important;
+  }
+
+  .shell .page-intro h2 {
+    font-size: clamp(2.15rem, 3.5vw, 3.8rem) !important;
+    line-height: .94 !important;
+  }
+
+  .shell .page-intro p:last-child {
+    max-width: 720px !important;
+    margin-top: 9px !important;
+    font-size: .76rem !important;
+    line-height: 1.46 !important;
+  }
+
+  .shell .cards {
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)) !important;
+    gap: 12px !important;
+  }
+
+  .shell .metric {
+    min-height: 112px !important;
+    padding: 17px 18px !important;
+  }
+
+  .shell .task-grid {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
+  }
+
+  .shell .quick-links {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)) !important;
+  }
+
+  .shell .quick-link {
+    min-height: 132px !important;
+  }
+
+  .shell .layout2,
+  .shell .copilot {
+    grid-template-columns: minmax(0, 1.2fr) minmax(320px, .8fr) !important;
+  }
+
+  .shell .panel,
+  .shell .toolbar {
+    border-radius: 17px !important;
+  }
+
+  .shell .row,
+  .shell .finance-row {
+    min-width: 0;
+  }
+
+  .login {
+    overflow-y: auto;
+    padding: clamp(20px, 3vw, 36px) !important;
+  }
+
+  .login-card {
+    width: min(500px, 100%) !important;
+    padding: clamp(26px, 3vw, 34px) !important;
+  }
+
+  .login-card h1 {
+    font-size: clamp(2.25rem, 3.2vw, 2.85rem) !important;
+  }
+
+  /* ---------- Drawers and dialogs ---------- */
+  .detail-panel,
+  .editor,
+  .drawer-card,
+  .dialog-card,
+  .feedback-dialog-card {
+    max-height: calc(100dvh - 28px) !important;
+    overscroll-behavior: contain;
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .dashboard-v37 .overview-grid {
+    grid-template-columns: minmax(0, 1.25fr) minmax(285px, .75fr) !important;
+  }
+
+  .calendar-intro {
+    grid-template-columns: minmax(0, 1fr) minmax(310px, auto) !important;
+  }
+
+  .calendar-summary div {
+    min-width: 82px !important;
+  }
+
+  .content-calendar {
+    grid-template-columns: repeat(7, minmax(108px, 1fr)) !important;
+  }
+
+  .clients-app .studio-shell,
+  .shell {
+    grid-template-columns: 88px minmax(0, 1fr) !important;
+  }
+
+  .clients-app .studio-brand,
+  .shell .brand {
+    justify-content: center !important;
+    padding-inline: 0 !important;
+  }
+
+  .clients-app .studio-brand div,
+  .shell .brand div,
+  .clients-app .studio-status span,
+  .shell .workspace-status span,
+  .clients-app .studio-nav-label,
+  .shell .nav-label,
+  .clients-app .studio-nav-link strong,
+  .clients-app .studio-nav-link em,
+  .shell .nav-btn strong,
+  .shell .nav-btn em,
+  .clients-app .studio-account > span:nth-child(2),
+  .clients-app .studio-account i,
+  .shell .sidebar-bottom .user-meta,
+  .shell .sidebar-bottom .logout-icon {
+    display: none !important;
+  }
+
+  .clients-app .studio-brand img,
+  .shell .brand img {
+    width: 38px !important;
+    height: 38px !important;
+  }
+
+  .clients-app .studio-status,
+  .shell .workspace-status {
+    width: 42px !important;
+    min-height: 38px !important;
+    justify-content: center !important;
+    margin-inline: auto !important;
+    padding: 8px !important;
+  }
+
+  .clients-app .studio-nav-link,
+  .shell .nav-btn {
+    justify-content: center !important;
+    gap: 0 !important;
+    padding-inline: 8px !important;
+  }
+
+  .clients-app .studio-nav-link > span:first-child,
+  .shell .nav-btn > span:first-child {
+    width: 30px !important;
+    height: 30px !important;
+  }
+
+  .clients-app .studio-account,
+  .shell .sidebar-bottom {
+    left: 12px !important;
+    right: 12px !important;
+  }
+
+  .clients-app .studio-account {
+    grid-template-columns: 1fr !important;
+    justify-items: center !important;
+    padding: 8px !important;
+  }
+
+  .clients-app .clients-hero {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, .72fr) !important;
+    gap: 16px !important;
+    padding: 18px 20px !important;
+  }
+
+  .clients-app .clients-hero-copy h1 {
+    font-size: clamp(1.9rem, 3.5vw, 2.75rem) !important;
+  }
+
+  .clients-app .clients-hero-copy > p:last-child {
+    display: none !important;
+  }
+
+  .clients-app .pipeline {
+    grid-template-columns: repeat(6, 270px) !important;
+  }
+
+  .shell .layout2,
+  .shell .copilot {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (min-width: 1024px) and (max-height: 800px) {
+  .dashboard-v37 .dashboard-canvas {
+    gap: 10px !important;
+    padding-top: 12px !important;
+    padding-bottom: 18px !important;
+  }
+
+  .dashboard-v37 .overview-grid,
+  .dashboard-v37 .production-card,
+  .dashboard-v37 .show-card {
+    min-height: 270px !important;
+  }
+
+  .dashboard-v37 .metric-card {
+    min-height: 68px !important;
+  }
+
+  .auth-shell {
+    padding-top: 74px !important;
+    padding-bottom: 24px !important;
+  }
+
+  .auth-copy h1 {
+    font-size: clamp(2.85rem, 4.6vw, 4.45rem) !important;
+  }
+
+  .calendar-shell {
+    gap: 10px !important;
+    padding-top: 13px !important;
+    padding-bottom: 22px !important;
+  }
+
+  .calendar-intro h1 {
+    font-size: clamp(2.15rem, 3vw, 3rem) !important;
+  }
+
+  .calendar-intro > div > p:last-child {
+    display: none !important;
+  }
+
+  .reuse-guide {
+    padding-block: 9px !important;
+  }
+
+  .content-calendar {
+    grid-template-rows: auto repeat(6, minmax(76px, auto)) !important;
+  }
+
+  .calendar-day {
+    min-height: 76px !important;
+    padding: 6px !important;
+  }
+
+  .clients-app .clients-main {
+    gap: 9px !important;
+    padding-top: 10px !important;
+    padding-bottom: 9px !important;
+  }
+
+  .clients-app .clients-hero {
+    min-height: 112px !important;
+    padding-block: 16px !important;
+  }
+
+  .clients-app .clients-hero-copy h1 {
+    font-size: clamp(1.85rem, 3vw, 2.65rem) !important;
+  }
+
+  .clients-app .clients-hero-copy > p:last-child,
+  .clients-app .clients-hero .eyebrow {
+    display: none !important;
+  }
+
+  .clients-app .stats > div,
+  .clients-app .stats > .icon-button {
+    min-height: 72px !important;
+  }
+
+  .clients-app .controls {
+    min-height: 50px !important;
+  }
+
+  .shell .page-intro {
+    min-height: 126px !important;
+    padding-block: 20px !important;
+  }
+
+  .shell .page-intro h2 {
+    font-size: clamp(1.95rem, 3vw, 3rem) !important;
+  }
+
+  .shell .page-intro p:last-child {
+    display: none !important;
+  }
+}
+
+@media (max-width: 1023px) {
+  /* Mobile/tablet keep their natural vertical interaction. Only prevent nested overlays from leaking scroll. */
+  .detail-panel,
+  .editor,
+  .drawer-card,
+  .dialog-card,
+  .feedback-dialog-card {
+    overscroll-behavior: contain;
+  }
+}

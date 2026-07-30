@@ -13,42 +13,49 @@ permissions:
 jobs:
   verify-production:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 12
     env:
       PUBLIC_URL: https://tv.neptunebusiness.com
       WORKERS_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
       RELEASE_ID: neptune-verified-content-runtime-20260730-v18
       EFFICIENCY_RELEASE: neptune-efficiency-operational-fallback-20260730-v5
+      EXPECTED_MIN_DEPLOY_RUN: '748'
     steps:
-      - name: Inspect latest Cloudflare deployments
+      - name: Require a fully successful Cloudflare deployment
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
           api="https://api.github.com/repos/${GITHUB_REPOSITORY}"
-          curl --fail --silent --show-error \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H 'Accept: application/vnd.github+json' \
-            "$api/actions/workflows/deploy-cloudflare.yml/runs?branch=main&per_page=8" > /tmp/deploy-runs.json
-          echo 'Derniers déploiements :'
-          jq -r '.workflow_runs[] | [.id,.run_number,.head_sha,.status,.conclusion,.html_url] | @tsv' /tmp/deploy-runs.json
-          latest_id="$(jq -r '.workflow_runs[0].id // empty' /tmp/deploy-runs.json)"
-          test -n "$latest_id"
-          curl --fail --silent --show-error \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H 'Accept: application/vnd.github+json' \
-            "$api/actions/runs/$latest_id/jobs?per_page=100" > /tmp/deploy-jobs.json
-          echo 'Jobs du dernier déploiement :'
-          jq -r '.jobs[] | [.id,.name,.status,.conclusion] | @tsv' /tmp/deploy-jobs.json
-          jq -r '.jobs[] | select(.conclusion == "failure") | .id' /tmp/deploy-jobs.json | while read -r job_id; do
-            echo "--- Fin des logs du job en échec $job_id ---"
-            curl --location --silent --show-error \
+          success=0
+          for attempt in $(seq 1 60); do
+            curl --fail --silent --show-error \
               -H "Authorization: Bearer $GH_TOKEN" \
               -H 'Accept: application/vnd.github+json' \
-              "$api/actions/jobs/$job_id/logs" > "/tmp/job-$job_id.log" || true
-            tail -n 120 "/tmp/job-$job_id.log" || true
+              "$api/actions/workflows/deploy-cloudflare.yml/runs?branch=main&per_page=20" > /tmp/deploy-runs.json
+            jq -r '.workflow_runs[] | [.id,.run_number,.head_sha,.status,.conclusion,.html_url] | @tsv' /tmp/deploy-runs.json
+            run="$(jq -c --argjson minimum "$EXPECTED_MIN_DEPLOY_RUN" '[.workflow_runs[] | select(.run_number >= $minimum)] | sort_by(.run_number) | reverse | .[0] // {}' /tmp/deploy-runs.json)"
+            run_id="$(jq -r '.id // empty' <<<"$run")"
+            status="$(jq -r '.status // empty' <<<"$run")"
+            conclusion="$(jq -r '.conclusion // empty' <<<"$run")"
+            if [[ -n "$run_id" && "$status" == 'completed' ]]; then
+              curl --fail --silent --show-error \
+                -H "Authorization: Bearer $GH_TOKEN" \
+                -H 'Accept: application/vnd.github+json' \
+                "$api/actions/runs/$run_id/jobs?per_page=100" > /tmp/deploy-jobs.json
+              jq -r '.jobs[] | [.id,.name,.status,.conclusion] | @tsv' /tmp/deploy-jobs.json
+              if [[ "$conclusion" == 'success' ]] \
+                && jq -e 'all(.jobs[]; .status == "completed" and .conclusion == "success")' /tmp/deploy-jobs.json > /dev/null; then
+                success=1
+                break
+              fi
+              echo "Le déploiement $run_id est terminé avec la conclusion $conclusion."
+              exit 1
+            fi
+            sleep 10
           done
+          test "$success" = 1
 
       - name: Verify both Cloudflare domains
         shell: bash
@@ -56,7 +63,7 @@ jobs:
           set -euo pipefail
           for base in "$WORKERS_URL" "$PUBLIC_URL"; do
             ready=0
-            for attempt in $(seq 1 30); do
+            for attempt in $(seq 1 12); do
               curl --silent --show-error --max-time 30 \
                 -H 'Cache-Control: no-cache, no-store' \
                 "$base/api/public/release?independent=$GITHUB_RUN_ID-$attempt" > /tmp/release.json || true
@@ -74,7 +81,7 @@ jobs:
                 ready=1
                 break
               fi
-              sleep 10
+              sleep 5
             done
             echo "Release reçue depuis $base :"
             cat /tmp/release.json

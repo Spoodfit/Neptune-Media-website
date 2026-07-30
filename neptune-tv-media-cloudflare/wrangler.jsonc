@@ -48,9 +48,6 @@
   "r2_buckets": [
     { "binding": "MEDIA", "bucket_name": "neptune-media-assets" }
   ],
-  "analytics_engine_datasets": [
-    { "binding": "MEDIA_ANALYTICS", "dataset": "neptune_media_events" }
-  ],
   "ai": { "binding": "AI" },
   "vars": {
     "BOOKING_URL": "https://media.neptunebusiness.com",

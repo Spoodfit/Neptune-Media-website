@@ -7,6 +7,7 @@
     ['/api/track', 'video'],
     ['/api/ad-track', 'ad'],
   ]);
+  const ignoredVideoEvents = new Set(['impression', 'play', 'pause']);
   const queue = new Map();
   const FLUSH_DELAY_MS = 60_000;
   const MAX_EVENTS = 100;
@@ -23,10 +24,12 @@
 
     try {
       const payload = JSON.parse(init.body);
-      bufferEvent(kind, payload);
-      scheduleFlush();
-      if (queue.size >= MAX_EVENTS) void flush(false);
-      return Promise.resolve(new Response(JSON.stringify({ ok: true, buffered: true }), {
+      const buffered = bufferEvent(kind, payload);
+      if (buffered) {
+        scheduleFlush();
+        if (queue.size >= MAX_EVENTS) void flush(false);
+      }
+      return Promise.resolve(new Response(JSON.stringify({ ok: true, buffered }), {
         status: 202,
         headers: { 'Content-Type': 'application/json' },
       }));
@@ -46,7 +49,9 @@
     const episodeId = String(payload.episodeId || '').slice(0, 100);
     const adId = String(payload.adId || '').slice(0, 100);
     const sessionId = String(payload.sessionId || '').slice(0, 100);
-    if (!event || !sessionId || (kind === 'video' ? !episodeId : !adId)) return;
+    if (!event || !sessionId || (kind === 'video' ? !episodeId : !adId)) return false;
+    if (kind === 'video' && ignoredVideoEvents.has(event)) return false;
+
     const key = [kind, event, sessionId, episodeId, adId].join('|');
     const current = queue.get(key);
     const next = {
@@ -57,7 +62,7 @@
       adId,
       position: finite(payload.position),
       delta: finite(payload.delta),
-      referrer: String(payload.referrer || document.referrer || '').slice(0, 800),
+      referrer: safeReferrer(payload.referrer || document.referrer || ''),
       device: payload.device && typeof payload.device === 'object'
         ? payload.device
         : { width: innerWidth, touch: navigator.maxTouchPoints > 0, language: navigator.language },
@@ -65,9 +70,10 @@
     if (current && event === 'watch') {
       current.delta = Math.min(3600, finite(current.delta) + finite(next.delta));
       current.position = Math.max(finite(current.position), finite(next.position));
-      return;
+      return true;
     }
-    if (!current || ['play', 'pause', 'watch'].includes(event)) queue.set(key, next);
+    if (!current || event === 'watch') queue.set(key, next);
+    return true;
   }
 
   function scheduleFlush(delay = FLUSH_DELAY_MS) {
@@ -114,6 +120,15 @@
       return new URL(value, location.href);
     } catch {
       return null;
+    }
+  }
+
+  function safeReferrer(value) {
+    try {
+      const url = new URL(String(value || ''));
+      return `${url.origin}${url.pathname}`.slice(0, 800);
+    } catch {
+      return '';
     }
   }
 

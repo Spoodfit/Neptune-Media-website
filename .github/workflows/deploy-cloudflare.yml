@@ -88,7 +88,7 @@ jobs:
             test "$ready" = 1
           done
 
-      - name: Verify Studio local engine assets
+      - name: Verify Studio local engine and editorial assets
         shell: bash
         run: |
           set -euo pipefail
@@ -104,8 +104,10 @@ jobs:
               && curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
                 "$PUBLIC_URL/studio/local-engine/neptune-video-local-engine-v1.js?$query" > /tmp/video-local.js \
               && grep -Fq 'indexedDB' /tmp/video-local.js \
-              && grep -Fq 'whisper-base_timestamped' /tmp/video-local.js \
-              && grep -Fq 'X-Clip-Size' /tmp/video-local.js; then
+              && grep -Fq 'X-Clip-Size' /tmp/video-local.js \
+              && curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
+                "$PUBLIC_URL/assets/neptune-editorial-workspace-v59.js?$query" > /tmp/editorial.js \
+              && grep -Fq 'publishExpress' /tmp/editorial.js; then
               ready=1
               break
             fi

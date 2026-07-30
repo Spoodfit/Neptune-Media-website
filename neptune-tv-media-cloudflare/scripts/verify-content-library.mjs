@@ -19,10 +19,13 @@ const files = {
 const failures = [];
 check(files.localConfig, '"main": "src/entry-v11.js"', 'la configuration locale ne cible pas entry-v11');
 check(files.rootConfig, '"main": "neptune-tv-media-cloudflare/src/entry-v11.js"', 'la configuration racine ne cible pas entry-v11');
-check(files.localConfig, '"MEDIA_ANALYTICS"', 'le binding Analytics Engine manque dans la configuration locale');
-check(files.rootConfig, '"MEDIA_ANALYTICS"', 'le binding Analytics Engine manque dans la configuration racine');
+forbid(files.localConfig, '"analytics_engine_datasets"', 'la configuration locale exige encore Analytics Engine');
+forbid(files.rootConfig, '"analytics_engine_datasets"', 'la configuration racine exige encore Analytics Engine');
 check(files.runtime, "from './store-v7.js'", 'le runtime final ne réexporte pas store-v7');
 check(files.runtime, "workflowStore: 'store-v7'", 'le diagnostic final ne confirme pas store-v7');
+check(files.runtime, 'neptune-efficiency-operational-fallback-20260730-v5', 'la release fallback v5 est absente');
+check(files.runtime, "analyticsEngineBinding: 'optional-not-required-for-deployment'", 'Analytics Engine n’est pas déclaré optionnel');
+check(files.runtime, "telemetryStorage: 'operational-sqlite-with-optional-analytics-engine'", 'le stockage opérationnel de secours n’est pas déclaré');
 check(files.entry, '/espace-client/content-snapshot-v48.js?v=3', 'la version authentification-safe du snapshot client n’est pas injectée');
 check(files.entry, '/studio/content-gallery-v49.js?v=1', 'la galerie Studio n’est pas injectée');
 check(files.entry, '/assets/media-dialog-safety-v50.js?v=1', 'la protection de fermeture des médias n’est pas injectée');
@@ -54,7 +57,7 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Verified bounded visual content runtime contract passed.');
+console.log('Verified bounded visual content runtime with operational analytics fallback passed.');
 
 async function read(path) {
   return readFile(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -66,4 +69,8 @@ async function readRoot(path) {
 
 function check(content, needle, message) {
   if (!content.includes(needle)) failures.push(message);
+}
+
+function forbid(content, needle, message) {
+  if (content.includes(needle)) failures.push(message);
 }

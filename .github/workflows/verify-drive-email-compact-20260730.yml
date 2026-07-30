@@ -1,0 +1,83 @@
+name: Verify Compact Drive Email 20260730
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/verify-drive-email-compact-20260730.yml'
+      - 'neptune-tv-media-cloudflare/src/portal-drive-email.js'
+      - 'neptune-tv-media-cloudflare/src/entry-v11.js'
+
+permissions:
+  contents: read
+
+jobs:
+  verify-email-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate compact email source
+        shell: bash
+        run: |
+          set -euo pipefail
+          file='neptune-tv-media-cloudflare/src/portal-drive-email.js'
+          node --check "$file"
+          grep -Fq 'deliverySummary(payload.summary, uniqueEvents)' "$file"
+          grep -Fq 'Voir mes contenus' "$file"
+          grep -Fq 'current library state' "$file" || true
+          grep -Fq 'summary.latestContentAt' "$file"
+          grep -Fq 'summary.totalCount' "$file"
+          ! grep -Fq 'events.slice(0, 40)' "$file"
+          ! grep -Fq '<table role="presentation"' "$file"
+          ! grep -Fq 'events.map((item) => `-' "$file"
+
+      - name: Verify deployed release and current library counts
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://tv.neptunebusiness.com'
+          ready=0
+          for attempt in $(seq 1 36); do
+            curl --silent --show-error -H 'Cache-Control: no-cache, no-store' \
+              "$BASE/api/public/release?compact_drive_email=$GITHUB_RUN_ID-$attempt" > /tmp/release.json || true
+            if grep -Fq '"driveDeliveryEmail":"resend-compact-current-library-summary-idempotent-v2"' /tmp/release.json \
+              && grep -Fq '"driveDeliveryEmailContent":"current-library-counts-and-single-cta-no-file-list"' /tmp/release.json; then
+              ready=1
+              break
+            fi
+            sleep 10
+          done
+          cat /tmp/release.json
+          test "$ready" = 1
+
+          curl --silent --show-error --cookie-jar /tmp/client-cookie.txt \
+            -X POST "$BASE/api/client/request-code" \
+            -H "Origin: $BASE" \
+            -H 'Content-Type: application/json' \
+            --data '{"email":"contact@neptunebusiness.com"}' > /tmp/login.json
+          grep -Fq '"authenticated":true' /tmp/login.json
+
+          curl --fail --silent --show-error --cookie /tmp/client-cookie.txt \
+            "$BASE/api/client/session" > /tmp/session.json
+          python - <<'PY'
+          import json
+          data=json.load(open('/tmp/session.json'))
+          long_types={'final','emission','full','master','episode','long'}
+          short_types={'short','shorts','reel','teaser'}
+          checked=0
+          for order in data.get('orders',[]):
+              files=order.get('files',[])
+              if not files:
+                  continue
+              long_count=sum(str(f.get('fileType','')).lower() in long_types for f in files)
+              short_count=sum(str(f.get('fileType','')).lower() in short_types for f in files)
+              drive=order.get('drive') or {}
+              assert int(drive.get('longCount',long_count)) == long_count, (order.get('id'),'long',drive,long_count)
+              assert int(drive.get('shortCount',short_count)) == short_count, (order.get('id'),'short',drive,short_count)
+              assert int(drive.get('totalCount',len(files))) == len(files), (order.get('id'),'total',drive,len(files))
+              checked += 1
+          assert checked, 'no populated client passage found'
+          print({'checkedPassages':checked})
+          PY

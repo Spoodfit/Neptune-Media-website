@@ -72,11 +72,14 @@ export async function handleDriveRoute(request, env, studio) {
       changed: results.reduce((sum, item) => sum + Number(item.changed || 0), 0),
       removed,
       emailsSent: results.filter((item) => item.emailSent).length,
+      emailsPending: results.filter((item) => item.emailPending).length,
       orders: results.map((item) => ({
         orderId: item.orderId,
         accepted: item.accepted,
         changed: item.changed,
         emailSent: Boolean(item.emailSent),
+        emailPending: Boolean(item.emailPending),
+        emailWarning: item.emailWarning || null,
       })),
       pruned,
       errors: errors.map((item) => ({ orderId: item.orderId || null, error: item.error, status: item.status })),
@@ -103,19 +106,32 @@ async function processDrivePayload(env, requestUrl, studio, payload) {
 
   const events = Array.isArray(result.pendingEvents) ? result.pendingEvents : [];
   if (!events.length) {
-    const body = { ...result, emailSent: false, notificationSkipped: true };
+    const body = { ...result, emailSent: false, emailPending: false, notificationSkipped: true };
     return { ok: true, status: 200, body, ...body };
   }
 
   const sent = await sendDriveDelivery(env, requestUrl, result);
   if (!sent.ok) {
-    console.error('drive_delivery_email_failed', {
+    const emailWarning = {
+      code: sent.error || 'email_failed',
+      providerStatus: Number(sent.providerStatus || 0),
+      providerCode: sent.providerCode || '',
+      providerMessage: sent.providerMessage || '',
+    };
+    console.error('drive_delivery_email_pending', {
       orderId: result.orderId,
-      error: sent.error || 'email_failed',
       eventCount: events.length,
+      ...emailWarning,
     });
-    const body = { error: 'drive_delivery_email_failed', orderId: result.orderId, retryable: true };
-    return { ok: false, status: 503, orderId: result.orderId, error: body.error, body };
+    const body = {
+      ...result,
+      emailSent: false,
+      emailPending: true,
+      notificationPending: true,
+      notificationWarning: 'drive_delivery_email_failed',
+      emailWarning,
+    };
+    return { ok: true, status: 200, body, ...body };
   }
 
   const markResponse = await callStore(studio, '/portal/drive-notified', {
@@ -125,11 +141,11 @@ async function processDrivePayload(env, requestUrl, studio, payload) {
   if (!markResponse.ok) {
     const markResult = await markResponse.json().catch(() => ({}));
     console.error('drive_delivery_mark_failed', { orderId: result.orderId, error: markResult.error || markResponse.status });
-    const body = { ...result, emailSent: true, emailId: sent.id || null, notificationMarkWarning: true };
+    const body = { ...result, emailSent: true, emailPending: false, emailId: sent.id || null, notificationMarkWarning: true };
     return { ok: true, status: 200, body, ...body };
   }
 
-  const body = { ...result, emailSent: true, emailId: sent.id || null, notifiedEvents: events.length };
+  const body = { ...result, emailSent: true, emailPending: false, emailId: sent.id || null, notifiedEvents: events.length };
   return { ok: true, status: 200, body, ...body };
 }
 

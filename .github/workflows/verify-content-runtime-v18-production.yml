@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   verify-production:
@@ -19,13 +20,43 @@ jobs:
       RELEASE_ID: neptune-verified-content-runtime-20260730-v18
       EFFICIENCY_RELEASE: neptune-efficiency-delta-analytics-20260730-v4
     steps:
+      - name: Inspect latest Cloudflare deployments
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          api="https://api.github.com/repos/${GITHUB_REPOSITORY}"
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            "$api/actions/workflows/deploy-cloudflare.yml/runs?branch=main&per_page=8" > /tmp/deploy-runs.json
+          echo 'Derniers déploiements :'
+          jq -r '.workflow_runs[] | [.id,.run_number,.head_sha,.status,.conclusion,.html_url] | @tsv' /tmp/deploy-runs.json
+          latest_id="$(jq -r '.workflow_runs[0].id // empty' /tmp/deploy-runs.json)"
+          test -n "$latest_id"
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'Accept: application/vnd.github+json' \
+            "$api/actions/runs/$latest_id/jobs?per_page=100" > /tmp/deploy-jobs.json
+          echo 'Jobs du dernier déploiement :'
+          jq -r '.jobs[] | [.id,.name,.status,.conclusion] | @tsv' /tmp/deploy-jobs.json
+          jq -r '.jobs[] | select(.conclusion == "failure") | .id' /tmp/deploy-jobs.json | while read -r job_id; do
+            echo "--- Fin des logs du job en échec $job_id ---"
+            curl --location --silent --show-error \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H 'Accept: application/vnd.github+json' \
+              "$api/actions/jobs/$job_id/logs" > "/tmp/job-$job_id.log" || true
+            tail -n 120 "/tmp/job-$job_id.log" || true
+          done
+
       - name: Verify both Cloudflare domains
         shell: bash
         run: |
           set -euo pipefail
           for base in "$WORKERS_URL" "$PUBLIC_URL"; do
             ready=0
-            for attempt in $(seq 1 30); do
+            for attempt in $(seq 1 3); do
               curl --silent --show-error --max-time 30 \
                 -H 'Cache-Control: no-cache, no-store' \
                 "$base/api/public/release?independent=$GITHUB_RUN_ID-$attempt" > /tmp/release.json || true
@@ -41,7 +72,7 @@ jobs:
                 ready=1
                 break
               fi
-              sleep 10
+              sleep 5
             done
             echo "Release reçue depuis $base :"
             cat /tmp/release.json

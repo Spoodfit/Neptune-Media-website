@@ -18,7 +18,7 @@ if (config.analytics_engine_datasets?.length) failures.push('Analytics Engine bl
 if (!activeEntry.includes("from './store-v7.js'")) failures.push('entry-v11 ne réexporte pas le moteur store-v7');
 if (!activeEntry.includes("workflowStore: 'store-v7'")) failures.push('le diagnostic final ne confirme pas store-v7');
 if (!activeEntry.includes("from './entry-v10.js'")) failures.push('entry-v11 ne prolonge pas entry-v10');
-if (!activeEntry.includes('neptune-efficiency-operational-fallback-20260730-v5')) failures.push('la release de secours analytique v5 est absente');
+if (!activeEntry.includes('neptune-efficiency-operational-fallback-20260730-v11')) failures.push('la release de secours analytique v11 est absente');
 if (!activeEntry.includes("analyticsEngineBinding: 'optional-not-required-for-deployment'")) failures.push('Analytics Engine n’est pas optionnel dans le diagnostic');
 if (!storageEntry.includes("from './entry-v9.js'")) failures.push('entry-v10 ne prolonge pas la release applicative entry-v9');
 if (!releaseEntry.includes('neptune-verified-content-runtime-20260730-v18')) failures.push('la release applicative v18 est absente');
@@ -46,4 +46,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Neptune entry-v11, fallback analytique, runtime contenu et Studio unifié validés.');
+console.log('Neptune entry-v11, fallback analytique v11, runtime contenu et Studio unifié validés.');

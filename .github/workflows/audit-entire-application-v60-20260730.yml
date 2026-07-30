@@ -1,0 +1,82 @@
+name: Audit Entire Neptune Application V60
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-entire-application-v60-20260730.yml'
+      - 'neptune-tv-media-cloudflare/public/**'
+      - 'neptune-tv-media-cloudflare/src/**'
+      - 'neptune-tv-media-cloudflare/tests/audit-entire-application-v60.mjs'
+      - 'neptune-tv-media-cloudflare/tests/evaluate-entire-application-v60.mjs'
+      - 'wrangler.jsonc'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/audit-entire-application-v60-20260730.yml'
+      - 'neptune-tv-media-cloudflare/public/**'
+      - 'neptune-tv-media-cloudflare/src/**'
+      - 'neptune-tv-media-cloudflare/tests/audit-entire-application-v60.mjs'
+      - 'neptune-tv-media-cloudflare/tests/evaluate-entire-application-v60.mjs'
+      - 'wrangler.jsonc'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit-entire-application:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate source and Worker build
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check neptune-tv-media-cloudflare/tests/audit-entire-application-v60.mjs
+          node --check neptune-tv-media-cloudflare/tests/evaluate-entire-application-v60.mjs
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run check
+          npx wrangler deploy --config wrangler.jsonc --dry-run --outdir .wrangler-audit-dry-run
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Start local application server
+        shell: bash
+        run: |
+          python3 -m http.server 4173 --directory neptune-tv-media-cloudflare/public >/tmp/neptune-audit-server.log 2>&1 &
+          echo $! > /tmp/neptune-audit-server.pid
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:4173/ >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/neptune-audit-server.log
+          exit 1
+
+      - name: Collect every application screen and safe interaction
+        id: collect
+        continue-on-error: true
+        env:
+          LOCAL_BASE_URL: http://127.0.0.1:4173
+          LIVE_BASE_URL: https://tv.neptunebusiness.com
+        run: node neptune-tv-media-cloudflare/tests/audit-entire-application-v60.mjs
+
+      - name: Evaluate blocking findings
+        run: node neptune-tv-media-cloudflare/tests/evaluate-entire-application-v60.mjs
+
+      - name: Upload complete audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neptune-entire-application-v60
+          path: test-results/entire-application-v60
+          if-no-files-found: error
+          retention-days: 14

@@ -1,0 +1,91 @@
+/* Neptune adaptive interfaces v58.1
+   Precision corrections discovered by screenshot review: access title/card separation,
+   visible referral action and protected Studio sidebar navigation. */
+
+@media (min-width: 1024px) {
+  .auth-shell {
+    grid-template-columns: minmax(0, 1fr) minmax(400px, 460px) !important;
+    gap: clamp(44px, 4.4vw, 68px) !important;
+  }
+
+  .auth-copy {
+    min-width: 0 !important;
+    max-width: 720px !important;
+  }
+
+  .auth-copy h1 {
+    max-width: 700px !important;
+    font-size: clamp(3.2rem, 4.45vw, 4.85rem) !important;
+    line-height: .93 !important;
+  }
+
+  .auth-title-main,
+  .auth-title-accent {
+    display: block !important;
+  }
+
+  .dashboard-v37 .referral-panel.referral-challenge .referral-challenge-head {
+    min-width: 0 !important;
+    max-width: calc(100% - 178px) !important;
+    flex: 1 1 0 !important;
+  }
+
+  .dashboard-v37 .referral-panel.referral-challenge .referral-actions {
+    width: 168px !important;
+    min-width: 168px !important;
+    flex: 0 0 168px !important;
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  .dashboard-v37 .referral-panel.referral-challenge .referral-share-primary {
+    width: 100% !important;
+    min-width: 0 !important;
+    display: inline-flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  .shell .sidebar nav {
+    padding-bottom: 112px !important;
+  }
+}
+
+@media (min-width: 1024px) and (max-height: 820px) {
+  .shell .sidebar nav {
+    gap: 2px !important;
+    padding-bottom: 108px !important;
+  }
+
+  .shell .nav-label {
+    margin: 9px 10px 3px !important;
+  }
+
+  .shell .nav-btn {
+    min-height: 39px !important;
+    padding-block: 7px !important;
+  }
+
+  .shell .sidebar-bottom {
+    bottom: 10px !important;
+  }
+
+  .auth-copy h1 {
+    max-width: 660px !important;
+    font-size: clamp(2.85rem, 4.15vw, 4.15rem) !important;
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1180px) {
+  .auth-shell {
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 420px) !important;
+    gap: 34px !important;
+    padding-inline: 28px !important;
+  }
+
+  .auth-copy h1 {
+    max-width: 600px !important;
+    font-size: clamp(2.8rem, 4.8vw, 3.9rem) !important;
+  }
+}

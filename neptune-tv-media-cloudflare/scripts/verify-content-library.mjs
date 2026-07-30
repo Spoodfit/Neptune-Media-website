@@ -6,6 +6,7 @@ const files = {
   runtime: await read('src/entry-v11.js'),
   editorialEntry: await read('src/entry-v12.js'),
   activeEntry: await read('src/entry-v13.js'),
+  videoAiEntry: await read('src/entry-v14.js'),
   localConfig: await read('wrangler.jsonc'),
   rootConfig: await readRoot('wrangler.jsonc'),
   snapshot: await read('public/espace-client/content-snapshot-v48.js'),
@@ -20,7 +21,8 @@ const files = {
 
 const failures = [];
 check(files.localConfig, '"main": "src/entry-v11.js"', 'la configuration locale ne cible pas entry-v11');
-check(files.rootConfig, '"main": "neptune-tv-media-cloudflare/src/entry-v13.js"', 'la configuration racine ne cible pas le runtime actif entry-v13');
+check(files.rootConfig, '"main": "neptune-tv-media-cloudflare/src/entry-v14.js"', 'la configuration racine ne cible pas le runtime actif entry-v14');
+check(files.videoAiEntry, "from './entry-v13.js'", 'entry-v14 ne prolonge pas le runtime visuel entry-v13');
 check(files.activeEntry, "from './entry-v12.js'", 'entry-v13 ne prolonge pas entry-v12');
 check(files.editorialEntry, "from './entry-v11.js'", 'entry-v12 ne prolonge pas le runtime de contenu entry-v11');
 forbid(files.localConfig, '"analytics_engine_datasets"', 'la configuration locale exige encore Analytics Engine');
@@ -67,7 +69,7 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Verified active entry chain, compact horizontal dashboard rails and bounded content runtime passed.');
+console.log('Verified active entry chain through Video AI, compact horizontal dashboard rails and bounded content runtime passed.');
 
 async function read(path) {
   return readFile(new URL(`../${path}`, import.meta.url), 'utf8');

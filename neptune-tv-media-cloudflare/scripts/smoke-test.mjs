@@ -18,7 +18,11 @@ if (config.analytics_engine_datasets?.length) failures.push('Analytics Engine bl
 if (!activeEntry.includes("from './store-v7.js'")) failures.push('entry-v11 ne réexporte pas le moteur store-v7');
 if (!activeEntry.includes("workflowStore: 'store-v7'")) failures.push('le diagnostic final ne confirme pas store-v7');
 if (!activeEntry.includes("from './entry-v10.js'")) failures.push('entry-v11 ne prolonge pas entry-v10');
-if (!['neptune-efficiency-operational-fallback-20260730-v11', 'neptune-client-information-architecture-20260730-v62'].some((release) => activeEntry.includes(release))) failures.push('aucun identifiant de release entry-v11 compatible n’est présent');
+if (![
+  'neptune-efficiency-operational-fallback-20260730-v11',
+  'neptune-client-information-architecture-20260730-v62',
+  'neptune-studio-sidebar-authority-20260730-v12',
+].some((release) => activeEntry.includes(release))) failures.push('aucun identifiant de release entry-v11 compatible n’est présent');
 if (!activeEntry.includes("clientInformationArchitecture: 'three-primary-screens-home-content-publications-v62'")) failures.push('le diagnostic de l’architecture client v62 est absent');
 if (!activeEntry.includes("analyticsEngineBinding: 'optional-not-required-for-deployment'")) failures.push('Analytics Engine n’est pas optionnel dans le diagnostic');
 if (!storageEntry.includes("from './entry-v9.js'")) failures.push('entry-v10 ne prolonge pas la release applicative entry-v9');

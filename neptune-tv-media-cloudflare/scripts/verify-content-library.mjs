@@ -30,7 +30,11 @@ forbid(files.localConfig, '"analytics_engine_datasets"', 'la configuration local
 forbid(files.rootConfig, '"analytics_engine_datasets"', 'la configuration racine exige encore Analytics Engine');
 check(files.runtime, "from './store-v7.js'", 'le runtime final ne réexporte pas store-v7');
 check(files.runtime, "workflowStore: 'store-v7'", 'le diagnostic final ne confirme pas store-v7');
-checkAny(files.runtime, ['neptune-efficiency-operational-fallback-20260730-v11', 'neptune-client-information-architecture-20260730-v62'], 'aucun identifiant de release entry-v11 compatible n’est présent');
+checkAny(files.runtime, [
+  'neptune-efficiency-operational-fallback-20260730-v11',
+  'neptune-client-information-architecture-20260730-v62',
+  'neptune-studio-sidebar-authority-20260730-v12',
+], 'aucun identifiant de release entry-v11 compatible n’est présent');
 check(files.runtime, "clientInformationArchitecture: 'three-primary-screens-home-content-publications-v62'", 'le diagnostic de l’architecture client active est absent');
 check(files.runtime, "analyticsEngineBinding: 'optional-not-required-for-deployment'", 'Analytics Engine n’est pas déclaré optionnel');
 check(files.runtime, "telemetryStorage: 'operational-sqlite-with-optional-analytics-engine'", 'le stockage opérationnel de secours n’est pas déclaré');

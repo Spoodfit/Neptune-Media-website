@@ -40,6 +40,7 @@ async function augmentRelease(response) {
     driveSynchronization: 'google-drive-changes-cursor-with-shared-drive-support-and-daily-reconciliation',
     driveBatchEndpoint: '/api/webhooks/drive/delta',
     driveTombstones: 'removed-files-pruned-from-client-library',
+    driveStaleRecovery: 'explicit-store-route-and-404-self-heal-v1',
     workflowStore: 'store-v7',
   }), {
     status: response.status,

@@ -1,0 +1,93 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+const scriptDir = dirname(fileURLToPath(import.meta.url));
+const appRoot = resolve(scriptDir, '..');
+const repoRoot = resolve(appRoot, '..');
+const read = (path) => readFile(resolve(appRoot, path), 'utf8');
+
+const [wrangler, entry, routes, store, analysis, html, css, localMain, localAudio, localWorker, localRender, localStorage, built, rootPackage, nestedPackage, security] = await Promise.all([
+  readFile(resolve(repoRoot, 'wrangler.jsonc'), 'utf8'),
+  read('src/entry-v15.js'),
+  read('src/video-ai-local-routes-v1.js'),
+  read('src/store-v10.js'),
+  read('src/video-ai-analysis-v1.js'),
+  read('public/studio/video-ai.html'),
+  read('public/studio/video-ai-local-v3.css'),
+  read('local-video-engine/src/main.js'),
+  read('local-video-engine/src/audio.js'),
+  read('local-video-engine/src/transcriber.worker.js'),
+  read('local-video-engine/src/render.js'),
+  read('local-video-engine/src/storage.js'),
+  read('public/studio/local-engine/neptune-video-local-engine-v1.js'),
+  readFile(resolve(repoRoot, 'package.json'), 'utf8'),
+  read('package.json'),
+  read('src/security.js'),
+]);
+
+assert.match(wrangler, /entry-v15\.js/u);
+assert.doesNotMatch(wrangler, /"containers"/u);
+assert.doesNotMatch(wrangler, /"VIDEO_PROCESSOR"/u);
+assert.match(wrangler, /"deleted_classes": \["VideoProcessor"\]/u);
+assert.match(entry, /handleVideoAiLocalRoute/u);
+assert.match(entry, /videoAiContainerRequired: false/u);
+assert.match(entry, /videoAiSourcePrivacy: 'source-never-uploaded'/u);
+assert.match(entry, /free-assist-only-when-local-selection-insufficient/u);
+
+for (const marker of [
+  '/api/admin/video-ai/local/jobs',
+  '/assist',
+  '/complete',
+  'sourceFingerprint: `local:',
+  'local://browser/',
+  'request.body',
+  'uploadType=resumable',
+  "origin: 'neptune_ai_generated'",
+  "engine: 'neptune_video_local'",
+  'contact@neptunebusiness.com',
+]) assert.ok(routes.includes(marker), `Missing local route marker: ${marker}`);
+assert.ok(!routes.includes('getContainer('), 'Local routes must not dispatch a Container');
+assert.ok(!routes.includes('createMultipartUpload'), 'Source upload must not use R2 multipart');
+
+for (const marker of ['CREATE TABLE IF NOT EXISTS video_ai_jobs', 'CREATE TABLE IF NOT EXISTS video_ai_clips', '>= 60', 'selected_proposal_id', 'drive_file_id']) assert.ok(store.includes(marker), `Missing store marker: ${marker}`);
+for (const marker of ["const MIN_SCORE = 60", "const FUNNELS = new Set(['TOFU', 'MOFU', 'BOFU'])", "['direct', 'Directe et provocante']", "['humour', 'Humoristique et situationnelle']", "['expertise', 'Professionnelle et conversationnelle']"]) assert.ok(analysis.includes(marker), `Missing analysis marker: ${marker}`);
+
+for (const marker of ['100 % local pour la source', 'Aucun envoi R2', 'Garder cet onglet ouvert', 'SEUIL 60/100', '/studio/local-engine/neptune-video-local-engine-v1.js']) assert.ok(html.includes(marker), `Missing UI marker: ${marker}`);
+for (const marker of ['local-privacy-banner', 'local-requirements', 'local-preview-missing']) assert.ok(css.includes(marker), `Missing local CSS marker: ${marker}`);
+
+for (const marker of ['extractAudioChunks', 'transcribeChunk', 'buildLocalCandidates', 'mergeAssistedCandidates', 'renderCandidate', 'saveClip', 'readClip', 'X-Clip-Size', 'beforeunload']) assert.ok(localMain.includes(marker), `Missing local client marker: ${marker}`);
+for (const marker of ['AudioBufferSink', 'TARGET_SAMPLE_RATE = 16_000', 'MAX_CHUNK_SECONDS = 420']) assert.ok(localAudio.includes(marker), `Missing audio marker: ${marker}`);
+for (const marker of ['onnx-community/whisper-base_timestamped', "device === 'webgpu'", "return_timestamps: 'word'", "'wasm'"]) assert.ok(localWorker.includes(marker), `Missing Whisper marker: ${marker}`);
+for (const marker of ['VideoSampleSink', 'AudioSampleSink', '1080', '1920', 'FaceDetector', 'drawCaption', 'Mp4OutputFormat', 'WebMOutputFormat']) assert.ok(localRender.includes(marker), `Missing render marker: ${marker}`);
+for (const marker of ['indexedDB.open', "const STORE = 'clips'", 'navigator.storage']) assert.ok(localStorage.includes(marker), `Missing storage marker: ${marker}`);
+assert.ok(built.length > 10000, 'Local Vite bundle was not generated');
+
+assert.doesNotMatch(rootPackage, /@cloudflare\/containers/u);
+assert.doesNotMatch(nestedPackage, /@cloudflare\/containers/u);
+assert.match(rootPackage, /@huggingface\/transformers/u);
+assert.match(rootPackage, /mediabunny/u);
+assert.match(nestedPackage, /build:video-local/u);
+assert.match(security, /worker-src 'self' blob:/u);
+assert.match(security, /https:\/\/huggingface\.co/u);
+
+const moduleUrl = pathToFileURL(resolve(appRoot, 'src/video-ai-analysis-v1.js')).href;
+const { analyzeVideoForClips } = await import(moduleUrl);
+const text = 'Pourquoi tout le monde fait cette erreur alors que la solution est simple ? Un client nous a montré un cas concret : avant, il perdait du temps et de l’argent parce que personne ne posait la bonne question. Pourtant, avec une méthode claire en trois étapes, le résultat change vraiment. La première étape consiste à comprendre le problème réel. La deuxième évite les décisions prises trop vite. La troisième transforme le conseil en action mesurable. C’est important parce qu’une offre ne vaut rien si le client ne comprend jamais le bénéfice. Cette méthode a réduit la frustration, amélioré le processus et rendu la décision beaucoup plus simple.';
+const words = text.split(/\s+/u);
+const segments = [];
+for (let index = 0; index < words.length; index += 14) {
+  const start = (index / 14) * 7;
+  segments.push({ start, end: start + 7, text: words.slice(index, index + 14).join(' ') });
+}
+const fallback = await analyzeVideoForClips({}, { transcript: text, segments, durationSeconds: segments.at(-1).end, visualProfile: { luminance: .42, contrast: .62, technicalQuality: .9 } });
+assert.ok(fallback.candidates.length >= 1, 'Fallback must retain a coherent candidate when Workers AI quota is unavailable');
+for (const candidate of fallback.candidates) {
+  assert.ok(candidate.score >= 60 && candidate.score <= 100);
+  assert.equal(candidate.editorialProposals.length, 3);
+  assert.deepEqual(candidate.editorialProposals.map((item) => item.id), ['direct', 'humour', 'expertise']);
+  for (const proposal of candidate.editorialProposals) assert.match(proposal.cta, /\?$/u);
+}
+
+console.log(`Neptune Video Local Engine verified: no Containers, no source upload, local Whisper/render, ${fallback.candidates.length} deterministic fallback candidate(s).`);

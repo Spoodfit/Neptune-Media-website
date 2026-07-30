@@ -87,7 +87,8 @@ try {
       assert(metrics.mobileToggleDisplay === 'grid', `${viewport.name}: mobile menu toggle is hidden`);
       const toggle = page.locator('#studioMenuToggle');
       await toggle.click();
-      await page.waitForTimeout(180);
+      await page.waitForFunction(() => document.body.classList.contains('is-studio-menu-open'));
+      await page.waitForTimeout(320);
       const mobile = await page.evaluate(() => {
         const sidebar = document.querySelector('.studio-sidebar').getBoundingClientRect();
         const visibleLinks = [...document.querySelectorAll('.studio-nav-link')].filter((element) => {

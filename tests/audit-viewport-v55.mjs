@@ -72,8 +72,16 @@ for (const viewport of [
   await page.locator('#email').fill('contact@neptunebusiness.com');
   await page.locator('#sendCode').click();
   await page.waitForSelector('#dashboard:not([hidden])', { timeout: 30_000 });
-  await page.waitForTimeout(900);
-  await auditPage(page, `${viewport.name}-dashboard`, ['.dashboard-heading', '.overview-grid', '.metric-grid', '.utility-column']);
+  await page.waitForSelector('.referral-panel.referral-challenge', { timeout: 15_000 }).catch(() => {});
+  await page.waitForTimeout(700);
+  const dashboard = await auditPage(page, `${viewport.name}-dashboard`, ['.dashboard-heading', '.overview-grid', '.metric-grid', '.referral-panel', '.support-card']);
+  const overview = dashboard.items.find((item) => item.selector === '.overview-grid');
+  const minimumCoreHeight = viewport.height <= 820 ? 210 : 225;
+  if (!overview?.missing && overview.height < minimumCoreHeight) {
+    failures.push(`${viewport.name}-dashboard: zone projet/livraison trop petite (${overview.height}px, minimum ${minimumCoreHeight}px).`);
+  }
+  const referral = dashboard.items.find((item) => item.selector === '.referral-panel');
+  if (!referral?.missing && referral.height > 60) failures.push(`${viewport.name}-dashboard: recommandation non compacte (${referral.height}px).`);
   await page.screenshot({ path: path.join(output, `${viewport.name}-dashboard.png`), fullPage: true });
 
   await page.goto(`${base}/espace-client/videos/?viewport_audit=${viewport.name}`, { waitUntil: 'domcontentloaded', timeout: 60_000 });
@@ -123,4 +131,4 @@ if (failures.length) {
   console.error(failures.join('\n'));
   process.exit(1);
 }
-console.log('Viewport-fit v55 validated on client dashboard, videos, calendar and Studio.');
+console.log('Viewport-fit v55/v56 validated on client dashboard, videos, calendar and Studio.');

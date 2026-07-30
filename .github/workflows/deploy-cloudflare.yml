@@ -72,7 +72,8 @@ jobs:
                 && grep -Fq '"studioContentLibrary":"visual-grid-paginated-eight-items"' /tmp/release.json \
                 && grep -Fq '"contentScrollModel":"bounded-by-passage-horizontal-rails-and-pagination"' /tmp/release.json \
                 && grep -Fq '"telemetryStorage":"operational-sqlite-with-optional-analytics-engine"' /tmp/release.json \
-                && grep -Fq '"analyticsEngineBinding":"optional-not-required-for-deployment"' /tmp/release.json; then
+                && grep -Fq '"analyticsEngineBinding":"optional-not-required-for-deployment"' /tmp/release.json \
+                && grep -Fq '"driveStaleRecovery":"explicit-store-route-and-404-self-heal-v1"' /tmp/release.json; then
                 ok=1
                 break
               fi

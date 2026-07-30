@@ -5,7 +5,9 @@ const DRIVE_PATHS = new Set([
   '/api/webhooks/drive/sync-plan',
   '/api/webhooks/drive/provisioned',
   '/api/webhooks/drive/files',
+  '/api/webhooks/drive/delta',
 ]);
+const MAX_DELTA_BATCHES = 80;
 
 export async function handleDriveRoute(request, env, studio) {
   const url = new URL(request.url);
@@ -22,20 +24,68 @@ export async function handleDriveRoute(request, env, studio) {
     return callStore(studio, '/portal/drive-provisioned', payload);
   }
 
+  if (url.pathname === '/api/webhooks/drive/delta') {
+    const batches = Array.isArray(payload.batches) ? payload.batches.slice(0, MAX_DELTA_BATCHES) : [];
+    if (!batches.length) return json({ ok: true, processed: 0, accepted: 0, changed: 0, emailsSent: 0 });
+
+    const results = [];
+    const errors = [];
+    for (const batch of batches) {
+      const outcome = await processDrivePayload(env, request.url, studio, batch);
+      if (outcome.ok) results.push(outcome);
+      else errors.push(outcome);
+    }
+
+    const summary = {
+      ok: errors.length === 0,
+      processed: results.length,
+      failed: errors.length,
+      accepted: results.reduce((sum, item) => sum + Number(item.accepted || 0), 0),
+      changed: results.reduce((sum, item) => sum + Number(item.changed || 0), 0),
+      emailsSent: results.filter((item) => item.emailSent).length,
+      orders: results.map((item) => ({
+        orderId: item.orderId,
+        accepted: item.accepted,
+        changed: item.changed,
+        emailSent: Boolean(item.emailSent),
+      })),
+      errors: errors.map((item) => ({ orderId: item.orderId || null, error: item.error, status: item.status })),
+    };
+    return json(summary, errors.length ? 503 : 200);
+  }
+
+  const outcome = await processDrivePayload(env, request.url, studio, payload);
+  return json(outcome.body, outcome.status);
+}
+
+async function processDrivePayload(env, requestUrl, studio, payload) {
   const response = await callStore(studio, '/portal/drive-files', payload);
   const result = await response.json().catch(() => ({}));
-  if (!response.ok) return json(result, response.status);
-  const events = Array.isArray(result.pendingEvents) ? result.pendingEvents : [];
-  if (!events.length) return json({ ...result, emailSent: false, notificationSkipped: true });
+  if (!response.ok) {
+    return {
+      ok: false,
+      status: response.status,
+      orderId: result.orderId || payload?.orderId || '',
+      error: result.error || 'drive_files_failed',
+      body: result,
+    };
+  }
 
-  const sent = await sendDriveDelivery(env, request.url, result);
+  const events = Array.isArray(result.pendingEvents) ? result.pendingEvents : [];
+  if (!events.length) {
+    const body = { ...result, emailSent: false, notificationSkipped: true };
+    return { ok: true, status: 200, body, ...body };
+  }
+
+  const sent = await sendDriveDelivery(env, requestUrl, result);
   if (!sent.ok) {
     console.error('drive_delivery_email_failed', {
       orderId: result.orderId,
       error: sent.error || 'email_failed',
       eventCount: events.length,
     });
-    return json({ error: 'drive_delivery_email_failed', orderId: result.orderId, retryable: true }, 503);
+    const body = { error: 'drive_delivery_email_failed', orderId: result.orderId, retryable: true };
+    return { ok: false, status: 503, orderId: result.orderId, error: body.error, body };
   }
 
   const markResponse = await callStore(studio, '/portal/drive-notified', {
@@ -45,9 +95,12 @@ export async function handleDriveRoute(request, env, studio) {
   if (!markResponse.ok) {
     const markResult = await markResponse.json().catch(() => ({}));
     console.error('drive_delivery_mark_failed', { orderId: result.orderId, error: markResult.error || markResponse.status });
-    return json({ ...result, emailSent: true, emailId: sent.id || null, notificationMarkWarning: true });
+    const body = { ...result, emailSent: true, emailId: sent.id || null, notificationMarkWarning: true };
+    return { ok: true, status: 200, body, ...body };
   }
-  return json({ ...result, emailSent: true, emailId: sent.id || null, notifiedEvents: events.length });
+
+  const body = { ...result, emailSent: true, emailId: sent.id || null, notifiedEvents: events.length };
+  return { ok: true, status: 200, body, ...body };
 }
 
 function authorizedDriveWebhook(request, env) {

@@ -17,6 +17,7 @@ import {
 
 const WIDTH = 1080;
 const HEIGHT = 1920;
+const CAPTION_WINDOW_WORDS = 7;
 
 export async function renderCandidate(file, candidate, onProgress = () => {}) {
   const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS });
@@ -135,11 +136,22 @@ function drawVerticalFrame(context, sourceCanvas, crop, candidate, sourceTimesta
 
 function activeCaption(segments, timestamp) {
   const segment = segments.find((item) => timestamp >= Number(item.start || 0) - 0.08 && timestamp <= Number(item.end || 0) + 0.12);
-  if (!segment) return '';
-  return String(segment.text || '').trim().split(/\s+/u).slice(0, 14).join(' ');
+  if (!segment) return null;
+  const words = String(segment.text || '').trim().split(/\s+/u).filter(Boolean);
+  if (!words.length) return null;
+  const start = Number(segment.start || 0);
+  const duration = Math.max(0.25, Number(segment.end || start + 0.25) - start);
+  const relative = Math.max(0, Math.min(0.999, (timestamp - start) / duration));
+  const activeGlobalIndex = Math.min(words.length - 1, Math.floor(relative * words.length));
+  const windowStart = Math.floor(activeGlobalIndex / CAPTION_WINDOW_WORDS) * CAPTION_WINDOW_WORDS;
+  const windowWords = words.slice(windowStart, windowStart + CAPTION_WINDOW_WORDS);
+  return {
+    words: windowWords,
+    activeIndex: Math.max(0, Math.min(windowWords.length - 1, activeGlobalIndex - windowStart)),
+  };
 }
 
-function drawCaption(context, text, preset) {
+function drawCaption(context, caption, preset) {
   const styles = {
     'neptune-light': { fill: '#ffffff', accent: '#f2a4ff', box: 'rgba(3,11,28,.24)', stroke: 'rgba(0,0,0,.82)' },
     'neptune-boxed': { fill: '#ffffff', accent: '#61e8ff', box: 'rgba(2,8,24,.84)', stroke: 'rgba(0,0,0,.9)' },
@@ -147,42 +159,57 @@ function drawCaption(context, text, preset) {
     'neptune-contrast': { fill: '#ffffff', accent: '#77ebff', box: 'rgba(1,7,20,.72)', stroke: 'rgba(0,0,0,.9)' },
   };
   const style = styles[preset] || styles['neptune-contrast'];
-  const words = text.split(/\s+/u).filter(Boolean);
-  const lines = wrapWords(context, words, 810, 72);
-  const lineHeight = 92;
+  const fontSize = caption.words.length <= 4 ? 82 : 72;
+  const lines = wrapWordObjects(context, caption.words, caption.activeIndex, 820, fontSize);
+  const lineHeight = fontSize + 24;
   const paddingX = 34;
-  const paddingY = 24;
-  const top = HEIGHT * 0.73 - (lines.length * lineHeight) / 2;
-  context.textAlign = 'center';
+  const top = HEIGHT * 0.74 - (lines.length * lineHeight) / 2;
+  context.textAlign = 'left';
   context.textBaseline = 'middle';
-  context.font = '900 72px Inter, Arial, sans-serif';
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index];
-    const y = top + index * lineHeight;
-    const width = context.measureText(line).width;
-    roundedRect(context, WIDTH / 2 - width / 2 - paddingX, y - lineHeight / 2 + 3, width + paddingX * 2, lineHeight - 6, 22);
+  context.font = `900 ${fontSize}px Inter, Arial, sans-serif`;
+
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    const line = lines[lineIndex];
+    const y = top + lineIndex * lineHeight;
+    const lineWidth = line.reduce((sum, word, index) => sum + context.measureText(word.text).width + (index ? context.measureText(' ').width : 0), 0);
+    const x = WIDTH / 2 - lineWidth / 2;
+    roundedRect(context, x - paddingX, y - lineHeight / 2 + 4, lineWidth + paddingX * 2, lineHeight - 8, 22);
     context.fillStyle = style.box;
     context.fill();
-    context.lineWidth = 10;
-    context.strokeStyle = style.stroke;
-    context.strokeText(line, WIDTH / 2, y);
-    context.fillStyle = index === lines.length - 1 && lines.length > 1 ? style.accent : style.fill;
-    context.fillText(line, WIDTH / 2, y);
+
+    let cursor = x;
+    for (let wordIndex = 0; wordIndex < line.length; wordIndex += 1) {
+      const word = line[wordIndex];
+      if (wordIndex) cursor += context.measureText(' ').width;
+      context.lineWidth = 10;
+      context.strokeStyle = style.stroke;
+      context.strokeText(word.text, cursor, y);
+      context.fillStyle = word.active ? style.accent : style.fill;
+      context.fillText(word.text, cursor, y);
+      cursor += context.measureText(word.text).width;
+    }
   }
 }
 
-function wrapWords(context, words, maxWidth, fontSize) {
+function wrapWordObjects(context, words, activeIndex, maxWidth, fontSize) {
   context.font = `900 ${fontSize}px Inter, Arial, sans-serif`;
   const lines = [];
-  let current = '';
-  for (const word of words) {
-    const next = current ? `${current} ${word}` : word;
-    if (context.measureText(next).width > maxWidth && current) {
+  let current = [];
+  let currentWidth = 0;
+  const spaceWidth = context.measureText(' ').width;
+  for (let index = 0; index < words.length; index += 1) {
+    const text = words[index];
+    const width = context.measureText(text).width;
+    const nextWidth = currentWidth + (current.length ? spaceWidth : 0) + width;
+    if (nextWidth > maxWidth && current.length) {
       lines.push(current);
-      current = word;
-    } else current = next;
+      current = [];
+      currentWidth = 0;
+    }
+    current.push({ text, active: index === activeIndex });
+    currentWidth += (current.length > 1 ? spaceWidth : 0) + width;
   }
-  if (current) lines.push(current);
+  if (current.length) lines.push(current);
   return lines.slice(0, 3);
 }
 

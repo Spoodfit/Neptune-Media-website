@@ -14,3 +14,5 @@ ready.then(() => {
   link.dataset.neptuneAdaptiveCascadeV581 = 'true';
   document.head.append(link);
 });
+
+// Validation branch marker: flex-row referral containment v2.

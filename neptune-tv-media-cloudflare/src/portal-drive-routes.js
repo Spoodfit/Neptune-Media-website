@@ -26,7 +26,15 @@ export async function handleDriveRoute(request, env, studio) {
 
   if (url.pathname === '/api/webhooks/drive/delta') {
     const batches = Array.isArray(payload.batches) ? payload.batches.slice(0, MAX_DELTA_BATCHES) : [];
-    if (!batches.length) return json({ ok: true, processed: 0, accepted: 0, changed: 0, emailsSent: 0 });
+    const removedIds = Array.isArray(payload.removedFileIds) ? payload.removedFileIds.slice(0, 250) : [];
+    let removed = 0;
+    if (removedIds.length) {
+      const removalResponse = await callStore(studio, '/portal/drive-removed', { driveFileIds: removedIds });
+      const removal = await removalResponse.json().catch(() => ({}));
+      if (!removalResponse.ok) return json({ error: removal.error || 'drive_removal_failed', retryable: true }, 503);
+      removed = Number(removal.removed || 0);
+    }
+    if (!batches.length) return json({ ok: true, processed: 0, accepted: 0, changed: 0, removed, emailsSent: 0 });
 
     const results = [];
     const errors = [];
@@ -42,6 +50,7 @@ export async function handleDriveRoute(request, env, studio) {
       failed: errors.length,
       accepted: results.reduce((sum, item) => sum + Number(item.accepted || 0), 0),
       changed: results.reduce((sum, item) => sum + Number(item.changed || 0), 0),
+      removed,
       emailsSent: results.filter((item) => item.emailSent).length,
       orders: results.map((item) => ({
         orderId: item.orderId,

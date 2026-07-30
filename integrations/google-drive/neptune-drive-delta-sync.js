@@ -6,22 +6,29 @@
  * - le Worker fournit uniquement le plan des dossiers clients ;
  * - Google Drive Changes renvoie seulement les fichiers réellement modifiés ;
  * - les changements sont envoyés au Worker en un lot ;
- * - une réconciliation complète quotidienne sert de filet de sécurité.
+ * - une réconciliation complète quotidienne supprime aussi les fichiers devenus absents ;
+ * - le journal du Drive partagé est utilisé automatiquement lorsque le dossier racine y appartient.
  */
 
 const NEPTUNE_DRIVE_DELTA = Object.freeze({
-  version: 'neptune-drive-delta-v2',
+  version: 'neptune-drive-delta-v3',
   defaultWorkerOrigin: 'https://tv.neptunebusiness.com',
   syncHandler: 'synchroniserDriveNeptuneDelta',
   reconcileHandler: 'reconcilierDriveNeptuneComplet',
-  changeTokenKey: 'NEPTUNE_DRIVE_CHANGE_TOKEN_V2',
+  changeTokenKeyPrefix: 'NEPTUNE_DRIVE_CHANGE_TOKEN_V3',
   workerOriginKeys: ['NEPTUNE_WORKER_ORIGIN', 'WORKER_ORIGIN'],
   rootFolderKeys: ['NEPTUNE_DRIVE_ROOT_FOLDER_ID', 'DRIVE_ROOT_FOLDER_ID', 'ROOT_FOLDER_ID'],
   secretKeys: ['NEPTUNE_DRIVE_WEBHOOK_SECRET', 'DRIVE_WEBHOOK_SECRET', 'NEPTUNE_WEBHOOK_SECRET'],
-  legacyHandlers: ['synchroniserDriveNeptune', 'synchroniserDriveNeptuneV2', 'synchroniserDriveNeptuneDelta'],
+  legacyHandlers: [
+    'synchroniserDriveNeptune',
+    'synchroniserDriveNeptuneV2',
+    'synchroniserDriveNeptuneDelta',
+    'reconcilierDriveNeptuneComplet',
+  ],
   maxFilesPerBatch: 250,
   maxOrderBatchesPerRequest: 80,
   maxRemovedPerRequest: 250,
+  maxSnapshotsPerRequest: 80,
 });
 
 function configurerSynchronisationDriveNeptune(rootFolderId, webhookSecret, workerOrigin) {
@@ -29,12 +36,16 @@ function configurerSynchronisationDriveNeptune(rootFolderId, webhookSecret, work
   properties.setProperty('NEPTUNE_DRIVE_ROOT_FOLDER_ID', String(rootFolderId || '').trim());
   properties.setProperty('NEPTUNE_DRIVE_WEBHOOK_SECRET', String(webhookSecret || '').trim());
   properties.setProperty('NEPTUNE_WORKER_ORIGIN', String(workerOrigin || NEPTUNE_DRIVE_DELTA.defaultWorkerOrigin).replace(/\/+$/u, ''));
-  installerSynchronisationDriveNeptuneV2();
+  installerSynchronisationDriveNeptuneV3();
 }
 
 function installerSynchronisationDriveNeptuneV2() {
+  installerSynchronisationDriveNeptuneV3();
+}
+
+function installerSynchronisationDriveNeptuneV3() {
   verifierConfigurationDriveNeptune_();
-  const handlers = new Set([...NEPTUNE_DRIVE_DELTA.legacyHandlers, NEPTUNE_DRIVE_DELTA.reconcileHandler]);
+  const handlers = new Set(NEPTUNE_DRIVE_DELTA.legacyHandlers);
   ScriptApp.getProjectTriggers()
     .filter((trigger) => handlers.has(trigger.getHandlerFunction()))
     .forEach((trigger) => ScriptApp.deleteTrigger(trigger));
@@ -62,14 +73,15 @@ function synchroniserDriveNeptuneDelta() {
     const passages = obtenirPassagesDriveNeptune_(config);
     if (!passages.length) return;
 
+    const journalContext = obtenirContexteJournalDriveNeptune_(config.rootFolderId);
     const properties = PropertiesService.getScriptProperties();
-    const savedToken = properties.getProperty(NEPTUNE_DRIVE_DELTA.changeTokenKey);
+    const savedToken = properties.getProperty(journalContext.tokenKey);
     if (!savedToken) {
       reconcilierDriveNeptuneComplet_();
       return;
     }
 
-    const journal = listerChangementsDriveNeptune_(savedToken);
+    const journal = listerChangementsDriveNeptune_(savedToken, journalContext.driveId);
     const folderMap = construireCarteDossiersNeptune_(passages);
     const latestByFile = new Map();
     journal.changes.forEach((change) => {
@@ -98,9 +110,9 @@ function synchroniserDriveNeptuneDelta() {
 
     const batches = construireLotsNeptune_(grouped);
     if (batches.length || removed.size) {
-      envoyerDeltaNeptune_(config, batches, Array.from(removed));
+      envoyerDeltaNeptune_(config, batches, Array.from(removed), []);
     }
-    properties.setProperty(NEPTUNE_DRIVE_DELTA.changeTokenKey, journal.newStartPageToken);
+    properties.setProperty(journalContext.tokenKey, journal.newStartPageToken);
   });
 }
 
@@ -112,20 +124,26 @@ function reconcilierDriveNeptuneComplet() {
 
 function reconcilierDriveNeptuneComplet_() {
   const config = verifierConfigurationDriveNeptune_();
-  const tokenBeforeScan = obtenirStartPageTokenDriveNeptune_();
+  const journalContext = obtenirContexteJournalDriveNeptune_(config.rootFolderId);
+  const tokenBeforeScan = obtenirStartPageTokenDriveNeptune_(journalContext.driveId);
   const passages = obtenirPassagesDriveNeptune_(config);
   const grouped = new Map();
+  const snapshots = [];
 
   passages.forEach((passage) => {
     const files = [];
     scannerDossierNeptune_(passage.longFolderId, 'long', files);
     scannerDossierNeptune_(passage.shortsFolderId, 'short', files);
     grouped.set(passage.orderId, files);
+    snapshots.push({
+      orderId: passage.orderId,
+      currentDriveFileIds: files.map((file) => file.driveFileId),
+    });
   });
 
   const batches = construireLotsNeptune_(grouped);
-  if (batches.length) envoyerDeltaNeptune_(config, batches, []);
-  PropertiesService.getScriptProperties().setProperty(NEPTUNE_DRIVE_DELTA.changeTokenKey, tokenBeforeScan);
+  if (batches.length || snapshots.length) envoyerDeltaNeptune_(config, batches, [], snapshots);
+  PropertiesService.getScriptProperties().setProperty(journalContext.tokenKey, tokenBeforeScan);
 }
 
 function obtenirPassagesDriveNeptune_(config) {
@@ -187,11 +205,20 @@ function destinationDepuisParents_(parents, folderMap) {
   return null;
 }
 
-function listerChangementsDriveNeptune_(startPageToken) {
+function obtenirContexteJournalDriveNeptune_(rootFolderId) {
+  const metadata = appelerApiDriveNeptune_('/files/' + encodeURIComponent(rootFolderId) + '?supportsAllDrives=true&fields=driveId');
+  const driveId = String(metadata.driveId || '').trim();
+  return {
+    driveId: driveId,
+    tokenKey: NEPTUNE_DRIVE_DELTA.changeTokenKeyPrefix + ':' + (driveId || 'user'),
+  };
+}
+
+function listerChangementsDriveNeptune_(startPageToken, driveId) {
   let pageToken = String(startPageToken || '');
   const changes = [];
   let newStartPageToken = pageToken;
-  const fields = 'nextPageToken,newStartPageToken,changes(fileId,removed,file(id,name,mimeType,modifiedTime,size,webViewLink,webContentLink,parents,trashed))';
+  const fields = 'nextPageToken,newStartPageToken,changes(fileId,removed,driveId,file(id,name,mimeType,modifiedTime,size,webViewLink,webContentLink,parents,trashed,driveId))';
 
   while (pageToken) {
     const query = [
@@ -201,8 +228,10 @@ function listerChangementsDriveNeptune_(startPageToken) {
       'includeRemoved=true',
       'includeItemsFromAllDrives=true',
       'supportsAllDrives=true',
+      driveId ? 'includeCorpusRemovals=true' : '',
+      driveId ? 'driveId=' + encodeURIComponent(driveId) : '',
       'fields=' + encodeURIComponent(fields),
-    ].join('&');
+    ].filter(Boolean).join('&');
     const result = appelerApiDriveNeptune_('/changes?' + query);
     (result.changes || []).forEach((change) => changes.push(change));
     if (result.nextPageToken) pageToken = result.nextPageToken;
@@ -214,8 +243,13 @@ function listerChangementsDriveNeptune_(startPageToken) {
   return { changes: changes, newStartPageToken: newStartPageToken };
 }
 
-function obtenirStartPageTokenDriveNeptune_() {
-  const result = appelerApiDriveNeptune_('/changes/startPageToken?supportsAllDrives=true&fields=startPageToken');
+function obtenirStartPageTokenDriveNeptune_(driveId) {
+  const query = [
+    'supportsAllDrives=true',
+    driveId ? 'driveId=' + encodeURIComponent(driveId) : '',
+    'fields=startPageToken',
+  ].filter(Boolean).join('&');
+  const result = appelerApiDriveNeptune_('/changes/startPageToken?' + query);
   if (!result.startPageToken) throw new Error('drive_start_page_token_missing');
   return result.startPageToken;
 }
@@ -282,13 +316,25 @@ function construireLotsNeptune_(grouped) {
   return batches;
 }
 
-function envoyerDeltaNeptune_(config, batches, removedFileIds) {
+function envoyerDeltaNeptune_(config, batches, removedFileIds, snapshots) {
   const pendingBatches = batches.slice();
   const pendingRemoved = removedFileIds.slice();
+  const pendingSnapshots = snapshots.slice();
+
   while (pendingBatches.length || pendingRemoved.length) {
     appelerWorkerDriveNeptune_(config, '/api/webhooks/drive/delta', {
       batches: pendingBatches.splice(0, NEPTUNE_DRIVE_DELTA.maxOrderBatchesPerRequest),
       removedFileIds: pendingRemoved.splice(0, NEPTUNE_DRIVE_DELTA.maxRemovedPerRequest),
+      snapshots: [],
+      syncVersion: NEPTUNE_DRIVE_DELTA.version,
+    });
+  }
+
+  while (pendingSnapshots.length) {
+    appelerWorkerDriveNeptune_(config, '/api/webhooks/drive/delta', {
+      batches: [],
+      removedFileIds: [],
+      snapshots: pendingSnapshots.splice(0, NEPTUNE_DRIVE_DELTA.maxSnapshotsPerRequest),
       syncVersion: NEPTUNE_DRIVE_DELTA.version,
     });
   }

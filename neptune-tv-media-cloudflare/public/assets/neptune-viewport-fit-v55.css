@@ -1,0 +1,652 @@
+/* Neptune viewport-fit v55
+   Desktop and laptop application screens are composed inside the viewport.
+   Secondary detail stays in drawers, horizontal rails or local data regions instead of extending the page. */
+
+@media (min-width: 1024px) {
+  html { height: 100%; }
+
+  /* ---------- Client dashboard ---------- */
+  body:has(.dashboard-v37) {
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  body:has(.dashboard-v37) .page {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .dashboard-v37:not([hidden]) {
+    height: 100dvh;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: 58px minmax(0, 1fr);
+    overflow: hidden;
+  }
+
+  .dashboard-v37 .media-header {
+    position: relative;
+    top: auto;
+    height: 58px;
+    min-height: 58px;
+  }
+
+  .dashboard-v37 .dashboard-canvas {
+    height: auto;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    gap: 10px;
+    padding: 12px clamp(18px, 2.2vw, 34px);
+    overflow: hidden;
+  }
+
+  .dashboard-v37 .dashboard-heading,
+  .dashboard-v37 .overview-grid,
+  .dashboard-v37 .metrics-section,
+  .dashboard-v37 .dashboard-content-grid {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+
+  .dashboard-v37 .dashboard-heading {
+    min-height: 0;
+  }
+
+  .dashboard-v37 .overview-grid {
+    min-height: 0;
+    height: 100%;
+    align-items: stretch;
+  }
+
+  .dashboard-v37 .production-card,
+  .dashboard-v37 .show-card {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .dashboard-v37 .client-content-snapshot {
+    display: none !important;
+  }
+
+  .dashboard-v37 .metrics-section > .section-heading {
+    display: none;
+  }
+
+  .dashboard-v37 .metric-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 9px;
+  }
+
+  .dashboard-v37 .metric-card {
+    min-height: 72px;
+    padding: 10px 12px;
+  }
+
+  .dashboard-v37 .dashboard-content-grid {
+    display: block;
+    min-height: 0;
+  }
+
+  .dashboard-v37 .formats-panel {
+    display: none;
+  }
+
+  .dashboard-v37 .utility-column {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+  }
+
+  .dashboard-v37 .referral-panel,
+  .dashboard-v37 .support-card {
+    min-height: 58px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 9px 13px;
+  }
+
+  .dashboard-v37 .utility-heading h2 {
+    margin: 0;
+    font-size: .82rem;
+  }
+
+  .dashboard-v37 .utility-heading p {
+    display: none;
+  }
+
+  .dashboard-v37 .referral-code {
+    min-width: 148px;
+    min-height: 38px;
+    padding: 6px 10px;
+  }
+
+  .dashboard-v37 .support-actions {
+    display: flex;
+    gap: 6px;
+  }
+
+  .dashboard-v37 .utility-action {
+    min-height: 36px;
+    padding: 7px 10px;
+    white-space: nowrap;
+  }
+
+  .dashboard-v37 .client-footer {
+    display: none;
+  }
+
+  /* ---------- Client video library ---------- */
+  body:has(.library-shell) {
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .library-header {
+    position: relative;
+    top: auto;
+    height: 58px;
+    min-height: 58px;
+  }
+
+  .library-shell {
+    height: calc(100dvh - 58px);
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 10px;
+    padding: 12px clamp(18px, 2.2vw, 34px);
+    overflow: hidden;
+  }
+
+  .library-intro {
+    gap: 18px;
+    margin: 0;
+  }
+
+  .library-intro h1 {
+    font-size: clamp(2rem, 3vw, 3.15rem);
+  }
+
+  .library-summary div {
+    padding: 9px 12px;
+  }
+
+  .content-section {
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    padding: 12px;
+    overflow: hidden;
+  }
+
+  .content-section > .section-heading {
+    margin-bottom: 8px;
+  }
+
+  .passage-selector {
+    max-height: 70px;
+    margin-bottom: 7px;
+    padding-bottom: 4px;
+  }
+
+  .passage-selector button {
+    flex-basis: min(240px, 24vw);
+    padding: 8px 10px;
+  }
+
+  #contentGrid {
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    overflow: hidden;
+  }
+
+  .active-passage-summary {
+    margin-bottom: 7px;
+    padding: 8px 11px;
+  }
+
+  .media-dashboard-section {
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, .82fr) minmax(0, 1.18fr);
+    gap: 9px;
+    overflow: hidden;
+  }
+
+  .media-strip-section {
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    padding: 9px;
+    overflow: hidden;
+  }
+
+  .media-row-head {
+    margin-bottom: 6px;
+  }
+
+  .media-strip {
+    min-height: 0;
+    height: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 5px;
+  }
+
+  .compact-media-card--final { width: clamp(210px, 18vw, 270px); }
+  .compact-media-card--short { width: clamp(104px, 8.4vw, 124px); }
+
+  .compact-media-copy {
+    gap: 2px;
+    padding: 7px;
+  }
+
+  .compact-media-copy strong {
+    min-height: 1.2em;
+    -webkit-line-clamp: 1;
+  }
+
+  .compact-media-actions {
+    padding: 0 7px 7px;
+  }
+
+  .compact-media-actions a {
+    min-height: 28px;
+  }
+
+  .compact-media-card--short .compact-media-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* ---------- Client content calendar ---------- */
+  body:has(.calendar-shell) {
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .calendar-header {
+    position: relative;
+    top: auto;
+  }
+
+  .calendar-shell {
+    height: calc(100dvh - 60px);
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    gap: 8px;
+    padding: 11px clamp(18px, 2.2vw, 34px);
+    overflow: hidden;
+  }
+
+  .calendar-intro,
+  .reuse-guide {
+    margin: 0;
+  }
+
+  .calendar-intro h1 {
+    font-size: clamp(1.9rem, 2.8vw, 3rem);
+  }
+
+  .view-panel {
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .calendar-section,
+  .shorts-section {
+    height: 100%;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    padding: 11px 13px;
+    overflow: hidden;
+  }
+
+  .calendar-section > .section-heading,
+  .shorts-section > .section-heading {
+    margin-bottom: 7px;
+  }
+
+  .content-calendar {
+    height: 100%;
+    min-height: 0;
+    grid-template-rows: auto repeat(6, minmax(0, 1fr));
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .calendar-day {
+    min-height: 0;
+    padding: 6px;
+    overflow: auto;
+  }
+
+  .calendar-day-number {
+    margin-bottom: 4px;
+  }
+
+  .calendar-entry {
+    padding: 5px 6px;
+  }
+
+  .shorts-section #projectLibrary,
+  .shorts-section .compact-library-stage,
+  .shorts-section .project-group {
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .shorts-section .project-group {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+
+  .shorts-section .project-short-grid {
+    min-height: 0;
+    overflow: auto;
+  }
+
+  /* ---------- Studio command centre ---------- */
+  body.clients-app {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .clients-app .studio-shell {
+    height: 100dvh;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .clients-app .studio-sidebar {
+    height: 100dvh;
+    min-height: 0;
+  }
+
+  .clients-app .clients-workspace {
+    height: 100dvh;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    overflow: hidden;
+  }
+
+  .clients-app .clients-topbar {
+    position: relative;
+    top: auto;
+    min-height: 62px;
+    padding-block: 9px;
+  }
+
+  .clients-app .clients-main {
+    height: auto;
+    min-height: 0;
+    display: grid;
+    grid-template-rows: auto auto minmax(0, 1fr);
+    gap: 10px;
+    padding: 13px clamp(16px, 2vw, 28px);
+    overflow: hidden;
+  }
+
+  .clients-app .clients-hero {
+    min-height: 0;
+    height: clamp(128px, 19vh, 176px);
+    align-items: center;
+    padding: 19px 22px;
+  }
+
+  .clients-app .clients-hero-copy h1 {
+    font-size: clamp(2rem, 3.2vw, 3.35rem);
+  }
+
+  .clients-app .clients-hero-copy > p:last-child {
+    margin-top: 8px;
+  }
+
+  .clients-app .stats {
+    min-width: min(360px, 100%);
+  }
+
+  .clients-app .stats > div,
+  .clients-app .stats > .icon-button {
+    padding: 10px;
+  }
+
+  .clients-app .controls {
+    margin: 0;
+    padding: 9px 10px;
+  }
+
+  .clients-app .search input {
+    height: 38px;
+  }
+
+  .clients-app .pipeline {
+    min-height: 0;
+    height: 100%;
+    align-items: stretch;
+    padding-bottom: 4px;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .clients-app .column {
+    height: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .clients-app .drawer-card,
+  .clients-app .dialog-card,
+  .clients-app .feedback-dialog-card {
+    max-height: calc(100dvh - 24px);
+    overflow: auto;
+  }
+}
+
+@media (min-width: 1024px) and (max-height: 820px) {
+  /* Preserve the decision hierarchy on common 768/800px laptop screens. */
+  .dashboard-v37 .dashboard-heading-copy > p:last-child,
+  .dashboard-v37 .countdown-wrap p,
+  .dashboard-v37 .snapshot-card small,
+  .dashboard-v37 .show-footer,
+  .library-intro .intro-copy > p:last-child,
+  .content-section > .section-heading > div > p:last-child,
+  .calendar-intro > div > p:last-child,
+  .reuse-guide > div:first-child > span,
+  .clients-app .clients-hero-copy > p:last-child {
+    display: none;
+  }
+
+  .dashboard-v37 .dashboard-canvas {
+    gap: 7px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .dashboard-v37 .dashboard-heading h1 {
+    font-size: clamp(1.65rem, 2vw, 2.1rem);
+  }
+
+  .dashboard-v37 .production-card {
+    padding: 13px 17px;
+  }
+
+  .dashboard-v37 .production-main,
+  .dashboard-v37 .project-snapshot {
+    margin-top: 9px;
+  }
+
+  .dashboard-v37 .project-snapshot {
+    padding-top: 8px;
+  }
+
+  .dashboard-v37 .snapshot-card {
+    min-height: 54px;
+    padding: 7px 10px;
+  }
+
+  .dashboard-v37 .project-progress {
+    margin-top: 7px;
+  }
+
+  .dashboard-v37 .project-stage-list {
+    margin-top: 5px;
+  }
+
+  .dashboard-v37 .show-card {
+    padding: 11px;
+  }
+
+  .dashboard-v37 .show-preview {
+    min-height: 104px;
+  }
+
+  .dashboard-v37 .metric-card {
+    min-height: 62px;
+    padding: 8px 10px;
+  }
+
+  .dashboard-v37 .referral-panel,
+  .dashboard-v37 .support-card {
+    min-height: 50px;
+    padding-block: 7px;
+  }
+
+  .library-shell,
+  .calendar-shell {
+    gap: 6px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  .library-intro h1,
+  .calendar-intro h1 {
+    margin-block: .08rem;
+  }
+
+  .library-summary div,
+  .calendar-summary div {
+    padding: 6px 9px;
+  }
+
+  .content-section,
+  .calendar-section,
+  .shorts-section {
+    padding: 9px 10px;
+  }
+
+  .passage-selector {
+    max-height: 60px;
+  }
+
+  .passage-selector button {
+    padding-block: 6px;
+  }
+
+  .active-passage-summary {
+    padding-block: 6px;
+  }
+
+  .media-strip-section {
+    padding: 7px;
+  }
+
+  .compact-media-card--final { width: clamp(190px, 16.5vw, 235px); }
+  .compact-media-card--short { width: clamp(92px, 7.4vw, 108px); }
+
+  .reuse-guide {
+    padding: 7px 10px;
+  }
+
+  .reuse-rules span {
+    padding: 5px 7px;
+  }
+
+  .calendar-day {
+    padding: 4px;
+  }
+
+  .calendar-entry small {
+    display: none;
+  }
+
+  .clients-app .clients-main {
+    gap: 7px;
+    padding-top: 9px;
+    padding-bottom: 9px;
+  }
+
+  .clients-app .clients-hero {
+    height: 116px;
+    padding: 14px 18px;
+  }
+
+  .clients-app .clients-hero-copy h1 {
+    font-size: clamp(1.75rem, 2.7vw, 2.7rem);
+  }
+
+  .clients-app .stats b {
+    font-size: 1.4rem;
+  }
+
+  .clients-app .stats span {
+    margin-top: 4px;
+  }
+
+  .clients-app .controls {
+    padding-block: 7px;
+  }
+}
+
+@media (min-width: 1024px) and (max-height: 700px) {
+  .dashboard-v37 .dashboard-content-grid {
+    display: none;
+  }
+
+  .dashboard-v37 .project-stage-list span,
+  .calendar-entry small,
+  .media-row-head small,
+  .clients-app .clients-hero .eyebrow {
+    display: none;
+  }
+
+  .dashboard-v37 .project-stage-list li {
+    justify-content: center;
+  }
+
+  .reuse-guide {
+    display: none;
+  }
+
+  .calendar-shell {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .clients-app .clients-hero {
+    height: 92px;
+  }
+}
+
+/* Below desktop width, normal document flow remains available. This avoids trapping
+   content on tablets and phones where vertical scrolling is the natural interaction. */
+@media (max-width: 1023px) {
+  .video-preview-dialog,
+  .snapshot-preview,
+  .studio-media-dialog,
+  .editor,
+  .drawer-card {
+    overscroll-behavior: contain;
+  }
+}

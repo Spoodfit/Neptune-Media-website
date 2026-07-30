@@ -1,5 +1,5 @@
 const RESEND_ENDPOINT = 'https://api.resend.com/emails';
-const USER_AGENT = 'Neptune-Media-Worker/4.0.0';
+const USER_AGENT = 'Neptune-Media-Worker/4.1.0';
 
 export const EMAIL_FROM = 'Neptune Media <contact@neptunebusiness.com>';
 export const EMAIL_REPLY_TO = 'contact@neptunebusiness.com';
@@ -24,6 +24,7 @@ export async function sendEmail(env, message) {
   const subject = String(message?.subject || '').trim();
   const html = String(message?.html || '');
   const text = String(message?.text || '');
+  const idempotencyKey = normalizeIdempotencyKey(message?.idempotencyKey);
 
   if (!to.length || !subject || (!html && !text)) {
     return failure('email_payload_invalid', 0, 'invalid_payload', 'Email recipient, subject and content are required.');
@@ -38,7 +39,7 @@ export async function sendEmail(env, message) {
   if (html) payload.html = html;
   if (text) payload.text = text;
 
-  const provider = await requestResend(config.apiKey, payload);
+  const provider = await requestResend(config.apiKey, payload, { idempotencyKey });
   if (!provider.ok) return provider;
   if (!provider.data?.id) {
     return failure('email_send_unconfirmed', provider.status, 'missing_email_id', 'Resend did not return an email id.');
@@ -49,12 +50,14 @@ export async function sendEmail(env, message) {
     emailId: provider.data.id,
     to,
     subject,
+    idempotencyKey: idempotencyKey || null,
   });
 
   return {
     ok: true,
     id: provider.data.id,
     providerStatus: provider.status,
+    idempotencyKey: idempotencyKey || null,
   };
 }
 
@@ -90,16 +93,19 @@ export async function emailHealthResponse(env) {
   }, authenticated ? 200 : 503);
 }
 
-async function requestResend(apiKey, payload) {
+async function requestResend(apiKey, payload, options = {}) {
   let response;
   try {
+    const headers = {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      'User-Agent': USER_AGENT,
+    };
+    if (options.idempotencyKey) headers['Idempotency-Key'] = options.idempotencyKey;
+
     response = await fetch(RESEND_ENDPOINT, {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-        'User-Agent': USER_AGENT,
-      },
+      headers,
       body: JSON.stringify(payload),
     });
   } catch (error) {
@@ -119,6 +125,7 @@ async function requestResend(apiKey, payload) {
     status: response.status,
     code: providerCode,
     message: providerMessage,
+    idempotencyKey: options.idempotencyKey || null,
   });
 
   return failure(error, response.status, providerCode, providerMessage);
@@ -145,6 +152,14 @@ function normalizeRecipients(value) {
   return values
     .map((item) => String(item || '').trim().toLowerCase())
     .filter((item, index, array) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/u.test(item) && array.indexOf(item) === index);
+}
+
+function normalizeIdempotencyKey(value) {
+  return String(value || '')
+    .trim()
+    .replace(/[^A-Za-z0-9_./:-]+/gu, '-')
+    .replace(/^-+|-+$/gu, '')
+    .slice(0, 256);
 }
 
 function failure(error, providerStatus, providerCode, providerMessage) {

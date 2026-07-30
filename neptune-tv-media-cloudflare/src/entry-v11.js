@@ -4,7 +4,7 @@ import { handleEdgeAnalytics } from './edge-analytics-v1.js';
 
 export { StudioStore };
 
-const RELEASE = 'neptune-efficiency-delta-analytics-20260730-v4';
+const RELEASE = 'neptune-efficiency-operational-fallback-20260730-v5';
 const BATCHER_ASSET = '/analytics-batcher-v1.js?v=3';
 
 export default {
@@ -33,8 +33,9 @@ async function augmentRelease(response) {
   return new Response(JSON.stringify({
     ...current,
     efficiencyRelease: RELEASE,
-    telemetryStorage: 'workers-analytics-engine-with-operational-metrics',
+    telemetryStorage: 'operational-sqlite-with-optional-analytics-engine',
     telemetryBatching: 'decision-events-60-seconds-watch-checkpoint-10-minutes-and-lifecycle-flush',
+    analyticsEngineBinding: 'optional-not-required-for-deployment',
     rawTelemetryInOperationalSqlite: false,
     driveSynchronization: 'google-drive-changes-cursor-with-shared-drive-support-and-daily-reconciliation',
     driveBatchEndpoint: '/api/webhooks/drive/delta',

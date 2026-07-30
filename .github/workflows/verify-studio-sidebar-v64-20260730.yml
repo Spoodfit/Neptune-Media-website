@@ -1,6 +1,6 @@
 name: Verify Studio Sidebar V64 20260730
 
-# Live validation of the authoritative sidebar after the legacy v42/v58 cascade is neutralized.
+# Final live validation after the v64 release contract and mobile transition timing were aligned.
 on:
   push:
     branches: [main]

@@ -1,0 +1,199 @@
+/* Neptune dashboard priority v56
+   The first screen is reserved for the current project, latest delivery and four primary actions.
+   Referral and support remain available as compact utility strips without compressing the core view. */
+
+@media (min-width: 1024px) {
+  .dashboard-v37 .dashboard-canvas {
+    grid-template-rows: auto minmax(230px, 1fr) auto 54px !important;
+  }
+
+  .dashboard-v37 .overview-grid {
+    min-height: 230px !important;
+  }
+
+  .dashboard-v37 .dashboard-content-grid {
+    height: 54px !important;
+    min-height: 54px !important;
+    max-height: 54px !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1.2fr) minmax(360px, .8fr) !important;
+    gap: 9px !important;
+    overflow: hidden !important;
+  }
+
+  .dashboard-v37 .dashboard-content-grid > .formats-panel {
+    display: none !important;
+  }
+
+  .dashboard-v37 .dashboard-content-grid > .utility-column {
+    display: contents !important;
+  }
+
+  .dashboard-v37 .referral-panel.referral-challenge {
+    grid-column: 1 !important;
+    width: auto !important;
+    height: 54px !important;
+    min-height: 54px !important;
+    max-height: 54px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+    align-self: stretch !important;
+    padding: 7px 10px !important;
+    overflow: hidden !important;
+    border-radius: 14px !important;
+  }
+
+  .dashboard-v37 .referral-panel.referral-challenge::before {
+    height: 3px !important;
+  }
+
+  .dashboard-v37 .referral-challenge-head {
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+    display: flex !important;
+    grid-template-columns: none !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 10px !important;
+  }
+
+  .dashboard-v37 .referral-challenge-head > div {
+    min-width: 0 !important;
+  }
+
+  .dashboard-v37 .referral-challenge-kicker,
+  .dashboard-v37 .referral-promise,
+  .dashboard-v37 .referral-milestones,
+  .dashboard-v37 .referral-reward,
+  .dashboard-v37 .referral-link-row,
+  .dashboard-v37 .referral-rule,
+  .dashboard-v37 .referral-claim,
+  .dashboard-v37 .referral-share-icon {
+    display: none !important;
+  }
+
+  .dashboard-v37 .referral-challenge h2,
+  .dashboard-v37 .referral-challenge h2::before {
+    max-width: 100% !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    color: #0b1f4f !important;
+    font-size: .86rem !important;
+    line-height: 1.15 !important;
+    letter-spacing: -.02em !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .dashboard-v37 .referral-counter {
+    min-width: 48px !important;
+    min-height: 34px !important;
+    padding: 0 9px !important;
+    font-size: .75rem !important;
+  }
+
+  .dashboard-v37 .referral-actions,
+  .dashboard-v37 .referral-panel.referral-challenge .referral-actions {
+    width: auto !important;
+    flex: 0 0 auto !important;
+    display: flex !important;
+    grid-template-columns: none !important;
+    gap: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .dashboard-v37 .referral-share-primary {
+    min-width: 168px !important;
+    min-height: 36px !important;
+    height: 36px !important;
+    padding: 0 12px !important;
+    border-radius: 10px !important;
+    font-size: .66rem !important;
+    white-space: nowrap !important;
+    box-shadow: none !important;
+  }
+
+  .dashboard-v37 .support-card {
+    grid-column: 2 !important;
+    width: auto !important;
+    height: 54px !important;
+    min-height: 54px !important;
+    max-height: 54px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
+    padding: 7px 10px !important;
+    overflow: hidden !important;
+    border-radius: 14px !important;
+  }
+
+  .dashboard-v37 .support-card .utility-heading {
+    min-width: 0 !important;
+  }
+
+  .dashboard-v37 .support-card .utility-heading h2 {
+    overflow: hidden !important;
+    font-size: .8rem !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .dashboard-v37 .support-card .utility-heading p {
+    display: none !important;
+  }
+
+  .dashboard-v37 .support-card .support-actions {
+    flex: 0 0 auto !important;
+    display: flex !important;
+    gap: 5px !important;
+  }
+
+  .dashboard-v37 .support-card .utility-action {
+    min-height: 34px !important;
+    padding: 6px 9px !important;
+    border-radius: 9px !important;
+    font-size: .6rem !important;
+    white-space: nowrap !important;
+  }
+}
+
+@media (min-width: 1024px) and (max-height: 820px) {
+  .dashboard-v37 .dashboard-canvas {
+    grid-template-rows: auto minmax(215px, 1fr) 62px 50px !important;
+  }
+
+  .dashboard-v37 .overview-grid {
+    min-height: 215px !important;
+  }
+
+  .dashboard-v37 .dashboard-content-grid,
+  .dashboard-v37 .referral-panel.referral-challenge,
+  .dashboard-v37 .support-card {
+    height: 50px !important;
+    min-height: 50px !important;
+    max-height: 50px !important;
+  }
+
+  .dashboard-v37 .referral-share-primary {
+    min-height: 34px !important;
+    height: 34px !important;
+  }
+}
+
+@media (min-width: 1024px) and (max-height: 700px) {
+  .dashboard-v37 .dashboard-canvas {
+    grid-template-rows: auto minmax(195px, 1fr) auto !important;
+  }
+
+  .dashboard-v37 .overview-grid {
+    min-height: 195px !important;
+  }
+
+  .dashboard-v37 .dashboard-content-grid {
+    display: none !important;
+  }
+}

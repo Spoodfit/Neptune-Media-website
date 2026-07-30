@@ -22,7 +22,13 @@ async function getPipeline(device) {
     device,
     dtype: { encoder_model: 'fp32', decoder_model_merged: 'q4' },
     progress_callback(progress) {
-      self.postMessage({ type: 'model-progress', requestId: activeRequestId, progress });
+      const raw = Number(progress?.progress || 0);
+      const normalized = Number.isFinite(raw) ? Math.max(0, Math.min(1, raw > 1 ? raw / 100 : raw)) : 0;
+      self.postMessage({
+        type: 'model-progress',
+        requestId: activeRequestId,
+        progress: { ...(progress || {}), progress: normalized },
+      });
     },
   });
   return pipelinePromise;

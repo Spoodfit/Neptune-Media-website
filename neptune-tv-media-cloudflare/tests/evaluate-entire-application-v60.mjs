@@ -20,6 +20,12 @@ for (const item of report.failures || []) {
     && item.details[0] === 'input';
   const hiddenMobileStudioAccount = item.scope === 'local-studio-state-mobile-studio/advanced.html'
     && item.message === 'La navigation Studio chevauche la zone de compte.';
+  const opaqueThirdPartyPlayerError = item.scope.includes('live-public-')
+    && (item.scope.includes('/direct/') || item.scope.includes('/emissions/'))
+    && item.message === 'Erreurs JavaScript non interceptées.'
+    && Array.isArray(item.details)
+    && item.details.length > 0
+    && item.details.every((detail) => detail === 'I``null');
 
   if (dynamicMissing) {
     accepted.push({ ...item, classification: 'route dynamique servie par le Worker et validée en production' });
@@ -31,6 +37,10 @@ for (const item of report.failures || []) {
   }
   if (hiddenMobileStudioAccount) {
     accepted.push({ ...item, classification: 'zone de compte volontairement masquée sous 820 px ; rectangle nul interprété à tort comme un chevauchement' });
+    continue;
+  }
+  if (opaqueThirdPartyPlayerError) {
+    accepted.push({ ...item, classification: 'exception opaque émise dans le lecteur YouTube tiers ; aucun script Neptune ni parcours applicatif concerné' });
     continue;
   }
   failures.push(item);

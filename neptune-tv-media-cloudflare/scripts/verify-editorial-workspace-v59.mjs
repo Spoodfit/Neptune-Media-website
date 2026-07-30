@@ -6,13 +6,13 @@ const root = new URL('../', import.meta.url);
 const read = (path) => readFile(new URL(path, root), 'utf8');
 
 const [wrangler, entry, routes, store, ui, css, workflow] = await Promise.all([
-  read('../../wrangler.jsonc'),
+  read('../wrangler.jsonc'),
   read('src/entry-v12.js'),
   read('src/portal-editorial-routes-v2.js'),
   read('src/store-v8.js'),
   read('public/assets/neptune-editorial-workspace-v59.js'),
   read('public/assets/neptune-editorial-workspace-v59.css'),
-  read('../../.github/workflows/deploy-cloudflare.yml'),
+  read('../.github/workflows/deploy-cloudflare.yml'),
 ]);
 
 assert.match(wrangler, /"main"\s*:\s*"neptune-tv-media-cloudflare\/src\/entry-v13\.js"/u);

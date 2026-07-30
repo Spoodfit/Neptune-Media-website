@@ -1,0 +1,44 @@
+name: Verify Client Horizontal Rails 20260730
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/verify-client-horizontal-rails-20260730.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Verify deployed client dashboard rails
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://tv.neptunebusiness.com'
+          for attempt in $(seq 1 24); do
+            query="rail_validation=${GITHUB_RUN_ID}-${attempt}"
+            curl --silent --show-error --fail -H 'Cache-Control: no-cache, no-store' \
+              "$base/espace-client/?$query" > /tmp/client.html || true
+            curl --silent --show-error --fail -H 'Cache-Control: no-cache, no-store' \
+              "$base/espace-client/content-snapshot-v48.js?v=4&$query" > /tmp/snapshot.js || true
+            curl --silent --show-error --fail -H 'Cache-Control: no-cache, no-store' \
+              "$base/espace-client/content-snapshot-v48.css?v=2&$query" > /tmp/snapshot.css || true
+
+            if grep -Fq '/espace-client/content-snapshot-v48.css?v=2' /tmp/client.html \
+              && grep -Fq '/espace-client/content-snapshot-v48.js?v=4' /tmp/client.html \
+              && grep -Fq 'const SNAPSHOT_LIMITS = { long: 4, short: 8 };' /tmp/snapshot.js \
+              && grep -Fq "renderRail(longFiles, 'long', SNAPSHOT_LIMITS.long)" /tmp/snapshot.js \
+              && grep -Fq "renderRail(shortFiles, 'short', SNAPSHOT_LIMITS.short)" /tmp/snapshot.js \
+              && grep -Fq 'snapshot-rail-more' /tmp/snapshot.js \
+              && grep -Fq '.snapshot-rail{display:flex' /tmp/snapshot.css \
+              && grep -Fq 'overflow-x:auto' /tmp/snapshot.css; then
+              echo "Compact horizontal dashboard rails verified in production on attempt $attempt."
+              exit 0
+            fi
+            sleep 10
+          done
+          echo 'Compact horizontal dashboard rails were not observed in production.' >&2
+          exit 1

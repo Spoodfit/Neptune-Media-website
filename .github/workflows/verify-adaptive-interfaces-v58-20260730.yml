@@ -6,6 +6,7 @@ on:
     paths:
       - '.github/workflows/verify-adaptive-interfaces-v58-20260730.yml'
       - 'neptune-tv-media-cloudflare/public/assets/neptune-adaptive-interfaces-v58.css'
+      - 'neptune-tv-media-cloudflare/public/assets/neptune-adaptive-interfaces-v58-1.css'
       - 'neptune-tv-media-cloudflare/src/entry-v11.js'
       - 'neptune-tv-media-cloudflare/tests/audit-adaptive-interfaces-v58.mjs'
   pull_request:
@@ -13,6 +14,7 @@ on:
     paths:
       - '.github/workflows/verify-adaptive-interfaces-v58-20260730.yml'
       - 'neptune-tv-media-cloudflare/public/assets/neptune-adaptive-interfaces-v58.css'
+      - 'neptune-tv-media-cloudflare/public/assets/neptune-adaptive-interfaces-v58-1.css'
       - 'neptune-tv-media-cloudflare/src/entry-v11.js'
       - 'neptune-tv-media-cloudflare/tests/audit-adaptive-interfaces-v58.mjs'
   workflow_dispatch:
@@ -33,16 +35,20 @@ jobs:
         run: |
           set -euo pipefail
           css='neptune-tv-media-cloudflare/public/assets/neptune-adaptive-interfaces-v58.css'
+          precision='neptune-tv-media-cloudflare/public/assets/neptune-adaptive-interfaces-v58-1.css'
           entry='neptune-tv-media-cloudflare/src/entry-v11.js'
           test='neptune-tv-media-cloudflare/tests/audit-adaptive-interfaces-v58.mjs'
           node --check "$entry"
           node --check "$test"
-          grep -Fq 'balanced-responsive-client-calendar-auth-and-studio-v58' "$entry"
+          grep -Fq 'balanced-responsive-client-calendar-auth-and-studio-v58.1' "$entry"
           grep -Fq '/assets/neptune-adaptive-interfaces-v58.css?v=1' "$entry"
+          grep -Fq '/assets/neptune-adaptive-interfaces-v58-1.css?v=1' "$entry"
           grep -Fq 'body:has(.calendar-shell)' "$css"
           grep -Fq '.clients-app .pipeline' "$css"
           grep -Fq '.shell .page-intro' "$css"
-          grep -Fq 'overflow-y: auto !important' "$css"
+          grep -Fq '.auth-title-main' "$precision"
+          grep -Fq '.referral-share-primary' "$precision"
+          grep -Fq '.shell .sidebar nav' "$precision"
 
       - name: Verify deployment and asset injection
         shell: bash
@@ -53,7 +59,8 @@ jobs:
           for attempt in $(seq 1 54); do
             curl --silent --show-error -H 'Cache-Control: no-cache, no-store' \
               "$BASE/api/public/release?adaptive_interfaces=$GITHUB_RUN_ID-$attempt" > /tmp/release.json || true
-            if grep -Fq '"adaptiveInterfaces":"balanced-responsive-client-calendar-auth-and-studio-v58"' /tmp/release.json \
+            if grep -Fq '"adaptiveInterfaces":"balanced-responsive-client-calendar-auth-and-studio-v58.1"' /tmp/release.json \
+              && grep -Fq '"adaptiveCorrections":"auth-title-card-separation-referral-primary-action-and-studio-sidebar-clearance"' /tmp/release.json \
               && grep -Fq '"studioPipelinePolicy":"readable-columns-horizontal-navigation-and-local-column-scroll"' /tmp/release.json; then
               ready=1
               break
@@ -67,12 +74,17 @@ jobs:
             curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
               "$BASE$path?adaptive_asset=$GITHUB_RUN_ID" > /tmp/page.html
             grep -Fq '/assets/neptune-adaptive-interfaces-v58.css?v=1' /tmp/page.html
+            grep -Fq '/assets/neptune-adaptive-interfaces-v58-1.css?v=1' /tmp/page.html
           done
 
           curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
             "$BASE/assets/neptune-adaptive-interfaces-v58.css?v=1" > /tmp/adaptive.css
+          curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
+            "$BASE/assets/neptune-adaptive-interfaces-v58-1.css?v=1" > /tmp/precision.css
           grep -Fq '.clients-app .pipeline' /tmp/adaptive.css
           grep -Fq '.content-calendar' /tmp/adaptive.css
+          grep -Fq '.auth-title-main' /tmp/precision.css
+          grep -Fq '.shell .sidebar nav' /tmp/precision.css
 
       - name: Install Playwright
         run: |

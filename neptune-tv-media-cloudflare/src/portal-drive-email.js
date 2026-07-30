@@ -17,7 +17,7 @@ export async function sendDriveDelivery(env, requestUrl, payload = {}) {
   const intro = updatedCount === uniqueEvents.length
     ? 'Des versions mises à jour de vos contenus sont disponibles.'
     : 'De nouveaux contenus sont disponibles dans votre espace client.';
-  const idempotencyKey = await deliveryIdempotencyKey(payload.orderId, events);
+  const idempotencyKey = await deliveryIdempotencyKey(payload.orderId, summary);
   const totalSentence = librarySentence(summary);
 
   return sendEmail(env, {
@@ -46,6 +46,8 @@ function deliverySummary(rawSummary, uniqueEvents) {
   return {
     longCount: Math.max(0, Number.isFinite(Number(supplied.longCount)) ? Number(supplied.longCount) : fallbackLong),
     shortCount: Math.max(0, Number.isFinite(Number(supplied.shortCount)) ? Number(supplied.shortCount) : fallbackShort),
+    totalCount: Math.max(0, Number.isFinite(Number(supplied.totalCount)) ? Number(supplied.totalCount) : fallbackLong + fallbackShort),
+    latestContentAt: String(supplied.latestContentAt || latestEventTimestamp(uniqueEvents) || ''),
   };
 }
 
@@ -60,12 +62,20 @@ function eventTimestamp(event) {
   return Number.isNaN(value) ? 0 : value;
 }
 
-async function deliveryIdempotencyKey(orderId, events) {
-  const signature = events
-    .map((item) => [item.id, item.driveFileId, item.modifiedAt, item.eventType].filter(Boolean).join(':'))
-    .sort()
-    .join('|');
-  const digest = await sha256(signature || String(orderId || 'drive-delivery'));
+function latestEventTimestamp(events) {
+  const value = events.reduce((latest, event) => Math.max(latest, eventTimestamp(event)), 0);
+  return value ? new Date(value).toISOString() : '';
+}
+
+async function deliveryIdempotencyKey(orderId, summary) {
+  const signature = [
+    String(orderId || 'drive-delivery'),
+    summary.longCount,
+    summary.shortCount,
+    summary.totalCount,
+    summary.latestContentAt,
+  ].join(':');
+  const digest = await sha256(signature);
   return `drive-delivery:${String(orderId || 'unknown').slice(0, 80)}:${digest.slice(0, 48)}`;
 }
 

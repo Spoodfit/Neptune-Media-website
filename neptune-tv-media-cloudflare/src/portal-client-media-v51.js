@@ -1,9 +1,10 @@
 import { clientToken, safeFilename } from './portal-http-utils.js';
-import { json, securityHeaders } from './security.js';
+import { json, securityHeaders, timingSafeEqual } from './security.js';
 
 const SESSION_PATH = '/api/client/session';
 const YOUTUBE_PATH = '/api/client/youtube-publications';
 const FILE_PREFIX = '/api/client/files/';
+const DRIVE_TOKEN_PATH = '/api/webhooks/drive/access-token';
 const YOUTUBE_HANDLE_DEFAULT = '@neptunebusiness';
 const CACHE_TTL_SECONDS = 600;
 const TOKEN_STOPWORDS = new Set([
@@ -13,6 +14,10 @@ const TOKEN_STOPWORDS = new Set([
 
 export async function handleClientMediaRoute(request, env, studio) {
   const url = new URL(request.url);
+
+  if (request.method === 'POST' && url.pathname === DRIVE_TOKEN_PATH) {
+    return secure(await receiveDriveAccessToken(request, env, studio));
+  }
 
   if (request.method === 'GET' && url.pathname === SESSION_PATH) {
     return secure(await callStore(studio, '/portal/session-media', { token: clientToken(request) }));
@@ -49,10 +54,8 @@ async function serveAuthorizedFile(request, env, studio) {
   if (file.storageKey) return serveR2(request, env.MEDIA, file, mode);
 
   if (file.driveFileId) {
-    if (mode === 'thumbnail') {
-      return redirect(`https://drive.google.com/thumbnail?id=${encodeURIComponent(file.driveFileId)}&sz=w1000`);
-    }
-    return proxyDrive(request, file, mode);
+    if (mode === 'thumbnail') return proxyDriveThumbnail(file, studio);
+    return proxyDrive(request, file, mode, studio);
   }
 
   if (file.externalUrl) return redirect(file.externalUrl);
@@ -86,33 +89,58 @@ async function serveR2(request, bucket, file, mode) {
   return new Response(request.method === 'HEAD' ? null : object.body, { status, headers });
 }
 
-async function proxyDrive(request, file, mode) {
+async function receiveDriveAccessToken(request, env, studio) {
+  const supplied = request.headers.get('X-Neptune-Drive-Secret') || '';
+  if (!env.DRIVE_WEBHOOK_SECRET || !timingSafeEqual(supplied, env.DRIVE_WEBHOOK_SECRET)) {
+    return json({ error: 'unauthorized' }, 401);
+  }
+  const payload = await request.json().catch(() => ({}));
+  const accessToken = String(payload.accessToken || payload.token || '').trim();
+  if (accessToken.length < 40 || accessToken.length > 4096) return json({ error: 'invalid_drive_access_token' }, 400);
+  const expiresAt = safeFutureIso(payload.expiresAt, 50 * 60 * 1000);
+  return callStore(studio, '/portal/drive-token-set', { accessToken, expiresAt });
+}
+
+async function proxyDrive(request, file, mode, studio) {
   const id = encodeURIComponent(file.driveFileId);
   const range = request.headers.get('Range');
-  const headers = new Headers({
+  const baseHeaders = new Headers({
     Accept: '*/*',
     'Accept-Encoding': 'identity',
-    'User-Agent': 'Neptune-Media-Drive-Proxy/1.0',
+    'User-Agent': 'Neptune-Media-Drive-Proxy/2.0',
   });
-  if (range) headers.set('Range', range);
+  if (range) baseHeaders.set('Range', range);
 
-  const candidates = [
-    `https://drive.usercontent.google.com/download?id=${id}&export=download&confirm=t`,
-    `https://drive.google.com/uc?export=download&id=${id}&confirm=t`,
-  ];
+  const credential = await loadDriveCredential(studio);
+  const candidates = [];
+  if (credential?.accessToken) {
+    const authenticatedHeaders = new Headers(baseHeaders);
+    authenticatedHeaders.set('Authorization', `Bearer ${credential.accessToken}`);
+    candidates.push({
+      url: `https://www.googleapis.com/drive/v3/files/${id}?alt=media&supportsAllDrives=true&acknowledgeAbuse=true`,
+      headers: authenticatedHeaders,
+      authenticated: true,
+    });
+  }
+  candidates.push(
+    { url: `https://drive.usercontent.google.com/download?id=${id}&export=download&confirm=t`, headers: baseHeaders, authenticated: false },
+    { url: `https://drive.google.com/uc?export=download&id=${id}&confirm=t`, headers: baseHeaders, authenticated: false },
+  );
 
   let upstream = null;
+  let authenticatedFailure = null;
   for (const candidate of candidates) {
     try {
-      const response = await fetch(candidate, { method: 'GET', headers, redirect: 'follow' });
+      const response = await fetch(candidate.url, { method: 'GET', headers: candidate.headers, redirect: 'follow' });
       const type = String(response.headers.get('Content-Type') || '').toLowerCase();
       if (response.ok && !type.includes('text/html')) {
         upstream = response;
         break;
       }
+      if (candidate.authenticated) authenticatedFailure = { status: response.status, contentType: type };
       if (!upstream || response.status > upstream.status) upstream = response;
     } catch (error) {
-      console.warn('drive_proxy_candidate_failed', { id: file.driveFileId, message: String(error?.message || error).slice(0, 300) });
+      console.warn('drive_proxy_candidate_failed', { id: file.driveFileId, authenticated: candidate.authenticated, message: String(error?.message || error).slice(0, 300) });
     }
   }
 
@@ -121,10 +149,16 @@ async function proxyDrive(request, file, mode) {
       driveFileId: file.driveFileId,
       status: upstream?.status || 0,
       contentType: upstream?.headers.get('Content-Type') || '',
+      tokenAvailable: Boolean(credential?.accessToken),
+      tokenExpiresAt: credential?.expiresAt || null,
+      authenticatedFailure,
     });
+    const error = credential?.accessToken ? 'drive_file_unavailable' : 'drive_access_token_missing';
     return json({
-      error: 'drive_file_unavailable',
-      message: 'Le fichier Drive n’est pas accessible au proxy Neptune. Relancez la synchronisation afin de réappliquer les permissions de lecture.',
+      error,
+      message: credential?.accessToken
+        ? 'Google Drive a refusé ce fichier malgré l’authentification Neptune. Relancez la synchronisation puis réessayez.'
+        : 'Le jeton Drive privé de Neptune n’est pas disponible. Exécutez publierJetonDriveNeptune() dans Apps Script.',
     }, 502);
   }
 
@@ -142,6 +176,41 @@ async function proxyDrive(request, file, mode) {
     statusText: upstream.statusText,
     headers: responseHeaders,
   });
+}
+
+async function proxyDriveThumbnail(file, studio) {
+  const credential = await loadDriveCredential(studio);
+  if (!credential?.accessToken) return new Response(null, { status: 204, headers: { 'Cache-Control': 'private, no-store' } });
+  const id = encodeURIComponent(file.driveFileId);
+  const metadata = await fetch(`https://www.googleapis.com/drive/v3/files/${id}?fields=thumbnailLink&supportsAllDrives=true`, {
+    headers: { Authorization: `Bearer ${credential.accessToken}`, Accept: 'application/json' },
+  });
+  if (!metadata.ok) return new Response(null, { status: 204, headers: { 'Cache-Control': 'private, no-store' } });
+  const result = await metadata.json().catch(() => ({}));
+  if (!result.thumbnailLink) return new Response(null, { status: 204, headers: { 'Cache-Control': 'private, no-store' } });
+  const thumbnail = await fetch(result.thumbnailLink, {
+    headers: { Authorization: `Bearer ${credential.accessToken}`, Accept: 'image/*' },
+    redirect: 'follow',
+  });
+  if (!thumbnail.ok) return new Response(null, { status: 204, headers: { 'Cache-Control': 'private, no-store' } });
+  const headers = new Headers({ 'Cache-Control': 'private, max-age=300' });
+  const type = thumbnail.headers.get('Content-Type');
+  const length = thumbnail.headers.get('Content-Length');
+  if (type) headers.set('Content-Type', type);
+  if (length) headers.set('Content-Length', length);
+  return new Response(thumbnail.body, { status: 200, headers });
+}
+
+async function loadDriveCredential(studio) {
+  const response = await callStore(studio, '/portal/drive-token-get', {});
+  if (!response.ok) return null;
+  return response.json().catch(() => null);
+}
+
+function safeFutureIso(value, fallbackMs) {
+  const parsed = new Date(value || '');
+  if (!Number.isNaN(parsed.getTime()) && parsed.getTime() > Date.now() + 60_000) return parsed.toISOString();
+  return new Date(Date.now() + fallbackMs).toISOString();
 }
 
 async function clientYoutubePublications(request, env, studio) {

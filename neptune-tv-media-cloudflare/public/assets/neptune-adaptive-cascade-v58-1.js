@@ -1,6 +1,6 @@
 const CASCADE_STYLESHEETS = [
   '/assets/neptune-adaptive-interfaces-v58-1.css?v=3',
-  '/assets/neptune-dashboard-completeness-v59.css?v=1',
+  '/assets/neptune-dashboard-completeness-v59.css?v=2',
 ];
 
 const ready = document.readyState === 'loading'

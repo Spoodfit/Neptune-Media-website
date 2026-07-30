@@ -10,18 +10,18 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (request.method === 'GET' && ['/studio/video-ai', '/studio/video-ai/'].includes(url.pathname)) {
-      return withHeaders(Response.redirect(new URL('/studio/video-ai.html', url.origin), 302));
+      return withHeaders(Response.redirect(new URL('/studio/video-ai.html', url.origin), 302), url.pathname);
     }
 
     const studio = env.STUDIO.get(env.STUDIO.idFromName('neptune-media-main'));
     const localVideo = await handleVideoAiLocalRoute(request, env, ctx, studio);
-    if (localVideo) return withHeaders(localVideo);
+    if (localVideo) return withHeaders(localVideo, url.pathname);
 
     const response = await base.fetch(request, env, ctx);
     if (request.method === 'GET' && url.pathname === '/api/public/release' && response.ok) {
-      return withHeaders(await augmentRelease(response, env));
+      return withHeaders(await augmentRelease(response, env), url.pathname);
     }
-    return withHeaders(response);
+    return withHeaders(response, url.pathname);
   },
 
   async scheduled(controller, env, ctx) {
@@ -51,6 +51,7 @@ async function augmentRelease(response, env) {
     videoAiContainerBindingPresent: false,
     videoAiInternalSecretRequired: false,
     videoAiR2SourceUploadRequired: false,
+    videoAiCrossOriginIsolation: 'scoped-to-studio-video-ai-only',
     videoAiDriveTransport: 'approved-local-blob-streamed-directly-through-worker-to-drive',
   }), {
     status: response.status,
@@ -61,12 +62,24 @@ async function augmentRelease(response, env) {
   });
 }
 
-function withHeaders(response) {
+function withHeaders(response, pathname = '') {
   const headers = new Headers(response.headers);
   headers.set('X-Neptune-Video-AI', RELEASE);
+  if (isLocalEngineAsset(pathname)) {
+    headers.set('Cross-Origin-Opener-Policy', 'same-origin');
+    headers.set('Cross-Origin-Embedder-Policy', 'require-corp');
+    headers.set('Cross-Origin-Resource-Policy', 'same-origin');
+  }
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
     headers,
   });
+}
+
+function isLocalEngineAsset(pathname) {
+  return pathname === '/studio/video-ai'
+    || pathname === '/studio/video-ai/'
+    || pathname === '/studio/video-ai.html'
+    || pathname.startsWith('/studio/local-engine/');
 }

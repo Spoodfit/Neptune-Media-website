@@ -1,0 +1,36 @@
+name: Verify Resend Production 20260730
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/verify-resend-production-20260730.yml'
+      - '.github/validation/resend-transport-20260730.txt'
+
+permissions:
+  contents: read
+
+jobs:
+  verify-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Verify active Resend transport
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for attempt in $(seq 1 30); do
+            curl --silent --show-error --max-time 20 -H 'Cache-Control: no-cache, no-store' \
+              "https://tv.neptunebusiness.com/api/public/email-health?resend_verify=$attempt" > /tmp/email-health.json || true
+            cat /tmp/email-health.json || true
+            if grep -Fq '"configured":true' /tmp/email-health.json \
+              && grep -Fq '"providerKeyAccepted":true' /tmp/email-health.json \
+              && grep -Fq '"transport":"resend-node-6.18.0"' /tmp/email-health.json \
+              && grep -Fq '"retryPolicy":"3-attempts-idempotent"' /tmp/email-health.json \
+              && grep -Fq '"senderDomain":"neptunebusiness.com"' /tmp/email-health.json; then
+              ok=1
+              break
+            fi
+            sleep 10
+          done
+          test "$ok" = 1

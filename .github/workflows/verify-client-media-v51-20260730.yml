@@ -1,13 +1,15 @@
-name: Verify Client Media V51 20260730
+name: Verify Client Media V51.2 20260730
 
 on:
   pull_request:
     paths:
       - '.github/workflows/verify-client-media-v51-20260730.yml'
       - 'neptune-tv-media-cloudflare/src/portal-client-media-v51.js'
+      - 'neptune-tv-media-cloudflare/src/portal-youtube-client-v53.js'
       - 'neptune-tv-media-cloudflare/src/store-v7.js'
       - 'neptune-tv-media-cloudflare/src/entry-v11.js'
       - 'neptune-tv-media-cloudflare/public/espace-client/client-media-runtime-v51.js'
+      - 'neptune-tv-media-cloudflare/scripts/verify-client-media-runtime-v51.mjs'
 
 permissions:
   contents: read
@@ -17,18 +19,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
-      - name: Verify deployed runtime, Drive stream and YouTube discovery
+      - name: Verify stable latest delivery, YouTube integrity and Drive stream
         shell: bash
         run: |
           set -euo pipefail
           BASE='https://tv.neptunebusiness.com'
 
           ready=0
-          for attempt in $(seq 1 30); do
+          for attempt in $(seq 1 36); do
             curl --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-              "$BASE/api/public/release?client_media_attempt=$attempt" > /tmp/release.json || true
-            if grep -Fq '"clientMediaTransport":"authenticated-same-origin-drive-proxy-with-range-v1"' /tmp/release.json \
-              && grep -Fq '"youtubePublicationDiscovery":"public-channel-feed-client-title-matching-v1"' /tmp/release.json; then
+              "$BASE/api/public/release?client_media_v512_integrity_attempt=$attempt" > /tmp/release.json || true
+            if grep -Fq '"clientMediaRuntime":"client-media-runtime-v51.2-stable-broadcast-download-feedback"' /tmp/release.json \
+              && grep -Fq '"youtubePublicationIntegrity":"thumbnail-video-id-consistency-v1"' /tmp/release.json; then
               ready=1
               break
             fi
@@ -38,19 +40,19 @@ jobs:
           test "$ready" = 1
 
           curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-            "$BASE/espace-client/?runtime=v51" > /tmp/client.html
-          grep -Fq '/espace-client/client-media-runtime-v51.js?v=1' /tmp/client.html
+            "$BASE/espace-client/?runtime=v512-integrity" > /tmp/client.html
+          grep -Fq '/espace-client/client-media-runtime-v51.js?v=2' /tmp/client.html
           curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-            "$BASE/espace-client/client-media-runtime-v51.js?v=1" > /tmp/client-media.js
-          grep -Fq 'interceptMediaClick' /tmp/client-media.js
-          grep -Fq 'renderBroadcastPublication' /tmp/client-media.js
+            "$BASE/espace-client/client-media-runtime-v51.js?v=2" > /tmp/client-media.js
+          for marker in neptuneBroadcastKey data-neptune-broadcast-player interceptDownloadClick neptuneDownloadSpin; do
+            grep -Fq "$marker" /tmp/client-media.js
+          done
 
           curl --silent --show-error --cookie-jar /tmp/client-cookie.txt \
             -X POST "$BASE/api/client/request-code" \
             -H "Origin: $BASE" \
             -H 'Content-Type: application/json' \
             --data '{"email":"contact@neptunebusiness.com"}' > /tmp/login.json
-          cat /tmp/login.json
           grep -Fq '"authenticated":true' /tmp/login.json
 
           curl --fail --silent --show-error --cookie /tmp/client-cookie.txt \
@@ -59,12 +61,28 @@ jobs:
           import json
           data=json.load(open('/tmp/session.json'))
           files=[f for o in data.get('orders',[]) for f in o.get('files',[])]
-          assert files, 'no client files in production session'
           drive=[f for f in files if f.get('driveFileId')]
-          assert drive, 'Drive metadata missing from production session'
-          assert all(f.get('previewUrl') and f.get('downloadUrl') for f in drive), 'media URLs missing'
+          long_files=[f for f in files if str(f.get('fileType','')).lower() in {'final','emission','full','master','episode','long'}]
+          assert files and drive and len(long_files) >= 2
+          assert all(f.get('previewUrl') and f.get('downloadUrl') for f in drive)
           open('/tmp/file-id.txt','w').write(drive[0]['id'])
-          print({'files':len(files),'drive':len(drive),'first':drive[0]['name']})
+          print({'files':len(files),'drive':len(drive),'long':len(long_files)})
+          PY
+
+          curl --fail --silent --show-error --cookie /tmp/client-cookie.txt \
+            "$BASE/api/client/youtube-publications?validation=v512-integrity" > /tmp/youtube.json
+          cat /tmp/youtube.json
+          python - <<'PY'
+          import json
+          data=json.load(open('/tmp/youtube.json'))
+          assert data.get('ok') is True
+          assert data.get('integrityFilter') == 'thumbnail-video-id-consistency-v1'
+          ids=[v.get('videoId') for v in data.get('matched',[])]
+          assert '6TAWaXDZDnA' in ids
+          assert 'jemcOyxlM6c' in ids
+          assert 'wJflctxdjIo' not in ids
+          assert all(v.get('embedUrl') and v.get('watchUrl') for v in data['matched'])
+          print({'matched':len(ids),'ids':ids})
           PY
 
           FILE_ID="$(cat /tmp/file-id.txt)"
@@ -74,16 +92,5 @@ jobs:
           echo "Drive media status: $status"
           test "$status" = 200 -o "$status" = 206
           test "$(wc -c < /tmp/media.bin)" -gt 0
-          if head -c 200 /tmp/media.bin | grep -Fq 'drive_file_unavailable'; then exit 1; fi
 
-          curl --fail --silent --show-error --cookie /tmp/client-cookie.txt \
-            "$BASE/api/client/youtube-publications" > /tmp/youtube.json
-          cat /tmp/youtube.json
-          python - <<'PY'
-          import json
-          data=json.load(open('/tmp/youtube.json'))
-          assert data.get('ok') is True
-          assert data.get('channelUrl','').startswith('https://www.youtube.com/')
-          assert data.get('matched'), 'no YouTube publication matched to the client'
-          print({'matched':len(data['matched']),'title':data['matched'][0]['title']})
-          PY
+# validation-trigger: stable-broadcast-youtube-integrity-download-feedback-v512

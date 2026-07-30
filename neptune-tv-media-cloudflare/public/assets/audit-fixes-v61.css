@@ -1,0 +1,65 @@
+/* Neptune Media audit fixes v61 — accessible targets and stable primary headings. */
+
+.audit-primary-heading {
+  width: min(1180px, calc(100% - 40px));
+  margin: clamp(28px, 5vw, 64px) auto 0;
+  color: #fff;
+  font-size: clamp(2.2rem, 5vw, 4.8rem);
+  line-height: .94;
+  letter-spacing: -.06em;
+}
+
+.skip-link {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+body.actualites-page .nav a,
+body.actualites-page .article-breadcrumb a,
+body.actualites-page .article-card__body > a,
+body.actualites-page .article-content a,
+body.actualites-page footer a,
+body[data-public-ux] .seo-nav a,
+body[data-public-ux] .breadcrumbs a,
+body[data-public-ux] .program-pills a,
+body[data-public-ux] .footer a,
+body[data-public-ux] .info-page a,
+body[data-public-ux] .episode-actions a,
+body[data-public-ux] .episode-next a,
+body .show-footer a,
+body a.inline-action,
+body a.header-booking,
+body .format-card > a,
+body .header-actions a,
+body .state.error a {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  touch-action: manipulation;
+}
+
+.format-carousel__dot {
+  box-sizing: border-box;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  padding: 12px 4px !important;
+  border-radius: 999px;
+  background-clip: content-box !important;
+  touch-action: manipulation;
+}
+
+@media (max-width: 520px) {
+  .audit-primary-heading {
+    width: min(100% - 28px, 1180px);
+    margin-top: 24px;
+    font-size: clamp(2rem, 11vw, 3rem);
+  }
+
+  body .header-actions a,
+  body .show-footer a,
+  body a.inline-action,
+  body .format-card > a {
+    min-height: 36px;
+  }
+}

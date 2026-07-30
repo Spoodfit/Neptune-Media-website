@@ -1,0 +1,109 @@
+name: Verify Content Runtime v18 Production
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-content-runtime-v18-production.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PUBLIC_URL: https://tv.neptunebusiness.com
+      WORKERS_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
+      RELEASE_ID: neptune-verified-content-runtime-20260730-v18
+      EFFICIENCY_RELEASE: neptune-efficiency-delta-analytics-20260730-v4
+    steps:
+      - name: Verify both Cloudflare domains
+        shell: bash
+        run: |
+          set -euo pipefail
+          for base in "$WORKERS_URL" "$PUBLIC_URL"; do
+            ready=0
+            for attempt in $(seq 1 30); do
+              curl --silent --show-error --max-time 30 \
+                -H 'Cache-Control: no-cache, no-store' \
+                "$base/api/public/release?independent=$GITHUB_RUN_ID-$attempt" > /tmp/release.json || true
+              if grep -Fq "\"release\":\"$RELEASE_ID\"" /tmp/release.json \
+                && grep -Fq "\"efficiencyRelease\":\"$EFFICIENCY_RELEASE\"" /tmp/release.json \
+                && grep -Fq '"workflowStore":"store-v7"' /tmp/release.json \
+                && grep -Fq '"resendSecretPresent":true' /tmp/release.json \
+                && grep -Fq '"webhookSecretPresent":true' /tmp/release.json \
+                && grep -Fq '"driveSecretPresent":true' /tmp/release.json \
+                && grep -Fq '"clientVideoLibrary":"passage-selector-horizontal-rails-4-long-8-short-v4"' /tmp/release.json \
+                && grep -Fq '"contentPreviewMode":"single-dialog-on-demand-cleanup-safe"' /tmp/release.json \
+                && grep -Fq '"contentScrollModel":"bounded-by-passage-horizontal-rails-and-pagination"' /tmp/release.json; then
+                ready=1
+                break
+              fi
+              sleep 10
+            done
+            echo "Release reçue depuis $base :"
+            cat /tmp/release.json
+            test "$ready" = 1
+          done
+
+      - name: Verify assets served by production
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
+            "$PUBLIC_URL/espace-client/?independent=$GITHUB_RUN_ID" > /tmp/client.html
+          grep -Fq '/espace-client/content-snapshot-v48.js?v=3' /tmp/client.html
+          grep -Fq '/espace-client/content-snapshot-drive-v49.css?v=1' /tmp/client.html
+          grep -Fq '/assets/media-dialog-safety-v50.js?v=1' /tmp/client.html
+
+          curl --fail --silent --show-error "$PUBLIC_URL/espace-client/content-snapshot-v48.js?v=3" > /tmp/snapshot.js
+          grep -Fq 'new MutationObserver' /tmp/snapshot.js
+          grep -Fq 'if (!dashboard || dashboard.hidden || snapshotInFlight) return;' /tmp/snapshot.js
+          grep -Fq 'shortFiles.slice(0, 4)' /tmp/snapshot.js
+          grep -Fq 'snapshotSignature' /tmp/snapshot.js
+
+          curl --fail --silent --show-error "$PUBLIC_URL/espace-client/videos/?independent=$GITHUB_RUN_ID" > /tmp/videos.html
+          grep -Fq '/espace-client/videos/videos-compact-v3.js?v=3' /tmp/videos.html
+          grep -Fq '/assets/media-dialog-safety-v50.js?v=1' /tmp/videos.html
+          curl --fail --silent --show-error "$PUBLIC_URL/espace-client/videos/videos-compact-v3.js?v=3" > /tmp/videos.js
+          grep -Fq 'const INITIAL_LIMITS = { final: 4, short: 8 };' /tmp/videos.js
+          grep -Fq 'data-toggle-media' /tmp/videos.js
+          grep -Fq 'passage-selector' /tmp/videos.js
+
+          curl --fail --silent --show-error "$PUBLIC_URL/espace-client/calendrier/?independent=$GITHUB_RUN_ID" > /tmp/calendar.html
+          grep -Fq '/espace-client/calendrier/calendar-compact-v5.js?v=1' /tmp/calendar.html
+          curl --fail --silent --show-error "$PUBLIC_URL/espace-client/calendrier/calendar-compact-v5.js?v=1" > /tmp/calendar.js
+          grep -Fq 'const PAGE_SIZE=8' /tmp/calendar.js
+          grep -Fq 'observer?.disconnect()' /tmp/calendar.js
+
+          curl --fail --silent --show-error "$PUBLIC_URL/studio/clients?independent=$GITHUB_RUN_ID" > /tmp/studio.html
+          grep -Fq '/studio/content-gallery-v49.js?v=1' /tmp/studio.html
+          grep -Fq '/assets/media-dialog-safety-v50.js?v=1' /tmp/studio.html
+          curl --fail --silent --show-error "$PUBLIC_URL/studio/content-gallery-v49.js?v=1" > /tmp/studio.js
+          grep -Fq 'const PAGE_SIZE=8' /tmp/studio.js
+          grep -Fq 'observer?.disconnect()' /tmp/studio.js
+          grep -Fq 'studio-upload-details' /tmp/studio.js
+
+          curl --fail --silent --show-error "$PUBLIC_URL/assets/media-dialog-safety-v50.js?v=1" > /tmp/media-safety.js
+          grep -Fq "document.addEventListener('cancel'" /tmp/media-safety.js
+          grep -Fq "frame.src = 'about:blank'" /tmp/media-safety.js
+
+      - name: Verify trusted client session
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error \
+            --cookie-jar /tmp/client-cookie.txt \
+            -X POST "$PUBLIC_URL/api/client/request-code" \
+            -H "Origin: $PUBLIC_URL" \
+            -H 'Content-Type: application/json' \
+            --data '{"email":"contact@neptunebusiness.com"}' > /tmp/login.json
+          cat /tmp/login.json
+          grep -Fq '"authenticated":true' /tmp/login.json
+          grep -Fq '"trustedAccess":true' /tmp/login.json
+          curl --fail --silent --show-error --cookie /tmp/client-cookie.txt \
+            "$PUBLIC_URL/api/client/session" > /tmp/session.json
+          grep -Fq '"client"' /tmp/session.json
+          grep -Fq '"orders"' /tmp/session.json

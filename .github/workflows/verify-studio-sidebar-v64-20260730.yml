@@ -1,5 +1,6 @@
 name: Verify Studio Sidebar V64 20260730
 
+# Final live proof after fixing the production runtime cascade and mobile drawer timing.
 on:
   push:
     branches: [main]
@@ -10,6 +11,7 @@ on:
       - 'neptune-tv-media-cloudflare/public/studio/studio-sidebar-authority-v64.css'
       - 'neptune-tv-media-cloudflare/public/studio/studio-sidebar-authority-v64.js'
       - 'neptune-tv-media-cloudflare/tests/audit-studio-sidebar-v64.mjs'
+      - 'neptune-tv-media-cloudflare/scripts/verify-studio-sidebar-v64.mjs'
   pull_request:
     branches: [main]
     paths:
@@ -19,6 +21,7 @@ on:
       - 'neptune-tv-media-cloudflare/public/studio/studio-sidebar-authority-v64.css'
       - 'neptune-tv-media-cloudflare/public/studio/studio-sidebar-authority-v64.js'
       - 'neptune-tv-media-cloudflare/tests/audit-studio-sidebar-v64.mjs'
+      - 'neptune-tv-media-cloudflare/scripts/verify-studio-sidebar-v64.mjs'
   workflow_dispatch:
 
 permissions:
@@ -43,9 +46,7 @@ jobs:
           node --check src/entry-v11.js
           node --check public/studio/studio-sidebar-authority-v64.js
           node --check tests/audit-studio-sidebar-v64.mjs
-          grep -Fq 'single-authoritative-sidebar-v64' src/entry-v11.js
-          grep -Fq 'studio-sidebar-authority-v64.css' public/studio/clients.html
-          grep -Fq 'studio-sidebar-authority-v64.js' public/studio/clients.html
+          node scripts/verify-studio-sidebar-v64.mjs
 
       - name: Wait for production assets
         shell: bash

@@ -8,7 +8,7 @@ const appRoot = resolve(scriptDir, '..');
 const repoRoot = resolve(appRoot, '..');
 const read = (path) => readFile(resolve(appRoot, path), 'utf8');
 
-const [wrangler, entry, routes, store, analysis, localAnalysis, html, css, localMain, localAudio, localWorker, localRender, localStorage, built, rootPackage, nestedPackage, security] = await Promise.all([
+const [wrangler, entry, routes, store, analysis, localAnalysis, html, css, compatibility, localMain, localAudio, localWorker, localRender, localStorage, built, rootPackage, nestedPackage, security] = await Promise.all([
   readFile(resolve(repoRoot, 'wrangler.jsonc'), 'utf8'),
   read('src/entry-v15.js'),
   read('src/video-ai-local-routes-v1.js'),
@@ -17,6 +17,7 @@ const [wrangler, entry, routes, store, analysis, localAnalysis, html, css, local
   read('local-video-engine/src/analysis.js'),
   read('public/studio/video-ai.html'),
   read('public/studio/video-ai-local-v3.css'),
+  read('public/studio/video-ai-local-compat-v3.js'),
   read('local-video-engine/src/main.js'),
   read('local-video-engine/src/audio.js'),
   read('local-video-engine/src/transcriber.worker.js'),
@@ -58,12 +59,13 @@ for (const marker of ['CREATE TABLE IF NOT EXISTS video_ai_jobs', 'CREATE TABLE 
 for (const marker of ["const MIN_SCORE = 60", "const FUNNELS = new Set(['TOFU', 'MOFU', 'BOFU'])", "['direct', 'Directe et provocante']", "['humour', 'Humoristique et situationnelle']", "['expertise', 'Professionnelle et conversationnelle']"]) assert.ok(analysis.includes(marker), `Missing analysis marker: ${marker}`);
 for (const marker of ['rankAndDeduplicate', 'b.score - a.score', "return ['direct', 'humour', 'expertise']"]) assert.ok(localAnalysis.includes(marker), `Missing local quality marker: ${marker}`);
 
-for (const marker of ['100 % local pour la source', 'Aucun envoi R2', 'Garder cet onglet ouvert', 'SEUIL 60/100', '/studio/local-engine/neptune-video-local-engine-v1.js']) assert.ok(html.includes(marker), `Missing UI marker: ${marker}`);
+for (const marker of ['100 % local pour la source', 'Aucun envoi R2', 'Garder cet onglet ouvert', 'SEUIL 60/100', '/studio/local-engine/neptune-video-local-engine-v1.js', '/studio/video-ai-local-compat-v3.js']) assert.ok(html.includes(marker), `Missing UI marker: ${marker}`);
 for (const marker of ['local-privacy-banner', 'local-requirements', 'local-preview-missing']) assert.ok(css.includes(marker), `Missing local CSS marker: ${marker}`);
+for (const marker of ['crossOriginIsolated', 'VideoEncoder', 'AudioEncoder', 'wakeLock.request', 'stopImmediatePropagation']) assert.ok(compatibility.includes(marker), `Missing compatibility marker: ${marker}`);
 
 for (const marker of ['extractAudioChunks', 'transcribeChunk', 'buildLocalCandidates', 'mergeAssistedCandidates', 'renderCandidate', 'saveClip', 'readClip', 'X-Clip-Size', 'beforeunload']) assert.ok(localMain.includes(marker), `Missing local client marker: ${marker}`);
 for (const marker of ['AudioBufferSink', 'TARGET_SAMPLE_RATE = 16_000', 'MAX_CHUNK_SECONDS = 420']) assert.ok(localAudio.includes(marker), `Missing audio marker: ${marker}`);
-for (const marker of ['onnx-community/whisper-base_timestamped', "device === 'webgpu'", "return_timestamps: 'word'", "'wasm'"]) assert.ok(localWorker.includes(marker), `Missing Whisper marker: ${marker}`);
+for (const marker of ['onnx-community/whisper-base_timestamped', "device === 'webgpu'", "return_timestamps: 'word'", "'wasm'", 'raw > 1 ? raw / 100 : raw']) assert.ok(localWorker.includes(marker), `Missing Whisper marker: ${marker}`);
 for (const marker of ['VideoSampleSink', 'AudioSampleSink', '1080', '1920', 'FaceDetector', 'drawCaption', 'Mp4OutputFormat', 'WebMOutputFormat', 'CAPTION_WINDOW_WORDS = 7', 'activeGlobalIndex']) assert.ok(localRender.includes(marker), `Missing render marker: ${marker}`);
 for (const marker of ['indexedDB.open', "const STORE = 'clips'", 'navigator.storage']) assert.ok(localStorage.includes(marker), `Missing storage marker: ${marker}`);
 assert.ok(built.length > 10000, 'Local Vite bundle was not generated');
@@ -94,4 +96,4 @@ for (const candidate of fallback.candidates) {
   for (const proposal of candidate.editorialProposals) assert.match(proposal.cta, /\?$/u);
 }
 
-console.log(`Neptune Video Local Engine verified: no Containers, no source upload, isolated local Whisper/render, ${fallback.candidates.length} deterministic fallback candidate(s).`);
+console.log(`Neptune Video Local Engine verified: no Containers, no source upload, isolated local Whisper/render, compatibility guard, ${fallback.candidates.length} deterministic fallback candidate(s).`);

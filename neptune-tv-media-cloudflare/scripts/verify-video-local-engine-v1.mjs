@@ -40,7 +40,7 @@ for (const marker of [
   '/api/admin/video-ai/local/jobs',
   '/assist',
   '/complete',
-  'sourceFingerprint: `local:',
+  'const sourceFingerprint = `local:',
   'local://browser/',
   'request.body',
   'uploadType=resumable',

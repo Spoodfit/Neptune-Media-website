@@ -10,6 +10,7 @@
   const ignoredVideoEvents = new Set(['impression', 'play', 'pause']);
   const queue = new Map();
   const FLUSH_DELAY_MS = 60_000;
+  const WATCH_CHECKPOINT_MS = 10 * 60_000;
   const MAX_EVENTS = 100;
   let flushTimer = 0;
   let flushing = false;
@@ -27,7 +28,7 @@
       const buffered = bufferEvent(kind, payload);
       if (buffered) {
         scheduleFlush();
-        if (queue.size >= MAX_EVENTS) void flush(false);
+        if (payload.event === 'complete' || queue.size >= MAX_EVENTS) void flush(false);
       }
       return Promise.resolve(new Response(JSON.stringify({ ok: true, buffered }), {
         status: 202,
@@ -62,6 +63,7 @@
       adId,
       position: finite(payload.position),
       delta: finite(payload.delta),
+      bufferedAt: Number(payload.bufferedAt || Date.now()),
       referrer: safeReferrer(payload.referrer || document.referrer || ''),
       device: payload.device && typeof payload.device === 'object'
         ? payload.device
@@ -84,7 +86,24 @@
   function flush(final) {
     clearTimeout(flushTimer);
     if (!queue.size || (flushing && !final)) return false;
-    const snapshot = [...queue.values()].slice(0, MAX_EVENTS);
+
+    const now = Date.now();
+    const queued = [...queue.values()];
+    const completingEpisodes = new Set(
+      queued.filter((item) => item.kind === 'video' && item.event === 'complete').map((item) => item.episodeId),
+    );
+    const snapshot = queued.filter((item) => (
+      item.event !== 'watch'
+      || final
+      || completingEpisodes.has(item.episodeId)
+      || now - Number(item.bufferedAt || now) >= WATCH_CHECKPOINT_MS
+    )).slice(0, MAX_EVENTS);
+
+    if (!snapshot.length) {
+      scheduleFlush();
+      return false;
+    }
+
     for (const item of snapshot) queue.delete([item.kind, item.event, item.sessionId, item.episodeId, item.adId].join('|'));
     const body = JSON.stringify({ events: snapshot, final: Boolean(final), sentAt: new Date().toISOString() });
 
@@ -104,7 +123,7 @@
       if (!response.ok) restore(snapshot);
     }).catch(() => restore(snapshot)).finally(() => {
       flushing = false;
-      if (queue.size) scheduleFlush(5_000);
+      if (queue.size) scheduleFlush();
     });
     return true;
   }

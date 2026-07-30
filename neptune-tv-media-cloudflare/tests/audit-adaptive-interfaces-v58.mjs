@@ -90,16 +90,24 @@ async function auditClient(viewport) {
   await page.locator('#email').fill('contact@neptunebusiness.com');
   await page.locator('#sendCode').click();
   await page.waitForSelector('#dashboard:not([hidden])', { timeout: 30_000 });
-  await page.waitForTimeout(900);
-  const dashboard = await measure(page, `dashboard-${viewport.width}x${viewport.height}`, ['.dashboard-heading', '.overview-grid', '.production-card', '.show-card', '.metric-grid', '.dashboard-content-grid', '.referral-share-primary']);
+  await page.waitForTimeout(1100);
+  const dashboard = await measure(page, `dashboard-${viewport.width}x${viewport.height}`, ['.dashboard-heading', '.overview-grid', '.production-card', '.show-card', '.metric-grid', '.dashboard-content-grid', '.referral-panel.referral-challenge', '.referral-share-primary']);
   const overview = dashboard.items.find((item) => item.selector === '.overview-grid');
   const production = dashboard.items.find((item) => item.selector === '.production-card');
   const metrics = dashboard.items.find((item) => item.selector === '.metric-grid');
+  const referralPanel = dashboard.items.find((item) => item.selector === '.referral-panel.referral-challenge');
   const referralAction = dashboard.items.find((item) => item.selector === '.referral-share-primary');
   if (overview && !overview.missing && overview.height < 265) fail(`dashboard-${viewport.width}x${viewport.height}: vue projet trop comprimée (${overview.height}px).`);
   if (production && !production.missing && production.width < 480) fail(`dashboard-${viewport.width}x${viewport.height}: projet en cours trop étroit (${production.width}px).`);
   if (metrics && !metrics.missing && metrics.height < 62) fail(`dashboard-${viewport.width}x${viewport.height}: accès principaux trop comprimés (${metrics.height}px).`);
   if (referralAction && !referralAction.missing && referralAction.width < 120) fail(`dashboard-${viewport.width}x${viewport.height}: action de recommandation comprimée (${referralAction.width}px).`);
+  if (referralPanel && referralAction && !referralPanel.missing && !referralAction.missing) {
+    const contained = referralAction.left >= referralPanel.left - 2
+      && referralAction.right <= referralPanel.right + 2
+      && referralAction.top >= referralPanel.top - 2
+      && referralAction.bottom <= referralPanel.bottom + 2;
+    if (!contained) fail(`dashboard-${viewport.width}x${viewport.height}: action de recommandation hors de sa bande (${referralAction.top}→${referralAction.bottom} / ${referralPanel.top}→${referralPanel.bottom}).`);
+  }
   if (dashboard.scroll.height > dashboard.scroll.clientHeight * 1.45) fail(`dashboard-${viewport.width}x${viewport.height}: page encore trop longue (${dashboard.scroll.height}px).`);
   await page.screenshot({ path: path.join(output, `dashboard-${viewport.width}x${viewport.height}.png`), fullPage: true });
 

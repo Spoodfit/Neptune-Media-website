@@ -1,16 +1,22 @@
 import base from './entry-v10.js';
 import { StudioStore } from './store-v7.js';
 import { handleEdgeAnalytics } from './edge-analytics-v1.js';
+import { handleClientMediaRoute } from './portal-client-media-v51.js';
 
 export { StudioStore };
 
 const RELEASE = 'neptune-efficiency-operational-fallback-20260730-v5';
 const BATCHER_ASSET = '/analytics-batcher-v1.js?v=3';
+const CLIENT_MEDIA_ASSET = '/espace-client/client-media-runtime-v51.js?v=1';
 
 export default {
   async fetch(request, env, ctx) {
     const analytics = await handleEdgeAnalytics(request, env, ctx);
     if (analytics) return withRuntimeHeaders(analytics);
+
+    const studio = env.STUDIO.get(env.STUDIO.idFromName('neptune-media-main'));
+    const clientMedia = await handleClientMediaRoute(request, env, studio);
+    if (clientMedia) return withRuntimeHeaders(clientMedia);
 
     const response = await base.fetch(request, env, ctx);
     const url = new URL(request.url);
@@ -18,7 +24,7 @@ export default {
       return withRuntimeHeaders(await augmentRelease(response));
     }
     if (request.method === 'GET' && response.ok && (response.headers.get('Content-Type') || '').includes('text/html')) {
-      return withRuntimeHeaders(await injectAnalyticsBatcher(response));
+      return withRuntimeHeaders(await injectRuntimeAssets(response, url.pathname));
     }
     return withRuntimeHeaders(response);
   },
@@ -42,6 +48,10 @@ async function augmentRelease(response) {
     driveTombstones: 'removed-files-pruned-from-client-library',
     driveStaleRecovery: 'explicit-store-route-and-404-self-heal-v1',
     workflowStore: 'store-v7',
+    clientMediaTransport: 'authenticated-same-origin-drive-proxy-with-range-v1',
+    clientMediaMetadata: 'drive-id-preview-thumbnail-and-download-v1',
+    youtubePublicationDiscovery: 'public-channel-feed-client-title-matching-v1',
+    clientMediaRuntime: 'client-media-runtime-v51',
   }), {
     status: response.status,
     headers: {
@@ -51,13 +61,17 @@ async function augmentRelease(response) {
   });
 }
 
-async function injectAnalyticsBatcher(response) {
+async function injectRuntimeAssets(response, pathname) {
   let body = await response.text();
   if (!body.includes('/analytics-batcher-v1.js')) {
     body = body.replace('</head>', `<script src="${BATCHER_ASSET}"></script></head>`);
   }
+  if (pathname.startsWith('/espace-client') && !body.includes('/espace-client/client-media-runtime-v51.js')) {
+    body = body.replace('</body>', `<script type="module" src="${CLIENT_MEDIA_ASSET}"></script></body>`);
+  }
   const headers = new Headers(response.headers);
   headers.delete('Content-Length');
+  headers.set('Cache-Control', pathname.startsWith('/espace-client') ? 'private, no-store, max-age=0' : headers.get('Cache-Control') || 'no-store');
   return new Response(body, {
     status: response.status,
     statusText: response.statusText,

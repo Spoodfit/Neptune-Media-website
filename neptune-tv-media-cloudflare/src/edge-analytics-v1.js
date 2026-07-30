@@ -5,6 +5,7 @@ const VIDEO_EVENTS = new Set([
   'progress_25', 'progress_50', 'progress_75', 'complete',
   'share', 'booking_click',
 ]);
+const IGNORED_VIDEO_EVENTS = new Set(['impression', 'play', 'pause']);
 const AD_EVENTS = new Set(['impression', 'play', 'complete', 'click']);
 const DIRECT_PATHS = new Map([
   ['/api/track', 'video'],
@@ -27,17 +28,27 @@ export async function handleEdgeAnalytics(request, env, ctx) {
     if (!payload.ok) return secure(json({ error: payload.error }, payload.status));
     const event = normalizeEvent(directKind, payload.value, request);
     if (!event) return secure(json({ error: 'invalid_event' }, 400));
+    if (event.kind === 'video' && IGNORED_VIDEO_EVENTS.has(event.event)) {
+      return secure(json({ ok: true, accepted: 0, ignored: true }, 202));
+    }
 
     const analyticsAvailable = writeAnalytics(env, event);
-    const shouldPersist = !analyticsAvailable || isOperationalEvent(event, false, new Set());
-    if (shouldPersist) ctx.waitUntil(persistEvents(env, [event]).catch(logPersistenceFailure));
-    return secure(json({ ok: true, accepted: 1, storage: analyticsAvailable ? 'analytics-engine' : 'durable-object-fallback' }, 202));
+    if (isOperationalEvent(event, false, new Set())) {
+      ctx.waitUntil(persistEvents(env, [event]).catch(logPersistenceFailure));
+    }
+    return secure(json({
+      ok: true,
+      accepted: 1,
+      storage: analyticsAvailable ? 'analytics-engine' : 'operational-sqlite-only',
+    }, 202));
   }
 
   const payload = await readJsonLimited(request, MAX_BATCH_BYTES);
   if (!payload.ok) return secure(json({ error: payload.error }, payload.status));
   const source = Array.isArray(payload.value?.events) ? payload.value.events.slice(0, MAX_BATCH_EVENTS) : [];
-  const events = source.map((item) => normalizeEvent(item?.kind, item, request)).filter(Boolean);
+  const events = source
+    .map((item) => normalizeEvent(item?.kind, item, request))
+    .filter((item) => item && !(item.kind === 'video' && IGNORED_VIDEO_EVENTS.has(item.event)));
   if (!events.length) return secure(json({ ok: true, accepted: 0 }, 202));
 
   let analyticsAvailable = Boolean(env.MEDIA_ANALYTICS?.writeDataPoint);
@@ -45,20 +56,18 @@ export async function handleEdgeAnalytics(request, env, ctx) {
 
   const closingEpisodes = new Set(
     events
-      .filter((item) => item.kind === 'video' && ['pause', 'complete'].includes(item.event))
+      .filter((item) => item.kind === 'video' && item.event === 'complete')
       .map((item) => item.episodeId),
   );
   const finalBatch = payload.value?.final === true;
-  const operational = analyticsAvailable
-    ? events.filter((item) => isOperationalEvent(item, finalBatch, closingEpisodes))
-    : events;
+  const operational = events.filter((item) => isOperationalEvent(item, finalBatch, closingEpisodes));
   if (operational.length) ctx.waitUntil(persistEvents(env, operational).catch(logPersistenceFailure));
 
   return secure(json({
     ok: true,
     accepted: events.length,
     operational: operational.length,
-    storage: analyticsAvailable ? 'analytics-engine' : 'durable-object-fallback',
+    storage: analyticsAvailable ? 'analytics-engine' : 'operational-sqlite-only',
   }, 202));
 }
 
@@ -80,7 +89,7 @@ function normalizeEvent(kindValue, raw = {}, request) {
     adId,
     position: clamp(raw.position, 0, 86400),
     delta: clamp(raw.delta, 0, 3600),
-    referrer: sanitizeText(raw.referrer || request.headers.get('Referer') || '', 800),
+    referrer: safeReferrer(raw.referrer || request.headers.get('Referer') || ''),
     language: sanitizeText(device.language || '', 40),
     width: clamp(device.width, 0, 10000),
     touch: device.touch === true,
@@ -170,6 +179,15 @@ async function readJsonLimited(request, maxBytes) {
     return { ok: true, value: JSON.parse(new TextDecoder().decode(buffer) || '{}') };
   } catch {
     return { ok: false, error: 'invalid_json', status: 400 };
+  }
+}
+
+function safeReferrer(value) {
+  try {
+    const url = new URL(String(value || ''));
+    return sanitizeText(`${url.origin}${url.pathname}`, 800);
+  } catch {
+    return '';
   }
 }
 

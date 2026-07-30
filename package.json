@@ -1,12 +1,15 @@
 {
   "name": "neptune-media-cloudflare",
   "private": true,
-  "version": "2.4.0",
+  "version": "2.5.0",
   "type": "module",
   "scripts": {
     "dev": "wrangler dev --config wrangler.jsonc",
     "deploy": "wrangler deploy --config wrangler.jsonc",
     "check": "find neptune-tv-media-cloudflare/src neptune-tv-media-cloudflare/public integrations/google-drive -type f -name '*.js' -print0 | xargs -0 -n1 node --check"
+  },
+  "dependencies": {
+    "resend": "6.18.0"
   },
   "devDependencies": {
     "wrangler": "^4.111.0"

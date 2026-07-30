@@ -1,4 +1,4 @@
-name: Validate Neptune Video AI
+name: Validate Neptune Video Local Engine
 
 on:
   pull_request:
@@ -6,8 +6,8 @@ on:
     paths:
       - 'neptune-tv-media-cloudflare/src/**'
       - 'neptune-tv-media-cloudflare/public/studio/**'
-      - 'neptune-tv-media-cloudflare/containers/video-ai/**'
-      - 'neptune-tv-media-cloudflare/scripts/verify-video-ai-v1.mjs'
+      - 'neptune-tv-media-cloudflare/local-video-engine/**'
+      - 'neptune-tv-media-cloudflare/scripts/verify-video-local-engine-v1.mjs'
       - 'wrangler.jsonc'
       - 'package.json'
       - 'neptune-tv-media-cloudflare/package.json'
@@ -31,14 +31,19 @@ jobs:
           node-version: '22'
           registry-url: https://registry.npmjs.org
 
-      - name: Install Worker dependencies
+      - name: Install Worker and local engine dependencies
         run: npm install --package-lock=false --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org
 
-      - name: Validate JavaScript Python and product contracts
+      - name: Build and validate local production engine
         run: npm run check
 
-      - name: Build FFmpeg processing container
-        run: docker build --tag neptune-video-ai-check neptune-tv-media-cloudflare/containers/video-ai
+      - name: Confirm paid Containers are absent
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -Fq '"containers"' wrangler.jsonc
+          ! grep -Fq '"VIDEO_PROCESSOR"' wrangler.jsonc
+          ! grep -Fq '@cloudflare/containers' package.json
 
-      - name: Validate Worker and container configuration
+      - name: Validate free Worker configuration
         run: npx wrangler deploy --config wrangler.jsonc --dry-run --outdir .wrangler-dry-run

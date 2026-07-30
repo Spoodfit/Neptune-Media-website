@@ -1,5 +1,6 @@
 name: Verify Studio Clients V63 20260730
 
+# Dedicated visual proof for the final Studio clients shell, including fixture routing.
 on:
   push:
     branches: [main]

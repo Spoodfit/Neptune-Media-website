@@ -1,5 +1,5 @@
 import base from './entry-v10.js';
-import { StudioStore } from './store-v6.js';
+import { StudioStore } from './store-v7.js';
 import { handleEdgeAnalytics } from './edge-analytics-v1.js';
 
 export { StudioStore };
@@ -38,6 +38,8 @@ async function augmentRelease(response) {
     rawTelemetryInOperationalSqlite: false,
     driveSynchronization: 'google-drive-changes-cursor-with-daily-reconciliation',
     driveBatchEndpoint: '/api/webhooks/drive/delta',
+    driveTombstones: 'removed-files-pruned-from-client-library',
+    workflowStore: 'store-v7',
   }), {
     status: response.status,
     headers: {

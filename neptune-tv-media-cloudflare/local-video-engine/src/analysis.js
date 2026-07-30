@@ -65,10 +65,7 @@ export function buildLocalCandidates(words, durationSeconds, visualProfile = {},
       endIndex += 1;
     }
   }
-  return deduplicate(raw)
-    .sort((a, b) => b.score - a.score || a.startSeconds - b.startSeconds)
-    .slice(0, Math.max(4, Math.min(36, Math.ceil(Number(durationSeconds || 0) / 150))))
-    .map((candidate, index) => ({ ...candidate, rank: index + 1 }));
+  return rankAndDeduplicate(raw, durationSeconds);
 }
 
 export function mergeAssistedCandidates(localCandidates, assistedCandidates, durationSeconds) {
@@ -91,8 +88,12 @@ export function mergeAssistedCandidates(localCandidates, assistedCandidates, dur
       editorialProposals: proposals,
     });
   }
-  return deduplicate(normalized)
-    .sort((a, b) => b.score - a.score || a.startSeconds - b.startSeconds)
+  return rankAndDeduplicate(normalized, durationSeconds);
+}
+
+function rankAndDeduplicate(candidates, durationSeconds) {
+  const ranked = [...candidates].sort((a, b) => b.score - a.score || a.startSeconds - b.startSeconds);
+  return deduplicate(ranked)
     .slice(0, Math.max(4, Math.min(36, Math.ceil(Number(durationSeconds || 0) / 150))))
     .map((candidate, index) => ({ ...candidate, rank: index + 1 }));
 }

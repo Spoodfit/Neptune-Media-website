@@ -1,9 +1,51 @@
-/* Precision correction for common wide desktop viewports.
-   Keep six workflow columns readable instead of compressing them below 272px. */
+/* Precision corrections for Studio clients v63. */
+
+/* Keep workflow columns readable instead of compressing six columns. */
 @media (min-width: 1540px) and (max-width: 1999px) {
   body.clients-app.studio-clients-v63 .pipeline {
     grid-auto-flow: column;
     grid-auto-columns: minmax(272px, 1fr);
     grid-template-columns: none;
+  }
+}
+
+/* The refresh action is a utility, not a fourth KPI card. */
+body.clients-app.studio-clients-v63 .stats {
+  position: relative;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+body.clients-app.studio-clients-v63 .stats > #refresh {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  z-index: 3;
+  grid-column: auto;
+  width: 42px;
+  min-width: 42px;
+  height: 42px;
+  min-height: 42px;
+  padding: 0;
+  border-radius: 999px;
+  box-shadow: 0 9px 24px rgba(3, 15, 46, .22);
+}
+
+@media (max-width: 600px) {
+  body.clients-app.studio-clients-v63 .stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  body.clients-app.studio-clients-v63 .stats > div {
+    min-height: 82px;
+    padding: 11px 8px;
+  }
+
+  body.clients-app.studio-clients-v63 .stats > #refresh {
+    top: -8px;
+    right: -8px;
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+    min-height: 40px;
   }
 }

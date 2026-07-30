@@ -7,6 +7,11 @@ const DRIVE_PATHS = new Set([
   '/api/webhooks/drive/files',
   '/api/webhooks/drive/delta',
 ]);
+const STALE_DRIVE_ERRORS = new Set([
+  'drive_passage_not_provisioned',
+  'order_not_found',
+  'not-found',
+]);
 const MAX_DELTA_BATCHES = 80;
 const MAX_SNAPSHOTS = 80;
 
@@ -39,10 +44,12 @@ export async function handleDriveRoute(request, env, studio) {
     }
 
     const results = [];
+    const stale = [];
     const errors = [];
     for (const batch of batches) {
       const outcome = await processDrivePayload(env, request.url, studio, batch);
-      if (outcome.ok) results.push(outcome);
+      if (outcome.stale) stale.push(outcome);
+      else if (outcome.ok) results.push(outcome);
       else errors.push(outcome);
     }
 
@@ -55,7 +62,13 @@ export async function handleDriveRoute(request, env, studio) {
         });
         const prune = await pruneResponse.json().catch(() => ({}));
         if (!pruneResponse.ok) {
-          errors.push({ orderId: snapshot?.orderId || '', error: prune.error || 'drive_prune_failed', status: pruneResponse.status });
+          const orderId = prune.orderId || snapshot?.orderId || '';
+          const error = prune.error || 'drive_prune_failed';
+          if (isStaleDriveResponse(pruneResponse.status, error)) {
+            stale.push(staleOutcome(orderId, error));
+            continue;
+          }
+          errors.push({ orderId, error, status: pruneResponse.status });
           continue;
         }
         removed += Number(prune.removed || 0);
@@ -63,10 +76,12 @@ export async function handleDriveRoute(request, env, studio) {
       }
     }
 
+    const staleOrders = uniqueStaleOrders(stale);
     const summary = {
       ok: errors.length === 0,
       processed: results.length,
       snapshots: pruned.length,
+      skippedStale: staleOrders.length,
       failed: errors.length,
       accepted: results.reduce((sum, item) => sum + Number(item.accepted || 0), 0),
       changed: results.reduce((sum, item) => sum + Number(item.changed || 0), 0),
@@ -81,6 +96,7 @@ export async function handleDriveRoute(request, env, studio) {
         emailPending: Boolean(item.emailPending),
         emailWarning: item.emailWarning || null,
       })),
+      staleOrders,
       pruned,
       errors: errors.map((item) => ({ orderId: item.orderId || null, error: item.error, status: item.status })),
     };
@@ -95,11 +111,17 @@ async function processDrivePayload(env, requestUrl, studio, payload) {
   const response = await callStore(studio, '/portal/drive-files', payload);
   const result = await response.json().catch(() => ({}));
   if (!response.ok) {
+    const orderId = result.orderId || payload?.orderId || '';
+    const error = result.error || 'drive_files_failed';
+    if (isStaleDriveResponse(response.status, error)) {
+      console.warn('drive_stale_mapping_skipped', { orderId, error, status: response.status });
+      return staleOutcome(orderId, error);
+    }
     return {
       ok: false,
       status: response.status,
-      orderId: result.orderId || payload?.orderId || '',
-      error: result.error || 'drive_files_failed',
+      orderId,
+      error,
       body: result,
     };
   }
@@ -147,6 +169,39 @@ async function processDrivePayload(env, requestUrl, studio, payload) {
 
   const body = { ...result, emailSent: true, emailPending: false, emailId: sent.id || null, notifiedEvents: events.length };
   return { ok: true, status: 200, body, ...body };
+}
+
+function staleOutcome(orderId, error) {
+  const body = {
+    ok: true,
+    orderId: String(orderId || ''),
+    accepted: 0,
+    changed: 0,
+    staleMapping: true,
+    skipped: true,
+    reason: String(error || 'drive_passage_not_provisioned'),
+    emailSent: false,
+    emailPending: false,
+  };
+  return { ok: true, stale: true, status: 200, body, ...body };
+}
+
+function isStaleDriveResponse(status, error) {
+  return Number(status) === 404 && STALE_DRIVE_ERRORS.has(String(error || ''));
+}
+
+function uniqueStaleOrders(items) {
+  const seen = new Set();
+  const output = [];
+  for (const item of items) {
+    const orderId = String(item.orderId || '');
+    const reason = String(item.reason || item.error || 'drive_passage_not_provisioned');
+    const key = `${orderId}:${reason}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    output.push({ orderId: orderId || null, reason });
+  }
+  return output;
 }
 
 function authorizedDriveWebhook(request, env) {

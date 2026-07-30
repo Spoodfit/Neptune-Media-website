@@ -18,7 +18,7 @@ jobs:
       PUBLIC_URL: https://tv.neptunebusiness.com
       WORKERS_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
       RELEASE_ID: neptune-verified-content-runtime-20260730-v18
-      EFFICIENCY_RELEASE: neptune-efficiency-delta-analytics-20260730-v4
+      EFFICIENCY_RELEASE: neptune-efficiency-operational-fallback-20260730-v5
     steps:
       - name: Inspect latest Cloudflare deployments
         env:
@@ -56,7 +56,7 @@ jobs:
           set -euo pipefail
           for base in "$WORKERS_URL" "$PUBLIC_URL"; do
             ready=0
-            for attempt in $(seq 1 3); do
+            for attempt in $(seq 1 30); do
               curl --silent --show-error --max-time 30 \
                 -H 'Cache-Control: no-cache, no-store' \
                 "$base/api/public/release?independent=$GITHUB_RUN_ID-$attempt" > /tmp/release.json || true
@@ -68,11 +68,13 @@ jobs:
                 && grep -Fq '"driveSecretPresent":true' /tmp/release.json \
                 && grep -Fq '"clientVideoLibrary":"passage-selector-horizontal-rails-4-long-8-short-v4"' /tmp/release.json \
                 && grep -Fq '"contentPreviewMode":"single-dialog-on-demand-cleanup-safe"' /tmp/release.json \
-                && grep -Fq '"contentScrollModel":"bounded-by-passage-horizontal-rails-and-pagination"' /tmp/release.json; then
+                && grep -Fq '"contentScrollModel":"bounded-by-passage-horizontal-rails-and-pagination"' /tmp/release.json \
+                && grep -Fq '"telemetryStorage":"operational-sqlite-with-optional-analytics-engine"' /tmp/release.json \
+                && grep -Fq '"analyticsEngineBinding":"optional-not-required-for-deployment"' /tmp/release.json; then
                 ready=1
                 break
               fi
-              sleep 5
+              sleep 10
             done
             echo "Release reçue depuis $base :"
             cat /tmp/release.json

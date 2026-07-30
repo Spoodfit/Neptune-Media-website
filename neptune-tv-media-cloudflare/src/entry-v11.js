@@ -2,6 +2,7 @@ import base from './entry-v10.js';
 import { StudioStore } from './store-v7.js';
 import { handleEdgeAnalytics } from './edge-analytics-v1.js';
 import { handleClientMediaRoute } from './portal-client-media-v51.js';
+import { handleClientYoutubeRoute } from './portal-youtube-client-v52.js';
 
 export { StudioStore };
 
@@ -15,6 +16,8 @@ export default {
     if (analytics) return withRuntimeHeaders(analytics);
 
     const studio = env.STUDIO.get(env.STUDIO.idFromName('neptune-media-main'));
+    const youtube = await handleClientYoutubeRoute(request, env, studio);
+    if (youtube) return withRuntimeHeaders(youtube);
     const clientMedia = await handleClientMediaRoute(request, env, studio);
     if (clientMedia) return withRuntimeHeaders(clientMedia);
 
@@ -51,6 +54,7 @@ async function augmentRelease(response) {
     clientMediaTransport: 'authenticated-same-origin-drive-proxy-with-range-v1',
     clientMediaMetadata: 'drive-id-preview-thumbnail-and-download-v1',
     youtubePublicationDiscovery: 'public-channel-feed-client-title-matching-v1',
+    youtubePublicationMatcher: 'channel-feed-and-exact-long-title-search-v2',
     clientMediaRuntime: 'client-media-runtime-v51',
   }), {
     status: response.status,

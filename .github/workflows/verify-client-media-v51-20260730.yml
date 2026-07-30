@@ -1,0 +1,89 @@
+name: Verify Client Media V51 20260730
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/verify-client-media-v51-20260730.yml'
+      - 'neptune-tv-media-cloudflare/src/portal-client-media-v51.js'
+      - 'neptune-tv-media-cloudflare/src/store-v7.js'
+      - 'neptune-tv-media-cloudflare/src/entry-v11.js'
+      - 'neptune-tv-media-cloudflare/public/espace-client/client-media-runtime-v51.js'
+
+permissions:
+  contents: read
+
+jobs:
+  verify-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Verify deployed runtime, Drive stream and YouTube discovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://tv.neptunebusiness.com'
+
+          ready=0
+          for attempt in $(seq 1 30); do
+            curl --silent --show-error -H 'Cache-Control: no-cache, no-store' \
+              "$BASE/api/public/release?client_media_attempt=$attempt" > /tmp/release.json || true
+            if grep -Fq '"clientMediaTransport":"authenticated-same-origin-drive-proxy-with-range-v1"' /tmp/release.json \
+              && grep -Fq '"youtubePublicationDiscovery":"public-channel-feed-client-title-matching-v1"' /tmp/release.json; then
+              ready=1
+              break
+            fi
+            sleep 10
+          done
+          cat /tmp/release.json
+          test "$ready" = 1
+
+          curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
+            "$BASE/espace-client/?runtime=v51" > /tmp/client.html
+          grep -Fq '/espace-client/client-media-runtime-v51.js?v=1' /tmp/client.html
+          curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
+            "$BASE/espace-client/client-media-runtime-v51.js?v=1" > /tmp/client-media.js
+          grep -Fq 'interceptMediaClick' /tmp/client-media.js
+          grep -Fq 'renderBroadcastPublication' /tmp/client-media.js
+
+          curl --silent --show-error --cookie-jar /tmp/client-cookie.txt \
+            -X POST "$BASE/api/client/request-code" \
+            -H "Origin: $BASE" \
+            -H 'Content-Type: application/json' \
+            --data '{"email":"contact@neptunebusiness.com"}' > /tmp/login.json
+          cat /tmp/login.json
+          grep -Fq '"authenticated":true' /tmp/login.json
+
+          curl --fail --silent --show-error --cookie /tmp/client-cookie.txt \
+            "$BASE/api/client/session" > /tmp/session.json
+          python - <<'PY'
+          import json
+          data=json.load(open('/tmp/session.json'))
+          files=[f for o in data.get('orders',[]) for f in o.get('files',[])]
+          assert files, 'no client files in production session'
+          drive=[f for f in files if f.get('driveFileId')]
+          assert drive, 'Drive metadata missing from production session'
+          assert all(f.get('previewUrl') and f.get('downloadUrl') for f in drive), 'media URLs missing'
+          open('/tmp/file-id.txt','w').write(drive[0]['id'])
+          print({'files':len(files),'drive':len(drive),'first':drive[0]['name']})
+          PY
+
+          FILE_ID="$(cat /tmp/file-id.txt)"
+          status="$(curl --silent --show-error --output /tmp/media.bin --write-out '%{http_code}' \
+            --cookie /tmp/client-cookie.txt -H 'Range: bytes=0-1023' \
+            "$BASE/api/client/files/$FILE_ID?inline=1")"
+          echo "Drive media status: $status"
+          test "$status" = 200 -o "$status" = 206
+          test "$(wc -c < /tmp/media.bin)" -gt 0
+          if head -c 200 /tmp/media.bin | grep -Fq 'drive_file_unavailable'; then exit 1; fi
+
+          curl --fail --silent --show-error --cookie /tmp/client-cookie.txt \
+            "$BASE/api/client/youtube-publications" > /tmp/youtube.json
+          cat /tmp/youtube.json
+          python - <<'PY'
+          import json
+          data=json.load(open('/tmp/youtube.json'))
+          assert data.get('ok') is True
+          assert data.get('channelUrl','').startswith('https://www.youtube.com/')
+          assert data.get('matched'), 'no YouTube publication matched to the client'
+          print({'matched':len(data['matched']),'title':data['matched'][0]['title']})
+          PY

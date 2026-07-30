@@ -123,8 +123,16 @@ function writeAnalytics(env, item) {
 }
 
 function isOperationalEvent(item, finalBatch, closingEpisodes) {
-  if (item.kind === 'ad') return ['impression', 'complete', 'click'].includes(item.event);
-  if (['view', 'complete', 'booking_click'].includes(item.event)) return true;
+  if (item.kind === 'ad') return true;
+  if ([
+    'view',
+    'progress_25',
+    'progress_50',
+    'progress_75',
+    'complete',
+    'share',
+    'booking_click',
+  ].includes(item.event)) return true;
   if (item.event !== 'watch') return false;
   return finalBatch || closingEpisodes.has(item.episodeId);
 }

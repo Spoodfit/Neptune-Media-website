@@ -51,11 +51,12 @@ export function driveFilesUpsert(store, raw = {}) {
     const externalUrl = downloadUrl || webViewUrl;
 
     const existing = store.sql.exec(`
-      SELECT df.drive_file_id AS driveFileId,df.portal_file_id AS portalFileId,df.category,
+      SELECT df.drive_file_id AS driveFileId,df.order_id AS currentOrderId,
+             df.portal_file_id AS portalFileId,df.category,
              df.file_name AS fileName,df.mime_type AS mimeType,df.modified_at AS modifiedAt,
              df.version,df.web_view_url AS webViewUrl,df.download_url AS downloadUrl,
              df.size_bytes AS sizeBytes,df.last_seen_at AS lastSeenAt,
-             pf.name AS portalName,pf.file_type AS portalFileType,
+             pf.order_id AS portalOrderId,pf.name AS portalName,pf.file_type AS portalFileType,
              pf.external_url AS portalExternalUrl,pf.size_label AS portalSizeLabel
       FROM portal_drive_files df
       JOIN portal_files pf ON pf.id=df.portal_file_id
@@ -86,11 +87,15 @@ export function driveFilesUpsert(store, raw = {}) {
       continue;
     }
 
-    const portalChanged = existing.portalName !== name
+    const orderMoved = existing.currentOrderId !== orderId || existing.portalOrderId !== orderId;
+    const categoryChanged = existing.category !== category;
+    const portalChanged = orderMoved
+      || existing.portalName !== name
       || existing.portalFileType !== fileType
       || existing.portalExternalUrl !== externalUrl
       || existing.portalSizeLabel !== sizeLabel;
-    const driveChanged = existing.category !== category
+    const driveChanged = orderMoved
+      || categoryChanged
       || existing.fileName !== name
       || existing.mimeType !== mimeType
       || existing.modifiedAt !== modifiedAt
@@ -98,14 +103,29 @@ export function driveFilesUpsert(store, raw = {}) {
       || existing.downloadUrl !== downloadUrl
       || Number(existing.sizeBytes || 0) !== sizeBytes;
     const contentVersionChanged = existing.modifiedAt !== modifiedAt;
+    const structuralChanged = orderMoved || categoryChanged;
+
+    if (categoryChanged && category === 'long') {
+      store.sql.exec('DELETE FROM portal_content_occurrences WHERE file_id=?', portalFileId);
+      store.sql.exec('DELETE FROM portal_content_schedule WHERE file_id=?', portalFileId);
+      store.sql.exec('DELETE FROM portal_content_ai WHERE file_id=?', portalFileId);
+    }
 
     if (portalChanged) {
       store.sql.exec(`
         UPDATE portal_files
-        SET name=?,file_type=?,external_url=?,size_label=?
-        WHERE id=? AND order_id=?
-      `, name, fileType, externalUrl, sizeLabel, portalFileId, orderId);
+        SET order_id=?,name=?,file_type=?,external_url=?,size_label=?
+        WHERE id=?
+      `, orderId, name, fileType, externalUrl, sizeLabel, portalFileId);
     }
+
+    if (orderMoved && category === 'short') {
+      store.sql.exec('UPDATE portal_content_schedule SET order_id=?,updated_at=? WHERE file_id=?', orderId, now, portalFileId);
+      store.sql.exec('UPDATE portal_content_ai SET order_id=?,updated_at=? WHERE file_id=?', orderId, now, portalFileId);
+      store.sql.exec('UPDATE portal_content_occurrences SET order_id=?,updated_at=? WHERE file_id=?', orderId, now, portalFileId);
+    }
+
+    if (category === 'short') ensureShortSchedule(store, orderId, portalFileId, name, mapping.title, now);
 
     if (driveChanged) {
       const version = contentVersionChanged ? Number(existing.version || 1) + 1 : Number(existing.version || 1);
@@ -120,12 +140,14 @@ export function driveFilesUpsert(store, raw = {}) {
       store.sql.exec('UPDATE portal_drive_files SET last_seen_at=? WHERE drive_file_id=?', now, driveFileId);
     }
 
-    if (contentVersionChanged) {
+    if (contentVersionChanged || structuralChanged) {
+      const eventModifiedAt = contentVersionChanged ? modifiedAt : now;
+      const eventType = orderMoved ? 'moved' : contentVersionChanged ? 'updated' : 'reclassified';
       store.sql.exec(`
         INSERT OR IGNORE INTO portal_drive_events(
           id,drive_file_id,order_id,modified_at,category,file_name,event_type,created_at,notified_at
         ) VALUES(?,?,?,?,?,?,?, ?,NULL)
-      `, crypto.randomUUID(), driveFileId, orderId, modifiedAt, category, name, 'updated', now);
+      `, crypto.randomUUID(), driveFileId, orderId, eventModifiedAt, category, name, eventType, now);
     }
 
     if (portalChanged || driveChanged) changed += 1;

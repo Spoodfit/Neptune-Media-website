@@ -5,7 +5,9 @@ on:
     branches: [main]
     paths:
       - 'neptune-tv-media-cloudflare/public/espace-client/**'
+      - 'neptune-tv-media-cloudflare/public/assets/media-dialog-safety-v50.js'
       - 'tests/client-dashboard-visual.mjs'
+      - 'tests/client-content-runtime.mjs'
       - '.github/workflows/client-dashboard-validation.yml'
   workflow_dispatch:
 
@@ -50,14 +52,24 @@ jobs:
           set -o pipefail
           node tests/client-dashboard-visual.mjs 2>&1 | tee /tmp/client-dashboard-run.log
 
+      - name: Validate authenticated content runtime
+        shell: bash
+        env:
+          DASHBOARD_BASE_URL: http://127.0.0.1:4173
+        run: |
+          set -o pipefail
+          node tests/client-content-runtime.mjs 2>&1 | tee /tmp/client-content-runtime.log
+
       - name: Upload screenshots and report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: client-dashboard-v37-validation
+          name: client-dashboard-v18-validation
           path: |
             test-results/client-dashboard
+            test-results/client-content-runtime
             /tmp/client-dashboard-run.log
+            /tmp/client-content-runtime.log
             /tmp/client-dashboard-server.log
           if-no-files-found: warn
           retention-days: 7

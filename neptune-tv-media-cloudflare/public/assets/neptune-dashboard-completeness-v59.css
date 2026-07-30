@@ -1,6 +1,6 @@
-/* Neptune dashboard completeness v59
-   Keep the first viewport focused, but never remove useful client functions.
-   Secondary modules remain below the primary project overview in a natural scroll flow. */
+/* Neptune dashboard completeness v59.1
+   Keep every useful client function, but place secondary modules in a stable responsive flow.
+   Formats occupy their own full-width section; recommendation and support sit below without overlap. */
 
 @media (min-width: 1024px) {
   body:has(.dashboard-v37) {
@@ -40,54 +40,70 @@
     display: flex !important;
   }
 
+  /* Lower dashboard: never squeeze the recommendation card beside the format catalogue. */
   .dashboard-v37 .dashboard-content-grid {
     width: 100% !important;
     height: auto !important;
     min-height: 0 !important;
     max-height: none !important;
-    display: grid !important;
-    grid-template-columns: minmax(0, 1.48fr) minmax(320px, .62fr) !important;
-    gap: clamp(14px, 1.35vw, 20px) !important;
-    align-items: start !important;
+    display: block !important;
     overflow: visible !important;
   }
 
   .dashboard-v37 .dashboard-content-grid > .formats-panel {
+    width: 100% !important;
     min-width: 0 !important;
     display: block !important;
-    padding: clamp(18px, 1.7vw, 22px) !important;
+    padding: clamp(18px, 1.7vw, 24px) !important;
   }
 
-  .dashboard-v37 .format-grid {
+  .dashboard-v37 .format-grid,
+  .dashboard-v37 .format-grid:not(.has-connexio-event) {
+    width: 100% !important;
     display: grid !important;
-    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-    gap: 12px !important;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 360px)) !important;
+    justify-content: start !important;
+    align-items: stretch !important;
+    gap: 14px !important;
+  }
+
+  .dashboard-v37 .format-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 360px !important;
+    height: auto !important;
   }
 
   .dashboard-v37 .dashboard-content-grid > .utility-column {
+    width: 100% !important;
     min-width: 0 !important;
     display: grid !important;
-    grid-template-columns: 1fr !important;
-    gap: 14px !important;
+    grid-template-columns: minmax(0, 1.45fr) minmax(320px, .55fr) !important;
+    align-items: start !important;
+    gap: clamp(14px, 1.35vw, 20px) !important;
+    margin-top: clamp(14px, 1.35vw, 20px) !important;
   }
 
   .dashboard-v37 .referral-panel,
   .dashboard-v37 .referral-panel.referral-challenge,
   .dashboard-v37 .support-card {
-    width: auto !important;
+    position: relative !important;
+    width: 100% !important;
+    min-width: 0 !important;
     height: auto !important;
     min-height: 0 !important;
     max-height: none !important;
     align-self: start !important;
+    overflow: hidden !important;
   }
 
   .dashboard-v37 .referral-panel.referral-challenge {
     display: block !important;
     padding: 20px 21px !important;
-    overflow: hidden !important;
   }
 
   .dashboard-v37 .referral-panel.referral-challenge .referral-challenge-head {
+    width: 100% !important;
     max-width: none !important;
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) auto !important;
@@ -99,6 +115,11 @@
   .dashboard-v37 .referral-promise,
   .dashboard-v37 .referral-rule {
     display: block !important;
+  }
+
+  .dashboard-v37 .referral-promise,
+  .dashboard-v37 .referral-promise::before {
+    white-space: normal !important;
   }
 
   .dashboard-v37 .referral-milestones {
@@ -127,7 +148,7 @@
   }
 
   .dashboard-v37 .referral-panel.referral-challenge .referral-actions {
-    width: auto !important;
+    width: 100% !important;
     min-width: 0 !important;
     display: grid !important;
     grid-template-columns: minmax(190px, 1fr) repeat(3, 44px) !important;
@@ -148,7 +169,6 @@
   .dashboard-v37 .support-card {
     display: block !important;
     padding: 20px !important;
-    overflow: hidden !important;
   }
 
   .dashboard-v37 .support-card .utility-heading p {
@@ -157,6 +177,7 @@
 
   .dashboard-v37 .support-card .support-actions {
     display: grid !important;
+    grid-template-columns: 1fr !important;
     gap: 9px !important;
     margin-top: 16px !important;
   }
@@ -173,17 +194,17 @@
 }
 
 @media (min-width: 1024px) and (max-width: 1180px) {
-  .dashboard-v37 .dashboard-content-grid {
+  .dashboard-v37 .dashboard-content-grid > .utility-column {
     grid-template-columns: 1fr !important;
   }
 
-  .dashboard-v37 .dashboard-content-grid > .utility-column {
+  .dashboard-v37 .support-card .support-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }
 
 @media (min-width: 1024px) and (max-height: 700px) {
   .dashboard-v37 .dashboard-content-grid {
-    display: grid !important;
+    display: block !important;
   }
 }

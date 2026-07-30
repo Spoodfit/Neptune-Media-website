@@ -4,8 +4,8 @@ import { handleEdgeAnalytics } from './edge-analytics-v1.js';
 
 export { StudioStore };
 
-const RELEASE = 'neptune-efficiency-delta-analytics-20260730-v2';
-const BATCHER_ASSET = '/analytics-batcher-v1.js?v=1';
+const RELEASE = 'neptune-efficiency-delta-analytics-20260730-v3';
+const BATCHER_ASSET = '/analytics-batcher-v1.js?v=2';
 
 export default {
   async fetch(request, env, ctx) {
@@ -33,10 +33,10 @@ async function augmentRelease(response) {
   return new Response(JSON.stringify({
     ...current,
     efficiencyRelease: RELEASE,
-    telemetryStorage: 'workers-analytics-engine-with-operational-rollup',
+    telemetryStorage: 'workers-analytics-engine-with-operational-metrics',
     telemetryBatching: 'browser-60-seconds-and-lifecycle-flush',
     rawTelemetryInOperationalSqlite: false,
-    driveSynchronization: 'google-drive-changes-cursor-with-daily-reconciliation',
+    driveSynchronization: 'google-drive-changes-cursor-with-shared-drive-support-and-daily-reconciliation',
     driveBatchEndpoint: '/api/webhooks/drive/delta',
     driveTombstones: 'removed-files-pruned-from-client-library',
     workflowStore: 'store-v7',

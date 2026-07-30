@@ -1,9 +1,9 @@
 {
   "status": "failed",
-  "source_sha": "5889bea324b965308c85f170aadf48573c6b00d4",
-  "source_workflow_id": "30491163058",
-  "ui_workflow_run_id": "30491197312",
-  "checked_at": "2026-07-29T21:09:36.656974+00:00",
+  "source_sha": "ec882562055230471c40ce76f14858497b4aaf39",
+  "source_workflow_id": "30540462210",
+  "ui_workflow_run_id": "30540501493",
+  "checked_at": "2026-07-30T11:57:01.998542+00:00",
   "architecture": "conversion-voice-v10",
   "experience": "final-v12",
   "audit": "playwright-production",
@@ -17,81 +17,6 @@
     "/emissions/",
     "/direct/"
   ],
-  "issues": [
-    "home-desktop: pipeline de production absent",
-    "home-desktop: outil de choix de format absent",
-    "home-desktop: navigation de progression absente",
-    "home-tablet: pipeline de production absent",
-    "home-tablet: outil de choix de format absent",
-    "home-mobile: cibles tactiles trop petites: ‹ |  |  | › | ‹",
-    "home-mobile: pipeline de production absent",
-    "home-mobile: outil de choix de format absent",
-    "emissions-desktop: images non chargées: https://tv.neptunebusiness.com/media/posters/jeu-connexio.webp, https://tv.neptunebusiness.com/media/posters/hors-norme.webp",
-    "emissions-mobile: images non chargées: https://tv.neptunebusiness.com/media/posters/jeu-connexio.webp, https://tv.neptunebusiness.com/media/posters/hors-norme.webp"
-  ],
-  "pages": [
-    {
-      "name": "home-desktop",
-      "route": "/",
-      "issues": [
-        "pipeline de production absent",
-        "outil de choix de format absent",
-        "navigation de progression absente"
-      ],
-      "width": 1440,
-      "height": 1100,
-      "scrollHeight": 13802
-    },
-    {
-      "name": "home-tablet",
-      "route": "/",
-      "issues": [
-        "pipeline de production absent",
-        "outil de choix de format absent"
-      ],
-      "width": 834,
-      "height": 1112,
-      "scrollHeight": 13088
-    },
-    {
-      "name": "home-mobile",
-      "route": "/",
-      "issues": [
-        "cibles tactiles trop petites: ‹ |  |  | › | ‹",
-        "pipeline de production absent",
-        "outil de choix de format absent"
-      ],
-      "width": 390,
-      "height": 844,
-      "scrollHeight": 15186
-    },
-    {
-      "name": "emissions-desktop",
-      "route": "/emissions/",
-      "issues": [
-        "images non chargées: https://tv.neptunebusiness.com/media/posters/jeu-connexio.webp, https://tv.neptunebusiness.com/media/posters/hors-norme.webp"
-      ],
-      "width": 1440,
-      "height": 1000,
-      "scrollHeight": 3016
-    },
-    {
-      "name": "emissions-mobile",
-      "route": "/emissions/",
-      "issues": [
-        "images non chargées: https://tv.neptunebusiness.com/media/posters/jeu-connexio.webp, https://tv.neptunebusiness.com/media/posters/hors-norme.webp"
-      ],
-      "width": 390,
-      "height": 844,
-      "scrollHeight": 3217
-    },
-    {
-      "name": "direct-desktop",
-      "route": "/direct/",
-      "issues": [],
-      "width": 1440,
-      "height": 1000,
-      "scrollHeight": 1475
-    }
-  ]
+  "issues": [],
+  "pages": []
 }

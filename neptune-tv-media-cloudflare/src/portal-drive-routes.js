@@ -8,6 +8,7 @@ const DRIVE_PATHS = new Set([
   '/api/webhooks/drive/delta',
 ]);
 const MAX_DELTA_BATCHES = 80;
+const MAX_SNAPSHOTS = 80;
 
 export async function handleDriveRoute(request, env, studio) {
   const url = new URL(request.url);
@@ -26,15 +27,16 @@ export async function handleDriveRoute(request, env, studio) {
 
   if (url.pathname === '/api/webhooks/drive/delta') {
     const batches = Array.isArray(payload.batches) ? payload.batches.slice(0, MAX_DELTA_BATCHES) : [];
+    const snapshots = Array.isArray(payload.snapshots) ? payload.snapshots.slice(0, MAX_SNAPSHOTS) : [];
     const removedIds = Array.isArray(payload.removedFileIds) ? payload.removedFileIds.slice(0, 250) : [];
     let removed = 0;
+
     if (removedIds.length) {
       const removalResponse = await callStore(studio, '/portal/drive-removed', { driveFileIds: removedIds });
       const removal = await removalResponse.json().catch(() => ({}));
       if (!removalResponse.ok) return json({ error: removal.error || 'drive_removal_failed', retryable: true }, 503);
-      removed = Number(removal.removed || 0);
+      removed += Number(removal.removed || 0);
     }
-    if (!batches.length) return json({ ok: true, processed: 0, accepted: 0, changed: 0, removed, emailsSent: 0 });
 
     const results = [];
     const errors = [];
@@ -44,9 +46,27 @@ export async function handleDriveRoute(request, env, studio) {
       else errors.push(outcome);
     }
 
+    const pruned = [];
+    if (!errors.length) {
+      for (const snapshot of snapshots) {
+        const pruneResponse = await callStore(studio, '/portal/drive-prune', {
+          orderId: snapshot?.orderId,
+          currentDriveFileIds: snapshot?.currentDriveFileIds,
+        });
+        const prune = await pruneResponse.json().catch(() => ({}));
+        if (!pruneResponse.ok) {
+          errors.push({ orderId: snapshot?.orderId || '', error: prune.error || 'drive_prune_failed', status: pruneResponse.status });
+          continue;
+        }
+        removed += Number(prune.removed || 0);
+        pruned.push({ orderId: prune.orderId, known: prune.known, current: prune.current, removed: prune.removed });
+      }
+    }
+
     const summary = {
       ok: errors.length === 0,
       processed: results.length,
+      snapshots: pruned.length,
       failed: errors.length,
       accepted: results.reduce((sum, item) => sum + Number(item.accepted || 0), 0),
       changed: results.reduce((sum, item) => sum + Number(item.changed || 0), 0),
@@ -58,6 +78,7 @@ export async function handleDriveRoute(request, env, studio) {
         changed: item.changed,
         emailSent: Boolean(item.emailSent),
       })),
+      pruned,
       errors: errors.map((item) => ({ orderId: item.orderId || null, error: item.error, status: item.status })),
     };
     return json(summary, errors.length ? 503 : 200);

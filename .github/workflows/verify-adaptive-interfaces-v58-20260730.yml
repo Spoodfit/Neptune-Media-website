@@ -1,0 +1,92 @@
+name: Verify Adaptive Interfaces V58 20260730
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-adaptive-interfaces-v58-20260730.yml'
+      - 'neptune-tv-media-cloudflare/public/assets/neptune-adaptive-interfaces-v58.css'
+      - 'neptune-tv-media-cloudflare/src/entry-v11.js'
+      - 'neptune-tv-media-cloudflare/tests/audit-adaptive-interfaces-v58.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-adaptive-interfaces:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate adaptive source contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          css='neptune-tv-media-cloudflare/public/assets/neptune-adaptive-interfaces-v58.css'
+          entry='neptune-tv-media-cloudflare/src/entry-v11.js'
+          test='neptune-tv-media-cloudflare/tests/audit-adaptive-interfaces-v58.mjs'
+          node --check "$entry"
+          node --check "$test"
+          grep -Fq 'balanced-responsive-client-calendar-auth-and-studio-v58' "$entry"
+          grep -Fq '/assets/neptune-adaptive-interfaces-v58.css?v=1' "$entry"
+          grep -Fq 'body:has(.calendar-shell)' "$css"
+          grep -Fq '.clients-app .pipeline' "$css"
+          grep -Fq '.shell .page-intro' "$css"
+          grep -Fq 'overflow-y: auto !important' "$css"
+
+      - name: Verify deployment and asset injection
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://tv.neptunebusiness.com'
+          ready=0
+          for attempt in $(seq 1 54); do
+            curl --silent --show-error -H 'Cache-Control: no-cache, no-store' \
+              "$BASE/api/public/release?adaptive_interfaces=$GITHUB_RUN_ID-$attempt" > /tmp/release.json || true
+            if grep -Fq '"adaptiveInterfaces":"balanced-responsive-client-calendar-auth-and-studio-v58"' /tmp/release.json \
+              && grep -Fq '"studioPipelinePolicy":"readable-columns-horizontal-navigation-and-local-column-scroll"' /tmp/release.json; then
+              ready=1
+              break
+            fi
+            sleep 10
+          done
+          cat /tmp/release.json
+          test "$ready" = 1
+
+          for path in '/espace-client/' '/espace-client/calendrier/' '/studio/clients' '/studio/advanced.html'; do
+            curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
+              "$BASE$path?adaptive_asset=$GITHUB_RUN_ID" > /tmp/page.html
+            grep -Fq '/assets/neptune-adaptive-interfaces-v58.css?v=1' /tmp/page.html
+          done
+
+          curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
+            "$BASE/assets/neptune-adaptive-interfaces-v58.css?v=1" > /tmp/adaptive.css
+          grep -Fq '.clients-app .pipeline' /tmp/adaptive.css
+          grep -Fq '.content-calendar' /tmp/adaptive.css
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium
+
+      - name: Start local static server
+        shell: bash
+        run: |
+          python3 -m http.server 4173 --directory neptune-tv-media-cloudflare/public >/tmp/neptune-static.log 2>&1 &
+          echo $! > /tmp/neptune-static.pid
+          sleep 2
+
+      - name: Audit responsive composition
+        run: node neptune-tv-media-cloudflare/tests/audit-adaptive-interfaces-v58.mjs
+
+      - name: Upload adaptive screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neptune-adaptive-interfaces-v58
+          path: test-results/adaptive-interfaces-v58
+          if-no-files-found: warn
+          retention-days: 7

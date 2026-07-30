@@ -8,6 +8,13 @@ on:
       - 'neptune-tv-media-cloudflare/public/assets/neptune-adaptive-interfaces-v58.css'
       - 'neptune-tv-media-cloudflare/src/entry-v11.js'
       - 'neptune-tv-media-cloudflare/tests/audit-adaptive-interfaces-v58.mjs'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-adaptive-interfaces-v58-20260730.yml'
+      - 'neptune-tv-media-cloudflare/public/assets/neptune-adaptive-interfaces-v58.css'
+      - 'neptune-tv-media-cloudflare/src/entry-v11.js'
+      - 'neptune-tv-media-cloudflare/tests/audit-adaptive-interfaces-v58.mjs'
   workflow_dispatch:
 
 permissions:

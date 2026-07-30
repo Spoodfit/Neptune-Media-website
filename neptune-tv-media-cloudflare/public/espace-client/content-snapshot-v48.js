@@ -55,9 +55,9 @@ function renderSnapshot(){
 }
 
 function mediaTile(file,kind){
-  const url=safeUrl(file.downloadUrl||file.externalUrl);
+  const media=mediaUrls(file);
   const title=cleanName(file.name)||(kind==='hero'?'Émission complète':'Short Neptune Media');
-  return `<button type="button" class="snapshot-media snapshot-media--${kind}" data-snapshot-file="${esc(file.id||file.driveFileId||title)}"><video muted playsinline preload="metadata" src="${esc(url)}" aria-hidden="true"></video><span class="snapshot-media-overlay"><i>▶</i><small>${kind==='hero'?'ÉMISSION COMPLÈTE':'SHORT / REEL'}</small><strong>${esc(title)}</strong></span></button>`;
+  return `<button type="button" class="snapshot-media snapshot-media--${kind} ${media.drive?'snapshot-media--drive':'snapshot-media--direct'}" data-snapshot-file="${esc(file.id||file.driveFileId||title)}"><span class="snapshot-media-overlay"><i>▶</i><small>${kind==='hero'?'ÉMISSION COMPLÈTE':'SHORT / REEL'}</small><strong>${esc(title)}</strong></span></button>`;
 }
 
 function openPreview(id,order){
@@ -66,16 +66,50 @@ function openPreview(id,order){
   const dialog=section?.querySelector('[data-snapshot-preview]');
   const body=section?.querySelector('[data-preview-body]');
   if(!file||!dialog||!body)return;
-  const url=safeUrl(file.downloadUrl||file.externalUrl);
-  body.innerHTML=`<video controls autoplay playsinline preload="metadata" src="${esc(url)}"></video><div><span>${esc(category(file)==='short'?'SHORT / REEL':'ÉMISSION COMPLÈTE')}</span><h3>${esc(cleanName(file.name)||'Contenu Neptune Media')}</h3><p>${esc(file.sizeLabel||'Disponible dans votre espace client')}</p><a href="${esc(url)}" download>Télécharger</a></div>`;
+  const format=category(file)==='short'?'short':'long';
+  const media=mediaUrls(file);
+  dialog.dataset.format=format;
+  body.className=format==='short'?'is-short':'is-long';
+  body.innerHTML=`<div class="snapshot-player-shell snapshot-player-shell--${format}">${playerMarkup(media,format)}</div><div><span>${esc(format==='short'?'SHORT / REEL':'ÉMISSION COMPLÈTE')}</span><h3>${esc(cleanName(file.name)||'Contenu Neptune Media')}</h3><p>${esc(file.sizeLabel||'Disponible dans votre espace client')}</p><a href="${esc(media.download)}">Télécharger</a></div>`;
   dialog.showModal();
+}
+
+function playerMarkup(media,format){
+  if(media.drive)return `<iframe class="snapshot-player snapshot-player--${format}" src="${esc(media.preview)}" title="Lecture du contenu Neptune Media" loading="eager" allow="autoplay; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>`;
+  return `<video class="snapshot-player snapshot-player--${format}" controls autoplay playsinline preload="metadata" src="${esc(media.preview)}"></video>`;
 }
 
 function closePreview(section){
   const dialog=section?.querySelector('[data-snapshot-preview]');
-  const video=dialog?.querySelector('video');
-  video?.pause();
+  dialog?.querySelector('video')?.pause();
+  const iframe=dialog?.querySelector('iframe');
+  if(iframe)iframe.src='about:blank';
   dialog?.close();
+}
+
+function mediaUrls(file){
+  const driveId=driveFileId(file);
+  const authorized=file.id?`/api/client/files/${encodeURIComponent(file.id)}`:safeUrl(file.downloadUrl||file.externalUrl||file.webViewUrl);
+  return {drive:Boolean(driveId),download:authorized,preview:driveId?`https://drive.google.com/file/d/${encodeURIComponent(driveId)}/preview`:authorized};
+}
+
+function driveFileId(file){
+  const direct=String(file.driveFileId||'').trim();
+  if(direct)return direct;
+  for(const raw of [file.downloadUrl,file.externalUrl,file.webViewUrl]){
+    const value=String(raw||'').trim();
+    if(!value)continue;
+    const pathMatch=value.match(/\/file\/d\/([^/?#]+)/u);
+    if(pathMatch?.[1])return decodeURIComponent(pathMatch[1]);
+    try{
+      const url=new URL(value,location.origin);
+      if(/drive\.google\.com$/iu.test(url.hostname)){
+        const queryId=url.searchParams.get('id');
+        if(queryId)return queryId;
+      }
+    }catch{}
+  }
+  return '';
 }
 
 function category(file){

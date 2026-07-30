@@ -48,6 +48,10 @@ async function measure(page, label, selectors) {
           bottom: Math.round(rect.bottom * 10) / 10,
           width: Math.round(rect.width * 10) / 10,
           height: Math.round(rect.height * 10) / 10,
+          clientWidth: element.clientWidth,
+          scrollWidth: element.scrollWidth,
+          clientHeight: element.clientHeight,
+          scrollHeight: element.scrollHeight,
           display: style.display,
           visibility: style.visibility,
           opacity: Number(style.opacity || 1),
@@ -74,11 +78,13 @@ async function auditClient(viewport) {
 
   await page.goto(`${liveBase}/espace-client/?adaptive_audit=${viewport.width}x${viewport.height}`, { waitUntil: 'domcontentloaded', timeout: 60_000 });
   await page.waitForSelector('#auth:not([hidden])', { timeout: 20_000 });
-  const auth = await measure(page, `auth-${viewport.width}x${viewport.height}`, ['.auth-copy', '.auth-copy h1', '.access-card']);
+  const auth = await measure(page, `auth-${viewport.width}x${viewport.height}`, ['.auth-copy', '.auth-copy h1', '.auth-title-main', '.access-card']);
   const authTitle = auth.items.find((item) => item.selector === '.auth-copy h1');
+  const authTitleMain = auth.items.find((item) => item.selector === '.auth-title-main');
   const authCard = auth.items.find((item) => item.selector === '.access-card');
   if (authCard && !authCard.missing && (authCard.top < -2 || authCard.bottom > viewport.height + 2)) fail(`auth-${viewport.width}x${viewport.height}: carte de connexion coupée.`);
   if (authTitle && authCard && !authTitle.missing && !authCard.missing && intersects(authTitle, authCard, 8)) fail(`auth-${viewport.width}x${viewport.height}: titre et carte de connexion se chevauchent.`);
+  if (authTitleMain && !authTitleMain.missing && authTitleMain.scrollWidth > authTitleMain.clientWidth + 3) fail(`auth-${viewport.width}x${viewport.height}: titre principal déborde (${authTitleMain.scrollWidth}/${authTitleMain.clientWidth}).`);
   await page.screenshot({ path: path.join(output, `auth-${viewport.width}x${viewport.height}.png`), fullPage: true });
 
   await page.locator('#email').fill('contact@neptunebusiness.com');

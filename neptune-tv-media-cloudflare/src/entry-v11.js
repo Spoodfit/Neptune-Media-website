@@ -2,7 +2,7 @@ import base from './entry-v10.js';
 import { StudioStore } from './store-v7.js';
 import { handleEdgeAnalytics } from './edge-analytics-v1.js';
 import { handleClientMediaRoute } from './portal-client-media-v51.js';
-import { handleClientYoutubeRoute } from './portal-youtube-client-v52.js';
+import { handleClientYoutubeRoute } from './portal-youtube-client-v53.js';
 
 export { StudioStore };
 
@@ -55,6 +55,7 @@ async function augmentRelease(response) {
     clientMediaMetadata: 'drive-id-preview-thumbnail-and-download-v1',
     youtubePublicationDiscovery: 'public-channel-feed-client-title-matching-v1',
     youtubePublicationMatcher: 'channel-feed-and-exact-long-title-search-v2',
+    youtubePublicationIntegrity: 'thumbnail-video-id-consistency-v1',
     clientMediaRuntime: 'client-media-runtime-v51.2-stable-broadcast-download-feedback',
   }), {
     status: response.status,

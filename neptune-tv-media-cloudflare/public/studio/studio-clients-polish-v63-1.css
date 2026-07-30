@@ -1,0 +1,9 @@
+/* Precision correction for common wide desktop viewports.
+   Keep six workflow columns readable instead of compressing them below 272px. */
+@media (min-width: 1540px) and (max-width: 1999px) {
+  body.clients-app.studio-clients-v63 .pipeline {
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(272px, 1fr);
+    grid-template-columns: none;
+  }
+}

@@ -37,10 +37,19 @@
     white-space: nowrap !important;
   }
 
+  .dashboard-v37 .referral-panel.referral-challenge {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+  }
+
   .dashboard-v37 .referral-panel.referral-challenge .referral-challenge-head {
     min-width: 0 !important;
     max-width: calc(100% - 178px) !important;
     flex: 1 1 0 !important;
+    align-self: center !important;
   }
 
   .dashboard-v37 .referral-panel.referral-challenge .referral-actions {
@@ -48,6 +57,9 @@
     min-width: 168px !important;
     flex: 0 0 168px !important;
     display: flex !important;
+    align-self: center !important;
+    margin: 0 !important;
+    padding: 0 !important;
     visibility: visible !important;
     opacity: 1 !important;
   }

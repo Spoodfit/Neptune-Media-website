@@ -8,6 +8,7 @@
   <title>Studio Vidéo IA · Neptune Media</title>
   <link rel="icon" href="/assets/logo-neptune.svg">
   <link rel="stylesheet" href="/studio/video-ai-v1.css?v=1">
+  <link rel="stylesheet" href="/studio/video-ai-v2-fixes.css?v=1">
 </head>
 <body>
   <div class="video-ai-shell">
@@ -55,11 +56,11 @@
           <div class="section-head"><div><p class="eyebrow">NOUVELLE PRODUCTION</p><h2 id="uploadTitle">Importer une vidéo longue</h2></div><span class="threshold">SEUIL 60/100</span></div>
           <form id="uploadForm">
             <div class="form-row">
-              <label><span>Client et passage</span><select id="orderSelect" name="orderId" required><option value="">Chargement…</option></select></label>
-              <label><span>Objectif prioritaire</span><select id="objectivePreset"><option value="balanced">Équilibre TOFU / MOFU / BOFU</option><option value="awareness">Priorité visibilité · TOFU</option><option value="expertise">Priorité expertise · MOFU</option><option value="conversion">Priorité conversion · BOFU</option></select></label>
+              <label for="orderSelect"><span>Client et passage</span><select id="orderSelect" name="orderId" required><option value="">Chargement…</option></select></label>
+              <label for="objectivePreset"><span>Objectif prioritaire</span><select id="objectivePreset"><option value="balanced">Équilibre TOFU / MOFU / BOFU</option><option value="awareness">Priorité visibilité · TOFU</option><option value="expertise">Priorité expertise · MOFU</option><option value="conversion">Priorité conversion · BOFU</option></select></label>
             </div>
-            <label class="objective-field"><span>Contexte utile pour Neptune IA <small>facultatif</small></span><textarea id="objectiveText" rows="3" maxlength="1200" placeholder="Offre, cible, sujet central, termes métier ou angle à privilégier."></textarea></label>
-            <label id="dropZone" class="drop-zone" tabindex="0">
+            <label class="objective-field" for="objectiveText"><span>Contexte utile pour Neptune IA <small>facultatif</small></span><textarea id="objectiveText" rows="3" maxlength="1200" aria-label="Contexte utile pour Neptune IA" placeholder="Offre, cible, sujet central, termes métier ou angle à privilégier."></textarea></label>
+            <label id="dropZone" class="drop-zone" for="videoInput" tabindex="0">
               <input id="videoInput" type="file" accept="video/mp4,video/quicktime,video/webm,video/x-m4v" hidden>
               <span class="drop-icon">＋</span>
               <strong>Glissez la vidéo longue ici</strong>

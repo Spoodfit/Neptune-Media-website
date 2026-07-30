@@ -1,4 +1,4 @@
-const PRECISION_STYLESHEET = '/assets/neptune-adaptive-interfaces-v58-1.css?v=2';
+const PRECISION_STYLESHEET = '/assets/neptune-adaptive-interfaces-v58-1.css?v=3';
 
 const ready = document.readyState === 'loading'
   ? new Promise((resolve) => document.addEventListener('DOMContentLoaded', resolve, { once: true }))

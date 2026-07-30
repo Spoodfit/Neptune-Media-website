@@ -11,6 +11,8 @@ const BATCHER_ASSET = '/analytics-batcher-v1.js?v=3';
 const CLIENT_MEDIA_ASSET = '/espace-client/client-media-runtime-v51.js?v=2';
 const VIEWPORT_FIT_ASSET = '/assets/neptune-viewport-fit-v55.css?v=1';
 const DASHBOARD_PRIORITY_ASSET = '/assets/neptune-dashboard-priority-v56.css?v=1';
+const VIDEO_LIBRARY_BALANCE_CSS = '/assets/neptune-video-library-balance-v57.css?v=1';
+const VIDEO_LIBRARY_BALANCE_JS = '/assets/neptune-video-library-balance-v57.js?v=1';
 
 export default {
   async fetch(request, env, ctx) {
@@ -57,6 +59,8 @@ async function augmentRelease(response) {
     workflowStore: 'store-v7',
     viewportFit: 'desktop-one-screen-task-layout-v55',
     dashboardPriority: 'current-project-delivery-actions-before-secondary-utilities-v56',
+    videoLibraryBalance: 'airy-responsive-media-rails-and-adaptive-page-flow-v57',
+    videoLibraryScrollPolicy: 'no-forced-compression-natural-flow-only-when-viewport-requires-it',
     verticalScrollPolicy: 'document-scroll-disabled-desktop-local-data-regions-only',
     clientMediaTransport: 'authenticated-same-origin-drive-proxy-with-range-v1',
     clientMediaMetadata: 'drive-id-preview-thumbnail-and-download-v1',
@@ -86,6 +90,14 @@ async function injectRuntimeAssets(response, pathname) {
       body = body.replace('</head>', `<link rel="stylesheet" href="${DASHBOARD_PRIORITY_ASSET}"></head>`);
     }
   }
+  if (isVideoLibraryPath(pathname)) {
+    if (!body.includes('/assets/neptune-video-library-balance-v57.css')) {
+      body = body.replace('</head>', `<link rel="stylesheet" href="${VIDEO_LIBRARY_BALANCE_CSS}"></head>`);
+    }
+    if (!body.includes('/assets/neptune-video-library-balance-v57.js')) {
+      body = body.replace('</body>', `<script type="module" src="${VIDEO_LIBRARY_BALANCE_JS}"></script></body>`);
+    }
+  }
   if (pathname.startsWith('/espace-client')) {
     if (body.includes('/espace-client/client-media-runtime-v51.js?v=1')) {
       body = body.replaceAll('/espace-client/client-media-runtime-v51.js?v=1', CLIENT_MEDIA_ASSET);
@@ -101,6 +113,10 @@ async function injectRuntimeAssets(response, pathname) {
     statusText: response.statusText,
     headers,
   });
+}
+
+function isVideoLibraryPath(pathname) {
+  return pathname === '/espace-client/videos' || pathname.startsWith('/espace-client/videos/');
 }
 
 function withRuntimeHeaders(response) {

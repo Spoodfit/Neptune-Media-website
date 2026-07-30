@@ -45,17 +45,18 @@ jobs:
           node --check "$cascade"
           node --check "$test"
           grep -Fq 'balanced-responsive-client-calendar-auth-and-studio-v58.1' "$entry"
-          grep -Fq 'dashboard-precision-css-reloaded-after-referral-runtime-v1' "$entry"
+          grep -Fq 'dashboard-precision-css-reloaded-after-referral-runtime-v2' "$entry"
           grep -Fq '/assets/neptune-adaptive-interfaces-v58.css?v=1' "$entry"
           grep -Fq '/assets/neptune-adaptive-interfaces-v58-1.css?v=1' "$entry"
-          grep -Fq '/assets/neptune-adaptive-cascade-v58-1.js?v=1' "$entry"
+          grep -Fq '/assets/neptune-adaptive-cascade-v58-1.js?v=2' "$entry"
           grep -Fq 'body:has(.calendar-shell)' "$css"
           grep -Fq '.clients-app .pipeline' "$css"
           grep -Fq '.shell .page-intro' "$css"
           grep -Fq '.auth-title-main' "$precision"
+          grep -Fq 'flex-direction: row !important' "$precision"
           grep -Fq '.referral-share-primary' "$precision"
           grep -Fq '.shell .sidebar nav' "$precision"
-          grep -Fq 'PRECISION_STYLESHEET' "$cascade"
+          grep -Fq "neptune-adaptive-interfaces-v58-1.css?v=3" "$cascade"
 
       - name: Verify deployment and asset injection
         shell: bash
@@ -68,7 +69,7 @@ jobs:
               "$BASE/api/public/release?adaptive_interfaces=$GITHUB_RUN_ID-$attempt" > /tmp/release.json || true
             if grep -Fq '"adaptiveInterfaces":"balanced-responsive-client-calendar-auth-and-studio-v58.1"' /tmp/release.json \
               && grep -Fq '"adaptiveCorrections":"auth-title-card-separation-referral-primary-action-and-studio-sidebar-clearance"' /tmp/release.json \
-              && grep -Fq '"adaptiveCascade":"dashboard-precision-css-reloaded-after-referral-runtime-v1"' /tmp/release.json \
+              && grep -Fq '"adaptiveCascade":"dashboard-precision-css-reloaded-after-referral-runtime-v2"' /tmp/release.json \
               && grep -Fq '"studioPipelinePolicy":"readable-columns-horizontal-navigation-and-local-column-scroll"' /tmp/release.json; then
               ready=1
               break
@@ -84,21 +85,22 @@ jobs:
             grep -Fq '/assets/neptune-adaptive-interfaces-v58.css?v=1' /tmp/page.html
             grep -Fq '/assets/neptune-adaptive-interfaces-v58-1.css?v=1' /tmp/page.html
             if [ "$path" = '/espace-client/' ]; then
-              grep -Fq '/assets/neptune-adaptive-cascade-v58-1.js?v=1' /tmp/page.html
+              grep -Fq '/assets/neptune-adaptive-cascade-v58-1.js?v=2' /tmp/page.html
             fi
           done
 
           curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
             "$BASE/assets/neptune-adaptive-interfaces-v58.css?v=1" > /tmp/adaptive.css
           curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-            "$BASE/assets/neptune-adaptive-interfaces-v58-1.css?v=1" > /tmp/precision.css
+            "$BASE/assets/neptune-adaptive-interfaces-v58-1.css?v=3" > /tmp/precision.css
           curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-            "$BASE/assets/neptune-adaptive-cascade-v58-1.js?v=1" > /tmp/cascade.js
+            "$BASE/assets/neptune-adaptive-cascade-v58-1.js?v=2" > /tmp/cascade.js
           grep -Fq '.clients-app .pipeline' /tmp/adaptive.css
           grep -Fq '.content-calendar' /tmp/adaptive.css
           grep -Fq '.auth-title-main' /tmp/precision.css
+          grep -Fq 'flex-direction: row !important' /tmp/precision.css
           grep -Fq '.shell .sidebar nav' /tmp/precision.css
-          grep -Fq 'PRECISION_STYLESHEET' /tmp/cascade.js
+          grep -Fq 'neptune-adaptive-interfaces-v58-1.css?v=3' /tmp/cascade.js
 
       - name: Install Playwright
         run: |

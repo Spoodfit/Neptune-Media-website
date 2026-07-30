@@ -8,7 +8,7 @@ export { StudioStore };
 
 const RELEASE = 'neptune-efficiency-operational-fallback-20260730-v5';
 const BATCHER_ASSET = '/analytics-batcher-v1.js?v=3';
-const CLIENT_MEDIA_ASSET = '/espace-client/client-media-runtime-v51.js?v=1';
+const CLIENT_MEDIA_ASSET = '/espace-client/client-media-runtime-v51.js?v=2';
 
 export default {
   async fetch(request, env, ctx) {
@@ -55,7 +55,7 @@ async function augmentRelease(response) {
     clientMediaMetadata: 'drive-id-preview-thumbnail-and-download-v1',
     youtubePublicationDiscovery: 'public-channel-feed-client-title-matching-v1',
     youtubePublicationMatcher: 'channel-feed-and-exact-long-title-search-v2',
-    clientMediaRuntime: 'client-media-runtime-v51',
+    clientMediaRuntime: 'client-media-runtime-v51.2-stable-broadcast-download-feedback',
   }), {
     status: response.status,
     headers: {
@@ -70,8 +70,12 @@ async function injectRuntimeAssets(response, pathname) {
   if (!body.includes('/analytics-batcher-v1.js')) {
     body = body.replace('</head>', `<script src="${BATCHER_ASSET}"></script></head>`);
   }
-  if (pathname.startsWith('/espace-client') && !body.includes('/espace-client/client-media-runtime-v51.js')) {
-    body = body.replace('</body>', `<script type="module" src="${CLIENT_MEDIA_ASSET}"></script></body>`);
+  if (pathname.startsWith('/espace-client')) {
+    if (body.includes('/espace-client/client-media-runtime-v51.js?v=1')) {
+      body = body.replaceAll('/espace-client/client-media-runtime-v51.js?v=1', CLIENT_MEDIA_ASSET);
+    } else if (!body.includes('/espace-client/client-media-runtime-v51.js')) {
+      body = body.replace('</body>', `<script type="module" src="${CLIENT_MEDIA_ASSET}"></script></body>`);
+    }
   }
   const headers = new Headers(response.headers);
   headers.delete('Content-Length');

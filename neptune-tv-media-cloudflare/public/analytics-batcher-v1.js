@@ -83,7 +83,7 @@
 
   function flush(final) {
     clearTimeout(flushTimer);
-    if (!queue.size || flushing) return false;
+    if (!queue.size || (flushing && !final)) return false;
     const snapshot = [...queue.values()].slice(0, MAX_EVENTS);
     for (const item of snapshot) queue.delete([item.kind, item.event, item.sessionId, item.episodeId, item.adId].join('|'));
     const body = JSON.stringify({ events: snapshot, final: Boolean(final), sentAt: new Date().toISOString() });

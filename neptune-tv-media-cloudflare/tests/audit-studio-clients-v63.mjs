@@ -39,26 +39,33 @@ try {
     const errors = [];
     page.on('pageerror', (error) => errors.push(`pageerror:${error.message}`));
     page.on('console', (message) => { if (message.type() === 'error') errors.push(`console:${message.text()}`); });
-    await page.route('**/api/auth/status', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ authenticated: true, csrfToken: 'test-csrf' }) }));
-    await page.route('**/api/admin/clients', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fixtures) }));
-    await page.route('**/api/admin/client-feedback**', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ feedback: [] }) }));
+
+    // Playwright gives the most recently registered matching route priority.
     await page.route('**/api/**', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: '{}' }));
+    await page.route('**/api/admin/client-feedback**', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ feedback: [] }) }));
+    await page.route('**/api/admin/clients', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(fixtures) }));
+    await page.route('**/api/auth/status', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ authenticated: true, csrfToken: 'test-csrf' }) }));
 
     await page.goto(`${baseURL}/studio/clients.html`, { waitUntil: 'networkidle' });
-    await page.waitForSelector('.column.is-visible');
+    await page.waitForSelector('.column.is-visible', { state: 'visible' });
     await page.waitForTimeout(150);
 
     const metrics = await page.evaluate(() => {
-      const rect = (selector) => document.querySelector(selector)?.getBoundingClientRect() || null;
-      const columns = [...document.querySelectorAll('.column')].map((element) => element.getBoundingClientRect());
-      const cards = [...document.querySelectorAll('.client-card')].map((element) => element.getBoundingClientRect());
+      const rect = (selector) => {
+        const box = document.querySelector(selector)?.getBoundingClientRect();
+        return box ? { left: box.left, right: box.right, top: box.top, bottom: box.bottom, width: box.width, height: box.height } : null;
+      };
+      const compactRect = (element) => {
+        const box = element.getBoundingClientRect();
+        return { width: box.width, height: box.height };
+      };
       return {
         bodyWidth: document.documentElement.scrollWidth,
         viewportWidth: innerWidth,
         sidebar: rect('.studio-sidebar'), nav: rect('.studio-nav'), account: rect('.studio-account'),
         main: rect('.clients-main'), topbar: rect('.clients-topbar'), controls: rect('.controls'),
-        columns: columns.map(({ width, height }) => ({ width, height })),
-        cards: cards.map(({ width, height }) => ({ width, height })),
+        columns: [...document.querySelectorAll('.column')].map(compactRect),
+        cards: [...document.querySelectorAll('.client-card')].map(compactRect),
         menuToggleDisplay: getComputedStyle(document.querySelector('#studioMenuToggle')).display,
         activeNavigationCount: document.querySelectorAll('.studio-nav-link.active,[aria-current="page"].studio-nav-link').length,
         reducedMotionRulePresent: [...document.styleSheets].some((sheet) => {

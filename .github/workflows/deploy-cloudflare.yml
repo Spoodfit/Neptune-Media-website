@@ -95,15 +95,20 @@ jobs:
 
             curl --fail --silent --show-error -H "$cache_header" \
               "$PUBLIC_URL/espace-client/?$query" > /tmp/client.html \
-              && grep -Fq '/espace-client/content-snapshot-v48.css?v=1' /tmp/client.html \
+              && grep -Fq '/espace-client/content-snapshot-v48.css?v=2' /tmp/client.html \
               && grep -Fq '/espace-client/content-snapshot-drive-v49.css?v=1' /tmp/client.html \
-              && grep -Fq '/espace-client/content-snapshot-v48.js?v=3' /tmp/client.html \
+              && grep -Fq '/espace-client/content-snapshot-v48.js?v=4' /tmp/client.html \
               && grep -Fq '/assets/media-dialog-safety-v50.js?v=1' /tmp/client.html \
               && curl --fail --silent --show-error -H "$cache_header" \
-                "$PUBLIC_URL/espace-client/content-snapshot-v48.js?v=3&asset_attempt=$attempt" > /tmp/client-snapshot.js \
+                "$PUBLIC_URL/espace-client/content-snapshot-v48.js?v=4&asset_attempt=$attempt" > /tmp/client-snapshot.js \
               && grep -Fq 'new MutationObserver' /tmp/client-snapshot.js \
-              && grep -Fq 'shortFiles.slice(0, 4)' /tmp/client-snapshot.js \
+              && grep -Fq 'const SNAPSHOT_LIMITS = { long: 4, short: 8 };' /tmp/client-snapshot.js \
+              && grep -Fq 'snapshot-rail-more' /tmp/client-snapshot.js \
               && grep -Fq 'snapshotSignature' /tmp/client-snapshot.js \
+              && curl --fail --silent --show-error -H "$cache_header" \
+                "$PUBLIC_URL/espace-client/content-snapshot-v48.css?v=2&asset_attempt=$attempt" > /tmp/client-snapshot.css \
+              && grep -Fq '.snapshot-rail{display:flex' /tmp/client-snapshot.css \
+              && grep -Fq 'overflow-x:auto' /tmp/client-snapshot.css \
               && curl --fail --silent --show-error -H "$cache_header" \
                 "$PUBLIC_URL/espace-client/videos/?$query" > /tmp/videos.html \
               && grep -Fq '/espace-client/videos/videos-compact-v3.css?v=2' /tmp/videos.html \

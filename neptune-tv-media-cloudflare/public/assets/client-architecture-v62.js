@@ -11,6 +11,10 @@
     else callback();
   }
 
+  function setText(element, value) {
+    if (element && element.textContent !== value) element.textContent = value;
+  }
+
   ready(() => {
     document.body.dataset.clientArchitecture = 'v62';
     installNavigation();
@@ -96,10 +100,8 @@
     const dashboard = document.querySelector('#dashboard');
     if (!dashboard || dashboard.hidden) return;
 
-    const eyebrow = dashboard.querySelector('.dashboard-heading .eyebrow');
-    const description = dashboard.querySelector('.dashboard-heading-copy > p:last-child');
-    if (eyebrow) eyebrow.textContent = 'ACCUEIL';
-    if (description) description.textContent = 'Votre projet, votre prochaine action et vos contenus essentiels au même endroit.';
+    setText(dashboard.querySelector('.dashboard-heading .eyebrow'), 'ACCUEIL');
+    setText(dashboard.querySelector('.dashboard-heading-copy > p:last-child'), 'Votre projet, votre prochaine action et vos contenus essentiels au même endroit.');
 
     const deliveryAction = dashboard.querySelector('.show-card [data-open-panel="content"]');
     if (deliveryAction && deliveryAction.tagName !== 'A') {
@@ -114,31 +116,25 @@
     if (appointment) {
       appointment.removeAttribute('data-open-panel');
       appointment.dataset.clientAction = 'appointment';
-      const label = appointment.querySelector('.metric-copy > span');
-      if (label) label.textContent = 'Prochain rendez-vous';
+      setText(appointment.querySelector('.metric-copy > span'), 'Prochain rendez-vous');
     }
 
     const content = dashboard.querySelector('[data-open-panel="content"]');
     if (content) {
       content.removeAttribute('data-open-panel');
       content.dataset.clientRoute = '/espace-client/videos/';
-      const label = content.querySelector('.metric-copy > span');
-      if (label) label.textContent = 'Mes contenus';
+      setText(content.querySelector('.metric-copy > span'), 'Mes contenus');
     }
 
     const publications = dashboard.querySelector('[data-open-panel="calendar"]');
     if (publications) {
       publications.removeAttribute('data-open-panel');
       publications.dataset.clientRoute = '/espace-client/calendrier/';
-      const label = publications.querySelector('.metric-copy > span');
-      if (label) label.textContent = 'Mes publications';
+      setText(publications.querySelector('.metric-copy > span'), 'Mes publications');
     }
 
     const account = dashboard.querySelector('[data-open-panel="billing"]');
-    if (account) {
-      const label = account.querySelector('.metric-copy > span');
-      if (label) label.textContent = 'Compte & factures';
-    }
+    if (account) setText(account.querySelector('.metric-copy > span'), 'Compte & factures');
 
     if (location.hash === '#account') {
       history.replaceState({}, '', '/espace-client/');
@@ -177,30 +173,29 @@
       button.addEventListener('click', () => technical.click());
       header.append(button);
     }
-    button.textContent = `Mes passages (${orders.length})`;
+    setText(button, `Mes passages (${orders.length})`);
   }
 
   function openAccountPanel() {
-    const target = document.querySelector('[data-open-panel="billing"]');
-    if (target) target.click();
+    document.querySelector('[data-open-panel="billing"]')?.click();
   }
 
   function decorateVideoLibrary() {
-    const heading = document.querySelector('.library-intro h1');
-    const copy = document.querySelector('.library-intro .intro-copy > p:last-child');
-    if (heading) heading.textContent = 'Mes contenus.';
-    if (copy) copy.textContent = 'Retrouvez, regardez et téléchargez vos émissions et vos shorts depuis une seule bibliothèque.';
+    setText(document.querySelector('.library-intro h1'), 'Mes contenus.');
+    setText(document.querySelector('.library-intro .intro-copy > p:last-child'), 'Retrouvez, regardez et téléchargez vos émissions et vos shorts depuis une seule bibliothèque.');
 
     const selector = document.querySelector('#passageSelector');
     if (selector) selector.classList.toggle('is-single-passage', selector.querySelectorAll('button').length <= 1);
 
-    document.querySelectorAll('[data-media-section="short"]').forEach((section) => { section.id = 'shorts'; });
+    document.querySelectorAll('[data-media-section="short"]').forEach((section) => {
+      if (section.id !== 'shorts') section.id = 'shorts';
+    });
     document.querySelectorAll('.compact-media-card').forEach((card) => {
       const id = card.querySelector('[data-open-video]')?.dataset.openVideo || '';
       card.querySelectorAll('.compact-media-actions a, .compact-media-actions button').forEach((action) => {
         const label = action.textContent.trim().toLowerCase();
         if (label.includes('préparer le post')) action.classList.add('is-redundant-action');
-        if (label === 'planifier' || label.includes('planifier')) {
+        if ((label === 'planifier' || label.includes('planifier')) && action.getAttribute('href') !== `/espace-client/calendrier/?file=${encodeURIComponent(id)}`) {
           action.setAttribute('href', `/espace-client/calendrier/?file=${encodeURIComponent(id)}`);
         }
       });
@@ -208,20 +203,18 @@
   }
 
   function decorateCalendar() {
-    const heading = document.querySelector('.calendar-intro h1');
-    const copy = document.querySelector('.calendar-intro > div:first-child > p:last-child');
-    if (heading) heading.textContent = 'Mes publications.';
-    if (copy) copy.textContent = 'Planifiez et réutilisez vos shorts depuis un seul calendrier éditorial.';
+    setText(document.querySelector('.calendar-intro h1'), 'Mes publications.');
+    setText(document.querySelector('.calendar-intro > div:first-child > p:last-child'), 'Planifiez et réutilisez vos shorts depuis un seul calendrier éditorial.');
 
     const calendarView = document.querySelector('#calendarView');
     const libraryView = document.querySelector('#libraryView');
     if (calendarView) {
-      calendarView.hidden = false;
+      if (calendarView.hidden) calendarView.hidden = false;
       calendarView.classList.add('active');
     }
     if (libraryView) {
-      libraryView.hidden = true;
-      libraryView.setAttribute('aria-hidden', 'true');
+      if (!libraryView.hidden) libraryView.hidden = true;
+      if (libraryView.getAttribute('aria-hidden') !== 'true') libraryView.setAttribute('aria-hidden', 'true');
     }
 
     const tools = document.querySelector('.calendar-intro .intro-tools');

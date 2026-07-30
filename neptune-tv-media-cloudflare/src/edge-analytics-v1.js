@@ -33,7 +33,7 @@ export async function handleEdgeAnalytics(request, env, ctx) {
     }
 
     const analyticsAvailable = writeAnalytics(env, event);
-    if (isOperationalEvent(event, false, new Set())) {
+    if (isOperationalEvent(event, true, new Set())) {
       ctx.waitUntil(persistEvents(env, [event]).catch(logPersistenceFailure));
     }
     return secure(json({

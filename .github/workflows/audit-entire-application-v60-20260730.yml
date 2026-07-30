@@ -8,6 +8,7 @@ on:
       - 'neptune-tv-media-cloudflare/public/**'
       - 'neptune-tv-media-cloudflare/src/**'
       - 'neptune-tv-media-cloudflare/tests/audit-entire-application-v60.mjs'
+      - 'neptune-tv-media-cloudflare/tests/evaluate-entire-application-v60.mjs'
       - 'wrangler.jsonc'
   push:
     branches: [main]
@@ -16,6 +17,7 @@ on:
       - 'neptune-tv-media-cloudflare/public/**'
       - 'neptune-tv-media-cloudflare/src/**'
       - 'neptune-tv-media-cloudflare/tests/audit-entire-application-v60.mjs'
+      - 'neptune-tv-media-cloudflare/tests/evaluate-entire-application-v60.mjs'
       - 'wrangler.jsonc'
   workflow_dispatch:
 
@@ -35,6 +37,7 @@ jobs:
         run: |
           set -euo pipefail
           node --check neptune-tv-media-cloudflare/tests/audit-entire-application-v60.mjs
+          node --check neptune-tv-media-cloudflare/tests/evaluate-entire-application-v60.mjs
           npm install --ignore-scripts --no-audit --no-fund
           npm run check
           npx wrangler deploy --config wrangler.jsonc --dry-run --outdir .wrangler-audit-dry-run
@@ -58,11 +61,16 @@ jobs:
           cat /tmp/neptune-audit-server.log
           exit 1
 
-      - name: Audit every application screen and safe interaction
+      - name: Collect every application screen and safe interaction
+        id: collect
+        continue-on-error: true
         env:
           LOCAL_BASE_URL: http://127.0.0.1:4173
           LIVE_BASE_URL: https://tv.neptunebusiness.com
         run: node neptune-tv-media-cloudflare/tests/audit-entire-application-v60.mjs
+
+      - name: Evaluate blocking findings
+        run: node neptune-tv-media-cloudflare/tests/evaluate-entire-application-v60.mjs
 
       - name: Upload complete audit evidence
         if: always()

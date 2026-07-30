@@ -30,7 +30,7 @@ jobs:
       RELEASE_ID: neptune-verified-content-runtime-20260730-v18
       EFFICIENCY_RELEASE: neptune-efficiency-operational-fallback-20260730-v11
       EDITORIAL_RELEASE: neptune-editorial-workspace-20260730-v2
-      VIDEO_AI_RELEASE: neptune-video-ai-20260730-v1
+      VIDEO_AI_RELEASE: neptune-video-local-engine-20260730-v1
 
     steps:
       - name: Checkout
@@ -45,13 +45,13 @@ jobs:
       - name: Install dependencies
         run: npm install --package-lock=false --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org
 
-      - name: Validate JavaScript
+      - name: Build and validate application
         run: npm run check
 
-      - name: Validate Worker bundle and video container
+      - name: Validate free Worker bundle
         run: npx wrangler deploy --config wrangler.jsonc --dry-run
 
-      - name: Deploy validated Worker assets and video container
+      - name: Deploy validated Worker and local engine assets
         run: npx wrangler deploy --config wrangler.jsonc
 
       - name: Verify deployed runtime bindings and preserved secrets
@@ -70,12 +70,16 @@ jobs:
                 && grep -Fq '"editorialProposals":3' /tmp/release.json \
                 && grep -Fq '"editorialSelection":"per-content-and-per-occurrence"' /tmp/release.json \
                 && grep -Fq '"editorialStorage":"single-draft-upsert-no-write-on-navigation"' /tmp/release.json \
+                && grep -Fq '"videoAiEngineMode":"browser-local"' /tmp/release.json \
                 && grep -Fq '"videoAiMinimumScore":60' /tmp/release.json \
                 && grep -Fq '"videoAiEditorialProposals":3' /tmp/release.json \
                 && grep -Fq '"videoAiReviewPolicy":"internal-validation-required-before-drive-export"' /tmp/release.json \
-                && grep -Fq '"videoAiSecuritySecretPresent":true' /tmp/release.json \
-                && grep -Fq '"videoAiContainerBindingPresent":true' /tmp/release.json \
-                && grep -Fq '"videoAiStorageBindingPresent":true' /tmp/release.json \
+                && grep -Fq '"videoAiSourcePrivacy":"source-never-uploaded"' /tmp/release.json \
+                && grep -Fq '"videoAiContainerRequired":false' /tmp/release.json \
+                && grep -Fq '"videoAiContainerBindingPresent":false' /tmp/release.json \
+                && grep -Fq '"videoAiInternalSecretRequired":false' /tmp/release.json \
+                && grep -Fq '"videoAiR2SourceUploadRequired":false' /tmp/release.json \
+                && grep -Fq '"videoAiCrossOriginIsolation":"scoped-to-studio-video-ai-only"' /tmp/release.json \
                 && grep -Fq '"videoAiWorkersAiBindingPresent":true' /tmp/release.json \
                 && grep -Fq '"resendSecretPresent":true' /tmp/release.json \
                 && grep -Fq '"webhookSecretPresent":true' /tmp/release.json \
@@ -97,7 +101,7 @@ jobs:
             test "$ok" = 1
           done
 
-      - name: Verify current client Studio and Video AI assets
+      - name: Verify current client Studio editorial and local Video AI assets
         shell: bash
         run: |
           set -euo pipefail
@@ -165,15 +169,20 @@ jobs:
               && grep -Fq 'studio-upload-details' /tmp/studio-gallery.js \
               && curl --fail --silent --show-error -H "$cache_header" \
                 "$PUBLIC_URL/studio/video-ai.html?$query" > /tmp/video-ai.html \
-              && grep -Fq 'Studio Vidéo IA' /tmp/video-ai.html \
+              && grep -Fq 'Studio Vidéo IA local' /tmp/video-ai.html \
+              && grep -Fq '100 % local pour la source' /tmp/video-ai.html \
               && grep -Fq 'SEUIL 60/100' /tmp/video-ai.html \
-              && grep -Fq '/studio/video-ai-v1.js?v=1' /tmp/video-ai.html \
-              && grep -Fq '/studio/video-ai-v2-fixes.css?v=1' /tmp/video-ai.html \
+              && grep -Fq '/studio/video-ai-local-v3.css?v=1' /tmp/video-ai.html \
+              && grep -Fq '/studio/local-engine/neptune-video-local-engine-v1.js?v=1' /tmp/video-ai.html \
               && curl --fail --silent --show-error -H "$cache_header" \
-                "$PUBLIC_URL/studio/video-ai-v1.js?v=1&asset_attempt=$attempt" > /tmp/video-ai.js \
-              && grep -Fq 'multipartUpload' /tmp/video-ai.js \
-              && grep -Fq 'approveVisibleClips' /tmp/video-ai.js \
-              && grep -Fq 'exportApprovedClips' /tmp/video-ai.js \
+                "$PUBLIC_URL/studio/local-engine/neptune-video-local-engine-v1.js?v=1&asset_attempt=$attempt" > /tmp/video-local.js \
+              && grep -Fq 'indexedDB' /tmp/video-local.js \
+              && grep -Fq 'X-Clip-Size' /tmp/video-local.js \
+              && grep -Fq 'beforeunload' /tmp/video-local.js \
+              && curl --fail --silent --show-error -I -H "$cache_header" \
+                "$PUBLIC_URL/studio/video-ai.html?$query" > /tmp/video-ai-headers.txt \
+              && grep -Fqi 'cross-origin-embedder-policy: require-corp' /tmp/video-ai-headers.txt \
+              && grep -Fqi 'cross-origin-opener-policy: same-origin' /tmp/video-ai-headers.txt \
               && curl --fail --silent --show-error -H "$cache_header" \
                 "$PUBLIC_URL/assets/media-dialog-safety-v50.js?v=1&asset_attempt=$attempt" > /tmp/media-safety.js \
               && grep -Fq "document.addEventListener('cancel'" /tmp/media-safety.js \
@@ -184,7 +193,7 @@ jobs:
           for attempt in $(seq 1 18); do
             if verify_assets "$attempt"; then
               assets_ready=1
-              echo "Actifs client, Studio et Vidéo IA propagés à la tentative $attempt."
+              echo "Actifs client, Studio, éditoriaux et Vidéo IA locale propagés à la tentative $attempt."
               break
             fi
             echo "Propagation des actifs incomplète à la tentative $attempt ; nouveau contrôle dans 5 secondes."

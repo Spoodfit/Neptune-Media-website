@@ -97,3 +97,5 @@ jobs:
           path: test-results/adaptive-interfaces-v58
           if-no-files-found: warn
           retention-days: 7
+
+# Validation branch marker: 2026-07-30T18:37+02:00

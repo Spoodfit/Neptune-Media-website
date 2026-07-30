@@ -119,11 +119,11 @@ export function securityHeaders(headers = {}) {
     'Cross-Origin-Resource-Policy': 'same-site',
     'Content-Security-Policy': [
       "default-src 'self'",
-      "script-src 'self'",
+      "script-src 'self' https://static.cloudflareinsights.com",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https:",
       "media-src 'self' https: blob:",
-      "connect-src 'self'",
+      "connect-src 'self' https://cloudflareinsights.com",
       "font-src 'self' data:",
       "object-src 'none'",
       "frame-src https://www.youtube.com https://www.youtube-nocookie.com https://drive.google.com",

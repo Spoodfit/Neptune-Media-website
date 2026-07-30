@@ -1,0 +1,31 @@
+name: Verify Drive Stale Recovery 20260730
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/verify-drive-stale-recovery-20260730.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Verify deployed Drive recovery runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 24); do
+            curl --silent --show-error -H 'Cache-Control: no-cache, no-store' \
+              "https://tv.neptunebusiness.com/api/public/release?drive_recovery=$attempt" > /tmp/release.json || true
+            cat /tmp/release.json
+            if grep -Fq '"driveStaleRecovery":"explicit-store-route-and-404-self-heal-v1"' /tmp/release.json \
+              && grep -Fq '"workflowStore":"store-v7"' /tmp/release.json; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo 'The Drive stale recovery runtime was not observed in production.' >&2
+          exit 1

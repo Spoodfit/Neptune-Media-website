@@ -19,3 +19,5 @@ ready.then(() => {
     document.head.append(link);
   }
 });
+
+// Validation marker: dashboard completeness v59.1 final audit.

@@ -21,15 +21,16 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       PUBLIC_URL: https://tv.neptunebusiness.com
       WORKERS_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
       RELEASE_ID: neptune-verified-content-runtime-20260730-v18
-      EFFICIENCY_RELEASE: neptune-efficiency-operational-fallback-20260730-v5
+      EFFICIENCY_RELEASE: neptune-efficiency-operational-fallback-20260730-v11
       EDITORIAL_RELEASE: neptune-editorial-workspace-20260730-v2
+      VIDEO_AI_RELEASE: neptune-video-ai-20260730-v1
 
     steps:
       - name: Checkout
@@ -47,27 +48,35 @@ jobs:
       - name: Validate JavaScript
         run: npm run check
 
-      - name: Validate Worker bundle
+      - name: Validate Worker bundle and video container
         run: npx wrangler deploy --config wrangler.jsonc --dry-run
 
-      - name: Deploy validated Worker and assets
+      - name: Deploy validated Worker assets and video container
         run: npx wrangler deploy --config wrangler.jsonc
 
-      - name: Verify deployed runtime and preserved secrets
+      - name: Verify deployed runtime bindings and preserved secrets
         shell: bash
         run: |
           set -euo pipefail
           for base in "$WORKERS_URL" "$PUBLIC_URL"; do
             ok=0
-            for attempt in $(seq 1 12); do
+            for attempt in $(seq 1 18); do
               curl --silent --show-error -H 'Cache-Control: no-cache, no-store' \
                 "$base/api/public/release?attempt=$attempt&sha=$GITHUB_SHA" > /tmp/release.json || true
               if grep -Fq "\"release\":\"$RELEASE_ID\"" /tmp/release.json \
                 && grep -Fq "\"efficiencyRelease\":\"$EFFICIENCY_RELEASE\"" /tmp/release.json \
                 && grep -Fq "\"editorialWorkspace\":\"$EDITORIAL_RELEASE\"" /tmp/release.json \
+                && grep -Fq "\"videoAiStudio\":\"$VIDEO_AI_RELEASE\"" /tmp/release.json \
                 && grep -Fq '"editorialProposals":3' /tmp/release.json \
                 && grep -Fq '"editorialSelection":"per-content-and-per-occurrence"' /tmp/release.json \
                 && grep -Fq '"editorialStorage":"single-draft-upsert-no-write-on-navigation"' /tmp/release.json \
+                && grep -Fq '"videoAiMinimumScore":60' /tmp/release.json \
+                && grep -Fq '"videoAiEditorialProposals":3' /tmp/release.json \
+                && grep -Fq '"videoAiReviewPolicy":"internal-validation-required-before-drive-export"' /tmp/release.json \
+                && grep -Fq '"videoAiSecuritySecretPresent":true' /tmp/release.json \
+                && grep -Fq '"videoAiContainerBindingPresent":true' /tmp/release.json \
+                && grep -Fq '"videoAiStorageBindingPresent":true' /tmp/release.json \
+                && grep -Fq '"videoAiWorkersAiBindingPresent":true' /tmp/release.json \
                 && grep -Fq '"resendSecretPresent":true' /tmp/release.json \
                 && grep -Fq '"webhookSecretPresent":true' /tmp/release.json \
                 && grep -Fq '"driveSecretPresent":true' /tmp/release.json \
@@ -79,8 +88,8 @@ jobs:
                 && grep -Fq '"telemetryStorage":"operational-sqlite-with-optional-analytics-engine"' /tmp/release.json \
                 && grep -Fq '"analyticsEngineBinding":"optional-not-required-for-deployment"' /tmp/release.json \
                 && grep -Fq '"driveStaleRecovery":"explicit-store-route-and-404-self-heal-v1"' /tmp/release.json; then
-                ok=1
-                break
+                  ok=1
+                  break
               fi
               sleep 10
             done
@@ -88,7 +97,7 @@ jobs:
             test "$ok" = 1
           done
 
-      - name: Verify current client and Studio assets
+      - name: Verify current client Studio and Video AI assets
         shell: bash
         run: |
           set -euo pipefail
@@ -148,11 +157,23 @@ jobs:
               && grep -Fq '/studio/content-gallery-v49.js?v=1' /tmp/studio.html \
               && grep -Fq '/studio/drive-sync-v47.js?v=2' /tmp/studio.html \
               && grep -Fq '/assets/media-dialog-safety-v50.js?v=1' /tmp/studio.html \
+              && grep -Fq '/studio/video-ai.html' /tmp/studio.html \
               && curl --fail --silent --show-error -H "$cache_header" \
                 "$PUBLIC_URL/studio/content-gallery-v49.js?v=1&asset_attempt=$attempt" > /tmp/studio-gallery.js \
               && grep -Fq 'const PAGE_SIZE=8' /tmp/studio-gallery.js \
               && grep -Fq 'observer?.disconnect()' /tmp/studio-gallery.js \
               && grep -Fq 'studio-upload-details' /tmp/studio-gallery.js \
+              && curl --fail --silent --show-error -H "$cache_header" \
+                "$PUBLIC_URL/studio/video-ai.html?$query" > /tmp/video-ai.html \
+              && grep -Fq 'Studio Vidéo IA' /tmp/video-ai.html \
+              && grep -Fq 'SEUIL 60/100' /tmp/video-ai.html \
+              && grep -Fq '/studio/video-ai-v1.js?v=1' /tmp/video-ai.html \
+              && grep -Fq '/studio/video-ai-v2-fixes.css?v=1' /tmp/video-ai.html \
+              && curl --fail --silent --show-error -H "$cache_header" \
+                "$PUBLIC_URL/studio/video-ai-v1.js?v=1&asset_attempt=$attempt" > /tmp/video-ai.js \
+              && grep -Fq 'multipartUpload' /tmp/video-ai.js \
+              && grep -Fq 'approveVisibleClips' /tmp/video-ai.js \
+              && grep -Fq 'exportApprovedClips' /tmp/video-ai.js \
               && curl --fail --silent --show-error -H "$cache_header" \
                 "$PUBLIC_URL/assets/media-dialog-safety-v50.js?v=1&asset_attempt=$attempt" > /tmp/media-safety.js \
               && grep -Fq "document.addEventListener('cancel'" /tmp/media-safety.js \
@@ -160,10 +181,10 @@ jobs:
           }
 
           assets_ready=0
-          for attempt in $(seq 1 12); do
+          for attempt in $(seq 1 18); do
             if verify_assets "$attempt"; then
               assets_ready=1
-              echo "Actifs client et Studio propagés à la tentative $attempt."
+              echo "Actifs client, Studio et Vidéo IA propagés à la tentative $attempt."
               break
             fi
             echo "Propagation des actifs incomplète à la tentative $attempt ; nouveau contrôle dans 5 secondes."

@@ -22,7 +22,8 @@ check(files.driveRoutes, '/api/webhooks/drive/provisioned', 'route provisioned a
 check(files.driveRoutes, '/api/webhooks/drive/files', 'route files absente');
 check(files.driveRoutes, 'X-Neptune-Drive-Secret', 'en-tête secret Drive absent');
 check(files.driveRoutes, 'drive_delivery_email_failed', 'retry e-mail Drive absent');
-check(files.driveEmail, 'Accéder à mes contenus', 'CTA e-mail livraison absent');
+check(files.driveEmail, 'Voir mes contenus', 'CTA e-mail livraison compact absent');
+check(files.driveEmail, 'current library state', 'signature d’idempotence de bibliothèque absente');
 check(files.store, "'/portal/drive-sync-plan'", 'store ne route pas le plan Drive');
 check(files.entry, 'handleDriveRoute', 'Worker ne charge pas les routes Drive');
 check(files.entry, '/studio/drive-sync-v47.js?v=2', 'version corrigée de l’interface Studio Drive non injectée');

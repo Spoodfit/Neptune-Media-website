@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#06183f">
+  <title>Studio Vidéo IA · Neptune Media</title>
+  <link rel="icon" href="/assets/logo-neptune.svg">
+  <link rel="stylesheet" href="/studio/video-ai-v1.css?v=1">
+</head>
+<body>
+  <div class="video-ai-shell">
+    <aside class="video-ai-sidebar">
+      <a class="video-ai-brand" href="/studio/clients" aria-label="Neptune Media Studio">
+        <img src="/assets/logo-neptune.svg" alt="">
+        <span><b>Neptune</b><small>Media · Studio</small></span>
+      </a>
+      <div class="video-ai-status"><i></i><span>Production connectée</span></div>
+      <nav aria-label="Navigation du Studio">
+        <p>Pilotage</p>
+        <a href="/studio/clients"><span>◎</span><strong>Parcours clients</strong></a>
+        <p>Production</p>
+        <a href="/studio/clients#contenus"><span>▣</span><strong>Contenus</strong></a>
+        <a href="/studio/clients#calendrier"><span>▦</span><strong>Calendrier</strong></a>
+        <a class="active" href="/studio/video-ai.html" aria-current="page"><span>✦</span><strong>Studio Vidéo IA</strong></a>
+        <p>Administration</p>
+        <a href="/studio/advanced.html#episodes"><span>▶</span><strong>Programme</strong></a>
+        <a href="/studio/advanced.html#settings"><span>⚙</span><strong>Réglages avancés</strong></a>
+      </nav>
+      <div class="video-ai-account"><span>NM</span><div><b>Neptune Media</b><small>Validation interne</small></div></div>
+    </aside>
+
+    <main class="video-ai-main">
+      <header class="video-ai-topbar">
+        <div><p class="eyebrow">PRODUCTION AUTOMATISÉE</p><h1>Studio Vidéo IA</h1></div>
+        <div class="topbar-actions"><span id="runtimeState" class="runtime-state"><i></i> Vérification…</span><button id="refreshButton" class="icon-button" type="button" aria-label="Actualiser">↻</button></div>
+      </header>
+
+      <section class="video-ai-hero">
+        <div>
+          <p class="eyebrow">DE LA VIDÉO LONGUE AUX MEILLEURS SHORTS</p>
+          <h2>Neptune crée.<br><span>Vous validez l’exception.</span></h2>
+          <p>Transcription, sélection TOFU/MOFU/BOFU, notation sur 100, montage vertical, sous-titres adaptés et trois propositions éditoriales. Aucun contenu sous 60/100 n’est retenu.</p>
+        </div>
+        <div class="hero-metrics" aria-label="Résumé de production">
+          <div><b id="activeJobsCount">0</b><span>en traitement</span></div>
+          <div><b id="reviewJobsCount">0</b><span>à valider</span></div>
+          <div><b id="readyClipsCount">0</b><span>shorts retenus</span></div>
+        </div>
+      </section>
+
+      <section class="video-ai-grid">
+        <section class="upload-card" aria-labelledby="uploadTitle">
+          <div class="section-head"><div><p class="eyebrow">NOUVELLE PRODUCTION</p><h2 id="uploadTitle">Importer une vidéo longue</h2></div><span class="threshold">SEUIL 60/100</span></div>
+          <form id="uploadForm">
+            <div class="form-row">
+              <label><span>Client et passage</span><select id="orderSelect" name="orderId" required><option value="">Chargement…</option></select></label>
+              <label><span>Objectif prioritaire</span><select id="objectivePreset"><option value="balanced">Équilibre TOFU / MOFU / BOFU</option><option value="awareness">Priorité visibilité · TOFU</option><option value="expertise">Priorité expertise · MOFU</option><option value="conversion">Priorité conversion · BOFU</option></select></label>
+            </div>
+            <label class="objective-field"><span>Contexte utile pour Neptune IA <small>facultatif</small></span><textarea id="objectiveText" rows="3" maxlength="1200" placeholder="Offre, cible, sujet central, termes métier ou angle à privilégier."></textarea></label>
+            <label id="dropZone" class="drop-zone" tabindex="0">
+              <input id="videoInput" type="file" accept="video/mp4,video/quicktime,video/webm,video/x-m4v" hidden>
+              <span class="drop-icon">＋</span>
+              <strong>Glissez la vidéo longue ici</strong>
+              <small>ou cliquez pour sélectionner le fichier reçu du fournisseur</small>
+              <em>MP4, MOV, WEBM ou M4V · import résumable jusqu’à 80 Go</em>
+            </label>
+            <div id="selectedFile" class="selected-file" hidden></div>
+            <div id="uploadProgress" class="upload-progress" hidden><div><span id="uploadStage">Préparation…</span><b id="uploadPercent">0 %</b></div><progress id="uploadProgressBar" max="100" value="0"></progress></div>
+            <button id="startUpload" class="primary-button" type="submit" disabled>Lancer l’analyse et la création des shorts</button>
+            <p id="uploadMessage" class="form-message" aria-live="polite"></p>
+          </form>
+        </section>
+
+        <section class="jobs-card" aria-labelledby="jobsTitle">
+          <div class="section-head"><div><p class="eyebrow">FILE DE PRODUCTION</p><h2 id="jobsTitle">Vidéos importées</h2></div><div class="job-filters"><button class="active" data-job-filter="all" type="button">Toutes</button><button data-job-filter="active" type="button">En cours</button><button data-job-filter="review" type="button">À valider</button></div></div>
+          <div id="jobsList" class="jobs-list" aria-live="polite"><p class="empty-state">Chargement de la production…</p></div>
+        </section>
+      </section>
+
+      <section id="reviewWorkspace" class="review-workspace" hidden>
+        <header class="review-header">
+          <div><button id="backToJobs" class="back-button" type="button">← Production</button><p class="eyebrow">VALIDATION INTERNE</p><h2 id="reviewTitle">Shorts générés</h2><p id="reviewSubtitle"></p></div>
+          <div class="review-actions"><button id="approveAll" class="secondary-button" type="button">Valider tous les contenus affichés</button><button id="exportApproved" class="primary-button" type="button">Envoyer les validés dans Drive</button></div>
+        </header>
+        <div id="jobProgressPanel" class="job-progress-panel" hidden><div><strong id="jobStageText">Traitement en cours</strong><span id="jobProgressText">0 %</span></div><progress id="jobProgressBar" max="100" value="0"></progress><p id="jobProgressHint"></p></div>
+        <nav id="funnelFilters" class="funnel-filters" aria-label="Filtrer les contenus"><button class="active" data-funnel="all" type="button">Tous <span id="allCount">0</span></button><button data-funnel="TOFU" type="button">TOFU <span id="tofuCount">0</span></button><button data-funnel="MOFU" type="button">MOFU <span id="mofuCount">0</span></button><button data-funnel="BOFU" type="button">BOFU <span id="bofuCount">0</span></button></nav>
+        <div id="clipsGrid" class="clips-grid"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast" hidden role="status"></div>
+  <script type="module" src="/studio/video-ai-v1.js?v=1"></script>
+</body>
+</html>

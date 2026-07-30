@@ -1,8 +1,8 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "neptune-media-webtv",
-  "main": "neptune-tv-media-cloudflare/src/entry-v13.js",
-  "compatibility_date": "2026-07-16",
+  "main": "neptune-tv-media-cloudflare/src/entry-v14.js",
+  "compatibility_date": "2026-07-30",
   "workers_dev": true,
   "keep_vars": true,
   "routes": [
@@ -37,13 +37,23 @@
       "/llms.txt"
     ]
   },
+  "containers": [
+    {
+      "class_name": "VideoProcessor",
+      "image": "./neptune-tv-media-cloudflare/containers/video-ai/Dockerfile",
+      "max_instances": 2,
+      "instance_type": "standard-2"
+    }
+  ],
   "durable_objects": {
     "bindings": [
-      { "name": "STUDIO", "class_name": "StudioStore" }
+      { "name": "STUDIO", "class_name": "StudioStore" },
+      { "name": "VIDEO_PROCESSOR", "class_name": "VideoProcessor" }
     ]
   },
   "migrations": [
-    { "tag": "v1", "new_sqlite_classes": ["StudioStore"] }
+    { "tag": "v1", "new_sqlite_classes": ["StudioStore"] },
+    { "tag": "v2", "new_sqlite_classes": ["VideoProcessor"] }
   ],
   "r2_buckets": [
     { "binding": "MEDIA", "bucket_name": "neptune-media-assets" }

@@ -1,0 +1,44 @@
+name: Validate Neptune Video AI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'neptune-tv-media-cloudflare/src/**'
+      - 'neptune-tv-media-cloudflare/public/studio/**'
+      - 'neptune-tv-media-cloudflare/containers/video-ai/**'
+      - 'neptune-tv-media-cloudflare/scripts/verify-video-ai-v1.mjs'
+      - 'wrangler.jsonc'
+      - 'package.json'
+      - 'neptune-tv-media-cloudflare/package.json'
+      - '.github/workflows/validate-video-ai.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout merge candidate
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: https://registry.npmjs.org
+
+      - name: Install Worker dependencies
+        run: npm install --package-lock=false --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org
+
+      - name: Validate JavaScript Python and product contracts
+        run: npm run check
+
+      - name: Build FFmpeg processing container
+        run: docker build --tag neptune-video-ai-check neptune-tv-media-cloudflare/containers/video-ai
+
+      - name: Validate Worker and container configuration
+        run: npx wrangler deploy --config wrangler.jsonc --dry-run --outdir .wrangler-dry-run

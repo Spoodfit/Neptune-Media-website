@@ -1,4 +1,6 @@
 const FILE_TRIGGER_SELECTOR = '[data-snapshot-file],[data-open-video]';
+const DOWNLOAD_SELECTOR = 'a[href*="/api/client/files/"]';
+const DYNAMIC_MEDIA_SELECTOR = `${FILE_TRIGGER_SELECTOR},${DOWNLOAD_SELECTOR},#broadcastPreview`;
 const LONG_TYPES = new Set(['final', 'emission', 'full', 'master', 'episode', 'long']);
 const SHORT_TYPES = new Set(['short', 'shorts', 'reel', 'teaser']);
 
@@ -20,6 +22,7 @@ function boot() {
   installStyles();
   installMediaDialog();
   document.addEventListener('click', interceptMediaClick, true);
+  document.addEventListener('click', interceptDownloadClick, true);
 
   const dashboard = document.querySelector('#dashboard');
   if (dashboard) {
@@ -32,7 +35,13 @@ function boot() {
     refresh({ force: true });
   }
 
-  const contentObserver = new MutationObserver(scheduleDecorate);
+  const contentObserver = new MutationObserver((mutations) => {
+    const relevant = mutations.some((mutation) => [...mutation.addedNodes].some((node) => {
+      if (node.nodeType !== Node.ELEMENT_NODE) return false;
+      return node.matches?.(DYNAMIC_MEDIA_SELECTOR) || Boolean(node.querySelector?.(DYNAMIC_MEDIA_SELECTOR));
+    }));
+    if (relevant) scheduleDecorate();
+  });
   contentObserver.observe(document.body, { childList: true, subtree: true });
 }
 
@@ -93,7 +102,7 @@ function scheduleDecorate() {
   decorationTimer = setTimeout(() => {
     decorateMediaCards();
     renderBroadcastPublication();
-  }, 50);
+  }, 80);
 }
 
 function decorateMediaCards() {
@@ -106,19 +115,22 @@ function decorateMediaCards() {
     const target = trigger.matches('.compact-media-open')
       ? trigger.querySelector('.compact-media-preview')
       : trigger;
-    if (target && thumbnail) {
+    if (target && thumbnail && target.dataset.neptuneThumbnail !== thumbnail) {
       target.style.backgroundImage = `linear-gradient(180deg,rgba(4,12,39,.08),rgba(4,12,39,.82)),url("${cssUrl(thumbnail)}")`;
       target.style.backgroundSize = 'cover';
       target.style.backgroundPosition = 'center';
+      target.dataset.neptuneThumbnail = thumbnail;
     }
     trigger.dataset.neptuneProxyReady = 'true';
   });
 
-  document.querySelectorAll('a[href^="/api/client/files/"]').forEach((link) => {
+  document.querySelectorAll(DOWNLOAD_SELECTOR).forEach((link) => {
     const url = new URL(link.href, location.origin);
     if (![...url.searchParams.keys()].length) url.searchParams.set('download', '1');
-    link.href = `${url.pathname}${url.search}`;
+    const normalized = `${url.pathname}${url.search}`;
+    if (link.getAttribute('href') !== normalized) link.setAttribute('href', normalized);
     link.setAttribute('download', '');
+    link.dataset.neptuneDownload = 'true';
   });
 }
 
@@ -133,6 +145,36 @@ function interceptMediaClick(event) {
   event.stopPropagation();
   event.stopImmediatePropagation();
   openMediaDialog(file);
+}
+
+function interceptDownloadClick(event) {
+  const link = event.target.closest(DOWNLOAD_SELECTOR);
+  if (!link || link.dataset.neptuneDownloadBusy === 'true') return;
+
+  const original = link.dataset.neptuneDownloadLabel || link.textContent.trim() || 'Télécharger';
+  link.dataset.neptuneDownloadLabel = original;
+  link.dataset.neptuneDownloadBusy = 'true';
+  link.setAttribute('aria-busy', 'true');
+  link.classList.remove('neptune-download-launched');
+  link.classList.add('neptune-download-busy');
+  link.textContent = 'Préparation du téléchargement…';
+
+  window.setTimeout(() => {
+    if (!link.isConnected) return;
+    link.classList.remove('neptune-download-busy');
+    link.classList.add('neptune-download-launched');
+    link.textContent = 'Téléchargement lancé';
+  }, 700);
+
+  window.setTimeout(() => resetDownloadLink(link), 5200);
+}
+
+function resetDownloadLink(link) {
+  if (!link?.isConnected) return;
+  link.classList.remove('neptune-download-busy', 'neptune-download-launched');
+  link.removeAttribute('aria-busy');
+  link.dataset.neptuneDownloadBusy = 'false';
+  link.textContent = link.dataset.neptuneDownloadLabel || 'Télécharger';
 }
 
 function installMediaDialog() {
@@ -164,7 +206,7 @@ function openMediaDialog(file) {
   const download = file.downloadUrl || `/api/client/files/${encodeURIComponent(file.id)}?download=1`;
   const title = cleanName(file.name) || 'Contenu Neptune Media';
 
-  body.innerHTML = `<div class="neptune-media-player-shell neptune-media-player-shell--${isShort ? 'short' : 'long'}"><video controls autoplay playsinline preload="metadata" src="${esc(preview)}"></video><div class="neptune-media-load-error" hidden><strong>Lecture indisponible</strong><span>Les permissions Drive ont été refusées ou le fichier n’est plus accessible.</span></div></div><aside><span>${isShort ? 'SHORT / REEL' : 'ÉMISSION COMPLÈTE'}</span><h2>${esc(title)}</h2><p>${esc(file.sizeLabel || 'Disponible dans votre espace client')}</p><a href="${esc(download)}" download>Télécharger</a></aside>`;
+  body.innerHTML = `<div class="neptune-media-player-shell neptune-media-player-shell--${isShort ? 'short' : 'long'}"><video controls autoplay playsinline preload="metadata" src="${esc(preview)}"></video><div class="neptune-media-load-error" hidden><strong>Lecture indisponible</strong><span>Les permissions Drive ont été refusées ou le fichier n’est plus accessible.</span></div></div><aside><span>${isShort ? 'SHORT / REEL' : 'ÉMISSION COMPLÈTE'}</span><h2>${esc(title)}</h2><p>${esc(file.sizeLabel || 'Disponible dans votre espace client')}</p><a href="${esc(download)}" download data-neptune-download="true">Télécharger</a></aside>`;
 
   const video = body.querySelector('video');
   video?.addEventListener('error', () => {
@@ -195,8 +237,12 @@ function renderBroadcastPublication() {
   const youtube = youtubeState?.matched?.[0] || null;
 
   if (youtube?.videoId) {
-    target.innerHTML = `<iframe src="${esc(youtube.embedUrl)}" title="${esc(youtube.title)}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>`;
-    target.dataset.source = 'youtube';
+    const renderKey = `youtube:${youtube.videoId}`;
+    if (target.dataset.neptuneBroadcastKey !== renderKey || !target.querySelector('iframe[data-neptune-broadcast-player]')) {
+      target.innerHTML = `<iframe data-neptune-broadcast-player src="${esc(youtube.embedUrl)}" title="${esc(youtube.title)}" loading="eager" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>`;
+      target.dataset.neptuneBroadcastKey = renderKey;
+      target.dataset.source = 'youtube';
+    }
     if (footerLink) {
       footerLink.href = youtube.watchUrl;
       footerLink.textContent = 'Voir sur YouTube';
@@ -209,9 +255,13 @@ function renderBroadcastPublication() {
     .filter((file) => LONG_TYPES.has(String(file.fileType || '').toLowerCase()))
     .sort((a, b) => fileTimestamp(b) - fileTimestamp(a))[0];
   if (longFile?.id) {
-    const preview = longFile.previewUrl || `/api/client/files/${encodeURIComponent(longFile.id)}?inline=1`;
-    target.innerHTML = `<video controls preload="metadata" playsinline src="${esc(preview)}" aria-label="${esc(longFile.name || 'Votre émission')}"></video>`;
-    target.dataset.source = 'drive';
+    const renderKey = `drive:${longFile.id}:${longFile.modifiedAt || longFile.createdAt || ''}`;
+    if (target.dataset.neptuneBroadcastKey !== renderKey || !target.querySelector('video[data-neptune-broadcast-player]')) {
+      const preview = longFile.previewUrl || `/api/client/files/${encodeURIComponent(longFile.id)}?inline=1`;
+      target.innerHTML = `<video data-neptune-broadcast-player controls preload="metadata" playsinline src="${esc(preview)}" aria-label="${esc(longFile.name || 'Votre émission')}"></video>`;
+      target.dataset.neptuneBroadcastKey = renderKey;
+      target.dataset.source = 'drive';
+    }
   }
   if (footerLink && youtubeState?.channelUrl) footerLink.href = youtubeState.channelUrl;
 }
@@ -234,7 +284,12 @@ function installStyles() {
     .neptune-media-proxy-body aside>span{color:#6550dc;font-size:10px;font-weight:900;letter-spacing:.12em}
     .neptune-media-proxy-body h2{margin:10px 0;color:#101828;font-size:clamp(1.25rem,2.2vw,2rem);line-height:1.08}
     .neptune-media-proxy-body p{margin:0;color:#667085;font-size:13px}
-    .neptune-media-proxy-body aside>a{display:flex;align-items:center;justify-content:center;min-height:48px;margin-top:24px;border-radius:13px;background:#10275f;color:#fff;font-size:12px;font-weight:900;text-decoration:none}
+    .neptune-media-proxy-body aside>a{display:flex;align-items:center;justify-content:center;gap:9px;min-height:48px;margin-top:24px;border-radius:13px;background:#10275f;color:#fff;font-size:12px;font-weight:900;text-decoration:none}
+    ${DOWNLOAD_SELECTOR}{transition:opacity .18s ease,transform .18s ease}
+    ${DOWNLOAD_SELECTOR}.neptune-download-busy,${DOWNLOAD_SELECTOR}.neptune-download-launched{pointer-events:none;opacity:.82}
+    ${DOWNLOAD_SELECTOR}.neptune-download-busy::before{content:'';width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:neptuneDownloadSpin .7s linear infinite}
+    ${DOWNLOAD_SELECTOR}.neptune-download-launched::before{content:'✓';font-size:14px;font-weight:900}
+    @keyframes neptuneDownloadSpin{to{transform:rotate(360deg)}}
     .neptune-media-load-error{position:absolute;inset:auto 20px 20px;display:grid;gap:4px;padding:14px;border-radius:12px;background:rgba(123,31,31,.92);color:#fff}
     .neptune-media-load-error[hidden]{display:none}
     @media(max-width:800px){.neptune-media-proxy-body{grid-template-columns:1fr;min-height:0}.neptune-media-player-shell{min-height:52vh}.neptune-media-proxy-body aside{padding:22px}.neptune-media-proxy-dialog{width:calc(100vw - 16px);max-height:calc(100vh - 16px)}}

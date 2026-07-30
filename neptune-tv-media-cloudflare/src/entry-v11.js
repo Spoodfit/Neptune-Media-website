@@ -10,6 +10,7 @@ const RELEASE = 'neptune-efficiency-operational-fallback-20260730-v5';
 const BATCHER_ASSET = '/analytics-batcher-v1.js?v=3';
 const CLIENT_MEDIA_ASSET = '/espace-client/client-media-runtime-v51.js?v=2';
 const VIEWPORT_FIT_ASSET = '/assets/neptune-viewport-fit-v55.css?v=1';
+const DASHBOARD_PRIORITY_ASSET = '/assets/neptune-dashboard-priority-v56.css?v=1';
 
 export default {
   async fetch(request, env, ctx) {
@@ -55,6 +56,7 @@ async function augmentRelease(response) {
     driveDeliveryEmailContent: 'current-library-counts-and-single-cta-no-file-list',
     workflowStore: 'store-v7',
     viewportFit: 'desktop-one-screen-task-layout-v55',
+    dashboardPriority: 'current-project-delivery-actions-before-secondary-utilities-v56',
     verticalScrollPolicy: 'document-scroll-disabled-desktop-local-data-regions-only',
     clientMediaTransport: 'authenticated-same-origin-drive-proxy-with-range-v1',
     clientMediaMetadata: 'drive-id-preview-thumbnail-and-download-v1',
@@ -78,6 +80,11 @@ async function injectRuntimeAssets(response, pathname) {
   }
   if ((pathname.startsWith('/espace-client') || pathname.startsWith('/studio')) && !body.includes('/assets/neptune-viewport-fit-v55.css')) {
     body = body.replace('</head>', `<link rel="stylesheet" href="${VIEWPORT_FIT_ASSET}"></head>`);
+  }
+  if (pathname === '/espace-client' || pathname === '/espace-client/' || pathname === '/espace-client/index.html') {
+    if (!body.includes('/assets/neptune-dashboard-priority-v56.css')) {
+      body = body.replace('</head>', `<link rel="stylesheet" href="${DASHBOARD_PRIORITY_ASSET}"></head>`);
+    }
   }
   if (pathname.startsWith('/espace-client')) {
     if (body.includes('/espace-client/client-media-runtime-v51.js?v=1')) {

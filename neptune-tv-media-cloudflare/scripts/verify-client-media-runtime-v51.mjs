@@ -4,11 +4,14 @@ const entry = await readFile(new URL('../src/entry-v11.js', import.meta.url), 'u
 const store = await readFile(new URL('../src/store-v7.js', import.meta.url), 'utf8');
 const route = await readFile(new URL('../src/portal-client-media-v51.js', import.meta.url), 'utf8');
 const youtube = await readFile(new URL('../src/portal-youtube-client-v52.js', import.meta.url), 'utf8');
+const youtubeIntegrity = await readFile(new URL('../src/portal-youtube-client-v53.js', import.meta.url), 'utf8');
 const client = await readFile(new URL('../public/espace-client/client-media-runtime-v51.js', import.meta.url), 'utf8');
 
 const failures = [];
 check(entry, "clientMediaTransport: 'authenticated-same-origin-drive-proxy-with-range-v1'", 'le transport média authentifié n’est pas déclaré');
 check(entry, "youtubePublicationMatcher: 'channel-feed-and-exact-long-title-search-v2'", 'le rapprochement YouTube v2 n’est pas déclaré');
+check(entry, "youtubePublicationIntegrity: 'thumbnail-video-id-consistency-v1'", 'le filtre d’intégrité YouTube n’est pas déclaré');
+check(entry, "from './portal-youtube-client-v53.js'", 'la route YouTube filtrée n’est pas active');
 check(entry, '/espace-client/client-media-runtime-v51.js?v=2', 'le runtime média client v2 n’est pas injecté');
 check(entry, 'client-media-runtime-v51.2-stable-broadcast-download-feedback', 'le marqueur du correctif lecteur/téléchargement est absent');
 check(store, "'/portal/session-media'", 'la session enrichie est absente du Store');
@@ -21,6 +24,8 @@ check(route, "baseHeaders.set('Range', range)", 'le proxy Drive ne relaie pas le
 check(route, "authenticatedHeaders.set('Authorization'", 'l’authentification OAuth Drive n’est pas appliquée');
 check(youtube, 'results?search_query=', 'la recherche exacte des titres longs est absente');
 check(youtube, 'channel-feed-and-exact-long-title-search-v2', 'le contrat de rapprochement YouTube v2 est absent');
+check(youtubeIntegrity, 'thumbnail-video-id-consistency-v1', 'le contrat de cohérence miniature/identifiant est absent');
+check(youtubeIntegrity, 'thumbnailId !== videoId', 'les faux identifiants YouTube ne sont pas rejetés');
 check(client, 'interceptMediaClick', 'la lecture par le proxy Neptune n’est pas activée');
 check(client, 'interceptDownloadClick', 'le retour visuel de téléchargement est absent');
 check(client, 'neptuneBroadcastKey', 'le lecteur Dernière livraison n’est pas protégé contre les rerendus en boucle');
@@ -31,7 +36,7 @@ if (failures.length) {
   console.error(failures.map((failure) => `- ${failure}`).join('\n'));
   process.exit(1);
 }
-console.log('Stable broadcast, OAuth Drive relay, download feedback and exact-title YouTube contract passed.');
+console.log('Stable broadcast, YouTube integrity, OAuth Drive relay and download feedback contract passed.');
 
 function check(content, needle, message) {
   if (!content.includes(needle)) failures.push(message);

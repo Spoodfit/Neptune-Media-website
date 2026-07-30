@@ -6,7 +6,7 @@ import { handleClientYoutubeRoute } from './portal-youtube-client-v53.js';
 
 export { StudioStore };
 
-const RELEASE = 'neptune-efficiency-operational-fallback-20260730-v11';
+const RELEASE = 'neptune-client-information-architecture-20260730-v62';
 const BATCHER_ASSET = '/analytics-batcher-v1.js?v=3';
 const CLIENT_MEDIA_ASSET = '/espace-client/client-media-runtime-v51.js?v=2';
 const VIEWPORT_FIT_ASSET = '/assets/neptune-viewport-fit-v55.css?v=1';
@@ -17,6 +17,8 @@ const VIDEO_LIBRARY_BALANCE_JS = '/assets/neptune-video-library-balance-v57.js?v
 const ADAPTIVE_INTERFACES_ASSET = '/assets/neptune-adaptive-interfaces-v58.css?v=1';
 const ADAPTIVE_INTERFACES_PRECISION_ASSET = '/assets/neptune-adaptive-interfaces-v58-1.css?v=1';
 const ADAPTIVE_DASHBOARD_CASCADE_ASSET = '/assets/neptune-adaptive-cascade-v58-1.js?v=4';
+const CLIENT_ARCHITECTURE_CSS = '/assets/client-architecture-v62.css?v=1';
+const CLIENT_ARCHITECTURE_JS = '/assets/client-architecture-v62.js?v=2';
 
 export default {
   async fetch(request, env, ctx) {
@@ -79,6 +81,10 @@ async function augmentRelease(response) {
     youtubePublicationMatcher: 'channel-feed-and-exact-long-title-search-v2',
     youtubePublicationIntegrity: 'thumbnail-video-id-consistency-v1',
     clientMediaRuntime: 'client-media-runtime-v51.2-stable-broadcast-download-feedback',
+    clientInformationArchitecture: 'three-primary-screens-home-content-publications-v62',
+    clientNavigation: 'home-content-publications-account-contextual-v62',
+    clientDuplicateScreens: 'dashboard-video-calendar-panels-and-calendar-short-library-removed-from-navigation',
+    clientPlanningFlow: 'content-card-to-selected-calendar-composer-v1',
   }), {
     status: response.status,
     headers: {
@@ -122,10 +128,16 @@ async function injectRuntimeAssets(response, pathname) {
     body = body.replace('</body>', `<script type="module" src="${ADAPTIVE_DASHBOARD_CASCADE_ASSET}"></script></body>`);
   }
   if (pathname.startsWith('/espace-client')) {
+    if (!body.includes('/assets/client-architecture-v62.css')) {
+      body = body.replace('</head>', `<link rel="stylesheet" href="${CLIENT_ARCHITECTURE_CSS}"></head>`);
+    }
     if (body.includes('/espace-client/client-media-runtime-v51.js?v=1')) {
       body = body.replaceAll('/espace-client/client-media-runtime-v51.js?v=1', CLIENT_MEDIA_ASSET);
     } else if (!body.includes('/espace-client/client-media-runtime-v51.js')) {
       body = body.replace('</body>', `<script type="module" src="${CLIENT_MEDIA_ASSET}"></script></body>`);
+    }
+    if (!body.includes('/assets/client-architecture-v62.js')) {
+      body = body.replace('</body>', `<script src="${CLIENT_ARCHITECTURE_JS}" defer></script></body>`);
     }
   }
   const headers = new Headers(response.headers);

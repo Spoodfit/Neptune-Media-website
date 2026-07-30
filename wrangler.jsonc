@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "neptune-media-webtv",
-  "main": "neptune-tv-media-cloudflare/src/entry-v10.js",
+  "main": "neptune-tv-media-cloudflare/src/entry-v11.js",
   "compatibility_date": "2026-07-16",
   "workers_dev": true,
   "keep_vars": true,
@@ -47,6 +47,9 @@
   ],
   "r2_buckets": [
     { "binding": "MEDIA", "bucket_name": "neptune-media-assets" }
+  ],
+  "analytics_engine_datasets": [
+    { "binding": "MEDIA_ANALYTICS", "dataset": "neptune_media_events" }
   ],
   "ai": { "binding": "AI" },
   "vars": {

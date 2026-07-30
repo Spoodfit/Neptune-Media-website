@@ -3,6 +3,9 @@ import { readFile } from 'node:fs/promises';
 const files = {
   entry: await read('src/entry-v8.js'),
   release: await read('src/entry-v9.js'),
+  runtime: await read('src/entry-v11.js'),
+  localConfig: await read('wrangler.jsonc'),
+  rootConfig: await readRoot('wrangler.jsonc'),
   snapshot: await read('public/espace-client/content-snapshot-v48.js'),
   snapshotCss: await read('public/espace-client/content-snapshot-v48.css'),
   videosHtml: await read('public/espace-client/videos/index.html'),
@@ -10,36 +13,55 @@ const files = {
   calendarHtml: await read('public/espace-client/calendrier/index.html'),
   calendar: await read('public/espace-client/calendrier/calendar-compact-v5.js'),
   studio: await read('public/studio/content-gallery-v49.js'),
+  mediaSafety: await read('public/assets/media-dialog-safety-v50.js'),
 };
 
 const failures = [];
-check(files.entry, '/espace-client/content-snapshot-v48.js', 'snapshot client non injecté');
-check(files.entry, '/studio/content-gallery-v49.js', 'galerie Studio non injectée');
-check(files.release, 'neptune-visual-content-library-20260725-v17', 'release v17 absente');
-check(files.release, "contentScrollModel: 'bounded-by-passage-filter-and-page'", 'diagnostic de scroll borné absent');
-check(files.snapshot, 'shortFiles.slice(0,4)', 'snapshot client non limité à quatre shorts');
-check(files.snapshotCss, '.client-drive-deliveries{display:none!important}', 'ancienne liste client non retirée');
-check(files.videosHtml, '/espace-client/videos/videos-compact-v3.js?v=', 'bibliothèque vidéo compacte non chargée');
-check(files.videos, 'const INITIAL_LIMITS = { final: 4, short: 8 };', 'limites initiales des bandes vidéo absentes');
-check(files.videos, 'data-toggle-media', 'action Voir plus des bandes vidéo absente');
-check(files.videos, 'passage-selector', 'sélecteur de passage vidéo absent');
-check(files.calendarHtml, '/espace-client/calendrier/calendar-compact-v5.js?v=', 'bibliothèque calendrier compacte non chargée');
-check(files.calendar, 'const PAGE_SIZE=8', 'bibliothèque des shorts non paginée à huit éléments');
-check(files.calendar, 'observer?.disconnect()', 'observateur calendrier non suspendu pendant le rendu');
-check(files.studio, 'const PAGE_SIZE=8', 'galerie Studio non paginée à huit éléments');
-check(files.studio, 'observer?.disconnect()', 'observateur Studio non suspendu pendant le rendu');
-check(files.studio, "if(!detailGrid)return", 'garde de rendu Studio absente');
-check(files.studio, 'studio-upload-details', 'import manuel Studio non replié');
+check(files.localConfig, '"main": "src/entry-v11.js"', 'la configuration locale ne cible pas entry-v11');
+check(files.rootConfig, '"main": "neptune-tv-media-cloudflare/src/entry-v11.js"', 'la configuration racine ne cible pas entry-v11');
+check(files.localConfig, '"MEDIA_ANALYTICS"', 'le binding Analytics Engine manque dans la configuration locale');
+check(files.rootConfig, '"MEDIA_ANALYTICS"', 'le binding Analytics Engine manque dans la configuration racine');
+check(files.runtime, "from './store-v7.js'", 'le runtime final ne réexporte pas store-v7');
+check(files.runtime, "workflowStore: 'store-v7'", 'le diagnostic final ne confirme pas store-v7');
+check(files.entry, '/espace-client/content-snapshot-v48.js?v=3', 'la version authentification-safe du snapshot client n’est pas injectée');
+check(files.entry, '/studio/content-gallery-v49.js?v=1', 'la galerie Studio n’est pas injectée');
+check(files.entry, '/assets/media-dialog-safety-v50.js?v=1', 'la protection de fermeture des médias n’est pas injectée');
+check(files.release, 'neptune-verified-content-runtime-20260730-v18', 'la release de contenu vérifiée v18 est absente');
+check(files.release, "contentScrollModel: 'bounded-by-passage-horizontal-rails-and-pagination'", 'le diagnostic du modèle de scroll actuel est absent');
+check(files.release, "clientVideoLibrary: 'passage-selector-horizontal-rails-4-long-8-short-v4'", 'le diagnostic de bibliothèque vidéo est obsolète');
+check(files.snapshot, 'new MutationObserver', 'le snapshot ne surveille pas l’ouverture du dashboard après authentification');
+check(files.snapshot, 'if (!dashboard || dashboard.hidden || snapshotInFlight) return;', 'le snapshot peut encore charger lorsque le dashboard est masqué');
+check(files.snapshot, 'shortFiles.slice(0, 4)', 'le snapshot client n’est pas limité à quatre shorts');
+check(files.snapshot, 'snapshotSignature', 'le snapshot est rerendu sans empreinte stable');
+check(files.snapshotCss, '.client-drive-deliveries{display:none!important}', 'l’ancienne liste client n’est pas retirée');
+check(files.videosHtml, '/espace-client/videos/videos-compact-v3.js?v=3', 'la bibliothèque vidéo active n’est pas chargée');
+check(files.videosHtml, '/assets/media-dialog-safety-v50.js?v=1', 'la bibliothèque vidéo ne charge pas la protection de fermeture');
+check(files.videos, 'const INITIAL_LIMITS = { final: 4, short: 8 };', 'les limites initiales des bandes vidéo sont absentes');
+check(files.videos, 'data-toggle-media', 'l’action Voir plus des bandes vidéo est absente');
+check(files.videos, 'passage-selector', 'le sélecteur de passage vidéo est absent');
+check(files.calendarHtml, '/espace-client/calendrier/calendar-compact-v5.js?v=1', 'la bibliothèque calendrier compacte n’est pas chargée');
+check(files.calendar, 'const PAGE_SIZE=8', 'la bibliothèque des shorts n’est pas paginée à huit éléments');
+check(files.calendar, 'observer?.disconnect()', 'l’observateur calendrier n’est pas suspendu pendant le rendu');
+check(files.studio, 'const PAGE_SIZE=8', 'la galerie Studio n’est pas paginée à huit éléments');
+check(files.studio, 'observer?.disconnect()', 'l’observateur Studio n’est pas suspendu pendant le rendu');
+check(files.studio, "if(!detailGrid)return", 'la garde de rendu Studio est absente');
+check(files.studio, 'studio-upload-details', 'l’import manuel Studio n’est pas replié');
+check(files.mediaSafety, "document.addEventListener('cancel'", 'la touche Échap peut encore contourner le nettoyage média');
+check(files.mediaSafety, "frame.src = 'about:blank'", 'les lecteurs Drive ne sont pas arrêtés à la fermeture');
 
 if (failures.length) {
   console.error(failures.map((failure) => `- ${failure}`).join('\n'));
   process.exit(1);
 }
 
-console.log('Bounded visual content library contract passed.');
+console.log('Verified bounded visual content runtime contract passed.');
 
 async function read(path) {
   return readFile(new URL(`../${path}`, import.meta.url), 'utf8');
+}
+
+async function readRoot(path) {
+  return readFile(new URL(`../../${path}`, import.meta.url), 'utf8');
 }
 
 function check(content, needle, message) {

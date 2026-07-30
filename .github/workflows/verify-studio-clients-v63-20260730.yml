@@ -1,0 +1,70 @@
+name: Verify Studio Clients V63 20260730
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-studio-clients-v63-20260730.yml'
+      - 'neptune-tv-media-cloudflare/public/studio/clients.html'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-clients-polish-v63.css'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-clients-polish-v63.js'
+      - 'neptune-tv-media-cloudflare/scripts/verify-studio-clients-v63.mjs'
+      - 'neptune-tv-media-cloudflare/tests/audit-studio-clients-v63.mjs'
+      - 'neptune-tv-media-cloudflare/package.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-studio-clients:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate source contract
+        working-directory: neptune-tv-media-cloudflare
+        run: |
+          node --check public/studio/studio-clients-polish-v63.js
+          node --check tests/audit-studio-clients-v63.mjs
+          node scripts/verify-studio-clients-v63.mjs
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Start static server
+        shell: bash
+        run: |
+          python3 -m http.server 4173 --directory neptune-tv-media-cloudflare/public >/tmp/studio-v63-server.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:4173/studio/clients.html >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/studio-v63-server.log
+          exit 1
+
+      - name: Audit layout navigation and motion
+        env:
+          LOCAL_BASE_URL: http://127.0.0.1:4173
+          OUTPUT_DIR: test-results/studio-clients-v63
+        run: node neptune-tv-media-cloudflare/tests/audit-studio-clients-v63.mjs
+
+      - name: Upload screenshots and report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: studio-clients-v63-evidence
+          path: test-results/studio-clients-v63
+          if-no-files-found: error
+          retention-days: 14

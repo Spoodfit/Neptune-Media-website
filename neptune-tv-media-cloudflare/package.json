@@ -1,21 +1,24 @@
 {
   "name": "neptune-media-cloudflare",
   "private": true,
-  "version": "4.4.0",
+  "version": "4.5.0",
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "npm run build:video-local && wrangler dev",
+    "build:video-local": "vite build --config local-video-engine/vite.config.js",
     "deploy": "npm run verify && wrangler deploy",
     "deploy:temporary": "npm run verify && wrangler deploy --temporary",
-    "check": "find src public scripts -type f -name '*.js' -print0 | xargs -0 -n1 node --check && node scripts/verify-studio-unified.mjs && node scripts/verify-drive-sync.mjs && node scripts/verify-content-library.mjs && node scripts/verify-video-ai-v1.mjs && node scripts/verify-client-architecture-v62.mjs && node scripts/verify-studio-clients-v63.mjs && node --check public/final-experience-v12.js && node --check scripts/qa-production-ui.mjs",
+    "check": "npm run build:video-local && find src public scripts -type f -name '*.js' -print0 | xargs -0 -n1 node --check && node scripts/verify-studio-unified.mjs && node scripts/verify-drive-sync.mjs && node scripts/verify-content-library.mjs && node scripts/verify-video-local-engine-v1.mjs && node scripts/verify-client-architecture-v62.mjs && node scripts/verify-studio-clients-v63.mjs && node --check public/final-experience-v12.js && node --check scripts/qa-production-ui.mjs",
     "test:smoke": "node scripts/smoke-test.mjs",
     "verify": "npm run check && npm run test:smoke && wrangler deploy --dry-run"
   },
   "dependencies": {
-    "@cloudflare/containers": "^0.3.7",
+    "@huggingface/transformers": "4.2.0",
+    "mediabunny": "1.44.2",
     "resend": "6.18.0"
   },
   "devDependencies": {
+    "vite": "^6.1.0",
     "wrangler": "^4.111.0"
   }
 }

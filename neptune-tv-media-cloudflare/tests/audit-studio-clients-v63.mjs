@@ -59,11 +59,13 @@ try {
         const box = element.getBoundingClientRect();
         return { width: box.width, height: box.height };
       };
+      const refresh = document.querySelector('#refresh')?.getBoundingClientRect();
       return {
         bodyWidth: document.documentElement.scrollWidth,
         viewportWidth: innerWidth,
         sidebar: rect('.studio-sidebar'), nav: rect('.studio-nav'), account: rect('.studio-account'),
         main: rect('.clients-main'), topbar: rect('.clients-topbar'), controls: rect('.controls'),
+        refresh: refresh ? { width: refresh.width, height: refresh.height } : null,
         columns: [...document.querySelectorAll('.column')].map(compactRect),
         cards: [...document.querySelectorAll('.client-card')].map(compactRect),
         menuToggleDisplay: getComputedStyle(document.querySelector('#studioMenuToggle')).display,
@@ -78,6 +80,7 @@ try {
     assert(metrics.main && metrics.main.left >= 0 && metrics.main.right <= metrics.viewportWidth + 1, `${viewport.name}: main content leaves viewport`);
     assert(metrics.topbar?.height >= 60, `${viewport.name}: topbar too small`);
     assert(metrics.controls?.width > 250, `${viewport.name}: controls collapsed`);
+    assert(metrics.refresh && metrics.refresh.width <= 44 && metrics.refresh.height <= 44, `${viewport.name}: refresh utility rendered as a KPI card`);
     assert(metrics.columns.length === 6, `${viewport.name}: expected six workflow columns`);
     assert(metrics.columns.every((column) => column.width >= 250), `${viewport.name}: workflow column below 250px`);
     assert(metrics.cards.every((card) => card.width >= 220), `${viewport.name}: client card below 220px`);
@@ -104,11 +107,14 @@ try {
       assert(await toggle.getAttribute('aria-expanded') === 'false', `${viewport.name}: Escape did not close menu`);
     }
 
+    // Capture the actual populated interface before exercising the loading state.
+    await page.screenshot({ path: path.join(outputDir, `${viewport.name}-${viewport.width}x${viewport.height}.png`), fullPage: true });
+
     const refresh = page.locator('#refresh');
     await refresh.click();
     assert(await refresh.getAttribute('aria-busy') === 'true', `${viewport.name}: refresh progress not exposed`);
+    await page.waitForSelector('.column.is-visible', { state: 'visible' });
 
-    await page.screenshot({ path: path.join(outputDir, `${viewport.name}-${viewport.width}x${viewport.height}.png`), fullPage: true });
     results.push({ viewport, metrics, errors });
     await context.close();
   }

@@ -13,6 +13,8 @@ const DRIVE_V7_PATHS = new Set([
 const MEDIA_V7_PATHS = new Set([
   '/portal/session-media',
   '/portal/file-authorize-media',
+  '/portal/drive-token-set',
+  '/portal/drive-token-get',
 ]);
 
 export class StudioStore extends LegacyStore {
@@ -44,7 +46,9 @@ export class StudioStore extends LegacyStore {
       const body = await request.clone().json().catch(() => ({}));
       try {
         if (url.pathname === '/portal/session-media') return this.sessionWithMedia(body);
-        return this.authorizeFileWithMedia(body);
+        if (url.pathname === '/portal/file-authorize-media') return this.authorizeFileWithMedia(body);
+        if (url.pathname === '/portal/drive-token-set') return this.setDriveToken(body);
+        return this.getDriveToken();
       } catch (error) {
         console.error('client_media_store_v7_failed', {
           path: url.pathname,
@@ -82,6 +86,47 @@ export class StudioStore extends LegacyStore {
     }
 
     return json(result);
+  }
+
+  setDriveToken(body) {
+    this.ensureDriveTokenSchema();
+    const accessToken = String(body.accessToken || '').trim();
+    const expiresAt = new Date(body.expiresAt || '');
+    if (accessToken.length < 40 || accessToken.length > 4096 || Number.isNaN(expiresAt.getTime())) {
+      return json({ error: 'invalid_drive_access_token' }, 400);
+    }
+    const now = new Date().toISOString();
+    this.sql.exec(
+      `INSERT OR REPLACE INTO portal_drive_access_tokens(id,access_token,expires_at,updated_at) VALUES('primary',?,?,?)`,
+      accessToken,
+      expiresAt.toISOString(),
+      now,
+    );
+    return json({ ok: true, expiresAt: expiresAt.toISOString(), updatedAt: now });
+  }
+
+  getDriveToken() {
+    this.ensureDriveTokenSchema();
+    const row = this.sql.exec(
+      `SELECT access_token AS accessToken,expires_at AS expiresAt,updated_at AS updatedAt FROM portal_drive_access_tokens WHERE id='primary'`,
+    ).toArray()[0];
+    if (!row) return json({ error: 'drive_access_token_missing' }, 404);
+    if (new Date(row.expiresAt).getTime() <= Date.now() + 60_000) {
+      this.sql.exec(`DELETE FROM portal_drive_access_tokens WHERE id='primary'`);
+      return json({ error: 'drive_access_token_expired' }, 404);
+    }
+    return json({ ok: true, ...row });
+  }
+
+  ensureDriveTokenSchema() {
+    this.sql.exec(`
+      CREATE TABLE IF NOT EXISTS portal_drive_access_tokens(
+        id TEXT PRIMARY KEY,
+        access_token TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    `);
   }
 
   async authorizeFileWithMedia(body) {

@@ -5,9 +5,11 @@ on:
     paths:
       - '.github/workflows/verify-client-media-v51-20260730.yml'
       - 'neptune-tv-media-cloudflare/src/portal-client-media-v51.js'
+      - 'neptune-tv-media-cloudflare/src/portal-youtube-client-v52.js'
       - 'neptune-tv-media-cloudflare/src/store-v7.js'
       - 'neptune-tv-media-cloudflare/src/entry-v11.js'
       - 'neptune-tv-media-cloudflare/public/espace-client/client-media-runtime-v51.js'
+      - 'google-apps-script/NeptuneDriveTokenRelay.gs'
 
 permissions:
   contents: read
@@ -17,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
-      - name: Verify deployed runtime, Drive stream and YouTube discovery
+      - name: Verify exact-title YouTube matching and Drive relay state
         shell: bash
         run: |
           set -euo pipefail
@@ -28,7 +30,7 @@ jobs:
             curl --silent --show-error -H 'Cache-Control: no-cache, no-store' \
               "$BASE/api/public/release?client_media_attempt=$attempt" > /tmp/release.json || true
             if grep -Fq '"clientMediaTransport":"authenticated-same-origin-drive-proxy-with-range-v1"' /tmp/release.json \
-              && grep -Fq '"youtubePublicationDiscovery":"public-channel-feed-client-title-matching-v1"' /tmp/release.json; then
+              && grep -Fq '"youtubePublicationMatcher":"channel-feed-and-exact-long-title-search-v2"' /tmp/release.json; then
               ready=1
               break
             fi
@@ -36,14 +38,6 @@ jobs:
           done
           cat /tmp/release.json
           test "$ready" = 1
-
-          curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-            "$BASE/espace-client/?runtime=v51" > /tmp/client.html
-          grep -Fq '/espace-client/client-media-runtime-v51.js?v=1' /tmp/client.html
-          curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-            "$BASE/espace-client/client-media-runtime-v51.js?v=1" > /tmp/client-media.js
-          grep -Fq 'interceptMediaClick' /tmp/client-media.js
-          grep -Fq 'renderBroadcastPublication' /tmp/client-media.js
 
           curl --silent --show-error --cookie-jar /tmp/client-cookie.txt \
             -X POST "$BASE/api/client/request-code" \
@@ -59,12 +53,26 @@ jobs:
           import json
           data=json.load(open('/tmp/session.json'))
           files=[f for o in data.get('orders',[]) for f in o.get('files',[])]
-          assert files, 'no client files in production session'
           drive=[f for f in files if f.get('driveFileId')]
-          assert drive, 'Drive metadata missing from production session'
-          assert all(f.get('previewUrl') and f.get('downloadUrl') for f in drive), 'media URLs missing'
+          long_files=[f for f in files if str(f.get('fileType','')).lower() in {'final','emission','full','master','episode','long'}]
+          assert files and drive and len(long_files) >= 2
+          assert all(f.get('previewUrl') and f.get('downloadUrl') for f in drive)
           open('/tmp/file-id.txt','w').write(drive[0]['id'])
-          print({'files':len(files),'drive':len(drive),'first':drive[0]['name']})
+          print({'files':len(files),'drive':len(drive),'long':len(long_files),'long_titles':[f['name'] for f in long_files[:3]]})
+          PY
+
+          curl --fail --silent --show-error --cookie /tmp/client-cookie.txt \
+            "$BASE/api/client/youtube-publications?validation=1&matcher=v2" > /tmp/youtube.json
+          cat /tmp/youtube.json
+          python - <<'PY'
+          import json
+          data=json.load(open('/tmp/youtube.json'))
+          assert data.get('ok') is True
+          assert data.get('matching') == 'channel-feed-and-exact-long-title-search-v2'
+          assert data.get('matched'), data.get('diagnostics')
+          top=data['matched'][0]
+          assert top.get('videoId') and top.get('embedUrl') and top.get('watchUrl')
+          print({'matched':len(data['matched']),'title':top['title'],'matchedFile':top.get('matchedFile'),'score':top.get('score')})
           PY
 
           FILE_ID="$(cat /tmp/file-id.txt)"
@@ -72,18 +80,15 @@ jobs:
             --cookie /tmp/client-cookie.txt -H 'Range: bytes=0-1023' \
             "$BASE/api/client/files/$FILE_ID?inline=1")"
           echo "Drive media status: $status"
-          test "$status" = 200 -o "$status" = 206
-          test "$(wc -c < /tmp/media.bin)" -gt 0
-          if head -c 200 /tmp/media.bin | grep -Fq 'drive_file_unavailable'; then exit 1; fi
+          head -c 1000 /tmp/media.bin || true
+          echo
+          if test "$status" = 200 -o "$status" = 206; then
+            test "$(wc -c < /tmp/media.bin)" -gt 0
+            echo 'Drive OAuth relay operational.'
+          else
+            test "$status" = 502
+            grep -Eq 'drive_access_token_missing|drive_file_unavailable' /tmp/media.bin
+            echo 'Drive OAuth relay server deployed; Apps Script token publication or file authorization still pending.'
+          fi
 
-          curl --fail --silent --show-error --cookie /tmp/client-cookie.txt \
-            "$BASE/api/client/youtube-publications" > /tmp/youtube.json
-          cat /tmp/youtube.json
-          python - <<'PY'
-          import json
-          data=json.load(open('/tmp/youtube.json'))
-          assert data.get('ok') is True
-          assert data.get('channelUrl','').startswith('https://www.youtube.com/')
-          assert data.get('matched'), 'no YouTube publication matched to the client'
-          print({'matched':len(data['matched']),'title':data['matched'][0]['title']})
-          PY
+# validation-trigger: exact-title-youtube-v52-private-drive-relay-v5

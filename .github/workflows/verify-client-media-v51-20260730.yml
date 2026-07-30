@@ -8,6 +8,8 @@ on:
       - 'neptune-tv-media-cloudflare/src/store-v7.js'
       - 'neptune-tv-media-cloudflare/src/entry-v11.js'
       - 'neptune-tv-media-cloudflare/public/espace-client/client-media-runtime-v51.js'
+      - 'neptune-tv-media-cloudflare/public/assets/client-architecture-v62.js'
+      - 'neptune-tv-media-cloudflare/public/assets/client-architecture-v62.css'
 
 permissions:
   contents: read
@@ -38,12 +40,20 @@ jobs:
           test "$ready" = 1
 
           curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-            "$BASE/espace-client/?runtime=v51" > /tmp/client.html
-          grep -Fq '/espace-client/client-media-runtime-v51.js?v=1' /tmp/client.html
+            "$BASE/espace-client/?runtime=v62" > /tmp/client.html
+          grep -Eq '/espace-client/client-media-runtime-v51.js\?v=[0-9]+' /tmp/client.html
+          grep -Eq '/assets/client-architecture-v62.js\?v=[0-9]+' /tmp/client.html
+          grep -Eq '/assets/client-architecture-v62.css\?v=[0-9]+' /tmp/client.html
+
           curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-            "$BASE/espace-client/client-media-runtime-v51.js?v=1" > /tmp/client-media.js
+            "$BASE/espace-client/client-media-runtime-v51.js?v=2" > /tmp/client-media.js
           grep -Fq 'interceptMediaClick' /tmp/client-media.js
           grep -Fq 'renderBroadcastPublication' /tmp/client-media.js
+
+          curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
+            "$BASE/assets/client-architecture-v62.js?v=2" > /tmp/client-architecture.js
+          grep -Fq 'client-nav-v62' /tmp/client-architecture.js
+          grep -Fq 'three-primary' /tmp/release.json || grep -Fq 'clientInformationArchitecture' /tmp/release.json
 
           curl --silent --show-error --cookie-jar /tmp/client-cookie.txt \
             -X POST "$BASE/api/client/request-code" \

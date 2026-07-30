@@ -1,0 +1,33 @@
+name: Validate Neptune Worker
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package.json
+
+      - name: Install dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Check JavaScript syntax
+        run: npm run check
+
+      - name: Validate Cloudflare build
+        run: npx wrangler deploy --config wrangler.jsonc --dry-run --outdir .wrangler-dry-run

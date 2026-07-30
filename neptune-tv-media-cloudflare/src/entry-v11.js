@@ -50,6 +50,8 @@ async function augmentRelease(response) {
     driveBatchEndpoint: '/api/webhooks/drive/delta',
     driveTombstones: 'removed-files-pruned-from-client-library',
     driveStaleRecovery: 'explicit-store-route-and-404-self-heal-v1',
+    driveDeliveryEmail: 'resend-compact-current-library-summary-idempotent-v2',
+    driveDeliveryEmailContent: 'current-library-counts-and-single-cta-no-file-list',
     workflowStore: 'store-v7',
     clientMediaTransport: 'authenticated-same-origin-drive-proxy-with-range-v1',
     clientMediaMetadata: 'drive-id-preview-thumbnail-and-download-v1',

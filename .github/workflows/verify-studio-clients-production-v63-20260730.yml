@@ -1,0 +1,53 @@
+name: Verify Studio Clients Production V63 20260730
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-studio-clients-production-v63-20260730.yml'
+      - 'neptune-tv-media-cloudflare/public/studio/clients.html'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-clients-polish-v63.css'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-clients-polish-v63-1.css'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-clients-polish-v63.js'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Verify workers.dev Studio assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://neptune-media-webtv.neptunebusinessclub.workers.dev'
+          ready=0
+          for attempt in $(seq 1 45); do
+            curl --fail --silent --show-error --location \
+              -H 'Cache-Control: no-cache, no-store' \
+              "$BASE/studio/clients?studio_v63=$attempt" > /tmp/studio-clients.html || true
+            if grep -Fq '/studio/studio-clients-polish-v63.css?v=1' /tmp/studio-clients.html \
+              && grep -Fq '/studio/studio-clients-polish-v63-1.css?v=1' /tmp/studio-clients.html \
+              && grep -Fq '/studio/studio-clients-polish-v63.js?v=1' /tmp/studio-clients.html \
+              && grep -Fq 'id="studioSidebar"' /tmp/studio-clients.html; then
+              ready=1
+              break
+            fi
+            sleep 8
+          done
+          test "$ready" = 1
+
+          curl --fail --silent --show-error --location \
+            "$BASE/studio/studio-clients-polish-v63.css?v=1" > /tmp/studio-v63.css
+          curl --fail --silent --show-error --location \
+            "$BASE/studio/studio-clients-polish-v63-1.css?v=1" > /tmp/studio-v63-1.css
+          curl --fail --silent --show-error --location \
+            "$BASE/studio/studio-clients-polish-v63.js?v=1" > /tmp/studio-v63.js
+
+          grep -Fq 'studio-clients-v63' /tmp/studio-v63.css
+          grep -Fq 'refresh action is a utility' /tmp/studio-v63-1.css
+          grep -Fq '__neptuneStudioClientsPolishV63' /tmp/studio-v63.js
+          echo 'Studio clients v63 assets are live on workers.dev.'

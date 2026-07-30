@@ -6,7 +6,7 @@ import { handleClientYoutubeRoute } from './portal-youtube-client-v53.js';
 
 export { StudioStore };
 
-const RELEASE = 'neptune-client-information-architecture-20260730-v62';
+const RELEASE = 'neptune-efficiency-operational-fallback-20260730-v11';
 const BATCHER_ASSET = '/analytics-batcher-v1.js?v=3';
 const CLIENT_MEDIA_ASSET = '/espace-client/client-media-runtime-v51.js?v=2';
 const VIEWPORT_FIT_ASSET = '/assets/neptune-viewport-fit-v55.css?v=1';

@@ -9,6 +9,14 @@ on:
       - 'neptune-tv-media-cloudflare/public/studio/studio-clients-polish-v63.css'
       - 'neptune-tv-media-cloudflare/public/studio/studio-clients-polish-v63-1.css'
       - 'neptune-tv-media-cloudflare/public/studio/studio-clients-polish-v63.js'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-studio-clients-production-v63-20260730.yml'
+      - 'neptune-tv-media-cloudflare/public/studio/clients.html'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-clients-polish-v63.css'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-clients-polish-v63-1.css'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-clients-polish-v63.js'
   workflow_dispatch:
 
 permissions:

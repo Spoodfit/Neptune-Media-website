@@ -11,23 +11,11 @@ export async function sha256(value) {
   return toHex(new Uint8Array(digest));
 }
 
-// The Workers Free plan allows 10 ms of CPU per request. A 120k-round
-// PBKDF2 regularly exceeds that budget once Durable Object and SQL work are
-// included. 30k keeps the native Web Crypto calculation inside the budget.
-// The stored iteration count keeps every hash independently upgradeable.
+// The Workers Free plan allows 10 ms of CPU per request. The stored iteration
+// count keeps each password record independently upgradeable.
 export async function hashPassword(password, salt = randomToken(16), iterations = 30000) {
-  const key = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(String(password)),
-    'PBKDF2',
-    false,
-    ['deriveBits'],
-  );
-  const bits = await crypto.subtle.deriveBits(
-    { name: 'PBKDF2', hash: 'SHA-256', salt: encoder.encode(salt), iterations },
-    key,
-    256,
-  );
+  const key = await crypto.subtle.importKey('raw', encoder.encode(String(password)), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: encoder.encode(salt), iterations }, key, 256);
   return { salt, iterations, hash: toHex(new Uint8Array(bits)) };
 }
 
@@ -75,13 +63,7 @@ export function clearSessionCookie(requestUrl) {
 }
 
 export function json(value, status = 200, headers = {}) {
-  return Response.json(value, {
-    status,
-    headers: {
-      'Cache-Control': 'no-store',
-      ...headers,
-    },
-  });
+  return Response.json(value, { status, headers: { 'Cache-Control': 'no-store', ...headers } });
 }
 
 export function sanitizeText(value, max = 500) {
@@ -120,10 +102,11 @@ export function securityHeaders(headers = {}) {
     'Content-Security-Policy': [
       "default-src 'self'",
       "script-src 'self' https://static.cloudflareinsights.com",
+      "worker-src 'self' blob:",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https:",
       "media-src 'self' https: blob:",
-      "connect-src 'self' https://cloudflareinsights.com",
+      "connect-src 'self' https://cloudflareinsights.com https://huggingface.co https://cdn-lfs.huggingface.co https://*.hf.co",
       "font-src 'self' data:",
       "object-src 'none'",
       "frame-src https://www.youtube.com https://www.youtube-nocookie.com https://drive.google.com",

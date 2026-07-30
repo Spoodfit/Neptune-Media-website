@@ -6,17 +6,17 @@ import { handleClientYoutubeRoute } from './portal-youtube-client-v53.js';
 
 export { StudioStore };
 
-const RELEASE = 'neptune-efficiency-operational-fallback-20260730-v10';
+const RELEASE = 'neptune-efficiency-operational-fallback-20260730-v11';
 const BATCHER_ASSET = '/analytics-batcher-v1.js?v=3';
 const CLIENT_MEDIA_ASSET = '/espace-client/client-media-runtime-v51.js?v=2';
 const VIEWPORT_FIT_ASSET = '/assets/neptune-viewport-fit-v55.css?v=1';
 const DASHBOARD_PRIORITY_ASSET = '/assets/neptune-dashboard-priority-v56.css?v=1';
-const DASHBOARD_COMPLETENESS_ASSET = '/assets/neptune-dashboard-completeness-v59.css?v=1';
+const DASHBOARD_COMPLETENESS_ASSET = '/assets/neptune-dashboard-completeness-v59.css?v=2';
 const VIDEO_LIBRARY_BALANCE_CSS = '/assets/neptune-video-library-balance-v57.css?v=1';
 const VIDEO_LIBRARY_BALANCE_JS = '/assets/neptune-video-library-balance-v57.js?v=1';
 const ADAPTIVE_INTERFACES_ASSET = '/assets/neptune-adaptive-interfaces-v58.css?v=1';
 const ADAPTIVE_INTERFACES_PRECISION_ASSET = '/assets/neptune-adaptive-interfaces-v58-1.css?v=1';
-const ADAPTIVE_DASHBOARD_CASCADE_ASSET = '/assets/neptune-adaptive-cascade-v58-1.js?v=3';
+const ADAPTIVE_DASHBOARD_CASCADE_ASSET = '/assets/neptune-adaptive-cascade-v58-1.js?v=4';
 
 export default {
   async fetch(request, env, ctx) {
@@ -63,14 +63,14 @@ async function augmentRelease(response) {
     workflowStore: 'store-v7',
     viewportFit: 'desktop-one-screen-task-layout-v55',
     dashboardPriority: 'current-project-delivery-actions-before-secondary-utilities-v56',
-    dashboardCompleteness: 'all-client-functions-restored-below-primary-overview-v59',
-    dashboardDisclosure: 'primary-project-first-secondary-modules-preserved-in-natural-scroll',
+    dashboardCompleteness: 'all-client-functions-restored-in-stable-full-width-secondary-flow-v59.1',
+    dashboardDisclosure: 'formats-full-width-referral-and-support-responsive-row',
     videoLibraryBalance: 'airy-responsive-media-rails-and-adaptive-page-flow-v57',
     videoLibraryScrollPolicy: 'no-forced-compression-natural-flow-only-when-viewport-requires-it',
     adaptiveInterfaces: 'balanced-responsive-client-calendar-auth-and-studio-v58.1',
     adaptiveScreens: 'client-auth-dashboard-calendar-studio-clients-and-advanced-admin',
     adaptiveCorrections: 'auth-title-card-separation-referral-primary-action-and-studio-sidebar-clearance',
-    adaptiveCascade: 'dashboard-precision-and-completeness-css-reloaded-after-referral-runtime-v3',
+    adaptiveCascade: 'dashboard-precision-and-completeness-css-reloaded-after-referral-runtime-v4',
     verticalScrollPolicy: 'viewport-first-with-natural-overflow-only-when-content-requires-it',
     studioPipelinePolicy: 'readable-columns-horizontal-navigation-and-local-column-scroll',
     clientMediaTransport: 'authenticated-same-origin-drive-proxy-with-range-v1',

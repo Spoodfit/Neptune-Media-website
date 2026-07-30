@@ -5,6 +5,7 @@ import { handleVideoAiLocalRoute } from './video-ai-local-routes-v1.js';
 export { StudioStore };
 
 const RELEASE = 'neptune-video-local-engine-20260730-v1';
+const DEPLOYMENT_TRIGGER = 'local-engine-free-20260730-r1';
 
 export default {
   async fetch(request, env, ctx) {
@@ -34,6 +35,7 @@ async function augmentRelease(response, env) {
   return new Response(JSON.stringify({
     ...current,
     videoAiStudio: RELEASE,
+    videoAiDeploymentTrigger: DEPLOYMENT_TRIGGER,
     videoAiEntry: '/studio/video-ai.html',
     videoAiPipeline: 'browser-local-whisper-selection-render-indexeddb-review-direct-drive',
     videoAiEngineMode: 'browser-local',

@@ -136,7 +136,13 @@ body[data-client-architecture="v62"] .calendar-intro .intro-tools {
     width: 100%;
     justify-content: flex-start;
     overflow-x: auto;
+    scroll-snap-type: x proximity;
     scrollbar-width: none;
+  }
+
+  .client-nav-v62 a,
+  .client-nav-v62 button {
+    scroll-snap-align: start;
   }
 
   .client-nav-v62::-webkit-scrollbar {

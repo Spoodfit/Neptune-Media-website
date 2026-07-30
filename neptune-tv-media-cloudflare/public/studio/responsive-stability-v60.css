@@ -1,0 +1,100 @@
+/* Neptune Studio responsive stability v60
+   Reserve space for the account card and keep horizontal navigation inside its own scroll area. */
+
+.clients-page-title {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -.035em;
+}
+
+@media (min-width: 821px) {
+  .shell .sidebar nav {
+    flex: 1 1 auto;
+    min-height: 0;
+    margin-bottom: 74px;
+    padding-bottom: 12px !important;
+    scroll-padding-bottom: 18px;
+  }
+
+  .shell .sidebar-bottom {
+    z-index: 3;
+  }
+}
+
+@media (max-width: 860px) {
+  html,
+  body.clients-app,
+  .clients-app .studio-shell,
+  .clients-app .clients-workspace,
+  .clients-app .clients-main,
+  .clients-app .clients-topbar {
+    width: 100%;
+    max-width: 100vw;
+    min-width: 0;
+  }
+
+  body.clients-app,
+  .clients-app .studio-shell,
+  .clients-app .clients-workspace,
+  .clients-app .clients-main {
+    overflow-x: hidden;
+  }
+
+  .clients-app .studio-sidebar {
+    width: 100%;
+    max-width: 100vw;
+    min-width: 0;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
+  }
+
+  .clients-app .studio-sidebar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .clients-app .studio-nav {
+    width: max-content !important;
+    min-width: 100% !important;
+    max-width: none !important;
+    display: flex !important;
+    flex-direction: row !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  .clients-app .studio-nav-link {
+    flex: 0 0 auto;
+  }
+
+  .clients-app .controls,
+  .clients-app .view-links,
+  .clients-app .pipeline {
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .clients-page-title {
+    font-size: 1.05rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .clients-app .clients-topbar {
+    gap: 10px;
+  }
+
+  .clients-app .clients-top-actions {
+    flex: 0 0 auto;
+  }
+
+  .clients-app .clients-top-actions .button {
+    min-height: 40px;
+    padding-inline: 12px;
+    white-space: nowrap;
+  }
+}

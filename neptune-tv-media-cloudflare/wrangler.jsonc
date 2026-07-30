@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "neptune-media-webtv",
-  "main": "src/entry-v9.js",
+  "main": "src/entry-v11.js",
   "compatibility_date": "2026-07-16",
   "workers_dev": true,
   "keep_vars": true,
@@ -48,6 +48,9 @@
   "r2_buckets": [
     { "binding": "MEDIA", "bucket_name": "neptune-media-assets" }
   ],
+  "analytics_engine_datasets": [
+    { "binding": "MEDIA_ANALYTICS", "dataset": "neptune_media_events" }
+  ],
   "ai": { "binding": "AI" },
   "vars": {
     "BOOKING_URL": "https://media.neptunebusiness.com",
@@ -56,8 +59,9 @@
     "AI_MODEL": "@cf/openai/gpt-oss-120b",
     "AUTH_FROM_EMAIL": "Neptune Media <contact@neptunebusiness.com>",
     "PORTAL_INTERNAL_EMAILS": "neptunebusinessclub@gmail.com",
+    "STUDIO_SUPPLIER_NAME": "REC BOX Studio",
     "STUDIO_SUPPLIER_EMAIL": "contact@recbox.fr",
-    "STUDIO_SUPPLIER_NAME": "REC BOX Studio"
+    "STUDIO_ADDRESS": "11 Allée de Longueterre, 31850 Montrabé"
   },
   "observability": { "enabled": true }
 }

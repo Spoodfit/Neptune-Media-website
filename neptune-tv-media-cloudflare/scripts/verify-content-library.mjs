@@ -29,7 +29,8 @@ forbid(files.localConfig, '"analytics_engine_datasets"', 'la configuration local
 forbid(files.rootConfig, '"analytics_engine_datasets"', 'la configuration racine exige encore Analytics Engine');
 check(files.runtime, "from './store-v7.js'", 'le runtime final ne réexporte pas store-v7');
 check(files.runtime, "workflowStore: 'store-v7'", 'le diagnostic final ne confirme pas store-v7');
-check(files.runtime, 'neptune-efficiency-operational-fallback-20260730-v11', 'la release fallback v11 est absente');
+check(files.runtime, 'neptune-client-information-architecture-20260730-v62', 'la release active de l’architecture client v62 est absente');
+check(files.runtime, "clientInformationArchitecture: 'three-primary-screens-home-content-publications-v62'", 'le diagnostic de l’architecture client active est absent');
 check(files.runtime, "analyticsEngineBinding: 'optional-not-required-for-deployment'", 'Analytics Engine n’est pas déclaré optionnel');
 check(files.runtime, "telemetryStorage: 'operational-sqlite-with-optional-analytics-engine'", 'le stockage opérationnel de secours n’est pas déclaré');
 check(files.entry, '/espace-client/content-snapshot-v48.css?v=2', 'la feuille compacte du snapshot client n’est pas injectée');
@@ -69,7 +70,7 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Verified active entry chain through Video AI, compact horizontal dashboard rails and bounded content runtime passed.');
+console.log('Verified active entry chain through Video AI, current client architecture, compact horizontal dashboard rails and bounded content runtime passed.');
 
 async function read(path) {
   return readFile(new URL(`../${path}`, import.meta.url), 'utf8');

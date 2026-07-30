@@ -19,8 +19,9 @@ check(files.release, 'neptune-visual-content-library-20260725-v17', 'release v17
 check(files.release, "contentScrollModel: 'bounded-by-passage-filter-and-page'", 'diagnostic de scroll borné absent');
 check(files.snapshot, 'shortFiles.slice(0,4)', 'snapshot client non limité à quatre shorts');
 check(files.snapshotCss, '.client-drive-deliveries{display:none!important}', 'ancienne liste client non retirée');
-check(files.videosHtml, 'videos-compact-v3.js?v=1', 'nouvelle bibliothèque vidéo non chargée');
-check(files.videos, 'const PAGE_SIZE=8', 'bibliothèque vidéo non paginée à huit éléments');
+check(files.videosHtml, 'videos-compact-v3.js?v=2', 'bibliothèque vidéo compacte non chargée');
+check(files.videos, 'const INITIAL_LIMITS = { final: 4, short: 8 };', 'limites initiales des bandes vidéo absentes');
+check(files.videos, 'data-toggle-media', 'action Voir plus des bandes vidéo absente');
 check(files.videos, 'passage-selector', 'sélecteur de passage vidéo absent');
 check(files.calendarHtml, 'calendar-compact-v5.js?v=1', 'bibliothèque calendrier compacte non chargée');
 check(files.calendar, 'const PAGE_SIZE=8', 'bibliothèque des shorts non paginée à huit éléments');

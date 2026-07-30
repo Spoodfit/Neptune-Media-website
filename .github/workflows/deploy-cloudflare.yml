@@ -29,6 +29,7 @@ jobs:
       WORKERS_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
       RELEASE_ID: neptune-verified-content-runtime-20260730-v18
       EFFICIENCY_RELEASE: neptune-efficiency-operational-fallback-20260730-v5
+      EDITORIAL_RELEASE: neptune-editorial-workspace-20260730-v2
 
     steps:
       - name: Checkout
@@ -63,6 +64,10 @@ jobs:
                 "$base/api/public/release?attempt=$attempt&sha=$GITHUB_SHA" > /tmp/release.json || true
               if grep -Fq "\"release\":\"$RELEASE_ID\"" /tmp/release.json \
                 && grep -Fq "\"efficiencyRelease\":\"$EFFICIENCY_RELEASE\"" /tmp/release.json \
+                && grep -Fq "\"editorialWorkspace\":\"$EDITORIAL_RELEASE\"" /tmp/release.json \
+                && grep -Fq '"editorialProposals":3' /tmp/release.json \
+                && grep -Fq '"editorialSelection":"per-content-and-per-occurrence"' /tmp/release.json \
+                && grep -Fq '"editorialStorage":"single-draft-upsert-no-write-on-navigation"' /tmp/release.json \
                 && grep -Fq '"resendSecretPresent":true' /tmp/release.json \
                 && grep -Fq '"webhookSecretPresent":true' /tmp/release.json \
                 && grep -Fq '"driveSecretPresent":true' /tmp/release.json \
@@ -115,6 +120,8 @@ jobs:
               && grep -Fq '/espace-client/videos/videos-drive-preview-v4.css?v=1' /tmp/videos.html \
               && grep -Fq '/espace-client/videos/videos-compact-v3.js?v=3' /tmp/videos.html \
               && grep -Fq '/assets/media-dialog-safety-v50.js?v=1' /tmp/videos.html \
+              && grep -Fq '/assets/neptune-editorial-workspace-v59.css?v=1' /tmp/videos.html \
+              && grep -Fq '/assets/neptune-editorial-workspace-v59.js?v=1' /tmp/videos.html \
               && curl --fail --silent --show-error -H "$cache_header" \
                 "$PUBLIC_URL/espace-client/videos/videos-compact-v3.js?v=3&asset_attempt=$attempt" > /tmp/videos.js \
               && grep -Fq 'const INITIAL_LIMITS = { final: 4, short: 8 };' /tmp/videos.js \
@@ -124,10 +131,17 @@ jobs:
                 "$PUBLIC_URL/espace-client/calendrier/?$query" > /tmp/calendar.html \
               && grep -Fq '/espace-client/calendrier/calendar-compact-v5.js?v=1' /tmp/calendar.html \
               && grep -Fq '/espace-client/calendrier/calendar-compact-v5.css?v=1' /tmp/calendar.html \
+              && grep -Fq '/assets/neptune-editorial-workspace-v59.css?v=1' /tmp/calendar.html \
+              && grep -Fq '/assets/neptune-editorial-workspace-v59.js?v=1' /tmp/calendar.html \
               && curl --fail --silent --show-error -H "$cache_header" \
                 "$PUBLIC_URL/espace-client/calendrier/calendar-compact-v5.js?v=1&asset_attempt=$attempt" > /tmp/calendar.js \
               && grep -Fq 'const PAGE_SIZE=8' /tmp/calendar.js \
               && grep -Fq 'observer?.disconnect()' /tmp/calendar.js \
+              && curl --fail --silent --show-error -H "$cache_header" \
+                "$PUBLIC_URL/assets/neptune-editorial-workspace-v59.js?v=1&asset_attempt=$attempt" > /tmp/editorial.js \
+              && grep -Fq 'NEPTUNE IA · PUBLICATION EXPRESS' /tmp/editorial.js \
+              && grep -Fq 'publishExpress' /tmp/editorial.js \
+              && grep -Fq 'Créer la nouvelle utilisation' /tmp/editorial.js \
               && curl --fail --silent --show-error -H "$cache_header" \
                 "$PUBLIC_URL/studio/clients?$query" > /tmp/studio.html \
               && grep -Fq '/studio/content-gallery-v49.css?v=1' /tmp/studio.html \

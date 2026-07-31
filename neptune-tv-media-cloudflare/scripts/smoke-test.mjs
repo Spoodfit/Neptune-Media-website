@@ -2,7 +2,9 @@ import { readFile } from 'node:fs/promises';
 
 const config = JSON.parse(await readFile(new URL('../wrangler.jsonc', import.meta.url), 'utf8'));
 const activeEntry = await readFile(new URL('../src/entry-v16.js', import.meta.url), 'utf8');
-const cloudRoutes = await readFile(new URL('../src/video-ai-routes-v3.js', import.meta.url), 'utf8');
+const cloudRoutesWrapper = await readFile(new URL('../src/video-ai-routes-v3.js', import.meta.url), 'utf8');
+const cloudRoutesCore = await readFile(new URL('../src/video-ai-routes-v3-core.js', import.meta.url), 'utf8');
+const cloudRoutes = `${cloudRoutesWrapper}\n${cloudRoutesCore}`;
 const auditEntry = await readFile(new URL('../src/entry-v13.js', import.meta.url), 'utf8');
 const editorialEntry = await readFile(new URL('../src/entry-v12.js', import.meta.url), 'utf8');
 const efficiencyEntry = await readFile(new URL('../src/entry-v11.js', import.meta.url), 'utf8');
@@ -15,6 +17,9 @@ const studioWorkspaceHtml = await readFile(new URL('../public/studio/clients.htm
 const studioLogin = await readFile(new URL('../public/studio/studio-login-v48.js', import.meta.url), 'utf8');
 const openAiRoutes = await readFile(new URL('../src/video-ai-openai-routes-v1.js', import.meta.url), 'utf8');
 const openAiAnalysis = await readFile(new URL('../src/openai-video-analysis-v1.js', import.meta.url), 'utf8');
+const liveMonitor = await readFile(new URL('../public/studio/video-ai-live-monitor-v69.js', import.meta.url), 'utf8');
+const liveProcessor = await readFile(new URL('../containers/video-ai/app_v69.py', import.meta.url), 'utf8');
+const processorDockerfile = await readFile(new URL('../containers/video-ai/Dockerfile', import.meta.url), 'utf8');
 
 const failures = [];
 if (config.main !== 'src/entry-v16.js') failures.push(`wrangler.main=${config.main || 'absent'} au lieu de src/entry-v16.js`);
@@ -52,6 +57,15 @@ if (!cloudRoutes.includes('openai_cloud_video_analysis_failed_falling_back')) fa
 if (!cloudRoutes.includes('return legacyHandle(fallbackRequest, env, ctx, studio)')) failures.push('la transcription ne retombe pas sur le moteur Workers AI');
 if (!cloudRoutes.includes('await env.MEDIA.delete(sourceKey)')) failures.push('la vidéo source R2 n’est pas supprimée après génération réussie');
 if (!cloudRoutes.includes("sourceKey.startsWith('video-ai/sources/')")) failures.push('la suppression R2 n’est pas bornée au préfixe des sources vidéo');
+if (!cloudRoutesWrapper.includes('liveTelemetryAvailable')) failures.push('la télémétrie du Container n’est pas exposée au Studio');
+if (!cloudRoutesWrapper.includes('livePreviewDataUrl')) failures.push('l’aperçu live du Container n’est pas exposé au Studio');
+if (!cloudRoutesWrapper.includes('LIVE_TIMEOUT_MS')) failures.push('la lecture de télémétrie peut encore bloquer le Studio sans délai borné');
+if (!liveProcessor.includes('run_ffmpeg_progress')) failures.push('FFmpeg ne publie pas de progression continue');
+if (!liveProcessor.includes('make_vertical_preview')) failures.push('le moteur ne génère pas d’aperçu vertical réel');
+if (!liveProcessor.includes('transcribedChunks')) failures.push('la transcription ne publie pas son avancement par bloc');
+if (!liveMonitor.includes('Suivi en direct du moteur')) failures.push('le Studio ne rend pas le moniteur live');
+if (!liveMonitor.includes('videoLivePreview')) failures.push('le Studio ne rend pas l’aperçu du montage');
+if (!processorDockerfile.includes('app_v69:app')) failures.push('le Container ne démarre pas le moteur live v69');
 
 if (!auditEntry.includes("from './entry-v12.js'")) failures.push('entry-v13 ne prolonge pas l’espace éditorial entry-v12');
 if (!editorialEntry.includes("from './entry-v11.js'")) failures.push('entry-v12 ne prolonge pas entry-v11');
@@ -95,4 +109,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Neptune entry-v16, moteur vidéo cloud résilient v67, OpenAI vidéo, architecture client v62, runtime contenu et Studio unifié validés.');
+console.log('Neptune entry-v16, moteur vidéo cloud v69 avec télémétrie et aperçu live, OpenAI vidéo, architecture client v62, runtime contenu et Studio unifié validés.');

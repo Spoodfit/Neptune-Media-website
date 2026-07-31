@@ -1,0 +1,19 @@
+{
+  "status": "success",
+  "verifier": "studio-production-verifier-v65.1",
+  "source_sha": "113e796fa47f43468e74e830947d6c060021e405",
+  "workflow_run_id": "30632187556",
+  "checked_at": "2026-07-31T12:51:55.241576+00:00",
+  "production_domains": [
+    "https://neptune-media-webtv.neptunebusinessclub.workers.dev",
+    "https://tv.neptunebusiness.com"
+  ],
+  "expected_navigation": [
+    "Parcours clients",
+    "Production vidéo",
+    "Diffusion",
+    "Réglages"
+  ],
+  "outcome": "success",
+  "log_tail": "https://neptune-media-webtv.neptunebusinessclub.workers.dev: Studio v65 verified on attempt 1.\nhttps://tv.neptunebusiness.com: Studio v65 verified on attempt 1.\n{\n  \"ok\": true,\n  \"verifier\": \"studio-production-verifier-v65.1\",\n  \"checkedAt\": \"2026-07-31T12:51:54.676Z\",\n  \"reports\": [\n    {\n      \"base\": \"https://neptune-media-webtv.neptunebusinessclub.workers.dev\",\n      \"attempt\": 1,\n      \"release\": {\n        \"studioInformationArchitecture\": \"four-primary-destinations-v65\",\n        \"studioPrimaryNavigation\": [\n          \"Parcours clients\",\n          \"Production vidéo\",\n          \"Diffusion\",\n          \"Réglages\"\n        ],\n        \"studioAdvancedZone\": \"removed-from-visible-navigation-v65\",\n        \"studioReadability\": \"shared-shell-contrast-spacing-and-responsive-type-v65\",\n        \"studioNavigationRuntime\": \"stable-no-observer-loop-v65.1\"\n      },\n      \"assets\": {\n        \"cssBytes\": 24880,\n        \"runtimeBytes\": 13382,\n        \"compatibilityBytes\": 224\n      },\n      \"pages\": [\n        {\n          \"id\": \"clients\",\n          \"pathname\": \"/studio/clients.html\",\n          \"status\": 200,\n          \"bytes\": 7741\n        },\n        {\n          \"id\": \"production\",\n          \"pathname\": \"/studio/video-ai.html\",\n          \"status\": 200,\n          \"bytes\": 8706\n        },\n        {\n          \"id\": \"advanced\",\n          \"pathname\": \"/studio/advanced.html\",\n          \"status\": 200,\n          \"bytes\": 4833\n        }\n      ]\n    },\n    {\n      \"base\": \"https://tv.neptunebusiness.com\",\n      \"attempt\": 1,\n      \"release\": {\n        \"studioInformationArchitecture\": \"four-primary-destinations-v65\",\n        \"studioPrimaryNavigation\": [\n          \"Parcours clients\",\n          \"Production vidéo\",\n          \"Diffusion\",\n          \"Réglages\"\n        ],\n        \"studioAdvancedZone\": \"removed-from-visible-navigation-v65\",\n        \"studioReadability\": \"shared-shell-contrast-spacing-and-responsive-type-v65\",\n        \"studioNavigationRuntime\": \"stable-no-observer-loop-v65.1\"\n      },\n      \"assets\": {\n        \"cssBytes\": 24880,\n        \"runtimeBytes\": 13382,\n        \"compatibilityBytes\": 224\n      },\n      \"pages\": [\n        {\n          \"id\": \"clients\",\n          \"pathname\": \"/studio/clients.html\",\n          \"status\": 200,\n          \"bytes\": 7741\n        },\n        {\n          \"id\": \"production\",\n          \"pathname\": \"/studio/video-ai.html\",\n          \"status\": 200,\n          \"bytes\": 8706\n        },\n        {\n          \"id\": \"advanced\",\n          \"pathname\": \"/studio/advanced.html\",\n          \"status\": 200,\n          \"bytes\": 4833\n        }\n      ]\n    }\n  ]\n}\nStudio v65 production verification passed on workers.dev and the custom domain.\n"
+}

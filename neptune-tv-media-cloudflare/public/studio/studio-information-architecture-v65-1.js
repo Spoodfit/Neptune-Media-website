@@ -311,6 +311,8 @@
       if (search) search.placeholder = 'Rechercher un client ou une entreprise';
       const improveEmpty = () => {
         for (const empty of document.querySelectorAll('.workflow-stage-empty')) {
+          if (empty.dataset.studioEmptyV65 === '1') continue;
+          empty.dataset.studioEmptyV65 = '1';
           empty.innerHTML = '<strong>Aucun dossier à cette étape</strong><span>Les prochains dossiers apparaîtront automatiquement.</span>';
         }
       };

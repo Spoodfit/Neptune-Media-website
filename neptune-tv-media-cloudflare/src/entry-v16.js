@@ -18,17 +18,17 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (request.method === 'GET' && ['/studio/video-ai', '/studio/video-ai/'].includes(url.pathname)) {
-      return withHeaders(Response.redirect(new URL('/studio/video-ai.html', url.origin), 302));
+      return withHeaders(Response.redirect(new URL('/studio/video-ai.html', url.origin), 302), url.pathname);
     }
 
     const studio = env.STUDIO.get(env.STUDIO.idFromName('neptune-media-main'));
     if (isOpenAiControlRoute(url.pathname, request.method)) {
       const openAiResponse = await handleOpenAiVideoRoute(request, env, ctx, studio);
-      if (openAiResponse) return withHeaders(openAiResponse);
+      if (openAiResponse) return withHeaders(openAiResponse, url.pathname);
     }
 
     const videoAiResponse = await handleVideoAiRoute(request, env, ctx, studio);
-    if (videoAiResponse) return withHeaders(videoAiResponse);
+    if (videoAiResponse) return withHeaders(videoAiResponse, url.pathname);
 
     let response = await base.fetch(request, env, ctx);
     if (request.method === 'GET' && url.pathname === '/api/public/release' && response.ok) {
@@ -37,7 +37,7 @@ export default {
     if (request.method === 'GET' && response.ok && isStudioWorkspacePath(url.pathname) && (response.headers.get('Content-Type') || '').includes('text/html')) {
       response = await injectStudioInformationArchitecture(response, url.pathname);
     }
-    return withHeaders(response);
+    return withHeaders(response, url.pathname);
   },
 
   async scheduled(controller, env, ctx) {
@@ -76,46 +76,81 @@ async function augmentRelease(response, env) {
     videoAiTranscription: openAiConfigured ? 'openai-whisper-1-then-workers-ai-fallback' : 'workers-ai-whisper-large-v3-turbo',
     videoAiStorage: 'r2-source-and-output-durable-object-metadata',
     videoAiSemanticProvider: openAiConfigured ? 'openai-responses-api' : 'workers-ai',
+    videoAiSemanticPriority: 'openai-then-workers-ai',
     videoAiOpenAiConfigured: openAiConfigured,
     videoAiOpenAiModel: openAiModel(env),
-    videoAiOpenAiDataPolicy: 'store-false-for-responses-api',
+    videoAiOpenAiMode: 'server-analysis-before-render-when-configured',
+    videoAiOpenAiStructuredOutputs: true,
+    videoAiOpenAiDataPolicy: 'store-false-for-responses-api-no-source-video',
+    videoAiOpenAiStatusEndpoint: '/api/admin/video-ai/openai/status',
+    videoAiOpenAiTestEndpoint: '/api/admin/video-ai/openai/test',
+    videoAiWorkersAiRole: 'fallback-when-openai-is-not-configured-or-unavailable',
     videoAiContainerRequired: true,
     videoAiContainerBindingPresent: Boolean(env.VIDEO_PROCESSOR),
     videoAiStorageBindingPresent: Boolean(env.MEDIA),
     videoAiWorkersAiBindingPresent: Boolean(env.AI),
+    videoAiInternalSecretRequired: true,
+    videoAiR2SourceUploadRequired: true,
     videoAiUpload: 'r2-multipart-16mb-three-way-parallel-retry',
     videoAiBackgroundProcessing: true,
     videoAiSafeToCloseAfterUpload: true,
+    videoAiSourceRetention: 'deleted-after-successful-generation',
+    videoAiLocalFallback: 'browser-engine-retained-not-primary',
     studioInformationArchitecture: 'four-primary-destinations-v65',
     studioPrimaryNavigation: ['Parcours clients', 'Production vidéo', 'Diffusion', 'Réglages'],
+    studioContextNavigation: 'diffusion-and-settings-secondary-tabs-v65',
+    studioAdvancedZone: 'removed-from-visible-navigation-v65',
+    studioContextualFunctions: 'content-calendar-and-billing-inside-client-dossiers',
+    studioReadability: 'shared-shell-contrast-spacing-and-responsive-type-v65',
+    studioNavigationRuntime: 'stable-no-observer-loop-v65.1',
+    studioCanonicalVideoPath: '/studio/video-ai',
   }), {
     status: response.status,
-    headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
+    headers: {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store',
+    },
   });
 }
 
 async function injectStudioInformationArchitecture(response, pathname) {
   let body = await response.text();
-  const patterns = [
-    /<link\b[^>]*href=["'][^"']*\/studio\/studio-information-architecture-v65\.css[^"']*["'][^>]*>\s*/giu,
-    /<script\b[^>]*src=["'][^"']*\/studio\/studio-information-architecture-v65(?:-1)?\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu,
-    /<link\b[^>]*href=["'][^"']*\/studio\/video-ai-openai-v1\.css[^"']*["'][^>]*>\s*/giu,
-    /<script\b[^>]*src=["'][^"']*\/studio\/video-ai-openai-v1\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu,
-  ];
-  for (const pattern of patterns) body = body.replace(pattern, '');
+  const cssPattern = /<link\b[^>]*href=["'][^"']*\/studio\/studio-information-architecture-v65\.css[^"']*["'][^>]*>\s*/giu;
+  const jsPattern = /<script\b[^>]*src=["'][^"']*\/studio\/studio-information-architecture-v65(?:-1)?\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu;
+  const openAiCssPattern = /<link\b[^>]*href=["'][^"']*\/studio\/video-ai-openai-v1\.css[^"']*["'][^>]*>\s*/giu;
+  const openAiJsPattern = /<script\b[^>]*src=["'][^"']*\/studio\/video-ai-openai-v1\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu;
+  const retiredSidebarCssPattern = /<link\b[^>]*href=["'][^"']*\/studio\/studio-sidebar-authority-v64\.css[^"']*["'][^>]*>\s*/giu;
+  const retiredSidebarJsPattern = /<script\b[^>]*src=["'][^"']*\/studio\/studio-sidebar-authority-v64\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu;
+  body = body.replace(cssPattern, '');
+  body = body.replace(jsPattern, '');
+  body = body.replace(openAiCssPattern, '');
+  body = body.replace(openAiJsPattern, '');
+  body = body.replace(retiredSidebarCssPattern, '');
+  body = body.replace(retiredSidebarJsPattern, '');
+
   const styles = isVideoAiPage(pathname)
     ? `<link rel="stylesheet" href="${STUDIO_IA_CSS}"><link rel="stylesheet" href="${OPENAI_UI_CSS}">`
     : `<link rel="stylesheet" href="${STUDIO_IA_CSS}">`;
   body = body.replace('</head>', `${styles}</head>`);
+
   if (isVideoAiPage(pathname)) {
-    body = body.replace('</body>', `<script type="module" src="${STUDIO_IA_JS}"></script><script type="module" src="${OPENAI_UI_JS}"></script></body>`);
+    const firstCloudScript = '<script src="/studio/video-ai-cloud-resilience-v67.js?v=1"></script>';
+    const studioScripts = `<script type="module" src="${STUDIO_IA_JS}"></script><script type="module" src="${OPENAI_UI_JS}"></script>`;
+    body = body.includes(firstCloudScript)
+      ? body.replace(firstCloudScript, `${studioScripts}${firstCloudScript}`)
+      : body.replace('</body>', `${studioScripts}</body>`);
   } else {
     body = body.replace('</body>', `<script type="module" src="${STUDIO_IA_JS}"></script></body>`);
   }
+
   const headers = new Headers(response.headers);
   headers.delete('Content-Length');
   headers.set('Cache-Control', 'private, no-store, max-age=0');
-  return new Response(body, { status: response.status, statusText: response.statusText, headers });
+  return new Response(body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 }
 
 function isOpenAiControlRoute(pathname, method) {
@@ -139,10 +174,23 @@ function isVideoAiPage(pathname) {
     || pathname === '/studio/video-ai.html';
 }
 
-function withHeaders(response) {
+function withHeaders(response, pathname = '') {
   const headers = new Headers(response.headers);
   headers.set('X-Neptune-Video-AI', RELEASE);
   headers.set('X-Neptune-OpenAI-Video', OPENAI_RELEASE);
   headers.set('X-Neptune-Studio-IA', 'four-primary-destinations-v65');
-  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+  if (isLocalEngineAsset(pathname)) {
+    headers.set('Cross-Origin-Opener-Policy', 'same-origin');
+    headers.set('Cross-Origin-Embedder-Policy', 'require-corp');
+    headers.set('Cross-Origin-Resource-Policy', 'same-origin');
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+function isLocalEngineAsset(pathname) {
+  return pathname.startsWith('/studio/local-engine/');
 }

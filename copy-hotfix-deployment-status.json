@@ -1,8 +1,8 @@
 {
   "status": "failed",
-  "source_sha": "1224bd00a4da63cda3c67519322bb80a9f96f3b9",
-  "workflow_run_id": "30586625789",
-  "checked_at": "2026-07-30T22:18:19.041369+00:00",
+  "source_sha": "22ad10874c5854fea8b3e076fbf57b54b1594baf",
+  "workflow_run_id": "30629945474",
+  "checked_at": "2026-07-31T12:17:05.604816+00:00",
   "architecture": "conversion-voice-v10",
   "experience": "final-v12",
   "verified_markers": [
@@ -29,8 +29,8 @@
   "outcomes": {
     "normalize": "success",
     "install": "success",
-    "validate": "failure",
-    "deploy": "skipped",
+    "validate": "success",
+    "deploy": "failure",
     "verify": "skipped"
   }
 }

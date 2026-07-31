@@ -7,7 +7,7 @@ export { StudioStore };
 const RELEASE = 'neptune-video-local-engine-20260730-v1';
 const DEPLOYMENT_TRIGGER = 'local-engine-free-20260730-r1';
 const STUDIO_IA_CSS = '/studio/studio-information-architecture-v65.css?v=1';
-const STUDIO_IA_JS = '/studio/studio-information-architecture-v65.js?v=1';
+const STUDIO_IA_JS = '/studio/studio-information-architecture-v65-1.js?v=1';
 
 export default {
   async fetch(request, env, ctx) {
@@ -25,7 +25,7 @@ export default {
       return withHeaders(await augmentRelease(response, env), url.pathname);
     }
     if (request.method === 'GET' && response.ok && isStudioWorkspacePath(url.pathname) && (response.headers.get('Content-Type') || '').includes('text/html')) {
-      response = await injectStudioInformationArchitecture(response);
+      response = await injectStudioInformationArchitecture(response, url.pathname);
     }
     return withHeaders(response, url.pathname);
   },
@@ -66,6 +66,7 @@ async function augmentRelease(response, env) {
     studioAdvancedZone: 'removed-from-visible-navigation-v65',
     studioContextualFunctions: 'content-calendar-and-billing-inside-client-dossiers',
     studioReadability: 'shared-shell-contrast-spacing-and-responsive-type-v65',
+    studioNavigationRuntime: 'stable-no-observer-loop-v65.1',
   }), {
     status: response.status,
     headers: {
@@ -75,10 +76,10 @@ async function augmentRelease(response, env) {
   });
 }
 
-async function injectStudioInformationArchitecture(response) {
+async function injectStudioInformationArchitecture(response, pathname) {
   let body = await response.text();
   const cssPattern = /<link\b[^>]*href=["'][^"']*\/studio\/studio-information-architecture-v65\.css[^"']*["'][^>]*>\s*/giu;
-  const jsPattern = /<script\b[^>]*src=["'][^"']*\/studio\/studio-information-architecture-v65\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu;
+  const jsPattern = /<script\b[^>]*src=["'][^"']*\/studio\/studio-information-architecture-v65(?:-1)?\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu;
   const retiredSidebarCssPattern = /<link\b[^>]*href=["'][^"']*\/studio\/studio-sidebar-authority-v64\.css[^"']*["'][^>]*>\s*/giu;
   const retiredSidebarJsPattern = /<script\b[^>]*src=["'][^"']*\/studio\/studio-sidebar-authority-v64\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu;
   body = body.replace(cssPattern, '');
@@ -86,7 +87,14 @@ async function injectStudioInformationArchitecture(response) {
   body = body.replace(retiredSidebarCssPattern, '');
   body = body.replace(retiredSidebarJsPattern, '');
   body = body.replace('</head>', `<link rel="stylesheet" href="${STUDIO_IA_CSS}"></head>`);
-  body = body.replace('</body>', `<script type="module" src="${STUDIO_IA_JS}"></script></body>`);
+  if (pathname === '/studio/video-ai.html') {
+    const firstEngineScript = '<script type="module" src="/studio/local-engine/neptune-video-local-engine-v1.js?v=1"></script>';
+    body = body.includes(firstEngineScript)
+      ? body.replace(firstEngineScript, `<script type="module" src="${STUDIO_IA_JS}"></script>${firstEngineScript}`)
+      : body.replace('</head>', `<script type="module" src="${STUDIO_IA_JS}"></script></head>`);
+  } else {
+    body = body.replace('</body>', `<script type="module" src="${STUDIO_IA_JS}"></script></body>`);
+  }
   const headers = new Headers(response.headers);
   headers.delete('Content-Length');
   headers.set('Cache-Control', 'private, no-store, max-age=0');

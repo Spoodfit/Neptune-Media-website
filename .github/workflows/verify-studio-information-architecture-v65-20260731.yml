@@ -66,11 +66,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          cp wrangler.jsonc /tmp/wrangler-production.jsonc
+          sed -i 's/"compatibility_date": "2026-07-30"/"compatibility_date": "2026-07-07"/' wrangler.jsonc
           ./neptune-tv-media-cloudflare/node_modules/.bin/wrangler dev --config wrangler.jsonc --local --port 8787 > /tmp/wrangler-v65.log 2>&1 &
           echo $! > /tmp/wrangler-v65.pid
           ready=0
           for attempt in $(seq 1 60); do
-            if curl --fail --silent --show-error http://127.0.0.1:8787/studio/clients > /tmp/studio-v65.html; then
+            if curl --fail --silent --show-error --location http://127.0.0.1:8787/studio/clients > /tmp/studio-v65.html; then
               if grep -Fq '/studio/studio-information-architecture-v65.css?v=1' /tmp/studio-v65.html \
                 && grep -Fq '/studio/studio-information-architecture-v65-1.js?v=1' /tmp/studio-v65.html; then
                 ready=1
@@ -79,7 +81,10 @@ jobs:
             fi
             sleep 2
           done
-          test "$ready" = 1
+          if [ "$ready" != 1 ]; then
+            cat /tmp/wrangler-v65.log
+            exit 1
+          fi
 
       - name: Audit Studio navigation and readability
         env:

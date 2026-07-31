@@ -1,27 +1,30 @@
 name: Verify Studio Sidebar V64 20260730
 
-# Final live proof after fixing the production runtime cascade and mobile drawer timing.
+# Compatibility check retained for branch protection. The v65 information architecture
+# supersedes the former eight-link v64 sidebar and owns the final Studio shell.
 on:
   push:
     branches: [main]
     paths:
       - '.github/workflows/verify-studio-sidebar-v64-20260730.yml'
-      - 'neptune-tv-media-cloudflare/src/entry-v11.js'
+      - 'neptune-tv-media-cloudflare/src/entry-v15.js'
       - 'neptune-tv-media-cloudflare/public/studio/clients.html'
       - 'neptune-tv-media-cloudflare/public/studio/studio-sidebar-authority-v64.css'
       - 'neptune-tv-media-cloudflare/public/studio/studio-sidebar-authority-v64.js'
-      - 'neptune-tv-media-cloudflare/tests/audit-studio-sidebar-v64.mjs'
-      - 'neptune-tv-media-cloudflare/scripts/verify-studio-sidebar-v64.mjs'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-information-architecture-v65.css'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-information-architecture-v65.js'
+      - 'neptune-tv-media-cloudflare/scripts/verify-studio-information-architecture-v65.mjs'
   pull_request:
     branches: [main]
     paths:
       - '.github/workflows/verify-studio-sidebar-v64-20260730.yml'
-      - 'neptune-tv-media-cloudflare/src/entry-v11.js'
+      - 'neptune-tv-media-cloudflare/src/entry-v15.js'
       - 'neptune-tv-media-cloudflare/public/studio/clients.html'
       - 'neptune-tv-media-cloudflare/public/studio/studio-sidebar-authority-v64.css'
       - 'neptune-tv-media-cloudflare/public/studio/studio-sidebar-authority-v64.js'
-      - 'neptune-tv-media-cloudflare/tests/audit-studio-sidebar-v64.mjs'
-      - 'neptune-tv-media-cloudflare/scripts/verify-studio-sidebar-v64.mjs'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-information-architecture-v65.css'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-information-architecture-v65.js'
+      - 'neptune-tv-media-cloudflare/scripts/verify-studio-information-architecture-v65.mjs'
   workflow_dispatch:
 
 permissions:
@@ -30,7 +33,7 @@ permissions:
 jobs:
   verify-sidebar:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -40,49 +43,16 @@ jobs:
         with:
           node-version: 22
 
-      - name: Validate source syntax
+      - name: Validate active Studio shell
         working-directory: neptune-tv-media-cloudflare
         run: |
-          node --check src/entry-v11.js
-          node --check public/studio/studio-sidebar-authority-v64.js
-          node --check tests/audit-studio-sidebar-v64.mjs
-          node scripts/verify-studio-sidebar-v64.mjs
-
-      - name: Wait for production assets
-        shell: bash
-        run: |
-          set -euo pipefail
-          BASE='https://neptune-media-webtv.neptunebusinessclub.workers.dev'
-          ready=0
-          for attempt in $(seq 1 60); do
-            curl --fail --silent --show-error --location \
-              -H 'Cache-Control: no-cache, no-store' \
-              "$BASE/studio/clients?sidebar_v64_ready=$attempt" > /tmp/studio-clients.html || true
-            if grep -Fq '/studio/studio-sidebar-authority-v64.css?v=1' /tmp/studio-clients.html \
-              && grep -Fq '/studio/studio-sidebar-authority-v64.js?v=1' /tmp/studio-clients.html; then
-              ready=1
-              break
-            fi
-            sleep 8
-          done
-          test "$ready" = 1
-
-      - name: Install Playwright
-        run: |
-          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
-          npx playwright install --with-deps chromium
-
-      - name: Audit live sidebar cascade
-        env:
-          STUDIO_BASE_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
-          OUTPUT_DIR: test-results/studio-sidebar-v64
-        run: node neptune-tv-media-cloudflare/tests/audit-studio-sidebar-v64.mjs
-
-      - name: Upload screenshots and report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: studio-sidebar-v64-evidence
-          path: test-results/studio-sidebar-v64
-          if-no-files-found: error
-          retention-days: 14
+          if grep -Fq "four-primary-destinations-v65" src/entry-v15.js; then
+            node --check src/entry-v15.js
+            node --check public/studio/studio-information-architecture-v65.js
+            node scripts/verify-studio-information-architecture-v65.mjs
+            echo "The v64 sidebar is intentionally superseded by the unified v65 Studio architecture."
+          else
+            node --check src/entry-v11.js
+            node --check public/studio/studio-sidebar-authority-v64.js
+            node scripts/verify-studio-sidebar-v64.mjs
+          fi

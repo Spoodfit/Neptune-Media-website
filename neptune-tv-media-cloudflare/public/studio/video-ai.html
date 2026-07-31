@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="/studio/video-ai-v2-fixes.css?v=1">
   <link rel="stylesheet" href="/studio/video-ai-local-v3.css?v=1">
   <link rel="stylesheet" href="/studio/studio-information-architecture-v65.css?v=1">
+  <link rel="stylesheet" href="/studio/video-ai-openai-v1.css?v=1">
 </head>
 <body>
   <div class="video-ai-shell">
@@ -38,8 +39,8 @@
       <section class="video-ai-hero local-hero">
         <div>
           <p class="eyebrow">TRAITEMENT CLOUD RÉSILIENT</p>
-          <h2>Neptune importe de façon sécurisée.<br><span>L’IA traite en arrière-plan.</span></h2>
-          <p>La vidéo est envoyée par morceaux reprenables vers le stockage Neptune, puis un moteur serveur dédié extrait l’audio, transcrit, analyse les meilleurs passages avec OpenAI, cadre, sous-titre et rend les shorts. Une fois l’import terminé, vous pouvez fermer l’onglet sans interrompre la production.</p>
+          <h2>Neptune traite en arrière-plan.<br><span>OpenAI renforce la sélection.</span></h2>
+          <p>La vidéo est envoyée par morceaux reprenables vers le stockage Neptune, puis un moteur serveur dédié extrait l’audio, transcrit, analyse les meilleurs passages, cadre, sous-titre et rend les shorts. Une fois l’import terminé, vous pouvez fermer l’onglet sans interrompre la production.</p>
         </div>
         <div class="hero-metrics" aria-label="Résumé de production">
           <div><b id="activeJobsCount">0</b><span>en traitement</span></div>
@@ -50,7 +51,7 @@
 
       <section class="local-privacy-banner" aria-label="Confidentialité du traitement">
         <strong>Import sécurisé et découpé</strong>
-        <span>La vidéo source est stockée temporairement dans l’infrastructure Neptune afin de garantir les reprises, les relances et le traitement en arrière-plan. Elle n’est pas envoyée à OpenAI : seuls les segments audio nécessaires à la transcription et la transcription horodatée sont transmis aux services d’IA.</span>
+        <span>Aucun fichier vidéo source n’est envoyé à OpenAI. Seuls les segments audio nécessaires à la transcription et la transcription horodatée sont transmis ; l’analyse éditoriale utilise <code>store: false</code>. Après génération réussie, la source est supprimée du stockage R2. Le moteur navigateur reste conservé comme secours « Vidéo source 100 % locale ».</span>
       </section>
 
       <section class="video-ai-grid">
@@ -100,6 +101,7 @@
   </div>
 
   <div id="toast" class="toast" hidden role="status"></div>
+  <script type="module" src="/studio/video-ai-openai-v1.js?v=1"></script>
   <script src="/studio/video-ai-cloud-resilience-v67.js?v=1"></script>
   <script src="/studio/video-ai-v1.js?v=67"></script>
 </body>

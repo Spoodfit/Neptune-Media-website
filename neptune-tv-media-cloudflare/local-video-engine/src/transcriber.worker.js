@@ -2,10 +2,10 @@
 import { env, pipeline } from '@huggingface/transformers';
 
 const WEBGPU_PROFILE = {
-  key: 'webgpu-base',
+  key: 'webgpu-base-fp16-q4',
   modelId: 'onnx-community/whisper-base_timestamped',
   device: 'webgpu',
-  dtype: { encoder_model: 'fp32', decoder_model_merged: 'q4' },
+  dtype: { encoder_model: 'fp16', decoder_model_merged: 'q4' },
   stage: 'Transcription locale accélérée',
 };
 
@@ -119,9 +119,6 @@ function normalizeWorkerError(error) {
   const message = error instanceof Error ? error.message : String(error || '');
   if (/memory|allocation|out of memory|wasm memory|bad_alloc/iu.test(message)) {
     return 'local_engine_memory_limit';
-  }
-  if (/fetch|network|download|failed to load|http_|status code|connection/iu.test(message)) {
-    return 'local_transcription_failed';
   }
   return 'local_transcription_failed';
 }

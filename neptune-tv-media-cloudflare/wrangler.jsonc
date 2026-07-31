@@ -1,8 +1,8 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "neptune-media-webtv",
-  "main": "src/entry-v11.js",
-  "compatibility_date": "2026-07-16",
+  "main": "src/entry-v15.js",
+  "compatibility_date": "2026-07-30",
   "workers_dev": true,
   "keep_vars": true,
   "routes": [
@@ -43,7 +43,9 @@
     ]
   },
   "migrations": [
-    { "tag": "v1", "new_sqlite_classes": ["StudioStore"] }
+    { "tag": "v1", "new_sqlite_classes": ["StudioStore"] },
+    { "tag": "v2", "new_sqlite_classes": ["VideoProcessor"] },
+    { "tag": "v3", "deleted_classes": ["VideoProcessor"] }
   ],
   "r2_buckets": [
     { "binding": "MEDIA", "bucket_name": "neptune-media-assets" }
@@ -54,7 +56,9 @@
     "PREPARATION_BOOKING_URL": "https://calendar.app.google/nkYDeheuV8qjSMcRA",
     "PUBLIC_ORIGIN": "https://tv.neptunebusiness.com",
     "AI_MODEL": "@cf/openai/gpt-oss-120b",
-    "AUTH_FROM_EMAIL": "Neptune Media <contact@neptunebusiness.com>",
+    "RESEND_FROM_EMAIL": "Neptune Media <contact@media.neptunebusiness.com>",
+    "AUTH_FROM_EMAIL": "Neptune Media <contact@media.neptunebusiness.com>",
+    "RESEND_REPLY_TO_EMAIL": "contact@neptunebusiness.com",
     "PORTAL_INTERNAL_EMAILS": "neptunebusinessclub@gmail.com",
     "STUDIO_SUPPLIER_NAME": "REC BOX Studio",
     "STUDIO_SUPPLIER_EMAIL": "contact@recbox.fr",

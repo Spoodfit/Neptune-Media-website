@@ -47,10 +47,17 @@ jobs:
           grep -Fq '"MEDIA"' wrangler.jsonc
           grep -Fq '@cloudflare/containers' package.json
           grep -Fq 'VideoProcessorV2' neptune-tv-media-cloudflare/src/entry-v16.js
+          grep -Fq 'startAndWaitForPorts' neptune-tv-media-cloudflare/src/video-ai-container-v2.js
+          grep -Fq "sleepAfter = '6h'" neptune-tv-media-cloudflare/src/video-ai-container-v2.js
+          grep -Fq "pingEndpoint = 'localhost/health'" neptune-tv-media-cloudflare/src/video-ai-container-v2.js
+          grep -Fq 'portReadyTimeoutMS: 120_000' neptune-tv-media-cloudflare/src/video-ai-container-v2.js
           grep -Fq 'createMultipartUpload' neptune-tv-media-cloudflare/src/video-ai-routes-v1.js
           grep -Fq 'analyzeVideoWithOpenAI' neptune-tv-media-cloudflare/src/video-ai-routes-v3.js
           grep -Fq 'deleteCompletedSource' neptune-tv-media-cloudflare/src/video-ai-routes-v3.js
           grep -Fq 'video-ai-cloud-resilience-v67.js' neptune-tv-media-cloudflare/public/studio/video-ai.html
+          grep -Fq 'video-ai-dispatch-recovery-v68.js' neptune-tv-media-cloudflare/public/studio/video-ai.html
+          grep -Fq 'Relancer sans réimporter' neptune-tv-media-cloudflare/public/studio/video-ai-dispatch-recovery-v68.js
+          grep -Fq '/retry' neptune-tv-media-cloudflare/public/studio/video-ai-dispatch-recovery-v68.js
           grep -Fq 'openAiSemanticAssistPlugin' neptune-tv-media-cloudflare/local-video-engine/vite.config.js
 
       - name: Validate Cloudflare Worker and Container configuration

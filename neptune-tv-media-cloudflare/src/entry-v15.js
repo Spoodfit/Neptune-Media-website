@@ -11,6 +11,7 @@ const OPENAI_RELEASE = 'neptune-openai-video-analysis-20260731-v1';
 const DEPLOYMENT_TRIGGER = 'openai-semantic-video-analysis-20260731-r1';
 const STUDIO_IA_CSS = '/studio/studio-information-architecture-v65.css?v=1';
 const STUDIO_IA_JS = '/studio/studio-information-architecture-v65-1.js?v=1';
+const OPENAI_UI_CSS = '/studio/video-ai-openai-v1.css?v=1';
 const OPENAI_UI_JS = '/studio/video-ai-openai-v1.js?v=1';
 
 export default {
@@ -94,15 +95,20 @@ async function injectStudioInformationArchitecture(response, pathname) {
   let body = await response.text();
   const cssPattern = /<link\b[^>]*href=["'][^"']*\/studio\/studio-information-architecture-v65\.css[^"']*["'][^>]*>\s*/giu;
   const jsPattern = /<script\b[^>]*src=["'][^"']*\/studio\/studio-information-architecture-v65(?:-1)?\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu;
+  const openAiCssPattern = /<link\b[^>]*href=["'][^"']*\/studio\/video-ai-openai-v1\.css[^"']*["'][^>]*>\s*/giu;
   const openAiJsPattern = /<script\b[^>]*src=["'][^"']*\/studio\/video-ai-openai-v1\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu;
   const retiredSidebarCssPattern = /<link\b[^>]*href=["'][^"']*\/studio\/studio-sidebar-authority-v64\.css[^"']*["'][^>]*>\s*/giu;
   const retiredSidebarJsPattern = /<script\b[^>]*src=["'][^"']*\/studio\/studio-sidebar-authority-v64\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu;
   body = body.replace(cssPattern, '');
   body = body.replace(jsPattern, '');
+  body = body.replace(openAiCssPattern, '');
   body = body.replace(openAiJsPattern, '');
   body = body.replace(retiredSidebarCssPattern, '');
   body = body.replace(retiredSidebarJsPattern, '');
-  body = body.replace('</head>', `<link rel="stylesheet" href="${STUDIO_IA_CSS}"></head>`);
+  const styles = isVideoAiPage(pathname)
+    ? `<link rel="stylesheet" href="${STUDIO_IA_CSS}"><link rel="stylesheet" href="${OPENAI_UI_CSS}">`
+    : `<link rel="stylesheet" href="${STUDIO_IA_CSS}">`;
+  body = body.replace('</head>', `${styles}</head>`);
   if (isVideoAiPage(pathname)) {
     const firstEngineScript = '<script type="module" src="/studio/local-engine/neptune-video-local-engine-v1.js?v=1"></script>';
     const studioScripts = `<script type="module" src="${STUDIO_IA_JS}"></script><script type="module" src="${OPENAI_UI_JS}"></script>`;

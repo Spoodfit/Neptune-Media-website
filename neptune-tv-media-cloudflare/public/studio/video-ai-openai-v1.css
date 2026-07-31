@@ -1,0 +1,22 @@
+.openai-integration-card{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:center;margin:18px 0;padding:18px 20px;border:1px solid rgba(82,97,255,.18);border-radius:18px;background:linear-gradient(135deg,rgba(244,247,255,.98),rgba(255,255,255,.98));box-shadow:0 12px 30px rgba(8,27,69,.06)}
+.openai-integration-card__main{display:flex;gap:14px;align-items:flex-start;min-width:0}
+.openai-integration-card__icon{display:grid;place-items:center;flex:0 0 42px;width:42px;height:42px;border-radius:14px;background:linear-gradient(135deg,#4f63ff,#e640ba);color:#fff;font-weight:900;box-shadow:0 8px 20px rgba(79,99,255,.2)}
+.openai-integration-card__copy{min-width:0}
+.openai-integration-card__copy strong{display:block;color:#071a44;font-size:15px;line-height:1.25}
+.openai-integration-card__copy p{margin:5px 0 0;color:#60708f;font-size:13px;line-height:1.55}
+.openai-integration-card__meta{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.openai-integration-card__meta span{display:inline-flex;align-items:center;min-height:28px;padding:5px 9px;border-radius:999px;background:#eef2ff;color:#35446b;font-size:11px;font-weight:800;letter-spacing:.01em}
+.openai-integration-card__actions{display:flex;align-items:center;gap:10px}
+.openai-integration-card__status{display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:7px 11px;border-radius:999px;background:#fff3d8;color:#805900;font-size:12px;font-weight:900;white-space:nowrap}
+.openai-integration-card__status::before{content:"";width:8px;height:8px;border-radius:50%;background:#e3a008;box-shadow:0 0 0 4px rgba(227,160,8,.12)}
+.openai-integration-card[data-state="configured"] .openai-integration-card__status{background:#e8fbf4;color:#087554}
+.openai-integration-card[data-state="configured"] .openai-integration-card__status::before{background:#18bb84;box-shadow:0 0 0 4px rgba(24,187,132,.13)}
+.openai-integration-card[data-state="error"] .openai-integration-card__status{background:#fff0f1;color:#a32a35}
+.openai-integration-card[data-state="error"] .openai-integration-card__status::before{background:#e54858;box-shadow:0 0 0 4px rgba(229,72,88,.12)}
+.openai-integration-card__test{min-height:38px;padding:8px 13px;border:1px solid #d7def1;border-radius:11px;background:#fff;color:#102653;font:inherit;font-size:12px;font-weight:900;cursor:pointer;transition:border-color .18s ease,transform .18s ease,box-shadow .18s ease}
+.openai-integration-card__test:hover{border-color:#6674ff;box-shadow:0 7px 18px rgba(46,65,135,.11);transform:translateY(-1px)}
+.openai-integration-card__test:disabled{opacity:.55;cursor:wait;transform:none;box-shadow:none}
+.openai-integration-card__hint{margin-top:8px!important;color:#7b5870!important}
+@media(max-width:860px){.openai-integration-card{grid-template-columns:1fr}.openai-integration-card__actions{justify-content:space-between}}
+@media(max-width:560px){.openai-integration-card{padding:16px}.openai-integration-card__main{gap:11px}.openai-integration-card__actions{align-items:stretch;flex-direction:column}.openai-integration-card__test{width:100%}}
+@media(prefers-reduced-motion:reduce){.openai-integration-card__test{transition:none}}

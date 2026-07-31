@@ -12,7 +12,26 @@
     }
   ],
   "triggers": {
-    "crons": ["17 * * * *"]
+    "crons": ["*/5 * * * *"]
+  },
+  "queues": {
+    "producers": [
+      {
+        "binding": "VIDEO_JOBS",
+        "queue": "neptune-video-jobs"
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "neptune-video-jobs",
+        "max_batch_size": 1,
+        "max_batch_timeout": 1,
+        "max_retries": 5,
+        "retry_delay": 10,
+        "dead_letter_queue": "neptune-video-jobs-dlq",
+        "max_concurrency": 2
+      }
+    ]
   },
   "assets": {
     "directory": "./public",

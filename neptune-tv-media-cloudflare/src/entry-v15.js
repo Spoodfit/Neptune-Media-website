@@ -12,10 +12,6 @@ const STUDIO_IA_JS = '/studio/studio-information-architecture-v65-1.js?v=1';
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
-    if (request.method === 'GET' && ['/studio/video-ai', '/studio/video-ai/'].includes(url.pathname)) {
-      return withHeaders(Response.redirect(new URL('/studio/video-ai.html', url.origin), 302), url.pathname);
-    }
-
     const studio = env.STUDIO.get(env.STUDIO.idFromName('neptune-media-main'));
     const localVideo = await handleVideoAiLocalRoute(request, env, ctx, studio);
     if (localVideo) return withHeaders(localVideo, url.pathname);
@@ -41,7 +37,7 @@ async function augmentRelease(response, env) {
     ...current,
     videoAiStudio: RELEASE,
     videoAiDeploymentTrigger: DEPLOYMENT_TRIGGER,
-    videoAiEntry: '/studio/video-ai.html',
+    videoAiEntry: '/studio/video-ai',
     videoAiPipeline: 'browser-local-whisper-selection-render-indexeddb-review-direct-drive',
     videoAiEngineMode: 'browser-local',
     videoAiMinimumScore: 60,
@@ -67,6 +63,7 @@ async function augmentRelease(response, env) {
     studioContextualFunctions: 'content-calendar-and-billing-inside-client-dossiers',
     studioReadability: 'shared-shell-contrast-spacing-and-responsive-type-v65',
     studioNavigationRuntime: 'stable-no-observer-loop-v65.1',
+    studioCanonicalVideoPath: '/studio/video-ai',
   }), {
     status: response.status,
     headers: {
@@ -87,7 +84,7 @@ async function injectStudioInformationArchitecture(response, pathname) {
   body = body.replace(retiredSidebarCssPattern, '');
   body = body.replace(retiredSidebarJsPattern, '');
   body = body.replace('</head>', `<link rel="stylesheet" href="${STUDIO_IA_CSS}"></head>`);
-  if (pathname === '/studio/video-ai.html') {
+  if (isVideoAiPage(pathname)) {
     const firstEngineScript = '<script type="module" src="/studio/local-engine/neptune-video-local-engine-v1.js?v=1"></script>';
     body = body.includes(firstEngineScript)
       ? body.replace(firstEngineScript, `<script type="module" src="${STUDIO_IA_JS}"></script>${firstEngineScript}`)
@@ -109,10 +106,16 @@ function isStudioWorkspacePath(pathname) {
   return pathname === '/studio/clients'
     || pathname === '/studio/clients/'
     || pathname === '/studio/clients.html'
-    || pathname === '/studio/video-ai.html'
+    || isVideoAiPage(pathname)
     || pathname === '/studio/advanced.html'
     || pathname === '/studio/advanced'
     || pathname === '/studio/advanced/';
+}
+
+function isVideoAiPage(pathname) {
+  return pathname === '/studio/video-ai'
+    || pathname === '/studio/video-ai/'
+    || pathname === '/studio/video-ai.html';
 }
 
 function withHeaders(response, pathname = '') {
@@ -132,8 +135,5 @@ function withHeaders(response, pathname = '') {
 }
 
 function isLocalEngineAsset(pathname) {
-  return pathname === '/studio/video-ai'
-    || pathname === '/studio/video-ai/'
-    || pathname === '/studio/video-ai.html'
-    || pathname.startsWith('/studio/local-engine/');
+  return isVideoAiPage(pathname) || pathname.startsWith('/studio/local-engine/');
 }

@@ -111,6 +111,18 @@ export async function handleVideoAiRoute(request, env, ctx, studio) {
     return secure(json({ ok: true, ...result, candidates }));
   }
 
+  const completeMatch = url.pathname.match(/^\/api\/internal\/video-ai\/complete\/([^/]+)$/u);
+  if (completeMatch && request.method === 'POST') {
+    const jobId = decodeURIComponent(completeMatch[1]);
+    const response = await legacyHandle(request, env, ctx, studio);
+    if (response?.ok && env.MEDIA) {
+      ctx.waitUntil(deleteCompletedSource(env, studio, jobId).catch((error) => {
+        console.error('video_ai_source_cleanup_failed', { jobId, ...safeError(error) });
+      }));
+    }
+    return response ? secure(response) : response;
+  }
+
   const response = await legacyHandle(request, env, ctx, studio);
   return response ? secure(response) : response;
 }
@@ -161,6 +173,16 @@ async function transcribeWithOpenAI(request, env) {
   } finally {
     clearTimeout(timeout);
   }
+}
+
+async function deleteCompletedSource(env, studio, jobId) {
+  const response = await callStore(studio, '/portal/video-ai-job-system-get', { system: true, jobId });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || `video_ai_cleanup_job_http_${response.status}`);
+  const sourceKey = String(data.job?.sourceKey || '');
+  if (!sourceKey.startsWith('video-ai/sources/')) return false;
+  await env.MEDIA.delete(sourceKey);
+  return true;
 }
 
 function segmentsToVtt(segments) {

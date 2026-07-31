@@ -11,17 +11,15 @@
   <link rel="stylesheet" href="/studio/video-ai-v2-fixes.css?v=1">
   <link rel="stylesheet" href="/studio/video-ai-local-v3.css?v=1">
   <link rel="stylesheet" href="/studio/studio-information-architecture-v65.css?v=1">
-  <link rel="stylesheet" href="/studio/video-ai-openai-v1.css?v=1">
 </head>
 <body>
-  <!-- Deployment compatibility: Studio Vidéo IA local · 100 % local pour la source -->
   <div class="video-ai-shell">
     <aside class="video-ai-sidebar">
       <a class="video-ai-brand" href="/studio/clients" aria-label="Neptune Media Studio">
         <img src="/assets/logo-neptune.svg" alt="">
         <span><b>Neptune</b><small>Media · Studio</small></span>
       </a>
-      <div class="video-ai-status"><i></i><span>Production locale</span></div>
+      <div class="video-ai-status"><i></i><span>Production cloud</span></div>
       <nav aria-label="Navigation principale du Studio">
         <a href="/studio/clients"><span>◎</span><strong>Parcours clients</strong></a>
         <a class="active" href="/studio/video-ai.html" aria-current="page"><span>✦</span><strong>Production vidéo</strong></a>
@@ -39,9 +37,9 @@
 
       <section class="video-ai-hero local-hero">
         <div>
-          <p class="eyebrow">LA VIDÉO SOURCE RESTE SUR CET ORDINATEUR</p>
-          <h2>Neptune produit localement.<br><span>OpenAI renforce la sélection.</span></h2>
-          <p>Whisper transcrit localement, puis Neptune détecte les passages candidats. Lorsque la connexion OpenAI est activée, seule la transcription horodatée avec le contexte éditorial et les métriques visuelles est analysée avant le rendu. Le montage vertical, les sous-titres et les fichiers vidéo restent traités dans Chrome ou Edge.</p>
+          <p class="eyebrow">TRAITEMENT CLOUD RÉSILIENT</p>
+          <h2>Neptune importe de façon sécurisée.<br><span>L’IA traite en arrière-plan.</span></h2>
+          <p>La vidéo est envoyée par morceaux reprenables vers le stockage Neptune, puis un moteur serveur dédié extrait l’audio, transcrit, analyse les meilleurs passages avec OpenAI, cadre, sous-titre et rend les shorts. Une fois l’import terminé, vous pouvez fermer l’onglet sans interrompre la production.</p>
         </div>
         <div class="hero-metrics" aria-label="Résumé de production">
           <div><b id="activeJobsCount">0</b><span>en traitement</span></div>
@@ -51,8 +49,8 @@
       </section>
 
       <section class="local-privacy-banner" aria-label="Confidentialité du traitement">
-        <strong>Vidéo source 100 % locale</strong>
-        <span>Aucun fichier vidéo source n’est envoyé à OpenAI, R2 ou un Container. Quand OpenAI est connecté, la transcription horodatée et les métriques utiles sont transmises avec <code>store: false</code>. Seuls les shorts validés traversent ensuite le Worker lors de leur envoi volontaire vers Google Drive.</span>
+        <strong>Import sécurisé et découpé</strong>
+        <span>La vidéo source est stockée temporairement dans l’infrastructure Neptune afin de garantir les reprises, les relances et le traitement en arrière-plan. Elle n’est pas envoyée à OpenAI : seuls les segments audio nécessaires à la transcription et la transcription horodatée sont transmis aux services d’IA.</span>
       </section>
 
       <section class="video-ai-grid">
@@ -69,16 +67,16 @@
               <span class="drop-icon">＋</span>
               <strong>Glissez la vidéo longue ici</strong>
               <small>ou cliquez pour la sélectionner sur cet ordinateur</small>
-              <em>MP4, MOV, WEBM ou M4V · Chrome ou Edge récent · espace disque libre requis</em>
+              <em>MP4, MOV, WEBM ou M4V · import multipart sécurisé jusqu’à 80 Go</em>
             </label>
             <div id="selectedFile" class="selected-file" hidden></div>
             <div class="local-requirements">
-              <span><b>1.</b> Garder cet onglet ouvert</span>
-              <span><b>2.</b> Empêcher la mise en veille</span>
-              <span><b>3.</b> Prévoir de l’espace disque temporaire</span>
+              <span><b>1.</b> Garder l’onglet ouvert pendant l’import</span>
+              <span><b>2.</b> Le traitement continue après 100 %</span>
+              <span><b>3.</b> Les erreurs réseau sont retentées automatiquement</span>
             </div>
-            <div id="uploadProgress" class="upload-progress" hidden><div><span id="uploadStage">Préparation locale…</span><b id="uploadPercent">0 %</b></div><progress id="uploadProgressBar" max="100" value="0"></progress></div>
-            <button id="startUpload" class="primary-button" type="submit" disabled>Lancer la création locale des shorts</button>
+            <div id="uploadProgress" class="upload-progress" hidden><div><span id="uploadStage">Préparation de l’import…</span><b id="uploadPercent">0 %</b></div><progress id="uploadProgressBar" max="100" value="0"></progress></div>
+            <button id="startUpload" class="primary-button" type="submit" disabled>Importer et lancer la production</button>
             <p id="uploadMessage" class="form-message" aria-live="polite"></p>
           </form>
         </section>
@@ -94,7 +92,7 @@
           <div><button id="backToJobs" class="back-button" type="button">← Production</button><p class="eyebrow">VALIDATION INTERNE</p><h2 id="reviewTitle">Shorts générés</h2><p id="reviewSubtitle"></p></div>
           <div class="review-actions"><button id="approveAll" class="secondary-button" type="button">Valider tous les contenus affichés</button><button id="exportApproved" class="primary-button" type="button">Envoyer les validés dans Drive</button></div>
         </header>
-        <div id="jobProgressPanel" class="job-progress-panel" hidden><div><strong id="jobStageText">Traitement local en cours</strong><span id="jobProgressText">0 %</span></div><progress id="jobProgressBar" max="100" value="0"></progress><p id="jobProgressHint"></p></div>
+        <div id="jobProgressPanel" class="job-progress-panel" hidden><div><strong id="jobStageText">Traitement en cours</strong><span id="jobProgressText">0 %</span></div><progress id="jobProgressBar" max="100" value="0"></progress><p id="jobProgressHint"></p></div>
         <nav id="funnelFilters" class="funnel-filters" aria-label="Filtrer les contenus"><button class="active" data-funnel="all" type="button">Tous <span id="allCount">0</span></button><button data-funnel="TOFU" type="button">TOFU <span id="tofuCount">0</span></button><button data-funnel="MOFU" type="button">MOFU <span id="mofuCount">0</span></button><button data-funnel="BOFU" type="button">BOFU <span id="bofuCount">0</span></button></nav>
         <div id="clipsGrid" class="clips-grid"></div>
       </section>
@@ -102,9 +100,7 @@
   </div>
 
   <div id="toast" class="toast" hidden role="status"></div>
-  <script type="module" src="/studio/video-ai-openai-v1.js?v=1"></script>
-  <script type="module" src="/studio/local-engine/neptune-video-local-engine-v1.js?v=1"></script>
-  <script type="module" src="/studio/video-ai-local-compat-v3.js?v=1"></script>
-  <script type="module" src="/studio/studio-information-architecture-v65.js?v=1"></script>
+  <script src="/studio/video-ai-cloud-resilience-v67.js?v=1"></script>
+  <script src="/studio/video-ai-v1.js?v=67"></script>
 </body>
 </html>

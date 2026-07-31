@@ -1,0 +1,870 @@
+/* Neptune Media Studio · information architecture and readability v65
+   Four primary destinations across every Studio screen:
+   Parcours clients, Production vidéo, Diffusion and Réglages. */
+
+body.studio-information-architecture-v65 {
+  --studio-v65-sidebar: 236px;
+  --studio-v65-topbar: 72px;
+  --studio-v65-paper: #f4f7fb;
+  --studio-v65-surface: #ffffff;
+  --studio-v65-line: #dde4ef;
+  --studio-v65-ink: #111b34;
+  --studio-v65-muted: #65718a;
+  --studio-v65-navy: #071a45;
+  --studio-v65-navy-2: #0c285f;
+  --studio-v65-purple: #6955ed;
+  --studio-v65-cyan: #46d9ff;
+  --studio-v65-shadow: 0 14px 38px rgba(15, 35, 79, .08);
+}
+
+body.studio-information-architecture-v65,
+body.studio-information-architecture-v65 button,
+body.studio-information-architecture-v65 input,
+body.studio-information-architecture-v65 select,
+body.studio-information-architecture-v65 textarea {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body.studio-information-architecture-v65 .neptune-studio-shell {
+  display: grid !important;
+  grid-template-columns: var(--studio-v65-sidebar) minmax(0, 1fr) !important;
+  min-height: 100dvh !important;
+  width: 100% !important;
+  overflow: visible !important;
+}
+
+body.studio-information-architecture-v65 .neptune-studio-sidebar {
+  position: sticky !important;
+  inset: auto !important;
+  top: 0 !important;
+  z-index: 70 !important;
+  width: auto !important;
+  max-width: none !important;
+  height: 100dvh !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 18px 14px 14px !important;
+  overflow: hidden !important;
+  border: 0 !important;
+  border-right: 1px solid rgba(255, 255, 255, .08) !important;
+  background:
+    radial-gradient(circle at 12% 0, rgba(70, 217, 255, .15), transparent 16rem),
+    radial-gradient(circle at 100% 36%, rgba(105, 85, 237, .18), transparent 21rem),
+    linear-gradient(180deg, #071d4d 0%, #07173c 55%, #040d24 100%) !important;
+  color: #fff !important;
+  box-shadow: 16px 0 48px rgba(8, 29, 78, .08) !important;
+}
+
+body.studio-information-architecture-v65 .neptune-studio-sidebar::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, #49d8ff, #7057ff 46%, #ee46bc 76%, #ffac5c);
+}
+
+body.studio-information-architecture-v65 .neptune-studio-brand {
+  min-height: 52px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 11px !important;
+  padding: 4px 8px 14px !important;
+  color: #fff !important;
+  text-decoration: none !important;
+}
+
+body.studio-information-architecture-v65 .neptune-studio-brand img {
+  width: 40px !important;
+  height: 40px !important;
+  flex: 0 0 auto !important;
+  object-fit: contain !important;
+  filter: drop-shadow(0 8px 18px rgba(105, 85, 237, .28));
+}
+
+body.studio-information-architecture-v65 .neptune-studio-brand div,
+body.studio-information-architecture-v65 .neptune-studio-brand > span {
+  display: grid !important;
+  gap: 2px !important;
+  line-height: 1.05 !important;
+}
+
+body.studio-information-architecture-v65 .neptune-studio-brand b {
+  color: #fff !important;
+  font-size: 16px !important;
+  font-weight: 850 !important;
+  letter-spacing: -.025em !important;
+}
+
+body.studio-information-architecture-v65 .neptune-studio-brand small {
+  color: rgba(220, 232, 255, .62) !important;
+  font-size: 10px !important;
+  font-weight: 650 !important;
+  letter-spacing: .02em !important;
+  text-transform: none !important;
+}
+
+body.studio-information-architecture-v65 .neptune-studio-status {
+  width: auto !important;
+  min-height: 38px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 9px !important;
+  margin: 0 5px 18px !important;
+  padding: 9px 11px !important;
+  border: 1px solid rgba(70, 217, 255, .19) !important;
+  border-radius: 12px !important;
+  background: rgba(70, 217, 255, .075) !important;
+  color: #c7f4ff !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  box-shadow: none !important;
+}
+
+body.studio-information-architecture-v65 .neptune-studio-status i {
+  width: 8px !important;
+  height: 8px !important;
+  flex: 0 0 auto !important;
+  border-radius: 50% !important;
+  background: #59e4b2 !important;
+  box-shadow: 0 0 0 5px rgba(89, 228, 178, .08), 0 0 14px rgba(89, 228, 178, .55) !important;
+}
+
+body.studio-information-architecture-v65 .neptune-studio-status span {
+  display: inline !important;
+  color: inherit !important;
+}
+
+body.studio-information-architecture-v65 .neptune-studio-nav {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  display: flex !important;
+  flex: 1 1 auto !important;
+  flex-direction: column !important;
+  gap: 7px !important;
+  padding: 0 2px 12px !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  scrollbar-width: none !important;
+}
+
+body.studio-information-architecture-v65 .neptune-studio-nav::-webkit-scrollbar {
+  display: none !important;
+}
+
+body.studio-information-architecture-v65 .neptune-studio-nav-link {
+  position: relative !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 48px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 11px !important;
+  padding: 9px 10px !important;
+  overflow: visible !important;
+  border: 1px solid transparent !important;
+  border-radius: 13px !important;
+  background: transparent !important;
+  color: rgba(224, 233, 252, .76) !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+  transition: background .16s ease, border-color .16s ease, color .16s ease, transform .16s ease !important;
+}
+
+body.studio-information-architecture-v65 .neptune-studio-nav-link:hover {
+  transform: translateX(2px) !important;
+  border-color: rgba(255, 255, 255, .09) !important;
+  background: rgba(255, 255, 255, .055) !important;
+  color: #fff !important;
+}
+
+body.studio-information-architecture-v65 .neptune-studio-nav-link.active {
+  border-color: rgba(89, 221, 255, .22) !important;
+  background: linear-gradient(110deg, rgba(73, 216, 255, .15), rgba(105, 85, 237, .20)) !important;
+  color: #fff !important;
+  box-shadow: inset 3px 0 0 #59ddff, 0 9px 24px rgba(0, 0, 0, .12) !important;
+}
+
+body.studio-information-architecture-v65 .neptune-studio-nav-icon {
+  width: 30px !important;
+  height: 30px !important;
+  display: grid !important;
+  place-items: center !important;
+  flex: 0 0 auto !important;
+  border-radius: 9px !important;
+  background: rgba(255, 255, 255, .055) !important;
+  color: #a8bdec !important;
+  font-size: 15px !important;
+  line-height: 1 !important;
+}
+
+body.studio-information-architecture-v65 .neptune-studio-nav-link.active .neptune-studio-nav-icon {
+  background: rgba(73, 216, 255, .13) !important;
+  color: #7ce8ff !important;
+}
+
+body.studio-information-architecture-v65 .neptune-studio-nav-link strong {
+  min-width: 0 !important;
+  display: block !important;
+  overflow: hidden !important;
+  color: inherit !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  line-height: 1.25 !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+body.studio-information-architecture-v65 .neptune-studio-account {
+  position: static !important;
+  inset: auto !important;
+  width: 100% !important;
+  min-height: 58px !important;
+  margin-top: auto !important;
+  padding: 10px !important;
+  border: 1px solid rgba(255, 255, 255, .11) !important;
+  border-radius: 14px !important;
+  background: rgba(255, 255, 255, .055) !important;
+  color: #fff !important;
+  box-shadow: 0 15px 34px rgba(0, 0, 0, .14) !important;
+  backdrop-filter: blur(14px) !important;
+}
+
+body.studio-page-clients .neptune-studio-account {
+  display: grid !important;
+  grid-template-columns: 34px minmax(0, 1fr) 24px !important;
+  align-items: center !important;
+  gap: 9px !important;
+}
+
+body.studio-page-production .neptune-studio-account {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  cursor: pointer !important;
+}
+
+body.studio-page-production .neptune-studio-account:hover {
+  border-color: rgba(89, 221, 255, .22) !important;
+  background: rgba(255, 255, 255, .075) !important;
+}
+
+body.studio-information-architecture-v65 .neptune-studio-main {
+  min-width: 0 !important;
+}
+
+body.studio-information-architecture-v65 .neptune-studio-topbar {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 45 !important;
+  min-height: var(--studio-v65-topbar) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 18px !important;
+  padding: 11px clamp(18px, 2.4vw, 34px) !important;
+}
+
+body.studio-page-clients .neptune-studio-topbar,
+body.studio-page-advanced .neptune-studio-topbar {
+  border-bottom: 1px solid var(--studio-v65-line) !important;
+  background: rgba(255, 255, 255, .94) !important;
+  box-shadow: 0 7px 24px rgba(8, 29, 78, .05) !important;
+  backdrop-filter: blur(18px) !important;
+}
+
+body.studio-page-production .neptune-studio-topbar {
+  border-bottom: 1px solid rgba(255, 255, 255, .10) !important;
+  background: rgba(4, 19, 51, .90) !important;
+  backdrop-filter: blur(18px) !important;
+}
+
+body.studio-information-architecture-v65 .neptune-studio-topbar .eyebrow {
+  margin: 0 0 4px !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+  line-height: 1.2 !important;
+  letter-spacing: .14em !important;
+}
+
+body.studio-page-clients .neptune-studio-topbar .eyebrow,
+body.studio-page-advanced .neptune-studio-topbar .eyebrow {
+  color: #7058e8 !important;
+}
+
+body.studio-information-architecture-v65 .neptune-studio-topbar h1 {
+  margin: 0 !important;
+  font-size: clamp(21px, 2.2vw, 28px) !important;
+  font-weight: 850 !important;
+  line-height: 1.05 !important;
+  letter-spacing: -.035em !important;
+}
+
+body.studio-page-clients .neptune-studio-topbar h1,
+body.studio-page-advanced .neptune-studio-topbar h1 {
+  color: var(--studio-v65-ink) !important;
+}
+
+.neptune-studio-menu-toggle {
+  display: none;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--studio-v65-line);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--studio-v65-ink);
+  cursor: pointer;
+  box-shadow: 0 5px 16px rgba(8, 29, 78, .07);
+}
+
+body.studio-page-production .neptune-studio-menu-toggle {
+  border-color: rgba(255, 255, 255, .13);
+  background: rgba(255, 255, 255, .05);
+  color: #fff;
+  box-shadow: none;
+}
+
+.neptune-studio-menu-toggle > span,
+.neptune-studio-menu-toggle > span::before,
+.neptune-studio-menu-toggle > span::after {
+  width: 18px;
+  height: 2px;
+  display: block;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.neptune-studio-menu-toggle > span {
+  position: relative;
+}
+
+.neptune-studio-menu-toggle > span::before,
+.neptune-studio-menu-toggle > span::after {
+  content: "";
+  position: absolute;
+  left: 0;
+}
+
+.neptune-studio-menu-toggle > span::before { top: -6px; }
+.neptune-studio-menu-toggle > span::after { top: 6px; }
+
+.neptune-studio-menu-backdrop-v65 {
+  position: fixed;
+  inset: 0;
+  z-index: 65;
+  display: block;
+  border: 0;
+  background: rgba(3, 12, 33, .52);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  backdrop-filter: blur(5px);
+  transition: opacity .2s ease, visibility .2s ease;
+}
+
+body.studio-page-advanced .workspace-status span {
+  text-transform: none !important;
+}
+
+body.studio-page-advanced #studioLegacyTabControlsV65 {
+  display: none !important;
+}
+
+body.studio-page-advanced .main {
+  min-width: 0 !important;
+  background: var(--studio-v65-paper) !important;
+}
+
+body.studio-page-advanced .top-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 9px !important;
+}
+
+body.studio-page-advanced .top-actions > a[href="/studio/clients"] {
+  display: none !important;
+}
+
+.studio-context-nav-v65 {
+  position: sticky;
+  top: var(--studio-v65-topbar);
+  z-index: 40;
+  display: flex;
+  gap: 7px;
+  padding: 10px clamp(18px, 2.4vw, 34px);
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-bottom: 1px solid var(--studio-v65-line);
+  background: rgba(244, 247, 251, .95);
+  backdrop-filter: blur(16px);
+  scrollbar-width: none;
+}
+
+.studio-context-nav-v65::-webkit-scrollbar { display: none; }
+
+.studio-context-nav-v65 button {
+  min-width: max-content;
+  min-height: 38px;
+  padding: 8px 13px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: #5f6b82;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease;
+}
+
+.studio-context-nav-v65 button:hover {
+  border-color: #d4dbe7;
+  background: #fff;
+  color: #18233f;
+}
+
+.studio-context-nav-v65 button.active {
+  border-color: #d9d4ff;
+  background: #fff;
+  color: #4e3bd4;
+  box-shadow: 0 5px 16px rgba(57, 44, 153, .08);
+}
+
+body.studio-page-advanced .content {
+  width: min(1540px, 100%) !important;
+  margin: 0 auto !important;
+  padding: clamp(20px, 2.4vw, 34px) clamp(18px, 2.6vw, 38px) 56px !important;
+}
+
+body.studio-page-advanced .page-intro {
+  min-height: 0 !important;
+  margin-bottom: 18px !important;
+  padding: clamp(22px, 2.5vw, 32px) !important;
+  border: 1px solid #e0e6f0 !important;
+  border-radius: 22px !important;
+  background: #fff !important;
+  box-shadow: var(--studio-v65-shadow) !important;
+}
+
+body.studio-page-advanced .page-intro h2 {
+  margin: 0 !important;
+  max-width: 920px !important;
+  color: var(--studio-v65-ink) !important;
+  font-size: clamp(28px, 3.3vw, 46px) !important;
+  line-height: .98 !important;
+  letter-spacing: -.05em !important;
+}
+
+body.studio-page-advanced .page-intro p:last-child {
+  max-width: 780px !important;
+  margin-top: 10px !important;
+  color: var(--studio-v65-muted) !important;
+  font-size: 13px !important;
+  line-height: 1.6 !important;
+}
+
+body.studio-page-advanced .cards {
+  gap: 12px !important;
+}
+
+body.studio-page-advanced .metric,
+body.studio-page-advanced .panel,
+body.studio-page-advanced .section,
+body.studio-page-advanced .quick-link,
+body.studio-page-advanced .toolbar {
+  border-color: #dfe5ef !important;
+  background: #fff !important;
+  box-shadow: 0 8px 24px rgba(15, 35, 79, .055) !important;
+}
+
+body.studio-page-advanced .metric {
+  min-height: 112px !important;
+  padding: 17px 18px !important;
+}
+
+body.studio-page-advanced .metric b,
+body.studio-page-advanced .metric strong {
+  color: var(--studio-v65-ink) !important;
+}
+
+body.studio-page-advanced .metric span,
+body.studio-page-advanced .panel p,
+body.studio-page-advanced .section p,
+body.studio-page-advanced .quick-link p,
+body.studio-page-advanced .row small,
+body.studio-page-advanced .finance-row p {
+  color: var(--studio-v65-muted) !important;
+  font-size: 12px !important;
+  line-height: 1.5 !important;
+}
+
+body.studio-page-advanced .panel h2,
+body.studio-page-advanced .section h2,
+body.studio-page-advanced .quick-link strong {
+  color: var(--studio-v65-ink) !important;
+  font-size: 16px !important;
+  line-height: 1.3 !important;
+}
+
+body.studio-page-advanced .row,
+body.studio-page-advanced .finance-row {
+  min-width: 0 !important;
+  gap: 12px !important;
+  padding-block: 13px !important;
+}
+
+body.studio-page-advanced .login-card {
+  width: min(500px, 100%) !important;
+  padding: clamp(26px, 3vw, 36px) !important;
+}
+
+body.studio-page-advanced .login-card h1 {
+  font-size: clamp(34px, 4vw, 48px) !important;
+  line-height: .98 !important;
+}
+
+body.studio-page-advanced .login-card > p:not(.eyebrow):not(.message) {
+  font-size: 13px !important;
+  line-height: 1.6 !important;
+}
+
+body.studio-page-clients {
+  background: var(--studio-v65-paper) !important;
+}
+
+body.studio-page-clients .clients-workspace {
+  min-width: 0 !important;
+  background: radial-gradient(circle at 88% 4%, rgba(73, 216, 255, .07), transparent 30rem), var(--studio-v65-paper) !important;
+}
+
+body.studio-page-clients .clients-main {
+  width: min(1540px, 100%) !important;
+  margin: 0 auto !important;
+  padding: clamp(18px, 2.2vw, 30px) clamp(18px, 2.5vw, 36px) 48px !important;
+}
+
+body.studio-page-clients .workflow-focus-bar {
+  min-height: 78px !important;
+  gap: 18px !important;
+  padding: 15px 18px !important;
+  border-color: #dfe5ef !important;
+  border-radius: 18px !important;
+  box-shadow: 0 9px 28px rgba(15, 35, 79, .055) !important;
+}
+
+body.studio-page-clients .workflow-focus-bar small {
+  font-size: 10px !important;
+}
+
+body.studio-page-clients .workflow-focus-bar strong {
+  font-size: 15px !important;
+  line-height: 1.3 !important;
+}
+
+body.studio-page-clients .workflow-focus-bar p {
+  color: #66728a !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+}
+
+body.studio-page-clients .workflow-stage-tabs {
+  display: flex !important;
+  gap: 7px !important;
+  width: 100% !important;
+  margin: 16px 0 0 !important;
+  padding: 5px !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  border-color: #dfe5ef !important;
+  background: #edf1f7 !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: #c8d0df transparent !important;
+}
+
+body.studio-page-clients .workflow-stage-tabs button {
+  min-width: 132px !important;
+  min-height: 44px !important;
+  flex: 1 0 auto !important;
+  padding-inline: 12px !important;
+  font-size: 12px !important;
+}
+
+body.studio-page-clients .controls .search {
+  min-height: 46px !important;
+  border-color: #dce3ee !important;
+  background: #fff !important;
+}
+
+body.studio-page-clients .controls .search input {
+  height: 44px !important;
+  color: var(--studio-v65-ink) !important;
+  font-size: 14px !important;
+}
+
+body.studio-page-clients .workflow-stage-empty {
+  min-height: 150px !important;
+  display: grid !important;
+  place-content: center !important;
+  justify-items: center !important;
+  gap: 6px !important;
+  padding: 28px 20px !important;
+  color: #7a869d !important;
+  font-size: 13px !important;
+}
+
+body.studio-page-clients .workflow-stage-empty strong {
+  color: #35415b !important;
+  font-size: 14px !important;
+}
+
+body.studio-page-clients .workflow-stage-empty span {
+  color: #8590a4 !important;
+  font-size: 12px !important;
+}
+
+body.studio-page-clients .client-card {
+  gap: 16px !important;
+  padding: 16px 18px !important;
+  border-color: #dde4ef !important;
+  box-shadow: 0 7px 22px rgba(15, 35, 79, .045) !important;
+}
+
+body.studio-page-clients .workflow-card-identity strong,
+body.studio-page-clients .workflow-card-status strong {
+  font-size: 14px !important;
+}
+
+body.studio-page-clients .workflow-card-status p,
+body.studio-page-clients .workflow-card-identity > span {
+  font-size: 12px !important;
+  line-height: 1.45 !important;
+}
+
+body.studio-page-production {
+  --muted: #b2c0d9;
+}
+
+body.studio-page-production .video-ai-main {
+  min-width: 0 !important;
+  padding: 0 clamp(20px, 2.8vw, 38px) 56px !important;
+}
+
+body.studio-page-production .video-ai-hero {
+  gap: 28px !important;
+  padding: clamp(32px, 4vw, 48px) 0 28px !important;
+}
+
+body.studio-page-production .video-ai-hero h2 {
+  max-width: 900px !important;
+  font-size: clamp(34px, 4.5vw, 58px) !important;
+  line-height: .96 !important;
+}
+
+body.studio-page-production .video-ai-hero > div > p:last-child,
+body.studio-page-production .local-privacy-banner span {
+  color: #b6c5dd !important;
+  font-size: 13px !important;
+  line-height: 1.65 !important;
+}
+
+body.studio-page-production .video-ai-grid {
+  grid-template-columns: minmax(390px, .88fr) minmax(430px, 1.12fr) !important;
+  gap: 18px !important;
+}
+
+body.studio-page-production .upload-card,
+body.studio-page-production .jobs-card,
+body.studio-page-production .review-workspace {
+  border-color: rgba(255, 255, 255, .13) !important;
+  background: linear-gradient(145deg, rgba(13, 36, 79, .96), rgba(7, 25, 60, .96)) !important;
+}
+
+body.studio-page-production .upload-card label:not(.drop-zone),
+body.studio-page-production .section-head h2,
+body.studio-page-production .job-card h3,
+body.studio-page-production .clip-editor label {
+  color: #eef4ff !important;
+}
+
+body.studio-page-production .upload-card label:not(.drop-zone),
+body.studio-page-production .job-card p,
+body.studio-page-production .form-message,
+body.studio-page-production .selected-file span,
+body.studio-page-production .clip-editor label {
+  font-size: 12px !important;
+  line-height: 1.5 !important;
+}
+
+body.studio-page-production .upload-card select,
+body.studio-page-production .upload-card textarea,
+body.studio-page-production .clip-editor input,
+body.studio-page-production .clip-editor select {
+  min-height: 46px !important;
+  color: #fff !important;
+  font-size: 13px !important;
+}
+
+body.studio-page-production .drop-zone {
+  min-height: 190px !important;
+}
+
+body.studio-page-production .jobs-list {
+  max-height: 560px !important;
+}
+
+body.studio-page-production .job-card {
+  padding: 15px !important;
+}
+
+body.studio-page-production .clips-grid {
+  grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)) !important;
+}
+
+@media (max-width: 1180px) {
+  body.studio-page-production .video-ai-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  body.studio-page-production .jobs-list {
+    max-height: none !important;
+  }
+}
+
+@media (max-width: 860px) {
+  body.studio-information-architecture-v65 .neptune-studio-shell {
+    display: block !important;
+    grid-template-columns: 1fr !important;
+    min-height: 100dvh !important;
+    padding-bottom: 0 !important;
+  }
+
+  body.studio-information-architecture-v65 .neptune-studio-sidebar {
+    position: fixed !important;
+    inset: 0 auto 0 0 !important;
+    z-index: 70 !important;
+    width: min(300px, 86vw) !important;
+    height: 100dvh !important;
+    padding: 17px 14px 14px !important;
+    transform: translateX(-104%) !important;
+    transition: transform .24s cubic-bezier(.2, .8, .2, 1) !important;
+  }
+
+  body.studio-information-architecture-v65.studio-menu-open-v65 .neptune-studio-sidebar {
+    transform: translateX(0) !important;
+  }
+
+  body.studio-information-architecture-v65.studio-menu-open-v65 .neptune-studio-menu-backdrop-v65 {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  body.studio-information-architecture-v65 .neptune-studio-topbar {
+    min-height: 64px !important;
+    gap: 10px !important;
+    padding: 9px 12px !important;
+  }
+
+  body.studio-information-architecture-v65 .neptune-studio-topbar > div:first-of-type {
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+  }
+
+  body.studio-information-architecture-v65 .neptune-studio-topbar .eyebrow {
+    display: none !important;
+  }
+
+  body.studio-information-architecture-v65 .neptune-studio-topbar h1 {
+    overflow: hidden !important;
+    font-size: 20px !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  .neptune-studio-menu-toggle {
+    display: grid !important;
+  }
+
+  .studio-context-nav-v65 {
+    top: 64px;
+    padding: 8px 12px;
+  }
+
+  .studio-context-nav-v65 button {
+    min-height: 36px;
+    font-size: 11px;
+  }
+
+  body.studio-page-clients .clients-main,
+  body.studio-page-advanced .content {
+    padding: 16px 12px 36px !important;
+  }
+
+  body.studio-page-clients .workflow-focus-bar {
+    grid-template-columns: 1fr !important;
+    gap: 8px !important;
+    padding: 14px !important;
+  }
+
+  body.studio-page-clients .workflow-focus-bar p {
+    margin-left: 22px !important;
+  }
+
+  body.studio-page-clients .workflow-stage-tabs button {
+    min-width: 124px !important;
+  }
+
+  body.studio-page-clients .client-card {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  body.studio-page-production .video-ai-main {
+    padding: 0 14px 38px !important;
+  }
+
+  body.studio-page-production .video-ai-hero {
+    grid-template-columns: 1fr !important;
+    padding-top: 28px !important;
+  }
+
+  body.studio-page-production .hero-metrics {
+    width: 100% !important;
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  body.studio-page-production .hero-metrics div {
+    min-width: 0 !important;
+    padding: 14px 12px !important;
+  }
+
+  body.studio-page-production .form-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  body.studio-page-production .review-header {
+    align-items: flex-start !important;
+    flex-direction: column !important;
+  }
+
+  body.studio-page-production .review-actions {
+    width: 100% !important;
+    flex-wrap: wrap !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.studio-information-architecture-v65 .neptune-studio-sidebar,
+  body.studio-information-architecture-v65 .neptune-studio-nav-link,
+  .neptune-studio-menu-backdrop-v65,
+  .studio-context-nav-v65 button {
+    transition: none !important;
+  }
+}

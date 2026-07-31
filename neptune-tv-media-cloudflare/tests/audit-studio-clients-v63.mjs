@@ -48,6 +48,7 @@ try {
 
     await page.goto(`${baseURL}/studio/clients.html`, { waitUntil: 'networkidle' });
     await page.waitForSelector('.column.is-visible', { state: 'visible' });
+    await page.waitForSelector('#neptuneStudioMenuToggle, #studioMenuToggle', { state: 'attached' });
     await page.waitForTimeout(150);
 
     const metrics = await page.evaluate(() => {
@@ -60,6 +61,7 @@ try {
         return { width: box.width, height: box.height };
       };
       const refresh = document.querySelector('#refresh')?.getBoundingClientRect();
+      const menuToggle = document.querySelector('#neptuneStudioMenuToggle, #studioMenuToggle');
       return {
         bodyWidth: document.documentElement.scrollWidth,
         viewportWidth: innerWidth,
@@ -68,8 +70,8 @@ try {
         refresh: refresh ? { width: refresh.width, height: refresh.height } : null,
         columns: [...document.querySelectorAll('.column')].map(compactRect),
         cards: [...document.querySelectorAll('.client-card')].map(compactRect),
-        menuToggleDisplay: getComputedStyle(document.querySelector('#studioMenuToggle')).display,
-        activeNavigationCount: document.querySelectorAll('.studio-nav-link.active,[aria-current="page"].studio-nav-link').length,
+        menuToggleDisplay: menuToggle ? getComputedStyle(menuToggle).display : 'missing',
+        activeNavigationCount: document.querySelectorAll('.neptune-studio-nav-link.active, .studio-nav-link.active, .neptune-studio-nav-link[aria-current="page"], .studio-nav-link[aria-current="page"]').length,
         reducedMotionRulePresent: [...document.styleSheets].some((sheet) => {
           try { return [...sheet.cssRules].some((rule) => rule.cssText.includes('prefers-reduced-motion')); } catch { return false; }
         }),
@@ -87,18 +89,18 @@ try {
     assert(metrics.activeNavigationCount >= 1, `${viewport.name}: no active navigation state`);
     assert(metrics.reducedMotionRulePresent, `${viewport.name}: reduced motion rule missing`);
 
+    const toggle = page.locator('#neptuneStudioMenuToggle, #studioMenuToggle').first();
     if (viewport.width > 900) {
       assert(metrics.sidebar?.width >= 200, `${viewport.name}: desktop sidebar invalid`);
       assert(metrics.nav && metrics.account && metrics.nav.bottom <= metrics.account.top + 1, `${viewport.name}: navigation overlaps account card`);
       assert(metrics.menuToggleDisplay === 'none', `${viewport.name}: mobile toggle visible on desktop`);
-      const active = page.locator('.studio-nav-link.active').first();
+      const active = page.locator('.neptune-studio-nav-link.active, .studio-nav-link.active').first();
       const before = await active.boundingBox();
       await active.hover();
       const after = await active.boundingBox();
       if (before && after) assert(Math.abs(before.x - after.x) < 1, `${viewport.name}: menu shifts on hover`);
     } else {
       assert(metrics.menuToggleDisplay === 'grid', `${viewport.name}: mobile toggle hidden`);
-      const toggle = page.locator('#studioMenuToggle');
       await toggle.click();
       await page.waitForTimeout(80);
       assert(await toggle.getAttribute('aria-expanded') === 'true', `${viewport.name}: menu did not open`);
@@ -110,9 +112,9 @@ try {
     // Capture the actual populated interface before exercising the loading state.
     await page.screenshot({ path: path.join(outputDir, `${viewport.name}-${viewport.width}x${viewport.height}.png`), fullPage: true });
 
-    const refresh = page.locator('#refresh');
-    await refresh.click();
-    assert(await refresh.getAttribute('aria-busy') === 'true', `${viewport.name}: refresh progress not exposed`);
+    const refreshButton = page.locator('#refresh');
+    await refreshButton.click();
+    assert(await refreshButton.getAttribute('aria-busy') === 'true', `${viewport.name}: refresh progress not exposed`);
     await page.waitForSelector('.column.is-visible', { state: 'visible' });
 
     results.push({ viewport, metrics, errors });

@@ -17,31 +17,24 @@
   <link rel="stylesheet" href="/studio/responsive-stability-v60.css?v=1">
   <link rel="stylesheet" href="/studio/studio-clients-polish-v63.css?v=1">
   <link rel="stylesheet" href="/studio/studio-clients-polish-v63-1.css?v=1">
-  <link rel="stylesheet" href="/studio/studio-sidebar-authority-v64.css?v=1">
+  <link rel="stylesheet" href="/studio/studio-information-architecture-v65.css?v=1">
 </head>
 <body class="clients-app studio-clients-v63">
   <div class="studio-shell">
     <aside id="studioSidebar" class="studio-sidebar">
-      <a class="studio-brand" href="/studio/clients" aria-label="Parcours clients Neptune Media"><img src="/assets/logo-neptune.svg" alt=""><div><b>Neptune</b><small>Media · Studio</small></div></a>
-      <div class="studio-status"><i></i><span>Synchronisation active</span></div>
-      <nav class="studio-nav" aria-label="Navigation du Studio">
-        <p class="studio-nav-label">Pilotage</p>
+      <a class="studio-brand" href="/studio/clients" aria-label="Neptune Media Studio"><img src="/assets/logo-neptune.svg" alt=""><div><b>Neptune</b><small>Media · Studio</small></div></a>
+      <div class="studio-status"><i></i><span>Studio synchronisé</span></div>
+      <nav class="studio-nav" aria-label="Navigation principale du Studio">
         <a class="studio-nav-link active" href="/studio/clients" aria-current="page"><span>◎</span><strong>Parcours clients</strong></a>
-        <p class="studio-nav-label">Production</p>
-        <button class="studio-nav-link" type="button" data-open-section="contenus"><span>▣</span><strong>Contenus</strong></button>
-        <button class="studio-nav-link" type="button" data-open-section="calendrier"><span>▦</span><strong>Calendrier</strong></button>
-        <a class="studio-nav-link studio-nav-link--accent" href="/studio/video-ai.html"><span>✦</span><strong>Studio Vidéo IA</strong><em>→</em></a>
-        <p class="studio-nav-label">Administration</p>
-        <a class="studio-nav-link" href="/studio/advanced.html#episodes"><span>▶</span><strong>Programme</strong></a>
-        <a class="studio-nav-link" href="/studio/advanced.html#insights"><span>↗</span><strong>Audience</strong></a>
-        <a class="studio-nav-link" href="/studio/advanced.html#finances"><span>€</span><strong>Finances</strong></a>
-        <a class="studio-nav-link" href="/studio/advanced.html#settings"><span>⚙</span><strong>Réglages avancés</strong></a>
+        <a class="studio-nav-link studio-nav-link--accent" href="/studio/video-ai.html"><span>✦</span><strong>Production vidéo</strong></a>
+        <a class="studio-nav-link" href="/studio/advanced.html#episodes"><span>▶</span><strong>Diffusion</strong></a>
+        <a class="studio-nav-link" href="/studio/advanced.html#settings"><span>⚙</span><strong>Réglages</strong></a>
       </nav>
       <a class="studio-account" href="/studio/advanced.html#settings" aria-label="Ouvrir les réglages du Studio"><span class="studio-avatar">NM</span><span><b>Compte Studio</b><small>Réglages et accès</small></span><i>→</i></a>
     </aside>
     <section class="clients-workspace">
       <header class="clients-topbar">
-        <div><p class="eyebrow">PILOTAGE DE PRODUCTION</p><h1>Parcours clients</h1></div>
+        <div><p class="eyebrow">NEPTUNE MEDIA STUDIO</p><h1>Parcours clients</h1></div>
         <div class="clients-top-actions"><span class="studio-sync"><i></i> Synchronisé</span><button id="newClient" class="button" type="button">Nouveau client</button></div>
       </header>
       <main class="clients-main">
@@ -49,7 +42,7 @@
           <div class="clients-hero-copy"><p class="eyebrow">PARCOURS CLIENTS</p><h2>Neptune surveille.<br><span>Vous validez l’exception.</span></h2><p>Les parcours avancent automatiquement. Cet écran ne remonte que les éléments qui méritent réellement votre attention.</p></div>
           <div class="stats" aria-label="Résumé"><div><b id="clientCount">0</b><span>clients</span></div><div><b id="activeCount">0</b><span>parcours actifs</span></div><div><b id="urgentCount">0</b><span>urgences</span></div><button id="refresh" class="icon-button" type="button" aria-label="Vérifier maintenant">↻</button></div>
         </section>
-        <section class="controls"><label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" aria-label="Rechercher un client, une entreprise ou un format" placeholder="Rechercher un client, une entreprise ou un format"></label><div class="view-links"><button type="button" data-open-section="contenus">Contenus</button><button type="button" data-open-section="calendrier">Calendrier</button><button type="button" data-open-section="finances">Facturation</button><button id="feedbackView" class="feedback-button" data-count="0" type="button">Avis clients</button></div></section>
+        <section class="controls"><label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" aria-label="Rechercher un client ou une entreprise" placeholder="Rechercher un client ou une entreprise"></label><div class="view-links"><button type="button" data-open-section="contenus">Contenus</button><button type="button" data-open-section="calendrier">Calendrier</button><button type="button" data-open-section="finances">Facturation</button><button id="feedbackView" class="feedback-button" data-count="0" type="button">Avis clients</button></div></section>
         <section id="pipeline" class="pipeline" aria-live="polite"></section>
       </main>
     </section>
@@ -77,6 +70,6 @@
   <script type="module" src="/studio/clients.js?v=32"></script>
   <script type="module" src="/studio/clients-feedback-v31.js?v=2"></script>
   <script type="module" src="/studio/studio-clients-polish-v63.js?v=1"></script>
-  <script type="module" src="/studio/studio-sidebar-authority-v64.js?v=1"></script>
+  <script type="module" src="/studio/studio-information-architecture-v65.js?v=1"></script>
 </body>
 </html>

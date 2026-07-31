@@ -36,7 +36,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     defaults:
       run:
         working-directory: neptune-tv-media-cloudflare
@@ -80,9 +80,25 @@ jobs:
       - name: Validate Cloudflare bundle
         run: npx wrangler deploy --dry-run
 
-      - name: Deploy current source
+      - name: Deploy current source with resilient retry
         id: deploy
-        run: npx wrangler deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3 4 5; do
+            echo "Cloudflare deployment attempt ${attempt}/5"
+            if npx wrangler deploy; then
+              echo "Cloudflare deployment completed on attempt ${attempt}."
+              exit 0
+            fi
+            if [ "$attempt" -lt 5 ]; then
+              delay=$((attempt * 20))
+              echo "Cloudflare API unavailable; retrying in ${delay}s."
+              sleep "$delay"
+            fi
+          done
+          echo "Cloudflare deployment failed after five attempts." >&2
+          exit 1
 
       - name: Verify final v12 production and critical routes
         id: verify
@@ -154,9 +170,19 @@ jobs:
           DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
           VERIFY_OUTCOME: ${{ steps.verify.outcome }}
           WORKFLOW_RUN_ID: ${{ github.run_id }}
+        shell: bash
         run: |
+          set -euo pipefail
           cd "$GITHUB_WORKSPACE"
-          python3 - <<'PY'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          for push_attempt in 1 2 3 4; do
+            git fetch origin main
+            git reset --hard origin/main
+            git clean -fd
+
+            python3 - <<'PY'
           import json, os
           from datetime import datetime, timezone
           outcomes = {
@@ -181,18 +207,19 @@ jobs:
               json.dump(report, handle, ensure_ascii=False, indent=2)
               handle.write('\n')
           PY
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add \
-            copy-hotfix-deployment-status.json \
-            neptune-tv-media-cloudflare/public/index.html \
-            neptune-tv-media-cloudflare/public/home-live.js \
-            neptune-tv-media-cloudflare/public/landing-conversion.js \
-            neptune-tv-media-cloudflare/public/styles/neptune-streaming.css \
-            neptune-tv-media-cloudflare/public/app.js \
-            neptune-tv-media-cloudflare/src/public-layout.js \
-            neptune-tv-media-cloudflare/src/public-router.js \
-            neptune-tv-media-cloudflare/package.json
-          git commit -m 'chore: record Neptune final v12 deployment [skip ci]' || true
-          git pull --rebase origin main || true
-          git push
+
+            git add copy-hotfix-deployment-status.json
+            if git diff --cached --quiet; then
+              echo "Deployment status is already current."
+              exit 0
+            fi
+            git commit -m 'chore: record Neptune final v12 deployment [skip ci]'
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "Main advanced while recording deployment status; retry ${push_attempt}/4."
+            sleep $((push_attempt * 5))
+          done
+
+          echo "Unable to record deployment status after four attempts." >&2
+          exit 1

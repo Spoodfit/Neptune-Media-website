@@ -40,7 +40,9 @@ for (const content of [rootWrangler, nestedWrangler]) {
 
 for (const marker of [
   "import { handleOpenAiVideoRoute } from './video-ai-openai-routes-v1.js'",
-  'handleOpenAiVideoRoute(request.clone()',
+  'isOpenAiRoute(url.pathname, request.method)',
+  'isOpenAiAssistRoute(url.pathname, request.method) ? request.clone() : request',
+  'handleOpenAiVideoRoute(openAiRequest',
   "videoAiOpenAiIntegration: OPENAI_RELEASE",
   "videoAiSemanticPriority: 'openai-then-workers-ai-then-deterministic-local'",
   "videoAiOpenAiMode: 'always-before-render-when-configured'",
@@ -48,6 +50,7 @@ for (const marker of [
   "videoAiOpenAiStatusEndpoint: '/api/admin/video-ai/openai/status'",
   "videoAiOpenAiTestEndpoint: '/api/admin/video-ai/openai/test'",
 ]) assert.ok(entry.includes(marker), `Missing entry marker: ${marker}`);
+assert.ok(!entry.includes('handleOpenAiVideoRoute(request.clone()'), 'Large video requests must not be cloned unconditionally');
 
 for (const marker of [
   "const DEFAULT_MODEL = 'gpt-5-mini'",
@@ -85,8 +88,16 @@ for (const marker of [
 ]) assert.ok(html.includes(marker), `Missing truthful UI marker: ${marker}`);
 for (const marker of ['Analyse éditoriale OpenAI', 'Tester la connexion', 'Vidéo source non envoyée', 'store: false']) assert.ok(ui.includes(marker), `Missing connection UI marker: ${marker}`);
 for (const marker of ['openai-integration-card', 'openai-integration-card__test', '[data-state="configured"]']) assert.ok(css.includes(marker), `Missing connection CSS marker: ${marker}`);
-for (const marker of ['openAiSemanticAssistPlugin', 'openAiAnalysisAvailable', 'Analyse éditoriale OpenAI', 'semantic_ai_assist_unavailable']) assert.ok(vite.includes(marker), `Missing browser activation marker: ${marker}`);
+for (const marker of [
+  'openAiSemanticAssistPlugin',
+  'openAiAnalysisAvailable',
+  'Analyse éditoriale OpenAI',
+  "assistMode === 'openai-structured-analysis'",
+  'mergeAssistedCandidates([], assisted.candidates',
+  'semantic_ai_assist_unavailable',
+]) assert.ok(vite.includes(marker), `Missing browser activation marker: ${marker}`);
 assert.match(built, /openAiAnalysisAvailable/u, 'The generated browser bundle does not run semantic analysis before render');
+assert.match(built, /openai-structured-analysis/u, 'The generated browser bundle does not make OpenAI authoritative when it succeeds');
 
 const moduleUrl = pathToFileURL(resolve(appRoot, 'src/openai-video-analysis-v1.js')).href;
 const { analyzeVideoWithOpenAI, isOpenAiConfigured, openAiPublicConfiguration, testOpenAiConnection } = await import(moduleUrl);
@@ -174,4 +185,4 @@ try {
   globalThis.fetch = originalFetch;
 }
 
-console.log('OpenAI Studio integration v66 verified: server-side secret, Responses API, strict Structured Outputs, store=false, no source video upload, UI status/test and deterministic fallback chain.');
+console.log('OpenAI Studio integration v66 verified: server-side secret, Responses API, strict Structured Outputs, store=false, no source video upload, selective request cloning, UI status/test and deterministic fallback chain.');

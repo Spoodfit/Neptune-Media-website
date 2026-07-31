@@ -1,7 +1,8 @@
 import { readFile } from 'node:fs/promises';
 
 const config = JSON.parse(await readFile(new URL('../wrangler.jsonc', import.meta.url), 'utf8'));
-const activeEntry = await readFile(new URL('../src/entry-v15.js', import.meta.url), 'utf8');
+const activeEntry = await readFile(new URL('../src/entry-v16.js', import.meta.url), 'utf8');
+const cloudRoutes = await readFile(new URL('../src/video-ai-routes-v3.js', import.meta.url), 'utf8');
 const auditEntry = await readFile(new URL('../src/entry-v13.js', import.meta.url), 'utf8');
 const editorialEntry = await readFile(new URL('../src/entry-v12.js', import.meta.url), 'utf8');
 const efficiencyEntry = await readFile(new URL('../src/entry-v11.js', import.meta.url), 'utf8');
@@ -16,27 +17,41 @@ const openAiRoutes = await readFile(new URL('../src/video-ai-openai-routes-v1.js
 const openAiAnalysis = await readFile(new URL('../src/openai-video-analysis-v1.js', import.meta.url), 'utf8');
 
 const failures = [];
-if (config.main !== 'src/entry-v15.js') failures.push(`wrangler.main=${config.main || 'absent'} au lieu de src/entry-v15.js`);
+if (config.main !== 'src/entry-v16.js') failures.push(`wrangler.main=${config.main || 'absent'} au lieu de src/entry-v16.js`);
 if (!Array.isArray(config.assets?.run_worker_first) || !config.assets.run_worker_first.includes('/api/*')) failures.push('les routes /api/* ne passent pas en priorité par le Worker');
 if (!config.assets?.run_worker_first?.includes('/espace-client/*')) failures.push('les routes /espace-client/* ne passent pas par le Worker actif');
 if (!config.assets?.run_worker_first?.includes('/studio/*')) failures.push('les routes /studio/* ne passent pas par le Worker actif');
 if (config.analytics_engine_datasets?.length) failures.push('Analytics Engine bloque encore le déploiement alors que le compte ne l’active pas');
 if (Object.prototype.hasOwnProperty.call(config.vars || {}, 'OPENAI_API_KEY')) failures.push('OPENAI_API_KEY ne doit jamais être enregistrée dans wrangler.jsonc');
+if (Object.prototype.hasOwnProperty.call(config.vars || {}, 'VIDEO_AI_INTERNAL_SECRET')) failures.push('VIDEO_AI_INTERNAL_SECRET ne doit jamais être enregistré dans wrangler.jsonc');
 if (config.vars?.OPENAI_MODEL !== 'gpt-5-mini') failures.push('OPENAI_MODEL ne cible pas gpt-5-mini par défaut');
 if (config.vars?.OPENAI_BASE_URL !== 'https://api.openai.com/v1') failures.push('OPENAI_BASE_URL ne cible pas la Responses API officielle');
+if (!Array.isArray(config.containers) || !config.containers.some((item) => item.class_name === 'VideoProcessorV2')) failures.push('le Container VideoProcessorV2 n’est pas déclaré');
+if (!config.durable_objects?.bindings?.some((item) => item.name === 'VIDEO_PROCESSOR' && item.class_name === 'VideoProcessorV2')) failures.push('le binding VIDEO_PROCESSOR n’est pas déclaré');
+if (!config.r2_buckets?.some((item) => item.binding === 'MEDIA')) failures.push('le stockage R2 MEDIA n’est pas déclaré');
 
-if (!activeEntry.includes("from './store-v12.js'")) failures.push('entry-v15 ne réexporte pas le store-v12 actif');
-if (!activeEntry.includes("from './entry-v13.js'")) failures.push('entry-v15 ne prolonge pas la chaîne applicative entry-v13');
-if (!activeEntry.includes('handleVideoAiLocalRoute')) failures.push('entry-v15 ne route pas le moteur vidéo local');
-if (!activeEntry.includes('handleOpenAiVideoRoute')) failures.push('entry-v15 ne route pas la couche OpenAI');
-if (!activeEntry.includes('isOpenAiRoute(url.pathname, request.method)')) failures.push('entry-v15 ne limite pas l’interception OpenAI à ses routes');
-if (!activeEntry.includes('isOpenAiAssistRoute(url.pathname, request.method) ? request.clone() : request')) failures.push('la requête n’est pas clonée uniquement pour permettre le repli de l’analyse sémantique');
-if (activeEntry.includes('handleOpenAiVideoRoute(request.clone()')) failures.push('entry-v15 clone encore toutes les requêtes, y compris les flux vidéo volumineux');
-if (!activeEntry.includes("videoAiEngineMode: 'browser-local'")) failures.push('le moteur vidéo local n’est plus déclaré comme moteur principal');
-if (!activeEntry.includes("videoAiSemanticPriority: 'openai-then-workers-ai-then-deterministic-local'")) failures.push('la priorité sémantique OpenAI et ses replis ne sont pas déclarés');
-if (!activeEntry.includes("videoAiOpenAiMode: 'always-before-render-when-configured'")) failures.push('OpenAI n’est pas déclaré avant le rendu quand configuré');
+if (!activeEntry.includes("from './store-v12.js'")) failures.push('entry-v16 ne réexporte pas le store-v12 actif');
+if (!activeEntry.includes("from './entry-v13.js'")) failures.push('entry-v16 ne prolonge pas la chaîne applicative entry-v13');
+if (!activeEntry.includes("from './video-ai-container-v2.js'")) failures.push('entry-v16 ne réexporte pas le Container vidéo v2');
+if (!activeEntry.includes("from './video-ai-routes-v3.js'")) failures.push('entry-v16 ne route pas le moteur vidéo cloud v3');
+if (!activeEntry.includes('handleVideoAiRoute(request, env, ctx, studio)')) failures.push('entry-v16 ne transmet pas les requêtes au moteur cloud');
+if (!activeEntry.includes('reconcileVideoAiJobs(')) failures.push('entry-v16 ne réconcilie pas les traitements interrompus');
+if (!activeEntry.includes("videoAiEngineMode: 'cloud-asynchronous-with-local-fallback'")) failures.push('le moteur cloud asynchrone n’est pas déclaré comme moteur principal');
+if (!activeEntry.includes("videoAiPipeline: 'resumable-multipart-r2-container-ffmpeg-openai-transcription-semantic-selection-review-drive'")) failures.push('le pipeline vidéo cloud complet n’est pas déclaré');
 if (!activeEntry.includes('videoAiOpenAiStructuredOutputs: true')) failures.push('les Structured Outputs OpenAI ne sont pas déclarés');
-if (!activeEntry.includes("videoAiOpenAiDataPolicy: 'store-false-timestamped-transcript-and-metrics-only-no-source-video'")) failures.push('la politique de confidentialité OpenAI est absente');
+if (!activeEntry.includes("videoAiOpenAiDataPolicy: 'store-false-for-responses-api-no-source-video'")) failures.push('la politique de confidentialité OpenAI du moteur cloud est absente');
+if (!activeEntry.includes('videoAiBackgroundProcessing: true')) failures.push('le traitement en arrière-plan n’est pas déclaré');
+if (!activeEntry.includes('videoAiSafeToCloseAfterUpload: true')) failures.push('la fermeture de l’onglet après import n’est pas déclarée sûre');
+if (!activeEntry.includes("videoAiSourceRetention: 'deleted-after-successful-generation'")) failures.push('la suppression de la source après génération n’est pas déclarée');
+if (!activeEntry.includes('retiredSidebarCssPattern') || !activeEntry.includes('retiredSidebarJsPattern')) failures.push('entry-v16 ne retire pas l’ancien shell Studio v64');
+if (activeEntry.includes('handleOpenAiVideoRoute(request.clone()')) failures.push('entry-v16 clone encore toutes les requêtes, y compris les flux vidéo volumineux');
+
+if (!cloudRoutes.includes('analyzeVideoWithOpenAI')) failures.push('le moteur cloud n’utilise pas l’analyse éditoriale OpenAI');
+if (!cloudRoutes.includes('openai_transcription_failed_falling_back')) failures.push('le repli de transcription OpenAI vers Workers AI est absent');
+if (!cloudRoutes.includes('openai_cloud_video_analysis_failed_falling_back')) failures.push('le repli de sélection OpenAI vers Workers AI est absent');
+if (!cloudRoutes.includes('return legacyHandle(fallbackRequest, env, ctx, studio)')) failures.push('la transcription ne retombe pas sur le moteur Workers AI');
+if (!cloudRoutes.includes('await env.MEDIA.delete(sourceKey)')) failures.push('la vidéo source R2 n’est pas supprimée après génération réussie');
+if (!cloudRoutes.includes("sourceKey.startsWith('video-ai/sources/')")) failures.push('la suppression R2 n’est pas bornée au préfixe des sources vidéo');
 
 if (!auditEntry.includes("from './entry-v12.js'")) failures.push('entry-v13 ne prolonge pas l’espace éditorial entry-v12');
 if (!editorialEntry.includes("from './entry-v11.js'")) failures.push('entry-v12 ne prolonge pas entry-v11');
@@ -56,13 +71,11 @@ if (!controlEntry.includes("'/portal/autopilot-safe-list'")) failures.push('le p
 
 if (!openAiRoutes.includes("const STATUS_PATH = '/api/admin/video-ai/openai/status'")) failures.push('la route de statut OpenAI est absente');
 if (!openAiRoutes.includes("const TEST_PATH = '/api/admin/video-ai/openai/test'")) failures.push('la route de test OpenAI est absente');
-if (!openAiRoutes.includes("assistMode: 'openai-structured-analysis'")) failures.push('l’analyse vidéo ne marque pas les résultats OpenAI structurés');
-if (!openAiRoutes.includes("fallback: 'workers-ai-then-local'")) failures.push('le repli OpenAI vers Workers AI puis local est absent');
 if (!openAiAnalysis.includes("`${openAiBaseUrl(env)}/responses`")) failures.push('l’intégration n’appelle pas la Responses API');
 if (!openAiAnalysis.includes('store: false')) failures.push('les requêtes OpenAI ne désactivent pas le stockage');
 if (!openAiAnalysis.includes("type: 'json_schema'")) failures.push('le schéma structuré OpenAI est absent');
 if (!openAiAnalysis.includes('strict: true')) failures.push('le schéma OpenAI n’est pas strict');
-if (openAiAnalysis.includes('input_image')) failures.push('des images ou la vidéo source sont envoyées à OpenAI alors que v66 doit rester textuel');
+if (openAiAnalysis.includes('input_image')) failures.push('des images ou la vidéo source sont envoyées à OpenAI alors que l’analyse doit rester textuelle');
 
 if (!studioEntryHtml.includes('/studio/studio-login-v48.js')) failures.push('la racine Studio ne charge pas la passerelle de connexion unifiée');
 if (studioEntryHtml.includes('/studio/control-v37.js') || studioEntryHtml.includes('id="app"')) failures.push('l’ancien dashboard est encore présent dans la racine Studio');
@@ -82,4 +95,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Neptune entry-v15, OpenAI vidéo v66, architecture client v62, runtime contenu et Studio unifié validés.');
+console.log('Neptune entry-v16, moteur vidéo cloud résilient v67, OpenAI vidéo, architecture client v62, runtime contenu et Studio unifié validés.');

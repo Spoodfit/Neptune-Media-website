@@ -1,21 +1,22 @@
 {
   "name": "neptune-media-cloudflare",
   "private": true,
-  "version": "2.8.0",
+  "version": "2.9.0",
   "type": "module",
   "scripts": {
     "dev": "npm run build:video-local && wrangler dev --config wrangler.jsonc",
     "build:video-local": "vite build --config neptune-tv-media-cloudflare/local-video-engine/vite.config.js",
     "deploy": "npm run check && wrangler deploy --config wrangler.jsonc",
-    "check": "npm run build:video-local && find neptune-tv-media-cloudflare/src neptune-tv-media-cloudflare/public integrations/google-drive -type f -name '*.js' -print0 | xargs -0 -n1 node --check && node neptune-tv-media-cloudflare/scripts/verify-client-media-runtime-v51.mjs && node neptune-tv-media-cloudflare/scripts/verify-editorial-workspace-v59.mjs && node neptune-tv-media-cloudflare/scripts/verify-video-local-engine-v1.mjs && node neptune-tv-media-cloudflare/scripts/verify-openai-video-integration-v66.mjs"
+    "check": "npm run build:video-local && find neptune-tv-media-cloudflare/src neptune-tv-media-cloudflare/public integrations/google-drive -type f -name '*.js' -print0 | xargs -0 -n1 node --check && node neptune-tv-media-cloudflare/scripts/verify-client-media-runtime-v51.mjs && node neptune-tv-media-cloudflare/scripts/verify-editorial-workspace-v59.mjs && node neptune-tv-media-cloudflare/scripts/verify-openai-video-integration-v66.mjs"
   },
   "dependencies": {
+    "@cloudflare/containers": "^0.3.7",
     "@huggingface/transformers": "4.2.0",
     "mediabunny": "1.44.2",
     "resend": "6.18.0"
   },
   "devDependencies": {
     "vite": "^6.1.0",
-    "wrangler": "^4.111.0"
+    "wrangler": "^4.117.0"
   }
 }

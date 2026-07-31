@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "neptune-media-webtv",
-  "main": "src/entry-v15.js",
+  "main": "src/entry-v16.js",
   "compatibility_date": "2026-07-30",
   "workers_dev": true,
   "keep_vars": true,
@@ -37,15 +37,25 @@
       "/llms.txt"
     ]
   },
+  "containers": [
+    {
+      "class_name": "VideoProcessorV2",
+      "image": "./containers/video-ai/Dockerfile",
+      "max_instances": 2,
+      "instance_type": "standard-2"
+    }
+  ],
   "durable_objects": {
     "bindings": [
-      { "name": "STUDIO", "class_name": "StudioStore" }
+      { "name": "STUDIO", "class_name": "StudioStore" },
+      { "name": "VIDEO_PROCESSOR", "class_name": "VideoProcessorV2" }
     ]
   },
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["StudioStore"] },
     { "tag": "v2", "new_sqlite_classes": ["VideoProcessor"] },
-    { "tag": "v3", "deleted_classes": ["VideoProcessor"] }
+    { "tag": "v3", "deleted_classes": ["VideoProcessor"] },
+    { "tag": "v4", "new_sqlite_classes": ["VideoProcessorV2"] }
   ],
   "r2_buckets": [
     { "binding": "MEDIA", "bucket_name": "neptune-media-assets" }
@@ -57,6 +67,7 @@
     "PUBLIC_ORIGIN": "https://tv.neptunebusiness.com",
     "AI_MODEL": "@cf/openai/gpt-oss-120b",
     "OPENAI_MODEL": "gpt-5-mini",
+    "OPENAI_TRANSCRIPTION_MODEL": "whisper-1",
     "OPENAI_BASE_URL": "https://api.openai.com/v1",
     "RESEND_FROM_EMAIL": "Neptune Media <contact@media.neptunebusiness.com>",
     "AUTH_FROM_EMAIL": "Neptune Media <contact@media.neptunebusiness.com>",

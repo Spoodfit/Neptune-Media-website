@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 
 const files = {
-  entry: await read('src/entry-v15.js'),
+  entry: await read('src/entry-v16.js'),
   runtime: await read('public/studio/studio-information-architecture-v65-1.js'),
   styles: await read('public/studio/studio-information-architecture-v65.css'),
   clients: await read('public/studio/clients.html'),
@@ -47,7 +47,7 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Studio information architecture v65.1 verified: four primary destinations, contextual tabs, stable runtime and shared readability layer.');
+console.log('Studio information architecture v65.1 verified through cloud entry v16: four primary destinations, retired v64 shell removed, contextual tabs and shared readability layer.');
 
 async function read(path) {
   return readFile(new URL(`../${path}`, import.meta.url), 'utf8');

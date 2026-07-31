@@ -6,7 +6,7 @@ const files = {
   runtime: await read('src/entry-v11.js'),
   editorialEntry: await read('src/entry-v12.js'),
   activeEntry: await read('src/entry-v13.js'),
-  localVideoEntry: await read('src/entry-v15.js'),
+  videoEntry: await read('src/entry-v16.js'),
   localConfig: await read('wrangler.jsonc'),
   rootConfig: await readRoot('wrangler.jsonc'),
   snapshot: await read('public/espace-client/content-snapshot-v48.js'),
@@ -20,10 +20,12 @@ const files = {
 };
 
 const failures = [];
-check(files.localConfig, '"main": "src/entry-v15.js"', 'la configuration locale ne cible pas le runtime unifié entry-v15');
-check(files.rootConfig, '"main": "neptune-tv-media-cloudflare/src/entry-v15.js"', 'la configuration racine ne cible pas le runtime local entry-v15');
-check(files.localVideoEntry, "from './entry-v13.js'", 'entry-v15 ne prolonge pas le runtime visuel entry-v13');
-check(files.localVideoEntry, 'videoAiContainerRequired: false', 'entry-v15 exige encore un Container vidéo');
+check(files.localConfig, '"main": "src/entry-v16.js"', 'la configuration locale ne cible pas le runtime vidéo serveur entry-v16');
+check(files.rootConfig, '"main": "neptune-tv-media-cloudflare/src/entry-v16.js"', 'la configuration racine ne cible pas le runtime vidéo serveur entry-v16');
+check(files.videoEntry, "from './entry-v13.js'", 'entry-v16 ne prolonge pas le runtime visuel entry-v13');
+check(files.videoEntry, 'videoAiContainerRequired: true', 'entry-v16 ne confirme pas le moteur Container requis');
+check(files.videoEntry, "videoAiEngineMode: 'cloud-asynchronous-with-local-fallback'", 'entry-v16 ne confirme pas le mode serveur asynchrone avec secours local');
+check(files.videoEntry, 'videoAiSafeToCloseAfterUpload: true', 'entry-v16 ne confirme pas la poursuite après fermeture de l’onglet');
 check(files.activeEntry, "from './entry-v12.js'", 'entry-v13 ne prolonge pas entry-v12');
 check(files.editorialEntry, "from './entry-v11.js'", 'entry-v12 ne prolonge pas le runtime de contenu entry-v11');
 forbid(files.localConfig, '"analytics_engine_datasets"', 'la configuration locale exige encore Analytics Engine');
@@ -75,7 +77,7 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Verified active entry chain through local Video AI, current client architecture, compact horizontal dashboard rails and bounded content runtime passed.');
+console.log('Verified active entry chain through cloud Video AI with local fallback, current client architecture, compact horizontal dashboard rails and bounded content runtime passed.');
 
 async function read(path) { return readFile(new URL(`../${path}`, import.meta.url), 'utf8'); }
 async function readRoot(path) { return readFile(new URL(`../../${path}`, import.meta.url), 'utf8'); }

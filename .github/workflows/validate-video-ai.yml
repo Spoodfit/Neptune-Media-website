@@ -1,4 +1,4 @@
-name: Validate Neptune Video Local Engine
+name: Validate Neptune Video Cloud Engine
 
 on:
   pull_request:
@@ -7,6 +7,7 @@ on:
       - 'neptune-tv-media-cloudflare/src/**'
       - 'neptune-tv-media-cloudflare/public/studio/**'
       - 'neptune-tv-media-cloudflare/local-video-engine/**'
+      - 'neptune-tv-media-cloudflare/containers/video-ai/**'
       - 'neptune-tv-media-cloudflare/scripts/verify-video-local-engine-v1.mjs'
       - 'wrangler.jsonc'
       - 'package.json'
@@ -31,19 +32,26 @@ jobs:
           node-version: '22'
           registry-url: https://registry.npmjs.org
 
-      - name: Install Worker and local engine dependencies
+      - name: Install Worker and engine dependencies
         run: npm install --package-lock=false --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org
 
-      - name: Build and validate local production engine
+      - name: Build and validate application
         run: npm run check
 
-      - name: Confirm paid Containers are absent
+      - name: Confirm resilient cloud video architecture
         shell: bash
         run: |
           set -euo pipefail
-          ! grep -Fq '"containers"' wrangler.jsonc
-          ! grep -Fq '"VIDEO_PROCESSOR"' wrangler.jsonc
-          ! grep -Fq '@cloudflare/containers' package.json
+          grep -Fq '"containers"' wrangler.jsonc
+          grep -Fq '"VIDEO_PROCESSOR"' wrangler.jsonc
+          grep -Fq '"MEDIA"' wrangler.jsonc
+          grep -Fq '@cloudflare/containers' package.json
+          grep -Fq 'VideoProcessorV2' neptune-tv-media-cloudflare/src/entry-v16.js
+          grep -Fq 'createMultipartUpload' neptune-tv-media-cloudflare/src/video-ai-routes-v1.js
+          grep -Fq 'analyzeVideoWithOpenAI' neptune-tv-media-cloudflare/src/video-ai-routes-v3.js
+          grep -Fq 'deleteCompletedSource' neptune-tv-media-cloudflare/src/video-ai-routes-v3.js
+          grep -Fq 'video-ai-cloud-resilience-v67.js' neptune-tv-media-cloudflare/public/studio/video-ai.html
+          grep -Fq 'openAiSemanticAssistPlugin' neptune-tv-media-cloudflare/local-video-engine/vite.config.js
 
-      - name: Validate free Worker configuration
+      - name: Validate Cloudflare Worker and Container configuration
         run: npx wrangler deploy --config wrangler.jsonc --dry-run --outdir .wrangler-dry-run

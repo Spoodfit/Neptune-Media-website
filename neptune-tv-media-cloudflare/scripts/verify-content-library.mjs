@@ -20,7 +20,7 @@ const files = {
 };
 
 const failures = [];
-check(files.localConfig, '"main": "src/entry-v11.js"', 'la configuration locale ne cible pas entry-v11');
+check(files.localConfig, '"main": "src/entry-v15.js"', 'la configuration locale ne cible pas le runtime unifié entry-v15');
 check(files.rootConfig, '"main": "neptune-tv-media-cloudflare/src/entry-v15.js"', 'la configuration racine ne cible pas le runtime local entry-v15');
 check(files.localVideoEntry, "from './entry-v13.js'", 'entry-v15 ne prolonge pas le runtime visuel entry-v13');
 check(files.localVideoEntry, 'videoAiContainerRequired: false', 'entry-v15 exige encore un Container vidéo');

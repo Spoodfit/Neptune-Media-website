@@ -48,7 +48,7 @@ try {
 
     await page.goto(`${baseURL}/studio/clients.html`, { waitUntil: 'networkidle' });
     await page.waitForSelector('.column.is-visible', { state: 'visible' });
-    await page.waitForSelector('#neptuneStudioMenuToggle, #studioMenuToggle');
+    await page.waitForSelector('#neptuneStudioMenuToggle, #studioMenuToggle', { state: 'attached' });
     await page.waitForTimeout(150);
 
     const metrics = await page.evaluate(() => {

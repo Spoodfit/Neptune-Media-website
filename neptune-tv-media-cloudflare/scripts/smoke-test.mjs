@@ -29,7 +29,9 @@ if (!activeEntry.includes("from './store-v12.js'")) failures.push('entry-v15 ne 
 if (!activeEntry.includes("from './entry-v13.js'")) failures.push('entry-v15 ne prolonge pas la chaîne applicative entry-v13');
 if (!activeEntry.includes('handleVideoAiLocalRoute')) failures.push('entry-v15 ne route pas le moteur vidéo local');
 if (!activeEntry.includes('handleOpenAiVideoRoute')) failures.push('entry-v15 ne route pas la couche OpenAI');
-if (!activeEntry.includes('handleOpenAiVideoRoute(request.clone()')) failures.push('la couche OpenAI ne préserve pas la requête pour le repli local');
+if (!activeEntry.includes('isOpenAiRoute(url.pathname, request.method)')) failures.push('entry-v15 ne limite pas l’interception OpenAI à ses routes');
+if (!activeEntry.includes('isOpenAiAssistRoute(url.pathname, request.method) ? request.clone() : request')) failures.push('la requête n’est pas clonée uniquement pour permettre le repli de l’analyse sémantique');
+if (activeEntry.includes('handleOpenAiVideoRoute(request.clone()')) failures.push('entry-v15 clone encore toutes les requêtes, y compris les flux vidéo volumineux');
 if (!activeEntry.includes("videoAiEngineMode: 'browser-local'")) failures.push('le moteur vidéo local n’est plus déclaré comme moteur principal');
 if (!activeEntry.includes("videoAiSemanticPriority: 'openai-then-workers-ai-then-deterministic-local'")) failures.push('la priorité sémantique OpenAI et ses replis ne sont pas déclarés');
 if (!activeEntry.includes("videoAiOpenAiMode: 'always-before-render-when-configured'")) failures.push('OpenAI n’est pas déclaré avant le rendu quand configuré');

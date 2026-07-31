@@ -18,8 +18,11 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const studio = env.STUDIO.get(env.STUDIO.idFromName('neptune-media-main'));
-    const openAiVideo = await handleOpenAiVideoRoute(request.clone(), env, ctx, studio);
-    if (openAiVideo) return withHeaders(openAiVideo, url.pathname);
+    if (isOpenAiRoute(url.pathname, request.method)) {
+      const openAiRequest = isOpenAiAssistRoute(url.pathname, request.method) ? request.clone() : request;
+      const openAiVideo = await handleOpenAiVideoRoute(openAiRequest, env, ctx, studio);
+      if (openAiVideo) return withHeaders(openAiVideo, url.pathname);
+    }
     const localVideo = await handleVideoAiLocalRoute(request, env, ctx, studio);
     if (localVideo) return withHeaders(localVideo, url.pathname);
 
@@ -127,6 +130,17 @@ async function injectStudioInformationArchitecture(response, pathname) {
     statusText: response.statusText,
     headers,
   });
+}
+
+function isOpenAiRoute(pathname, method) {
+  return (pathname === '/api/admin/video-ai/bootstrap' && method === 'GET')
+    || (pathname === '/api/admin/video-ai/openai/status' && method === 'GET')
+    || (pathname === '/api/admin/video-ai/openai/test' && method === 'POST')
+    || isOpenAiAssistRoute(pathname, method);
+}
+
+function isOpenAiAssistRoute(pathname, method) {
+  return method === 'POST' && /^\/api\/admin\/video-ai\/local\/jobs\/[^/]+\/assist$/u.test(pathname);
 }
 
 function isStudioWorkspacePath(pathname) {

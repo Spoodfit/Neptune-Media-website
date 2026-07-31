@@ -17,10 +17,6 @@ const OPENAI_UI_JS = '/studio/video-ai-openai-v1.js?v=1';
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
-    if (request.method === 'GET' && ['/studio/video-ai', '/studio/video-ai/'].includes(url.pathname)) {
-      return withHeaders(Response.redirect(new URL('/studio/video-ai.html', url.origin), 302), url.pathname);
-    }
-
     const studio = env.STUDIO.get(env.STUDIO.idFromName('neptune-media-main'));
     if (isOpenAiControlRoute(url.pathname, request.method)) {
       const openAiResponse = await handleOpenAiVideoRoute(request, env, ctx, studio);

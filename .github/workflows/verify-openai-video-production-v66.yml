@@ -1,0 +1,139 @@
+name: Verify OpenAI Video Production V66
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'neptune-tv-media-cloudflare/src/openai-video-analysis-v1.js'
+      - 'neptune-tv-media-cloudflare/src/video-ai-openai-routes-v1.js'
+      - 'neptune-tv-media-cloudflare/src/entry-v15.js'
+      - 'neptune-tv-media-cloudflare/public/studio/video-ai-openai-v1.js'
+      - 'neptune-tv-media-cloudflare/public/studio/video-ai-openai-v1.css'
+      - 'neptune-tv-media-cloudflare/public/studio/video-ai.html'
+      - 'neptune-tv-media-cloudflare/local-video-engine/vite.config.js'
+      - '.github/workflows/verify-openai-video-production-v66.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: verify-openai-video-production-v66
+  cancel-in-progress: true
+
+jobs:
+  verify-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      WORKERS_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
+      PUBLIC_URL: https://tv.neptunebusiness.com
+      OPENAI_RELEASE: neptune-openai-video-analysis-20260731-v1
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify OpenAI integration on both production domains
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/openai-v66
+          configured_values=()
+
+          verify_domain() {
+            local base="$1"
+            local slug="$2"
+            local ready=0
+
+            for attempt in $(seq 1 30); do
+              local query="openai_v66=$GITHUB_SHA&attempt=$attempt"
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
+                "$base/api/public/release?$query" > "/tmp/openai-v66/$slug-release.json" || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
+                "$base/studio/video-ai.html?$query" > "/tmp/openai-v66/$slug-video-ai.html" || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
+                "$base/studio/video-ai-openai-v1.js?v=1&$query" > "/tmp/openai-v66/$slug-openai.js" || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
+                "$base/studio/video-ai-openai-v1.css?v=1&$query" > "/tmp/openai-v66/$slug-openai.css" || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
+                "$base/studio/local-engine/neptune-video-local-engine-v1.js?v=1&$query" > "/tmp/openai-v66/$slug-engine.js" || true
+              curl --fail --silent --show-error -I -H 'Cache-Control: no-cache, no-store' \
+                "$base/studio/video-ai.html?$query" > "/tmp/openai-v66/$slug-headers.txt" || true
+
+              if grep -Fq "\"videoAiOpenAiIntegration\":\"$OPENAI_RELEASE\"" "/tmp/openai-v66/$slug-release.json" \
+                && grep -Fq '"videoAiEngineMode":"browser-local"' "/tmp/openai-v66/$slug-release.json" \
+                && grep -Fq '"videoAiSemanticPriority":"openai-then-workers-ai-then-deterministic-local"' "/tmp/openai-v66/$slug-release.json" \
+                && grep -Fq '"videoAiOpenAiMode":"always-before-render-when-configured"' "/tmp/openai-v66/$slug-release.json" \
+                && grep -Fq '"videoAiOpenAiStructuredOutputs":true' "/tmp/openai-v66/$slug-release.json" \
+                && grep -Fq '"videoAiOpenAiDataPolicy":"store-false-timestamped-transcript-and-metrics-only-no-source-video"' "/tmp/openai-v66/$slug-release.json" \
+                && grep -Fq '/studio/video-ai-openai-v1.css?v=1' "/tmp/openai-v66/$slug-video-ai.html" \
+                && grep -Fq '/studio/video-ai-openai-v1.js?v=1' "/tmp/openai-v66/$slug-video-ai.html" \
+                && grep -Fq 'OpenAI renforce la sélection' "/tmp/openai-v66/$slug-video-ai.html" \
+                && grep -Fq 'store: false' "/tmp/openai-v66/$slug-video-ai.html" \
+                && grep -Fq '/api/admin/video-ai/openai/status' "/tmp/openai-v66/$slug-openai.js" \
+                && grep -Fq '/api/admin/video-ai/openai/test' "/tmp/openai-v66/$slug-openai.js" \
+                && grep -Fq 'openai-integration-card' "/tmp/openai-v66/$slug-openai.css" \
+                && grep -Fq 'openAiAnalysisAvailable' "/tmp/openai-v66/$slug-engine.js" \
+                && grep -Fq 'openai-structured-analysis' "/tmp/openai-v66/$slug-engine.js" \
+                && grep -Fqi "x-neptune-openai-video: $OPENAI_RELEASE" "/tmp/openai-v66/$slug-headers.txt"; then
+                ready=1
+                echo "$base: OpenAI video v66 verified on attempt $attempt."
+                break
+              fi
+
+              echo "$base: v66 not fully propagated on attempt $attempt; retrying."
+              sleep 10
+            done
+
+            test "$ready" = 1
+            local configured
+            configured=$(node -e "const d=require('/tmp/openai-v66/$slug-release.json'); process.stdout.write(String(d.videoAiOpenAiConfigured===true))")
+            configured_values+=("$configured")
+          }
+
+          verify_domain "$WORKERS_URL" workers
+          verify_domain "$PUBLIC_URL" public
+
+          if [[ "${configured_values[0]}" != "${configured_values[1]}" ]]; then
+            echo 'OpenAI configuration status differs between production domains.' >&2
+            exit 1
+          fi
+
+          node <<'NODE'
+          const fs = require('node:fs');
+          const workers = JSON.parse(fs.readFileSync('/tmp/openai-v66/workers-release.json', 'utf8'));
+          const publicRelease = JSON.parse(fs.readFileSync('/tmp/openai-v66/public-release.json', 'utf8'));
+          const status = {
+            status: 'success',
+            verifier: 'openai-video-production-verifier-v66',
+            source_sha: process.env.GITHUB_SHA,
+            workflow_run_id: process.env.GITHUB_RUN_ID,
+            checked_at: new Date().toISOString(),
+            production_domains: [process.env.WORKERS_URL, process.env.PUBLIC_URL],
+            release: process.env.OPENAI_RELEASE,
+            configured: workers.videoAiOpenAiConfigured === true && publicRelease.videoAiOpenAiConfigured === true,
+            model: workers.videoAiOpenAiModel,
+            engine_mode: workers.videoAiEngineMode,
+            semantic_priority: workers.videoAiSemanticPriority,
+            structured_outputs: workers.videoAiOpenAiStructuredOutputs,
+            data_policy: workers.videoAiOpenAiDataPolicy,
+            outcome: 'success'
+          };
+          fs.writeFileSync('openai-video-v66-production-status.json', `${JSON.stringify(status, null, 2)}\n`);
+          console.log(JSON.stringify(status, null, 2));
+          NODE
+
+      - name: Record production verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add openai-video-v66-production-status.json
+          if git diff --cached --quiet; then
+            echo 'Production status already current.'
+            exit 0
+          fi
+          git commit -m 'chore: record OpenAI video v66 production verification [skip ci]'
+          git push origin HEAD:main

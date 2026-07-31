@@ -1,3 +1,4 @@
+const VERIFIER_RELEASE = 'studio-production-verifier-v65.1';
 const DEFAULT_BASES = [
   'https://neptune-media-webtv.neptunebusinessclub.workers.dev',
   'https://tv.neptunebusiness.com',
@@ -15,7 +16,7 @@ for (const base of bases) {
   reports.push(await verifyWithRetry(base));
 }
 
-console.log(JSON.stringify({ ok: true, checkedAt: new Date().toISOString(), reports }, null, 2));
+console.log(JSON.stringify({ ok: true, verifier: VERIFIER_RELEASE, checkedAt: new Date().toISOString(), reports }, null, 2));
 console.log('Studio v65 production verification passed on workers.dev and the custom domain.');
 
 async function verifyWithRetry(base) {

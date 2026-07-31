@@ -145,6 +145,14 @@ jobs:
           verify_domain "$WORKERS_URL" workers
           verify_domain "$PUBLIC_URL" public
 
+      - name: Verify editorial production asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
+            "$PUBLIC_URL/assets/neptune-editorial-workspace-v59.js?release=$GITHUB_SHA" > /tmp/neptune-editorial-workspace-v59.js
+          grep -Fq 'publishExpress' /tmp/neptune-editorial-workspace-v59.js
+
       - name: Verify Resend authentication from production
         shell: bash
         run: |

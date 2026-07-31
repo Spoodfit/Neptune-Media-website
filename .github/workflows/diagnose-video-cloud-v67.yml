@@ -1,0 +1,176 @@
+name: Diagnose Neptune Video Cloud V67
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diagnose-video-cloud-v67.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: diagnose-neptune-video-cloud-v67
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      WORKERS_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
+      PUBLIC_URL: https://tv.neptunebusiness.com
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Probe both production domains
+        shell: bash
+        run: |
+          set -u
+          mkdir -p /tmp/neptune-video-diagnostic
+
+          probe_domain() {
+            local base="$1"
+            local slug="$2"
+            local query="diagnostic=$GITHUB_SHA&ts=$(date +%s)"
+
+            curl --silent --show-error --max-time 30 -H 'Cache-Control: no-cache, no-store' \
+              -w '%{http_code}' -o "/tmp/neptune-video-diagnostic/$slug-release.json" \
+              "$base/api/public/release?$query" \
+              > "/tmp/neptune-video-diagnostic/$slug-release.status" 2> "/tmp/neptune-video-diagnostic/$slug-release.error" || true
+
+            curl --silent --show-error --location --max-redirs 5 --max-time 30 -H 'Cache-Control: no-cache, no-store' \
+              -w '%{http_code}' -o "/tmp/neptune-video-diagnostic/$slug-page.html" \
+              "$base/studio/video-ai?$query" \
+              > "/tmp/neptune-video-diagnostic/$slug-page.status" 2> "/tmp/neptune-video-diagnostic/$slug-page.error" || true
+
+            curl --silent --show-error --max-time 30 -H 'Cache-Control: no-cache, no-store' \
+              -w '%{http_code}' -o "/tmp/neptune-video-diagnostic/$slug-client.js" \
+              "$base/studio/video-ai-v1.js?v=67&$query" \
+              > "/tmp/neptune-video-diagnostic/$slug-client.status" 2> "/tmp/neptune-video-diagnostic/$slug-client.error" || true
+          }
+
+          probe_domain "$WORKERS_URL" workers
+          probe_domain "$PUBLIC_URL" public
+
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = '/tmp/neptune-video-diagnostic';
+          const read = (name) => {
+            try { return fs.readFileSync(`${path}/${name}`, 'utf8'); } catch { return ''; }
+          };
+          const parseJson = (name) => {
+            try { return JSON.parse(read(name)); } catch { return {}; }
+          };
+          const selectedReleaseFields = (data) => {
+            const keys = [
+              'release',
+              'efficiencyRelease',
+              'editorialWorkspace',
+              'videoAiStudio',
+              'videoAiOpenAiIntegration',
+              'videoAiEntry',
+              'videoAiPipeline',
+              'videoAiEngineMode',
+              'videoAiMinimumScore',
+              'videoAiEditorialProposals',
+              'videoAiSourcePrivacy',
+              'videoAiRendering',
+              'videoAiTranscription',
+              'videoAiStorage',
+              'videoAiSemanticProvider',
+              'videoAiSemanticPriority',
+              'videoAiOpenAiConfigured',
+              'videoAiOpenAiModel',
+              'videoAiOpenAiMode',
+              'videoAiOpenAiStructuredOutputs',
+              'videoAiOpenAiDataPolicy',
+              'videoAiWorkersAiRole',
+              'videoAiContainerRequired',
+              'videoAiContainerBindingPresent',
+              'videoAiStorageBindingPresent',
+              'videoAiWorkersAiBindingPresent',
+              'videoAiInternalSecretRequired',
+              'videoAiInternalSecretPresent',
+              'videoAiR2SourceUploadRequired',
+              'videoAiReady',
+              'videoAiUpload',
+              'videoAiBackgroundProcessing',
+              'videoAiSafeToCloseAfterUpload',
+              'videoAiSourceRetention',
+              'videoAiLocalFallback',
+            ];
+            return Object.fromEntries(keys.filter((key) => Object.hasOwn(data, key)).map((key) => [key, data[key]]));
+          };
+          const domain = (slug, base) => {
+            const release = parseJson(`${slug}-release.json`);
+            const page = read(`${slug}-page.html`);
+            const client = read(`${slug}-client.js`);
+            return {
+              base,
+              release_http_status: Number(read(`${slug}-release.status`).trim() || 0),
+              release_error: read(`${slug}-release.error`).trim().slice(0, 500),
+              release: selectedReleaseFields(release),
+              page_http_status: Number(read(`${slug}-page.status`).trim() || 0),
+              page_error: read(`${slug}-page.error`).trim().slice(0, 500),
+              page_markers: {
+                cloud_resilient: page.includes('TRAITEMENT CLOUD RÉSILIENT'),
+                cloud_production: page.includes('Production cloud'),
+                upload_action: page.includes('Importer et lancer la production'),
+                cloud_resilience_asset: page.includes('/studio/video-ai-cloud-resilience-v67.js?v=1'),
+                cloud_client_asset: page.includes('/studio/video-ai-v1.js?v=67'),
+              },
+              client_http_status: Number(read(`${slug}-client.status`).trim() || 0),
+              client_error: read(`${slug}-client.error`).trim().slice(0, 500),
+              client_markers: {
+                multipart_upload: client.includes('multipartUpload'),
+                background_message: client.includes('Analyse lancée en arrière-plan'),
+              },
+            };
+          };
+          const workers = domain('workers', process.env.WORKERS_URL);
+          const custom = domain('public', process.env.PUBLIC_URL);
+          const requiredTrue = [
+            'videoAiOpenAiConfigured',
+            'videoAiOpenAiStructuredOutputs',
+            'videoAiContainerRequired',
+            'videoAiContainerBindingPresent',
+            'videoAiStorageBindingPresent',
+            'videoAiWorkersAiBindingPresent',
+            'videoAiInternalSecretRequired',
+            'videoAiInternalSecretPresent',
+            'videoAiR2SourceUploadRequired',
+            'videoAiBackgroundProcessing',
+            'videoAiSafeToCloseAfterUpload',
+            'videoAiReady',
+          ];
+          const failingFields = requiredTrue.filter((key) => workers.release[key] !== true || custom.release[key] !== true);
+          const report = {
+            checked_at: new Date().toISOString(),
+            source_sha: process.env.GITHUB_SHA,
+            workflow_run_id: process.env.GITHUB_RUN_ID,
+            expected_release: 'neptune-video-cloud-engine-20260731-v67',
+            ready: failingFields.length === 0
+              && workers.release_http_status === 200
+              && custom.release_http_status === 200
+              && workers.page_http_status === 200
+              && custom.page_http_status === 200,
+            failing_fields: failingFields,
+            domains: { workers, custom },
+          };
+          fs.writeFileSync('video-cloud-v67-diagnostic.json', `${JSON.stringify(report, null, 2)}\n`);
+          console.log(JSON.stringify(report, null, 2));
+          NODE
+
+      - name: Record diagnostic
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add video-cloud-v67-diagnostic.json
+          git commit -m 'chore: record Neptune video cloud v67 diagnostic [skip ci]'
+          git push origin HEAD:main

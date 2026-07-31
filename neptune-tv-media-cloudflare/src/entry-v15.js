@@ -79,8 +79,12 @@ async function injectStudioInformationArchitecture(response) {
   let body = await response.text();
   const cssPattern = /<link\b[^>]*href=["'][^"']*\/studio\/studio-information-architecture-v65\.css[^"']*["'][^>]*>\s*/giu;
   const jsPattern = /<script\b[^>]*src=["'][^"']*\/studio\/studio-information-architecture-v65\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu;
+  const retiredSidebarCssPattern = /<link\b[^>]*href=["'][^"']*\/studio\/studio-sidebar-authority-v64\.css[^"']*["'][^>]*>\s*/giu;
+  const retiredSidebarJsPattern = /<script\b[^>]*src=["'][^"']*\/studio\/studio-sidebar-authority-v64\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu;
   body = body.replace(cssPattern, '');
   body = body.replace(jsPattern, '');
+  body = body.replace(retiredSidebarCssPattern, '');
+  body = body.replace(retiredSidebarJsPattern, '');
   body = body.replace('</head>', `<link rel="stylesheet" href="${STUDIO_IA_CSS}"></head>`);
   body = body.replace('</body>', `<script type="module" src="${STUDIO_IA_JS}"></script></body>`);
   const headers = new Headers(response.headers);

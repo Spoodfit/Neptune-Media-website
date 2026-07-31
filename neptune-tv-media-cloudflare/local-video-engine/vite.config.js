@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 const here = dirname(fileURLToPath(import.meta.url));
+const TRANSCRIPTION_RECOVERY_RELEASE = 'neptune-local-transcription-recovery-20260731-v1';
 
 function openAiSemanticAssistPlugin() {
   return {
@@ -16,15 +17,17 @@ function openAiSemanticAssistPlugin() {
       const semanticProgress = "setUploadProgress(54, state.policy?.openAiAnalysisAvailable ? 'Analyse éditoriale OpenAI…' : 'Secours Workers AI gratuit…');";
       const originalMerge = 'candidates = mergeAssistedCandidates(candidates, assisted.candidates, media.durationSeconds);';
       const semanticMerge = "candidates = assisted.assistMode === 'openai-structured-analysis'\n        ? mergeAssistedCandidates([], assisted.candidates, media.durationSeconds)\n        : mergeAssistedCandidates(candidates, assisted.candidates, media.durationSeconds);";
-      const transformed = code
+      const releaseMarker = `globalThis.__NEPTUNE_LOCAL_TRANSCRIPTION_RECOVERY__ = '${TRANSCRIPTION_RECOVERY_RELEASE}';\n`;
+      const transformed = releaseMarker + code
         .replace(originalCondition, semanticCondition)
         .replace(originalProgress, semanticProgress)
         .replace(originalMerge, semanticMerge)
         .replace("console.warn('workers_ai_free_assist_unavailable', error);", "console.warn('semantic_ai_assist_unavailable', error);");
       if (transformed === code
         || !transformed.includes('openAiAnalysisAvailable')
-        || !transformed.includes("assistMode === 'openai-structured-analysis'")) {
-        throw new Error('Unable to activate Neptune OpenAI semantic assist in local video engine.');
+        || !transformed.includes("assistMode === 'openai-structured-analysis'")
+        || !transformed.includes(TRANSCRIPTION_RECOVERY_RELEASE)) {
+        throw new Error('Unable to activate Neptune OpenAI semantic assist and transcription recovery in local video engine.');
       }
       return { code: transformed, map: null };
     },

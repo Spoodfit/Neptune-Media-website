@@ -1,0 +1,48 @@
+name: Verify Studio Information Architecture Production V65
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-studio-information-architecture-production-v65-20260731.yml'
+      - 'wrangler.jsonc'
+      - 'neptune-tv-media-cloudflare/wrangler.jsonc'
+      - 'neptune-tv-media-cloudflare/src/entry-v15.js'
+      - 'neptune-tv-media-cloudflare/public/studio/clients.html'
+      - 'neptune-tv-media-cloudflare/public/studio/video-ai.html'
+      - 'neptune-tv-media-cloudflare/public/studio/advanced.html'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-information-architecture-v65.css'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-information-architecture-v65.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-information-architecture-v65-1.js'
+      - 'neptune-tv-media-cloudflare/scripts/verify-studio-information-architecture-production-v65.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verify-studio-information-architecture-production-v65
+  cancel-in-progress: true
+
+jobs:
+  verify-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check verifier syntax
+        run: node --check neptune-tv-media-cloudflare/scripts/verify-studio-information-architecture-production-v65.mjs
+
+      - name: Verify Studio v65 on production domains
+        env:
+          STUDIO_PRODUCTION_BASE_URLS: https://neptune-media-webtv.neptunebusinessclub.workers.dev,https://tv.neptunebusiness.com
+          STUDIO_PRODUCTION_ATTEMPTS: '15'
+          STUDIO_PRODUCTION_DELAY_MS: '10000'
+        run: node neptune-tv-media-cloudflare/scripts/verify-studio-information-architecture-production-v65.mjs

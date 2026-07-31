@@ -27,7 +27,9 @@ export class StudioStore extends LegacyStore {
       FROM video_ai_jobs j
       JOIN portal_orders o ON o.id=j.order_id
       JOIN portal_clients c ON c.id=o.client_id
-      WHERE (j.status='queued') OR (j.status='processing' AND j.updated_at<?)
+      WHERE (j.status='queued')
+         OR (j.status='processing' AND j.updated_at<?)
+         OR (j.status='failed' AND j.error_code='video_processor_dispatch_failed')
       ORDER BY j.created_at ASC LIMIT 20
     `, cutoff).toArray().map((row) => ({
       ...row,

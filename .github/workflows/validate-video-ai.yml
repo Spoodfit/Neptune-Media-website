@@ -32,11 +32,19 @@ jobs:
           node-version: '22'
           registry-url: https://registry.npmjs.org
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Install Worker and engine dependencies
         run: npm install --package-lock=false --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org
 
       - name: Build and validate application
         run: npm run check
+
+      - name: Validate Python processor syntax
+        run: python -m py_compile neptune-tv-media-cloudflare/containers/video-ai/app.py neptune-tv-media-cloudflare/containers/video-ai/app_v69.py
 
       - name: Confirm resilient cloud video architecture
         shell: bash
@@ -52,12 +60,18 @@ jobs:
           grep -Fq "pingEndpoint = 'localhost/health'" neptune-tv-media-cloudflare/src/video-ai-container-v2.js
           grep -Fq 'portReadyTimeoutMS: 120_000' neptune-tv-media-cloudflare/src/video-ai-container-v2.js
           grep -Fq 'createMultipartUpload' neptune-tv-media-cloudflare/src/video-ai-routes-v1.js
-          grep -Fq 'analyzeVideoWithOpenAI' neptune-tv-media-cloudflare/src/video-ai-routes-v3.js
-          grep -Fq 'deleteCompletedSource' neptune-tv-media-cloudflare/src/video-ai-routes-v3.js
+          grep -Fq 'analyzeVideoWithOpenAI' neptune-tv-media-cloudflare/src/video-ai-routes-v3-core.js
+          grep -Fq 'deleteCompletedSource' neptune-tv-media-cloudflare/src/video-ai-routes-v3-core.js
+          grep -Fq 'liveTelemetryAvailable' neptune-tv-media-cloudflare/src/video-ai-routes-v3.js
+          grep -Fq 'livePreviewDataUrl' neptune-tv-media-cloudflare/src/video-ai-routes-v3.js
           grep -Fq 'video-ai-cloud-resilience-v67.js' neptune-tv-media-cloudflare/public/studio/video-ai.html
           grep -Fq 'video-ai-dispatch-recovery-v68.js' neptune-tv-media-cloudflare/public/studio/video-ai.html
           grep -Fq 'Relancer sans réimporter' neptune-tv-media-cloudflare/public/studio/video-ai-dispatch-recovery-v68.js
           grep -Fq '/retry' neptune-tv-media-cloudflare/public/studio/video-ai-dispatch-recovery-v68.js
+          grep -Fq 'video-ai-live-monitor-v69.js' neptune-tv-media-cloudflare/public/studio/video-ai-dispatch-recovery-v68.js
+          grep -Fq 'run_ffmpeg_progress' neptune-tv-media-cloudflare/containers/video-ai/app_v69.py
+          grep -Fq 'make_vertical_preview' neptune-tv-media-cloudflare/containers/video-ai/app_v69.py
+          grep -Fq 'app_v69:app' neptune-tv-media-cloudflare/containers/video-ai/Dockerfile
           grep -Fq 'openAiSemanticAssistPlugin' neptune-tv-media-cloudflare/local-video-engine/vite.config.js
 
       - name: Validate Cloudflare Worker and Container configuration

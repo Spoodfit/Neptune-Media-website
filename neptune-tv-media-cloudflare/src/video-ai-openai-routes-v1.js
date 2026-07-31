@@ -7,6 +7,7 @@ import {
   testOpenAiConnection,
 } from './openai-video-analysis-v1.js';
 
+const BOOTSTRAP_PATH = '/api/admin/video-ai/bootstrap';
 const STATUS_PATH = '/api/admin/video-ai/openai/status';
 const TEST_PATH = '/api/admin/video-ai/openai/test';
 const ASSIST_PATTERN = /^\/api\/admin\/video-ai\/local\/jobs\/([^/]+)\/assist$/u;
@@ -14,11 +15,12 @@ const RELEASE = 'neptune-openai-video-analysis-20260731-v1';
 
 export async function handleOpenAiVideoRoute(request, env, ctx, studio) {
   const url = new URL(request.url);
+  const isBootstrap = url.pathname === BOOTSTRAP_PATH && request.method === 'GET';
   const isStatus = url.pathname === STATUS_PATH && request.method === 'GET';
   const isTest = url.pathname === TEST_PATH && request.method === 'POST';
   const assistMatch = url.pathname.match(ASSIST_PATTERN);
   const isAssist = Boolean(assistMatch && request.method === 'POST');
-  if (!isStatus && !isTest && !isAssist) return null;
+  if (!isBootstrap && !isStatus && !isTest && !isAssist) return null;
 
   if (!isSameOrigin(request)) return secure(json({ error: 'origin_forbidden' }, 403));
   if ((isTest || isAssist) && !request.headers.get('X-CSRF-Token')) {
@@ -26,6 +28,32 @@ export async function handleOpenAiVideoRoute(request, env, ctx, studio) {
   }
 
   const auth = adminAuth(request);
+  if (isBootstrap) {
+    const response = await callStore(studio, '/portal/video-ai-bootstrap', auth);
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) return secure(json(data, response.status));
+    const configured = isOpenAiConfigured(env);
+    return secure(json({
+      ...data,
+      policy: {
+        ...(data.policy || {}),
+        engineMode: 'browser-local',
+        sourceUploadRequired: false,
+        cloudContainerRequired: false,
+        openAiAnalysisAvailable: configured,
+        openAiAnalysisMode: configured ? 'always-before-render' : 'disabled',
+        openAiModel: openAiPublicConfiguration(env).model,
+        semanticAnalysisAvailable: configured || Boolean(env.AI),
+        semanticProviderPriority: configured ? 'openai-then-workers-ai-then-local' : 'workers-ai-then-local',
+        workersAiAssistAvailable: Boolean(env.AI),
+        localModel: 'onnx-community/whisper-base_timestamped',
+        localStorage: 'indexeddb-generated-clips-only',
+        sourceVideoSentToOpenAi: false,
+        openAiDataStorage: 'store-false',
+      },
+    }));
+  }
+
   if (isStatus) {
     const actor = await authorize(studio, auth);
     if (!actor.ok) return secure(actor.response);

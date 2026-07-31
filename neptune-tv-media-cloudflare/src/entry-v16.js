@@ -1,13 +1,14 @@
 import base from './entry-v13.js';
 import { StudioStore } from './store-v12.js';
 import { VideoProcessorV2 } from './video-ai-container-v2.js';
-import { handleVideoAiRoute, reconcileVideoAiJobs } from './video-ai-routes-v3.js';
+import { handleVideoAiRoute, reconcileVideoAiJobs } from './video-ai-routes-v4.js';
+import { consumeVideoQueue } from './video-ai-queue-v70.js';
 import { handleOpenAiVideoRoute } from './video-ai-openai-routes-v1.js';
 import { isOpenAiConfigured, openAiModel } from './openai-video-analysis-v1.js';
 
 export { StudioStore, VideoProcessorV2 };
 
-const RELEASE = 'neptune-video-cloud-engine-20260731-v67';
+const RELEASE = 'neptune-video-fast-reliable-20260801-v70';
 const OPENAI_RELEASE = 'neptune-openai-video-analysis-20260731-v1';
 const STUDIO_IA_CSS = '/studio/studio-information-architecture-v65.css?v=1';
 const STUDIO_IA_JS = '/studio/studio-information-architecture-v65-1.js?v=1';
@@ -36,20 +37,21 @@ export default {
     return withHeaders(response, url.pathname);
   },
 
+  async queue(batch, env, ctx) {
+    await consumeVideoQueue(batch, env, ctx);
+  },
+
   async scheduled(controller, env, ctx) {
     if (typeof base.scheduled === 'function') await base.scheduled(controller, env, ctx);
     const studio = env.STUDIO.get(env.STUDIO.idFromName('neptune-media-main'));
-    ctx.waitUntil(reconcileVideoAiJobs(
-      env,
-      ctx,
-      studio,
-      env.PUBLIC_ORIGIN || 'https://tv.neptunebusiness.com',
-    ).catch((error) => {
+    try {
+      await reconcileVideoAiJobs(env, studio);
+    } catch (error) {
       console.error('video_ai_reconciliation_failed', {
         name: error?.name || 'Error',
         message: String(error?.message || error || 'unknown').slice(0, 500),
       });
-    }));
+    }
   },
 };
 
@@ -59,6 +61,7 @@ async function augmentRelease(response, env) {
   const containerBindingPresent = Boolean(env.VIDEO_PROCESSOR);
   const storageBindingPresent = Boolean(env.MEDIA);
   const workersAiBindingPresent = Boolean(env.AI);
+  const queueBindingPresent = Boolean(env.VIDEO_JOBS);
   const internalSecretPresent = Boolean(String(
     env.VIDEO_AI_INTERNAL_SECRET
       || env.DRIVE_WEBHOOK_SECRET
@@ -68,6 +71,7 @@ async function augmentRelease(response, env) {
   const ready = containerBindingPresent
     && storageBindingPresent
     && workersAiBindingPresent
+    && queueBindingPresent
     && internalSecretPresent
     && openAiConfigured;
 
@@ -76,8 +80,8 @@ async function augmentRelease(response, env) {
     videoAiStudio: RELEASE,
     videoAiOpenAiIntegration: OPENAI_RELEASE,
     videoAiEntry: '/studio/video-ai',
-    videoAiPipeline: 'resumable-multipart-r2-container-ffmpeg-openai-transcription-semantic-selection-review-drive',
-    videoAiEngineMode: 'cloud-asynchronous-with-local-fallback',
+    videoAiPipeline: 'multipart-r2-durable-queue-warm-container-pool-openai-ffmpeg-review-drive',
+    videoAiEngineMode: 'durable-queue-with-pooled-containers-and-local-fallback',
     videoAiMinimumScore: 60,
     videoAiFunnels: ['TOFU', 'MOFU', 'BOFU'],
     videoAiEditorialProposals: 3,
@@ -100,6 +104,7 @@ async function augmentRelease(response, env) {
     videoAiContainerBindingPresent: containerBindingPresent,
     videoAiStorageBindingPresent: storageBindingPresent,
     videoAiWorkersAiBindingPresent: workersAiBindingPresent,
+    videoAiQueueBindingPresent: queueBindingPresent,
     videoAiInternalSecretRequired: true,
     videoAiInternalSecretPresent: internalSecretPresent,
     videoAiR2SourceUploadRequired: true,
@@ -107,8 +112,11 @@ async function augmentRelease(response, env) {
     videoAiUpload: 'r2-multipart-16mb-three-way-parallel-retry',
     videoAiBackgroundProcessing: true,
     videoAiSafeToCloseAfterUpload: true,
+    videoAiStartupWatchdogSeconds: 120,
+    videoAiProcessorPoolSize: 2,
     videoAiSourceRetention: 'deleted-after-successful-generation',
     videoAiLocalFallback: 'browser-engine-retained-not-primary',
+    videoAiStudioExperience: 'simple-production-story-with-technical-details-collapsed',
     studioInformationArchitecture: 'four-primary-destinations-v65',
     studioPrimaryNavigation: ['Parcours clients', 'Production vidéo', 'Diffusion', 'Réglages'],
     studioContextNavigation: 'diffusion-and-settings-secondary-tabs-v65',

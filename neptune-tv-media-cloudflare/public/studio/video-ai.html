@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="/studio/video-ai-v2-fixes.css?v=1">
   <link rel="stylesheet" href="/studio/video-ai-local-v3.css?v=1">
   <link rel="stylesheet" href="/studio/studio-information-architecture-v65.css?v=1">
+  <link rel="stylesheet" href="/studio/video-ai-openai-v1.css?v=1">
 </head>
 <body>
   <div class="video-ai-shell">
@@ -38,8 +39,8 @@
       <section class="video-ai-hero local-hero">
         <div>
           <p class="eyebrow">LA VIDÉO SOURCE RESTE SUR CET ORDINATEUR</p>
-          <h2>Neptune crée localement.<br><span>Vous validez l’exception.</span></h2>
-          <p>Whisper, sélection TOFU/MOFU/BOFU, notation sur 100, montage vertical, sous-titres et trois propositions éditoriales sont exécutés dans Chrome ou Edge. Workers AI intervient seulement en secours gratuit si l’analyse locale manque de matière.</p>
+          <h2>Neptune produit localement.<br><span>OpenAI renforce la sélection.</span></h2>
+          <p>Whisper transcrit localement, puis Neptune détecte les passages candidats. Lorsque la connexion OpenAI est activée, seule la transcription horodatée avec le contexte éditorial et les métriques visuelles est analysée avant le rendu. Le montage vertical, les sous-titres et les fichiers vidéo restent traités dans Chrome ou Edge.</p>
         </div>
         <div class="hero-metrics" aria-label="Résumé de production">
           <div><b id="activeJobsCount">0</b><span>en traitement</span></div>
@@ -49,8 +50,8 @@
       </section>
 
       <section class="local-privacy-banner" aria-label="Confidentialité du traitement">
-        <strong>100 % local pour la source</strong>
-        <span>Aucun envoi R2, aucun Container Cloudflare, aucun abonnement Workers Paid. Seul un short validé traverse le Worker au moment de son envoi volontaire vers Google Drive.</span>
+        <strong>Vidéo source 100 % locale</strong>
+        <span>Aucun fichier vidéo source n’est envoyé à OpenAI, R2 ou un Container. Quand OpenAI est connecté, la transcription horodatée et les métriques utiles sont transmises avec <code>store: false</code>. Seuls les shorts validés traversent ensuite le Worker lors de leur envoi volontaire vers Google Drive.</span>
       </section>
 
       <section class="video-ai-grid">
@@ -100,6 +101,7 @@
   </div>
 
   <div id="toast" class="toast" hidden role="status"></div>
+  <script type="module" src="/studio/video-ai-openai-v1.js?v=1"></script>
   <script type="module" src="/studio/local-engine/neptune-video-local-engine-v1.js?v=1"></script>
   <script type="module" src="/studio/video-ai-local-compat-v3.js?v=1"></script>
   <script type="module" src="/studio/studio-information-architecture-v65.js?v=1"></script>

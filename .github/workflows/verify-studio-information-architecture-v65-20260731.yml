@@ -1,0 +1,99 @@
+name: Verify Studio Information Architecture V65
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-studio-information-architecture-v65-20260731.yml'
+      - 'wrangler.jsonc'
+      - 'neptune-tv-media-cloudflare/src/entry-v15.js'
+      - 'neptune-tv-media-cloudflare/public/studio/clients.html'
+      - 'neptune-tv-media-cloudflare/public/studio/video-ai.html'
+      - 'neptune-tv-media-cloudflare/public/studio/advanced.html'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-information-architecture-v65.css'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-information-architecture-v65.js'
+      - 'neptune-tv-media-cloudflare/scripts/verify-studio-information-architecture-v65.mjs'
+      - 'neptune-tv-media-cloudflare/tests/audit-studio-information-architecture-v65.mjs'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-studio-information-architecture-v65-20260731.yml'
+      - 'wrangler.jsonc'
+      - 'neptune-tv-media-cloudflare/src/entry-v15.js'
+      - 'neptune-tv-media-cloudflare/public/studio/clients.html'
+      - 'neptune-tv-media-cloudflare/public/studio/video-ai.html'
+      - 'neptune-tv-media-cloudflare/public/studio/advanced.html'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-information-architecture-v65.css'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-information-architecture-v65.js'
+      - 'neptune-tv-media-cloudflare/scripts/verify-studio-information-architecture-v65.mjs'
+      - 'neptune-tv-media-cloudflare/tests/audit-studio-information-architecture-v65.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-studio-architecture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Worker dependencies
+        working-directory: neptune-tv-media-cloudflare
+        run: npm install --package-lock=false --ignore-scripts --no-audit --no-fund
+
+      - name: Validate architecture sources
+        working-directory: neptune-tv-media-cloudflare
+        run: |
+          node --check src/entry-v15.js
+          node --check public/studio/studio-information-architecture-v65.js
+          node --check tests/audit-studio-information-architecture-v65.mjs
+          node scripts/verify-studio-information-architecture-v65.mjs
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Start local Cloudflare Worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./neptune-tv-media-cloudflare/node_modules/.bin/wrangler dev --config wrangler.jsonc --local --port 8787 > /tmp/wrangler-v65.log 2>&1 &
+          echo $! > /tmp/wrangler-v65.pid
+          ready=0
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --show-error http://127.0.0.1:8787/studio/clients > /tmp/studio-v65.html; then
+              if grep -Fq '/studio/studio-information-architecture-v65.css?v=1' /tmp/studio-v65.html \
+                && grep -Fq '/studio/studio-information-architecture-v65.js?v=1' /tmp/studio-v65.html; then
+                ready=1
+                break
+              fi
+            fi
+            sleep 2
+          done
+          test "$ready" = 1
+
+      - name: Audit Studio navigation and readability
+        env:
+          STUDIO_BASE_URL: http://127.0.0.1:8787
+          OUTPUT_DIR: test-results/studio-information-architecture-v65
+        run: node neptune-tv-media-cloudflare/tests/audit-studio-information-architecture-v65.mjs
+
+      - name: Upload visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: studio-information-architecture-v65-evidence
+          path: |
+            test-results/studio-information-architecture-v65
+            /tmp/wrangler-v65.log
+          if-no-files-found: warn
+          retention-days: 14

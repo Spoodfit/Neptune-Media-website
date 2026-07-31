@@ -56,6 +56,21 @@ export default {
 async function augmentRelease(response, env) {
   const current = await response.json().catch(() => ({}));
   const openAiConfigured = isOpenAiConfigured(env);
+  const containerBindingPresent = Boolean(env.VIDEO_PROCESSOR);
+  const storageBindingPresent = Boolean(env.MEDIA);
+  const workersAiBindingPresent = Boolean(env.AI);
+  const internalSecretPresent = Boolean(String(
+    env.VIDEO_AI_INTERNAL_SECRET
+      || env.DRIVE_WEBHOOK_SECRET
+      || env.CONVERSION_WEBHOOK_SECRET
+      || '',
+  ).trim());
+  const ready = containerBindingPresent
+    && storageBindingPresent
+    && workersAiBindingPresent
+    && internalSecretPresent
+    && openAiConfigured;
+
   return new Response(JSON.stringify({
     ...current,
     videoAiStudio: RELEASE,
@@ -82,11 +97,13 @@ async function augmentRelease(response, env) {
     videoAiOpenAiTestEndpoint: '/api/admin/video-ai/openai/test',
     videoAiWorkersAiRole: 'fallback-when-openai-is-not-configured-or-unavailable',
     videoAiContainerRequired: true,
-    videoAiContainerBindingPresent: Boolean(env.VIDEO_PROCESSOR),
-    videoAiStorageBindingPresent: Boolean(env.MEDIA),
-    videoAiWorkersAiBindingPresent: Boolean(env.AI),
+    videoAiContainerBindingPresent: containerBindingPresent,
+    videoAiStorageBindingPresent: storageBindingPresent,
+    videoAiWorkersAiBindingPresent: workersAiBindingPresent,
     videoAiInternalSecretRequired: true,
+    videoAiInternalSecretPresent: internalSecretPresent,
     videoAiR2SourceUploadRequired: true,
+    videoAiReady: ready,
     videoAiUpload: 'r2-multipart-16mb-three-way-parallel-retry',
     videoAiBackgroundProcessing: true,
     videoAiSafeToCloseAfterUpload: true,

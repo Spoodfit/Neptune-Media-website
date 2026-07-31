@@ -18,7 +18,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: verify-studio-information-architecture-production-v65
@@ -31,6 +31,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -41,8 +43,74 @@ jobs:
         run: node --check neptune-tv-media-cloudflare/scripts/verify-studio-information-architecture-production-v65.mjs
 
       - name: Verify Studio v65 on production domains
+        id: verify
         env:
           STUDIO_PRODUCTION_BASE_URLS: https://neptune-media-webtv.neptunebusinessclub.workers.dev,https://tv.neptunebusiness.com
           STUDIO_PRODUCTION_ATTEMPTS: '15'
           STUDIO_PRODUCTION_DELAY_MS: '10000'
-        run: node neptune-tv-media-cloudflare/scripts/verify-studio-information-architecture-production-v65.mjs
+        shell: bash
+        run: |
+          set -o pipefail
+          node neptune-tv-media-cloudflare/scripts/verify-studio-information-architecture-production-v65.mjs 2>&1 | tee /tmp/studio-v65-production.log
+
+      - name: Record production verification result
+        if: always()
+        env:
+          VERIFY_OUTCOME: ${{ steps.verify.outcome }}
+          WORKFLOW_RUN_ID: ${{ github.run_id }}
+          SOURCE_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$GITHUB_WORKSPACE"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+          for push_attempt in 1 2 3 4; do
+            git fetch origin main
+            git reset --hard origin/main
+            git clean -fd
+
+            python3 - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          log_path = '/tmp/studio-v65-production.log'
+          try:
+              log = open(log_path, encoding='utf-8', errors='replace').read()
+          except FileNotFoundError:
+              log = 'Verification did not start or produced no log.'
+          outcome = os.environ.get('VERIFY_OUTCOME', 'unknown')
+          report = {
+              'status': 'success' if outcome == 'success' else 'failed',
+              'verifier': 'studio-production-verifier-v65.1',
+              'source_sha': os.environ.get('SOURCE_SHA', ''),
+              'workflow_run_id': os.environ.get('WORKFLOW_RUN_ID', ''),
+              'checked_at': datetime.now(timezone.utc).isoformat(),
+              'production_domains': [
+                  'https://neptune-media-webtv.neptunebusinessclub.workers.dev',
+                  'https://tv.neptunebusiness.com',
+              ],
+              'expected_navigation': ['Parcours clients', 'Production vidéo', 'Diffusion', 'Réglages'],
+              'outcome': outcome,
+              'log_tail': log[-8000:],
+          }
+          with open('studio-v65-production-status.json', 'w', encoding='utf-8') as handle:
+              json.dump(report, handle, ensure_ascii=False, indent=2)
+              handle.write('\n')
+          PY
+
+            git add studio-v65-production-status.json
+            if git diff --cached --quiet; then
+              echo 'Studio v65 production status is already current.'
+              exit 0
+            fi
+            git commit -m 'chore: record Studio v65 production verification [skip ci]'
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+            echo "Main advanced while recording Studio verification; retry ${push_attempt}/4."
+            sleep $((push_attempt * 5))
+          done
+
+          echo 'Unable to record Studio v65 production verification.' >&2
+          exit 1

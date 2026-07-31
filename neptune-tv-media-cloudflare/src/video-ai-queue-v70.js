@@ -92,10 +92,32 @@ export async function reconcileVideoJobsThroughQueue(env, studio) {
   let queued = 0;
   for (const job of result.jobs || []) {
     if (!job.sourceKey) continue;
+    if (await isJobAlive(env, job.id)) continue;
     await enqueueVideoJob(env, job, env.PUBLIC_ORIGIN, 'automatic_recovery');
     queued += 1;
   }
   return queued;
+}
+
+async function isJobAlive(env, jobId) {
+  if (!env.VIDEO_PROCESSOR || !jobId) return false;
+  const instance = getContainer(env.VIDEO_PROCESSOR, videoProcessorPoolId(jobId));
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort('video_alive_timeout'), 2500);
+  try {
+    const response = await instance.fetch(new Request(`http://container/jobs/${encodeURIComponent(jobId)}`, {
+      headers: { Accept: 'application/json' },
+      signal: controller.signal,
+    }));
+    if (!response.ok) return false;
+    const state = await response.json().catch(() => ({}));
+    const heartbeat = Date.parse(state.heartbeatAt || state.updatedAt || '');
+    return ['queued', 'processing'].includes(state.state) && Number.isFinite(heartbeat) && Date.now() - heartbeat < 45_000;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 async function warmPool(env) {
@@ -122,6 +144,7 @@ async function dispatchQueuedJob(env, studio, payload) {
   if (!contextResponse.ok) throw new Error(context.error || `video_ai_job_http_${contextResponse.status}`);
   const job = context.job || {};
   if (['review_ready', 'approved', 'delivered', 'cancelled'].includes(job.status)) return { skipped: true };
+  if (await isJobAlive(env, jobId)) return { skipped: true, alive: true };
   const sourceKey = String(job.sourceKey || payload.sourceKey || '').trim();
   if (!sourceKey.startsWith('video-ai/sources/')) throw new Error('video_source_missing');
 

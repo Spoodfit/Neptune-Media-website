@@ -86,3 +86,20 @@
 
   queueMicrotask(syncRecoveryUi);
 })();
+
+(() => {
+  const cssHref = '/studio/video-ai-live-monitor-v69.css?v=1';
+  const scriptSrc = '/studio/video-ai-live-monitor-v69.js?v=1';
+  if (!document.querySelector(`link[href^="${cssHref.split('?')[0]}"]`)) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = cssHref;
+    document.head.append(link);
+  }
+  if (!document.querySelector(`script[src^="${scriptSrc.split('?')[0]}"]`)) {
+    const script = document.createElement('script');
+    script.src = scriptSrc;
+    script.defer = true;
+    document.body.append(script);
+  }
+})();

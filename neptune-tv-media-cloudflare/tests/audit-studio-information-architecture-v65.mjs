@@ -75,6 +75,7 @@ try {
           const rect = element.getBoundingClientRect();
           return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0' && rect.width > 0 && rect.height > 0;
         };
+        const label = (link) => link.querySelector('strong')?.textContent.trim() || '';
         const box = (selector) => {
           const element = document.querySelector(selector);
           if (!element) return null;
@@ -84,9 +85,9 @@ try {
         const allLinks = [...document.querySelectorAll('.neptune-studio-nav-link')];
         const links = allLinks.filter(visible);
         return {
-          attachedPrimaryTexts: allLinks.map((link) => link.textContent.trim().replace(/\s+/gu, ' ')),
-          primaryTexts: links.map((link) => link.textContent.trim().replace(/\s+/gu, ' ')),
-          activeTexts: links.filter((link) => link.classList.contains('active')).map((link) => link.textContent.trim().replace(/\s+/gu, ' ')),
+          attachedPrimaryTexts: allLinks.map(label),
+          attachedActiveTexts: allLinks.filter((link) => link.classList.contains('active')).map(label),
+          primaryTexts: links.map(label),
           sidebar: box('.neptune-studio-sidebar'),
           topbar: box('.neptune-studio-topbar'),
           nav: box('.neptune-studio-nav'),
@@ -107,11 +108,11 @@ try {
       reports.push({ screen, viewport, metrics, browserErrors });
       await writeFile(path.join(outputDir, 'report-progress.json'), JSON.stringify({ reports }, null, 2));
 
-      assert(metrics.attachedPrimaryTexts.length === 4, `${screen.id}/${viewport.id}: liens attachés incorrects ${JSON.stringify(metrics.attachedPrimaryTexts)} · ${browserErrors.join(' | ')}`);
+      assert(JSON.stringify(metrics.attachedPrimaryTexts) === JSON.stringify(expectedPrimary), `${screen.id}/${viewport.id}: liens attachés incorrects ${JSON.stringify(metrics.attachedPrimaryTexts)} · ${browserErrors.join(' | ')}`);
+      assert(metrics.attachedActiveTexts.length === 1 && metrics.attachedActiveTexts[0] === screen.active, `${screen.id}/${viewport.id}: destination active incorrecte ${JSON.stringify(metrics.attachedActiveTexts)}`);
       if (viewport.width > 860) {
         assert(JSON.stringify(metrics.primaryTexts) === JSON.stringify(expectedPrimary), `${screen.id}/${viewport.id}: navigation principale invisible ou incorrecte ${JSON.stringify(metrics)} · ${browserErrors.join(' | ')}`);
       }
-      assert(metrics.activeTexts.length === 1 && metrics.activeTexts[0] === screen.active, `${screen.id}/${viewport.id}: destination active incorrecte ${JSON.stringify(metrics.activeTexts)}`);
       assert(metrics.oldSidebarTerms.length === 0, `${screen.id}/${viewport.id}: anciens termes visibles ${metrics.oldSidebarTerms.join(', ')}`);
       if (viewport.width > 860) assert(metrics.navFontSize >= 12, `${screen.id}/${viewport.id}: texte de navigation trop petit (${metrics.navFontSize}px)`);
       assert(metrics.horizontalOverflow <= 2, `${screen.id}/${viewport.id}: débordement horizontal global de ${metrics.horizontalOverflow}px`);
@@ -131,7 +132,7 @@ try {
             const style = getComputedStyle(element);
             const box = element.getBoundingClientRect();
             return style.display !== 'none' && style.visibility !== 'hidden' && box.width > 0 && box.height > 0;
-          }).map((element) => element.textContent.trim().replace(/\s+/gu, ' '));
+          }).map((element) => element.querySelector('strong')?.textContent.trim() || '');
           return { left: rect.left, width: rect.width, visibleLinks };
         });
         assert(drawer.left >= -1, `${screen.id}: tiroir mobile fermé après clic`);

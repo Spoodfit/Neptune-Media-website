@@ -6,6 +6,8 @@ export { StudioStore };
 
 const RELEASE = 'neptune-video-local-engine-20260730-v1';
 const DEPLOYMENT_TRIGGER = 'local-engine-free-20260730-r1';
+const STUDIO_IA_CSS = '/studio/studio-information-architecture-v65.css?v=1';
+const STUDIO_IA_JS = '/studio/studio-information-architecture-v65.js?v=1';
 
 export default {
   async fetch(request, env, ctx) {
@@ -18,9 +20,12 @@ export default {
     const localVideo = await handleVideoAiLocalRoute(request, env, ctx, studio);
     if (localVideo) return withHeaders(localVideo, url.pathname);
 
-    const response = await base.fetch(request, env, ctx);
+    let response = await base.fetch(request, env, ctx);
     if (request.method === 'GET' && url.pathname === '/api/public/release' && response.ok) {
       return withHeaders(await augmentRelease(response, env), url.pathname);
+    }
+    if (request.method === 'GET' && response.ok && isStudioWorkspacePath(url.pathname) && (response.headers.get('Content-Type') || '').includes('text/html')) {
+      response = await injectStudioInformationArchitecture(response);
     }
     return withHeaders(response, url.pathname);
   },
@@ -55,6 +60,12 @@ async function augmentRelease(response, env) {
     videoAiR2SourceUploadRequired: false,
     videoAiCrossOriginIsolation: 'scoped-to-studio-video-ai-only',
     videoAiDriveTransport: 'approved-local-blob-streamed-directly-through-worker-to-drive',
+    studioInformationArchitecture: 'four-primary-destinations-v65',
+    studioPrimaryNavigation: ['Parcours clients', 'Production vidéo', 'Diffusion', 'Réglages'],
+    studioContextNavigation: 'diffusion-and-settings-secondary-tabs-v65',
+    studioAdvancedZone: 'removed-from-visible-navigation-v65',
+    studioContextualFunctions: 'content-calendar-and-billing-inside-client-dossiers',
+    studioReadability: 'shared-shell-contrast-spacing-and-responsive-type-v65',
   }), {
     status: response.status,
     headers: {
@@ -64,9 +75,38 @@ async function augmentRelease(response, env) {
   });
 }
 
+async function injectStudioInformationArchitecture(response) {
+  let body = await response.text();
+  const cssPattern = /<link\b[^>]*href=["'][^"']*\/studio\/studio-information-architecture-v65\.css[^"']*["'][^>]*>\s*/giu;
+  const jsPattern = /<script\b[^>]*src=["'][^"']*\/studio\/studio-information-architecture-v65\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu;
+  body = body.replace(cssPattern, '');
+  body = body.replace(jsPattern, '');
+  body = body.replace('</head>', `<link rel="stylesheet" href="${STUDIO_IA_CSS}"></head>`);
+  body = body.replace('</body>', `<script type="module" src="${STUDIO_IA_JS}"></script></body>`);
+  const headers = new Headers(response.headers);
+  headers.delete('Content-Length');
+  headers.set('Cache-Control', 'private, no-store, max-age=0');
+  return new Response(body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
+function isStudioWorkspacePath(pathname) {
+  return pathname === '/studio/clients'
+    || pathname === '/studio/clients/'
+    || pathname === '/studio/clients.html'
+    || pathname === '/studio/video-ai.html'
+    || pathname === '/studio/advanced.html'
+    || pathname === '/studio/advanced'
+    || pathname === '/studio/advanced/';
+}
+
 function withHeaders(response, pathname = '') {
   const headers = new Headers(response.headers);
   headers.set('X-Neptune-Video-AI', RELEASE);
+  headers.set('X-Neptune-Studio-IA', 'four-primary-destinations-v65');
   if (isLocalEngineAsset(pathname)) {
     headers.set('Cross-Origin-Opener-Policy', 'same-origin');
     headers.set('Cross-Origin-Embedder-Policy', 'require-corp');

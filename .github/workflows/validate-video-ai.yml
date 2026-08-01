@@ -72,7 +72,8 @@ jobs:
           grep -Fq 'portReadyTimeoutMS: 180_000' neptune-tv-media-cloudflare/src/video-ai-container-v2.js
           grep -Fq 'instance.dispatchJob(requestPayload)' neptune-tv-media-cloudflare/src/video-ai-queue-v71.js
           grep -Fq 'instance.readJob(String(jobId))' neptune-tv-media-cloudflare/src/video-ai-queue-v71.js
-          grep -Fq 'MAX_DELIVERY_ATTEMPTS = 5' neptune-tv-media-cloudflare/src/video-ai-queue-v71.js
+          grep -Fq 'MAX_DISPATCH_ATTEMPTS = 5' neptune-tv-media-cloudflare/src/video-ai-queue-v71.js
+          grep -Fq "video_processor_attempts_exhausted" neptune-tv-media-cloudflare/src/video-ai-queue-v71.js
           grep -Fq 'message.retry' neptune-tv-media-cloudflare/src/video-ai-queue-v71.js
           grep -Fq 'v71_legacy_recovery' neptune-tv-media-cloudflare/src/video-ai-queue-v71.js
           grep -Fq 'persistProcessorHeartbeat' neptune-tv-media-cloudflare/src/video-ai-routes-v5.js

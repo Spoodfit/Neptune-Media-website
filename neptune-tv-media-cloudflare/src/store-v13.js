@@ -3,6 +3,9 @@ import { json, sanitizeText } from './security.js';
 import { ensurePortalSchema } from './portal-schema.js';
 import { ensureDriveSchema } from './portal-drive.js';
 
+const PROCESSING_STALE_MS = 2 * 60 * 1000;
+const LEGACY_RECOVERY_TIMESTAMP = '1970-01-01T00:00:00.000Z';
+
 export class StudioStore extends LegacyStore {
   async fetch(request) {
     const url = new URL(request.url);
@@ -28,19 +31,24 @@ export class StudioStore extends LegacyStore {
 
   videoAiPending(body) {
     if (body.system !== true) return json({ error: 'forbidden' }, 403);
-    const cutoff = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    const cutoff = new Date(Date.now() - PROCESSING_STALE_MS).toISOString();
     const jobs = this.sql.exec(`
       SELECT j.id,j.status,j.stage,j.progress,j.source_key AS sourceKey,j.source_name AS sourceName,
              j.objective,j.attempts,j.error_code AS errorCode,j.error_detail AS errorDetail,
-             j.updated_at AS updatedAt,o.title AS orderTitle,c.full_name AS clientName,c.company
+             CASE
+               WHEN j.stage='restarting' AND COALESCE(j.error_code,'')='' THEN ?
+               ELSE j.updated_at
+             END AS updatedAt,
+             o.title AS orderTitle,c.full_name AS clientName,c.company
       FROM video_ai_jobs j
       JOIN portal_orders o ON o.id=j.order_id
       JOIN portal_clients c ON c.id=o.client_id
       WHERE (j.status='queued')
+         OR (j.stage='restarting' AND COALESCE(j.error_code,'')='')
          OR (j.status='processing' AND j.updated_at<?)
          OR (j.status='failed' AND j.error_code='video_processor_dispatch_failed')
       ORDER BY j.created_at ASC LIMIT 20
-    `, cutoff).toArray().map((row) => ({
+    `, LEGACY_RECOVERY_TIMESTAMP, cutoff).toArray().map((row) => ({
       ...row,
       progress: Number(row.progress || 0),
       attempts: Number(row.attempts || 0),

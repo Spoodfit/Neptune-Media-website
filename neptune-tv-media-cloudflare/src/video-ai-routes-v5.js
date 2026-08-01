@@ -13,6 +13,7 @@ import {
 
 const RELEASE = 'neptune-video-orchestrator-20260801-v71';
 const MAX_ATTEMPTS = 5;
+const SAFETY_QUEUE_DELAY_SECONDS = 300;
 const HEARTBEAT_STAGES = new Set([
   'starting', 'download', 'probe', 'transcription', 'visual_analysis',
   'selection', 'rendering', 'finalization',
@@ -138,6 +139,19 @@ async function retryAdminJob(request, env, studio, jobId, origin) {
 }
 
 async function startWithQueueFallback(env, studio, job, origin, reason, etag = '') {
+  let durableSafetyQueued = false;
+  if (env.VIDEO_JOBS) {
+    try {
+      await enqueueSafetyDispatch(env, job, origin, reason);
+      durableSafetyQueued = true;
+    } catch (error) {
+      console.error('video_safety_queue_publish_failed', {
+        jobId: job.id,
+        message: safeErrorDetail(error),
+      });
+    }
+  }
+
   try {
     const dispatch = await dispatchVideoJobNow(env, studio, job, origin, reason);
     return json({
@@ -148,6 +162,7 @@ async function startWithQueueFallback(env, studio, job, origin, reason, etag = '
       progress: Math.max(8, Number(dispatch.progress || 8)),
       directDispatchAccepted: true,
       reliableQueueFallback: Boolean(env.VIDEO_JOBS),
+      durableSafetyQueued,
       etag,
     });
   } catch (error) {
@@ -171,7 +186,22 @@ async function startWithQueueFallback(env, studio, job, origin, reason, etag = '
       });
       return json({ error: 'video_processor_unavailable', detail }, 503);
     }
-    await enqueueVideoJob(env, job, origin, `${reason}_fallback`);
+
+    try {
+      await enqueueVideoJob(env, job, origin, `${reason}_fallback`);
+    } catch (queueError) {
+      const queueDetail = `${detail} | queue: ${safeErrorDetail(queueError)}`.slice(0, 1200);
+      await updateJob(studio, {
+        jobId: job.id,
+        status: 'failed',
+        stage: 'startup_failed',
+        progress: 5,
+        errorCode: 'video_job_queue_publish_failed',
+        errorDetail: queueDetail,
+      });
+      return json({ error: 'video_job_queue_publish_failed', detail: queueDetail }, 503);
+    }
+
     return json({
       ok: true,
       jobId: job.id,
@@ -180,10 +210,27 @@ async function startWithQueueFallback(env, studio, job, origin, reason, etag = '
       progress: 6,
       directDispatchAccepted: false,
       reliableQueueFallback: true,
+      durableSafetyQueued,
       automaticRecovery: true,
       etag,
     }, 202);
   }
+}
+
+async function enqueueSafetyDispatch(env, job, origin, reason) {
+  const jobId = String(job?.id || job?.jobId || '').trim();
+  const sourceKey = String(job?.sourceKey || '').trim();
+  if (!jobId || !validSourceKey(sourceKey)) throw new Error('video_safety_queue_invalid');
+  await env.VIDEO_JOBS.send({
+    type: 'process',
+    release: RELEASE,
+    jobId,
+    sourceKey,
+    sourceName: String(job?.sourceName || 'source.mp4').slice(0, 240),
+    origin: String(origin || env.PUBLIC_ORIGIN || 'https://tv.neptunebusiness.com'),
+    reason: `${String(reason || 'production').slice(0, 65)}_safety`,
+    queuedAt: new Date().toISOString(),
+  }, { delaySeconds: SAFETY_QUEUE_DELAY_SECONDS });
 }
 
 async function persistProcessorHeartbeat(request, env, studio, jobId) {

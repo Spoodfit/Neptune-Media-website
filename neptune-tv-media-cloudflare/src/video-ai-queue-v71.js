@@ -6,6 +6,12 @@ const MAX_DISPATCH_ATTEMPTS = 5;
 const MAX_QUEUE_DELIVERY_ATTEMPTS = 5;
 const QUEUED_RECOVERY_AFTER_MS = 4 * 60 * 1000;
 const RELEASE = 'neptune-video-orchestrator-20260801-v71';
+const STARTUP_FAILURE_CODES = new Set([
+  'video_processor_retrying',
+  'video_processor_startup_failed',
+  'video_processor_dispatch_failed',
+  'video_job_queue_publish_failed',
+]);
 
 export function videoProcessorPoolId(jobId) {
   const value = String(jobId || 'neptune-video');
@@ -152,7 +158,12 @@ export async function dispatchVideoJobNow(env, studio, rawJob, origin, reason = 
   const context = await contextResponse.json().catch(() => ({}));
   if (!contextResponse.ok) throw new Error(context.error || `video_ai_job_http_${contextResponse.status}`);
   const job = context.job || {};
+  const dispatchReason = String(reason || 'direct');
+  const safetyDispatch = dispatchReason.endsWith('_safety');
   if (['review_ready', 'approved', 'delivered', 'cancelled'].includes(job.status)) return { skipped: true, terminal: true };
+  if (safetyDispatch && job.status === 'failed' && !STARTUP_FAILURE_CODES.has(String(job.errorCode || ''))) {
+    return { skipped: true, processingFailure: true };
+  }
   if (await isJobAlive(env, jobId)) return { skipped: true, alive: true };
 
   const attempts = Number(job.attempts || 0);
@@ -202,7 +213,7 @@ export async function dispatchVideoJobNow(env, studio, rawJob, origin, reason = 
     errorCode: '',
     errorDetail: '',
   });
-  return { ok: true, jobId, poolId, reason, ...accepted };
+  return { ok: true, jobId, poolId, reason: dispatchReason, ...accepted };
 }
 
 export async function readProcessorJobState(env, jobId) {

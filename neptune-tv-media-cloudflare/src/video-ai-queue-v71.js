@@ -2,7 +2,8 @@ import { getContainer } from '@cloudflare/containers';
 import { signVideoAiUrl } from './video-ai-security-v1.js';
 
 const POOL_SIZE = 2;
-const MAX_DELIVERY_ATTEMPTS = 5;
+const MAX_DISPATCH_ATTEMPTS = 5;
+const MAX_QUEUE_DELIVERY_ATTEMPTS = 5;
 const QUEUED_RECOVERY_AFTER_MS = 4 * 60 * 1000;
 const RELEASE = 'neptune-video-orchestrator-20260801-v71';
 
@@ -65,24 +66,25 @@ export async function consumeVideoQueue(batch, env) {
       const deliveryAttempt = Number(message.attempts || 1);
       const jobId = String(payload.jobId || '').trim();
       const detail = dispatchErrorDetail(error);
+      const terminal = deliveryAttempt >= MAX_QUEUE_DELIVERY_ATTEMPTS
+        || detail.includes('video_processor_attempts_exhausted');
       console.error('video_queue_consumer_failed', {
         jobId,
         deliveryAttempt,
+        terminal,
         ...safeError(error),
       });
       if (jobId) {
         await updateJob(studio, {
           jobId,
-          status: deliveryAttempt >= MAX_DELIVERY_ATTEMPTS ? 'failed' : 'processing',
-          stage: deliveryAttempt >= MAX_DELIVERY_ATTEMPTS ? 'startup_failed' : 'restarting',
-          progress: deliveryAttempt >= MAX_DELIVERY_ATTEMPTS ? 5 : 6,
-          errorCode: deliveryAttempt >= MAX_DELIVERY_ATTEMPTS
-            ? 'video_processor_startup_failed'
-            : 'video_processor_retrying',
+          status: terminal ? 'failed' : 'processing',
+          stage: terminal ? 'startup_failed' : 'restarting',
+          progress: terminal ? 5 : 6,
+          errorCode: terminal ? 'video_processor_startup_failed' : 'video_processor_retrying',
           errorDetail: detail,
         }).catch(() => {});
       }
-      if (deliveryAttempt >= MAX_DELIVERY_ATTEMPTS) message.ack();
+      if (terminal) message.ack();
       else message.retry({ delaySeconds: Math.min(75, 10 * deliveryAttempt) });
     }
   }
@@ -103,7 +105,7 @@ export async function reconcileVideoJobsThroughQueue(env, studio) {
 
     const attempts = Number(job.attempts || 0);
     const isLegacyLoop = job.stage === 'restarting' && !job.errorCode;
-    if (attempts >= MAX_DELIVERY_ATTEMPTS && !isLegacyLoop) {
+    if (attempts >= MAX_DISPATCH_ATTEMPTS && !isLegacyLoop) {
       await updateJob(studio, {
         jobId: job.id,
         status: 'failed',
@@ -123,6 +125,17 @@ export async function reconcileVideoJobsThroughQueue(env, studio) {
         const resetResult = await resetResponse.json().catch(() => ({}));
         throw new Error(resetResult.error || `video_ai_job_reset_http_${resetResponse.status}`);
       }
+    } else {
+      await updateJob(studio, {
+        jobId: job.id,
+        status: 'queued',
+        stage: 'queued',
+        progress: 5,
+        errorCode: attempts > 0 ? 'video_processor_retrying' : '',
+        errorDetail: attempts > 0
+          ? (job.errorDetail || 'Reprise planifiée après absence de signal du moteur vidéo.')
+          : '',
+      });
     }
     await enqueueVideoJob(env, job, env.PUBLIC_ORIGIN, isLegacyLoop ? 'v71_legacy_recovery' : 'scheduled_recovery');
     queued += 1;
@@ -142,6 +155,8 @@ export async function dispatchVideoJobNow(env, studio, rawJob, origin, reason = 
   if (['review_ready', 'approved', 'delivered', 'cancelled'].includes(job.status)) return { skipped: true, terminal: true };
   if (await isJobAlive(env, jobId)) return { skipped: true, alive: true };
 
+  const attempts = Number(job.attempts || 0);
+  if (attempts >= MAX_DISPATCH_ATTEMPTS) throw new Error('video_processor_attempts_exhausted');
   const sourceKey = String(job.sourceKey || rawJob.sourceKey || '').trim();
   if (!sourceKey.startsWith('video-ai/sources/')) throw new Error('video_source_missing');
   await updateJob(studio, {

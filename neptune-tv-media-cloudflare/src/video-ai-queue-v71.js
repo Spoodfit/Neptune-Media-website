@@ -115,15 +115,14 @@ export async function reconcileVideoJobsThroughQueue(env, studio) {
       continue;
     }
     if (isLegacyLoop) {
-      await updateJob(studio, {
+      const resetResponse = await callStore(studio, '/portal/video-ai-job-reset', {
+        system: true,
         jobId: job.id,
-        status: 'queued',
-        stage: 'queued',
-        progress: 5,
-        errorCode: '',
-        errorDetail: '',
-        resetAttempts: true,
       });
+      if (!resetResponse.ok) {
+        const resetResult = await resetResponse.json().catch(() => ({}));
+        throw new Error(resetResult.error || `video_ai_job_reset_http_${resetResponse.status}`);
+      }
     }
     await enqueueVideoJob(env, job, env.PUBLIC_ORIGIN, isLegacyLoop ? 'v71_legacy_recovery' : 'scheduled_recovery');
     queued += 1;

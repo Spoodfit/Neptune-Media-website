@@ -43,12 +43,15 @@ expect(routes.includes("'/portal/video-ai-job-reset'"), 'remise à zéro contrô
 expect(!routes.includes('recoverStuckStartup'), 'le GET de statut déclenche encore une reprise');
 expect(!routes.includes('STUCK_STARTUP_MS'), 'le watchdog par polling est encore actif');
 
-expect(queue.includes('MAX_DELIVERY_ATTEMPTS = 5'), 'limite de cinq tentatives absente');
-expect(queue.includes("errorCode: deliveryAttempt >= MAX_DELIVERY_ATTEMPTS"), 'erreur finale non persistée');
+expect(queue.includes('MAX_DISPATCH_ATTEMPTS = 5'), 'limite de cinq tentatives réelles absente');
+expect(queue.includes("detail.includes('video_processor_attempts_exhausted')"), 'épuisement des tentatives non terminal');
+expect(queue.includes("throw new Error('video_processor_attempts_exhausted')"), 'le dispatch peut dépasser cinq essais');
 expect(queue.includes('message.retry'), 'retry Queue absent');
 expect(queue.includes('instance.dispatchJob(requestPayload)'), 'dispatch RPC explicite absent');
 expect(queue.includes('instance.readJob(String(jobId))'), 'lecture RPC sans démarrage absent');
 expect(queue.includes('v71_legacy_recovery'), 'migration automatique de la boucle v70 absente');
+expect(queue.includes("'/portal/video-ai-job-reset'"), 'la boucle v70 n’est pas réellement remise à zéro');
+expect(queue.includes('QUEUED_RECOVERY_AFTER_MS'), 'fenêtre anti-duplication de récupération absente');
 expect(!queue.includes('instance.fetch(new Request(`http://container/jobs/'), 'la lecture de statut peut encore démarrer le Container');
 
 expect(container.includes('async dispatchJob(payload)'), 'RPC dispatchJob absent du Container');
@@ -82,4 +85,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Orchestrateur vidéo Neptune v71 validé : preuve d’acceptation, Queue de secours, cinq tentatives, heartbeat persistant, diagnostics conservés et polling sans effet de bord.');
+console.log('Orchestrateur vidéo Neptune v71 validé : preuve d’acceptation, Queue de secours, cinq tentatives réelles, heartbeat persistant, diagnostics conservés et polling sans effet de bord.');

@@ -12,6 +12,7 @@ const css = await read('../public/studio/video-ai-engine-v73.css');
 const vite = await read('../local-video-engine/vite.config.js');
 const built = await read('../public/studio/local-engine/neptune-video-local-engine-v1.js');
 const engine = await read('../../neptune-video-engine/app.py');
+const runtime = await read('../../neptune-video-engine/runtime.py');
 const dockerfile = await read('../../neptune-video-engine/Dockerfile');
 const compose = await read('../../neptune-video-engine/docker-compose.yml');
 const installer = await read('../public/studio/install-neptune-video-engine.ps1');
@@ -40,7 +41,12 @@ expect(html.includes('/studio/install-neptune-video-engine.ps1'), 'l’installat
 expect(bridge.includes('NeptuneVideoEngineBridge'), 'le bridge global est absent');
 expect(bridge.includes('/v1/jobs'), 'le bridge ne crée pas de jobs persistants');
 expect(bridge.includes('localStorage.setItem(JOBS_KEY'), 'le lien entre jobs Studio et moteur n’est pas persisté');
+expect(bridge.includes('xhr.upload.onprogress'), 'la progression de copie réelle est absente');
+expect(bridge.includes('targetAddressSpace'), 'la compatibilité réseau local moderne est absente');
+expect(bridge.includes('engineLivePreview'), 'l’aperçu réel du moteur est absent');
+expect(bridge.includes('bridge.preview'), 'la récupération authentifiée de l’aperçu est absente');
 expect(css.includes('.engine-setup'), 'le panneau de connexion n’est pas stylé');
+expect(css.includes('.engine-live-preview'), 'l’aperçu réel n’est pas stylé');
 
 for (const marker of [
   'processFileWithPreferredEngine',
@@ -66,7 +72,14 @@ for (const marker of [
   'opencv-smart-crop',
   '/v1/jobs/{job_id}/clips/{clip_id}',
 ]) expect(engine.includes(marker), `fonction moteur absente: ${marker}`);
+for (const marker of [
+  'Access-Control-Allow-Private-Network',
+  'cropCenterX',
+  'select_candidates_with_crop',
+  'render_clip_with_smart_crop',
+]) expect(runtime.includes(marker), `durcissement moteur absent: ${marker}`);
 expect(dockerfile.includes('HEALTHCHECK'), 'le Container local n’a pas de healthcheck');
+expect(dockerfile.includes('runtime:app'), 'le runtime durci n’est pas démarré');
 expect(compose.includes('restart: unless-stopped'), 'le service local ne redémarre pas automatiquement');
 expect(compose.includes('neptune_video_data'), 'le volume persistant est absent');
 expect(installer.includes('docker compose up -d --build'), 'l’installateur ne démarre pas le moteur');
@@ -77,4 +90,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Neptune Video Engine v73 validé : service local persistant, Studio connecté, reprise hors onglet, OpenAI/Ollama/règles, FFmpeg/Whisper/OpenCV et fallback navigateur.');
+console.log('Neptune Video Engine v73 validé : service local persistant, progression et aperçu réels, recadrage visage, Studio connecté, reprise hors onglet, OpenAI/Ollama/règles, FFmpeg/Whisper/OpenCV et fallback navigateur.');

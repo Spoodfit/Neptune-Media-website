@@ -1,9 +1,10 @@
-name: Validate Neptune Video Local Engine
+name: Validate Neptune Video Engine V73
 
 on:
   pull_request:
     branches: [main]
     paths:
+      - 'neptune-video-engine/**'
       - 'neptune-tv-media-cloudflare/src/**'
       - 'neptune-tv-media-cloudflare/public/studio/**'
       - 'neptune-tv-media-cloudflare/local-video-engine/**'
@@ -21,7 +22,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Checkout merge candidate
         uses: actions/checkout@v4
@@ -32,41 +33,66 @@ jobs:
           node-version: '22'
           registry-url: https://registry.npmjs.org
 
-      - name: Install Worker and local engine dependencies
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate Python service syntax
+        run: python -m py_compile neptune-video-engine/app.py
+
+      - name: Install Worker and browser fallback dependencies
         run: npm install --package-lock=false --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org
 
       - name: Build and validate application
         run: npm run check
 
-      - name: Confirm local browser video architecture
+      - name: Confirm permanent local service architecture
         shell: bash
         run: |
           set -euo pipefail
           ! grep -Fq '"containers"' wrangler.jsonc
           ! grep -Fq '"VIDEO_PROCESSOR"' wrangler.jsonc
           ! grep -Fq '"VIDEO_JOBS"' wrangler.jsonc
-          ! grep -Fq '"containers"' neptune-tv-media-cloudflare/wrangler.jsonc
-          ! grep -Fq '"VIDEO_PROCESSOR"' neptune-tv-media-cloudflare/wrangler.jsonc
-          ! grep -Fq '"VIDEO_JOBS"' neptune-tv-media-cloudflare/wrangler.jsonc
-          grep -Fq '"tag": "v5"' wrangler.jsonc
-          grep -Fq '"deleted_classes": ["VideoProcessorV2"]' wrangler.jsonc
-          grep -Fq "from './video-ai-local-routes-v1.js'" neptune-tv-media-cloudflare/src/entry-v16.js
-          grep -Fq "videoAiEngineMode: 'browser-local'" neptune-tv-media-cloudflare/src/entry-v16.js
-          grep -Fq "videoAiDispatchMode: 'no-container-no-queue'" neptune-tv-media-cloudflare/src/entry-v16.js
-          grep -Fq 'videoAiContainerRequired: false' neptune-tv-media-cloudflare/src/entry-v16.js
-          grep -Fq 'portal/video-ai-retire-cloud-jobs' neptune-tv-media-cloudflare/src/entry-v16.js
-          grep -Fq 'cloud_engine_retired_use_local' neptune-tv-media-cloudflare/src/store-v13.js
-          grep -Fq 'NEPTUNE VIDEO ENGINE LOCAL' neptune-tv-media-cloudflare/public/studio/video-ai.html
-          grep -Fq '/studio/local-engine/neptune-video-local-engine-v1.js?v=72' neptune-tv-media-cloudflare/public/studio/video-ai.html
-          grep -Fq 'openAiSemanticAssistPlugin' neptune-tv-media-cloudflare/local-video-engine/vite.config.js
-          grep -Fq 'startLocalProduction' neptune-tv-media-cloudflare/local-video-engine/src/main.js
-          grep -Fq 'processFileLocally' neptune-tv-media-cloudflare/local-video-engine/src/main.js
-          grep -Fq 'renderCandidate' neptune-tv-media-cloudflare/local-video-engine/src/main.js
-          grep -Fq 'workersAiAssistAvailable' neptune-tv-media-cloudflare/public/studio/local-engine/neptune-video-local-engine-v1.js
-          if grep -Eq 'video-ai-(cloud-resilience-v67|dispatch-recovery-v68|story-v7[01])\.js' neptune-tv-media-cloudflare/public/studio/video-ai.html; then
-            echo 'Un ancien runtime cloud ou de fausse relance est encore chargé.' >&2
-            exit 1
-          fi
+          ! grep -Fq '@cloudflare/containers' package.json
+          ! grep -Fq '@cloudflare/containers' neptune-tv-media-cloudflare/package.json
+          grep -Fq 'neptune-video-engine-20260802-v73' neptune-video-engine/app.py
+          grep -Fq 'CREATE TABLE IF NOT EXISTS jobs' neptune-video-engine/app.py
+          grep -Fq 'WhisperModel' neptune-video-engine/app.py
+          grep -Fq 'openai_candidates' neptune-video-engine/app.py
+          grep -Fq 'ollama_candidates' neptune-video-engine/app.py
+          grep -Fq 'render_clip' neptune-video-engine/app.py
+          grep -Fq 'restart: unless-stopped' neptune-video-engine/docker-compose.yml
+          grep -Fq 'neptune_video_data' neptune-video-engine/docker-compose.yml
+          grep -Fq 'NEPTUNE VIDEO ENGINE' neptune-tv-media-cloudflare/public/studio/video-ai.html
+          grep -Fq '/studio/video-ai-engine-v73.js?v=1' neptune-tv-media-cloudflare/public/studio/video-ai.html
+          grep -Fq '/studio/local-engine/neptune-video-local-engine-v1.js?v=73' neptune-tv-media-cloudflare/public/studio/video-ai.html
+          grep -Fq 'NeptuneVideoEngineBridge' neptune-tv-media-cloudflare/public/studio/video-ai-engine-v73.js
+          grep -Fq 'processFileWithPreferredEngine' neptune-tv-media-cloudflare/public/studio/local-engine/neptune-video-local-engine-v1.js
+          grep -Fq 'resumePermanentEngineJobs' neptune-tv-media-cloudflare/public/studio/local-engine/neptune-video-local-engine-v1.js
+          grep -Fq 'docker compose up -d --build' neptune-tv-media-cloudflare/public/studio/install-neptune-video-engine.ps1
 
-      - name: Validate deployable free-plan Worker bundle
+      - name: Build permanent Neptune engine image
+        run: docker build -t neptune-video-engine:ci neptune-video-engine
+
+      - name: Start engine and verify health
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --name neptune-video-engine-ci -p 127.0.0.1:4318:4318 \
+            -e NEPTUNE_ENGINE_TOKEN=ci-token \
+            -e NEPTUNE_ENGINE_WORKERS=1 \
+            neptune-video-engine:ci
+          trap 'docker logs neptune-video-engine-ci || true; docker rm -f neptune-video-engine-ci || true' EXIT
+          for attempt in $(seq 1 60); do
+            if curl -fsS -H 'X-Neptune-Engine-Token: ci-token' http://127.0.0.1:4318/health > /tmp/engine-health.json; then
+              break
+            fi
+            sleep 2
+          done
+          cat /tmp/engine-health.json
+          grep -Fq '"ok":true' /tmp/engine-health.json
+          grep -Fq '"mode":"persistent-local-service"' /tmp/engine-health.json
+
+      - name: Validate deployable Cloudflare Studio bundle
         run: npx wrangler deploy --config wrangler.jsonc --dry-run --outdir .wrangler-dry-run

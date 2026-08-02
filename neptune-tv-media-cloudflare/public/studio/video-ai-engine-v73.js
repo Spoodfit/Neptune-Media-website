@@ -19,11 +19,24 @@ const bridge = {
       return new Request(url, options);
     }
   },
-  async health() {
+  async probe(timeoutMs = 8000) {
+    const request = this.request(`${this.endpoint()}/health`, {
+      headers: { Accept: 'application/json' },
+      cache: 'no-store',
+      signal: timeoutSignal(timeoutMs),
+    });
+    const response = await fetch(request);
+    if (![200, 401].includes(response.status)) throw new Error(`engine_probe_${response.status}`);
+    return {
+      status: response.status,
+      data: response.status === 200 ? await response.json().catch(() => ({})) : null,
+    };
+  },
+  async health(timeoutMs = 10000) {
     const request = this.request(`${this.endpoint()}/health`, {
       headers: this.headers({ Accept: 'application/json' }),
       cache: 'no-store',
-      signal: AbortSignal.timeout(3500),
+      signal: timeoutSignal(timeoutMs),
     });
     const response = await fetch(request);
     if (!response.ok) throw new Error(`engine_health_${response.status}`);
@@ -97,7 +110,6 @@ const bridge = {
     if (endpoint) localStorage.setItem(ENDPOINT_KEY, String(endpoint).trim().replace(/\/$/u, ''));
     const normalizedToken = String(token || '').trim();
     if (normalizedToken) localStorage.setItem(TOKEN_KEY, normalizedToken);
-    else localStorage.removeItem(TOKEN_KEY);
   },
   remember(cloudJobId, engineJobId) {
     const jobs = this.pending();
@@ -136,6 +148,16 @@ const bridge = {
 globalThis.NeptuneVideoEngineBridge = bridge;
 
 const $ = (selector) => document.querySelector(selector);
+
+function timeoutSignal(milliseconds) {
+  if (typeof AbortSignal?.timeout === 'function') return AbortSignal.timeout(milliseconds);
+  const controller = new AbortController();
+  const timer = setTimeout(() => {
+    controller.abort(new DOMException('signal timed out', 'TimeoutError'));
+  }, milliseconds);
+  controller.signal.addEventListener('abort', () => clearTimeout(timer), { once: true });
+  return controller.signal;
+}
 
 function ensurePreviewSurface() {
   if ($('#engineLivePreview')) return;
@@ -215,17 +237,23 @@ async function requestLoopbackPermission() {
   }
 }
 
-async function refreshConnection() {
+async function refreshConnection({ interactive = false } = {}) {
   const status = $('#engineConnectionStatus');
   const detail = $('#engineConnectionDetail');
   const connect = $('#engineConnectButton');
   if (!status || !detail) return;
   status.dataset.state = 'checking';
-  status.textContent = 'Vérification…';
-  detail.textContent = 'Recherche du moteur Neptune sur cet ordinateur.';
+  status.textContent = interactive ? 'Autorisation du moteur…' : 'Vérification…';
+  detail.textContent = interactive
+    ? 'Chrome peut demander l’autorisation d’accéder au réseau local. Validez-la pour continuer.'
+    : 'Recherche du moteur Neptune sur cet ordinateur.';
   try {
     await requestLoopbackPermission();
-    const health = await bridge.health();
+    const probe = await bridge.probe(interactive ? 30000 : 7000);
+    if (probe.status === 401 && !bridge.token()) throw new Error('engine_token_missing');
+    const health = probe.status === 200 && probe.data?.ok
+      ? probe.data
+      : await bridge.health(interactive ? 12000 : 8000);
     status.dataset.state = 'connected';
     status.textContent = 'Moteur Neptune connecté';
     detail.textContent = health.openAiConfigured
@@ -235,23 +263,30 @@ async function refreshConnection() {
     document.documentElement.dataset.neptuneEngine = 'connected';
   } catch (error) {
     const message = String(error?.message || error || 'engine_connection_failed');
+    const timedOut = error?.name === 'TimeoutError' || message.includes('signal timed out') || message.includes('Timeout') || message.includes('timeout');
     status.dataset.state = 'offline';
-    status.textContent = 'Connexion au moteur impossible';
-    if (message === 'local_network_permission_denied') {
+    status.textContent = message === 'engine_token_missing'
+      ? 'Moteur détecté · code requis'
+      : 'Connexion au moteur impossible';
+    if (message === 'engine_token_missing') {
+      detail.textContent = 'Le moteur répond correctement. Collez le code complet du fichier pairing.txt, puis cliquez sur Connecter.';
+    } else if (message === 'local_network_permission_denied') {
       detail.textContent = 'Chrome ou Edge bloque l’accès au réseau local. Autorisez « Réseau local » pour ce site, puis cliquez à nouveau sur Connecter.';
     } else if (message === 'engine_health_401') {
       detail.textContent = 'Le code de connexion est incorrect. Recopiez entièrement le contenu du fichier pairing.txt.';
     } else if (message === 'engine_health_403') {
       detail.textContent = 'Le moteur refuse cette origine. Relancez l’installateur Neptune pour actualiser sa configuration.';
-    } else if (message.includes('Timeout') || message.includes('timeout')) {
-      detail.textContent = 'Le moteur ne répond pas. Vérifiez que Docker Desktop est ouvert et que Neptune Video Engine est démarré.';
+    } else if (timedOut) {
+      detail.textContent = interactive
+        ? 'L’autorisation réseau locale n’a pas été confirmée à temps. Autorisez « Réseau local » dans les permissions du site, puis recliquez sur Connecter.'
+        : 'Accès local non confirmé. Cliquez sur Connecter pour ouvrir la demande d’autorisation du navigateur.';
     } else if (message.includes('Failed to fetch') || message.includes('NetworkError') || message === 'engine_connection_failed') {
-      detail.textContent = 'Le navigateur n’atteint pas le moteur local. Vérifiez Docker Desktop et autorisez l’accès « Réseau local » dans les permissions du site.';
+      detail.textContent = 'Le navigateur n’atteint pas le moteur local. Autorisez « Réseau local » dans les permissions du site, puis cliquez sur Connecter.';
     } else {
-      detail.textContent = `Connexion refusée : ${message}. Vérifiez Docker Desktop, l’adresse et le code de connexion.`;
+      detail.textContent = `Connexion refusée : ${message}. Vérifiez l’adresse et le code de connexion.`;
     }
     document.documentElement.dataset.neptuneEngine = 'offline';
-    console.warn('neptune_engine_connection_failed', { message, endpoint: bridge.endpoint() });
+    console.warn('neptune_engine_connection_failed', { message, endpoint: bridge.endpoint(), interactive });
   }
 }
 
@@ -268,7 +303,7 @@ function bindConnectionPanel() {
     button.textContent = 'Connexion…';
     bridge.configure({ endpoint: endpoint?.value || DEFAULT_ENDPOINT, token: token?.value || '' });
     try {
-      await refreshConnection();
+      await refreshConnection({ interactive: true });
     } finally {
       button.disabled = false;
       button.textContent = document.documentElement.dataset.neptuneEngine === 'connected' ? 'Reconnecter' : previousLabel;

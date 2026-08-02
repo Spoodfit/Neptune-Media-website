@@ -113,15 +113,19 @@ jobs:
           NODE
               then
                 if grep -Fq 'NEPTUNE VIDEO ENGINE' "/tmp/neptune-video-v73/$slug-video-ai.html" \
-                  && grep -Fq 'Moteur Neptune connecté' "/tmp/neptune-video-v73/$slug-video-ai.html" \
+                  && grep -Fq 'id="engineConnectionStatus"' "/tmp/neptune-video-v73/$slug-video-ai.html" \
                   && grep -Fq 'Installer sur Windows' "/tmp/neptune-video-v73/$slug-video-ai.html" \
                   && grep -Fq '/studio/video-ai-engine-v73.js?v=1' "/tmp/neptune-video-v73/$slug-video-ai.html" \
                   && grep -Fq '/studio/local-engine/neptune-video-local-engine-v1.js?v=73' "/tmp/neptune-video-v73/$slug-video-ai.html" \
                   && grep -Fq 'NeptuneVideoEngineBridge' "/tmp/neptune-video-v73/$slug-bridge.js" \
+                  && grep -Fq 'Moteur Neptune connecté' "/tmp/neptune-video-v73/$slug-bridge.js" \
+                  && grep -Fq 'xhr.upload.onprogress' "/tmp/neptune-video-v73/$slug-bridge.js" \
+                  && grep -Fq 'engineLivePreview' "/tmp/neptune-video-v73/$slug-bridge.js" \
                   && grep -Fq 'localStorage.setItem(JOBS_KEY' "/tmp/neptune-video-v73/$slug-bridge.js" \
                   && grep -Fq '.engine-setup' "/tmp/neptune-video-v73/$slug-engine.css" \
-                  && grep -Fq 'processFileWithPreferredEngine' "/tmp/neptune-video-v73/$slug-fallback.js" \
-                  && grep -Fq 'resumePermanentEngineJobs' "/tmp/neptune-video-v73/$slug-fallback.js" \
+                  && grep -Fq '.engine-live-preview' "/tmp/neptune-video-v73/$slug-engine.css" \
+                  && grep -Fq 'neptune-video-engine-bridge-20260802-v73' "/tmp/neptune-video-v73/$slug-fallback.js" \
+                  && grep -Fq 'permanent_engine_processing' "/tmp/neptune-video-v73/$slug-fallback.js" \
                   && grep -Fq 'docker compose up -d --build' "/tmp/neptune-video-v73/$slug-installer.ps1" \
                   && grep -Fqi "x-neptune-video-ai: $VIDEO_AI_RELEASE" "/tmp/neptune-video-v73/$slug-headers.txt" \
                   && grep -Fqi 'cross-origin-opener-policy: same-origin' "/tmp/neptune-video-v73/$slug-headers.txt" \

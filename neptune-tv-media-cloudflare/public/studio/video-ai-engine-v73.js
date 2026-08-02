@@ -94,8 +94,10 @@ const bridge = {
     return response.blob();
   },
   configure({ endpoint, token }) {
-    if (endpoint) localStorage.setItem(ENDPOINT_KEY, String(endpoint).replace(/\/$/u, ''));
-    if (token) localStorage.setItem(TOKEN_KEY, String(token).trim());
+    if (endpoint) localStorage.setItem(ENDPOINT_KEY, String(endpoint).trim().replace(/\/$/u, ''));
+    const normalizedToken = String(token || '').trim();
+    if (normalizedToken) localStorage.setItem(TOKEN_KEY, normalizedToken);
+    else localStorage.removeItem(TOKEN_KEY);
   },
   remember(cloudJobId, engineJobId) {
     const jobs = this.pending();
@@ -232,12 +234,24 @@ async function refreshConnection() {
     if (connect) connect.textContent = 'Reconnecter';
     document.documentElement.dataset.neptuneEngine = 'connected';
   } catch (error) {
+    const message = String(error?.message || error || 'engine_connection_failed');
     status.dataset.state = 'offline';
-    status.textContent = 'Moteur permanent non connecté';
-    detail.textContent = error?.message === 'local_network_permission_denied'
-      ? 'Chrome ou Edge bloque l’accès local. Autorisez « Réseau local » dans les permissions du site puis reconnectez.'
-      : 'Le Studio utilisera le moteur navigateur de secours. Installez ou reconnectez le moteur pour fermer l’onglet après l’import.';
+    status.textContent = 'Connexion au moteur impossible';
+    if (message === 'local_network_permission_denied') {
+      detail.textContent = 'Chrome ou Edge bloque l’accès au réseau local. Autorisez « Réseau local » pour ce site, puis cliquez à nouveau sur Connecter.';
+    } else if (message === 'engine_health_401') {
+      detail.textContent = 'Le code de connexion est incorrect. Recopiez entièrement le contenu du fichier pairing.txt.';
+    } else if (message === 'engine_health_403') {
+      detail.textContent = 'Le moteur refuse cette origine. Relancez l’installateur Neptune pour actualiser sa configuration.';
+    } else if (message.includes('Timeout') || message.includes('timeout')) {
+      detail.textContent = 'Le moteur ne répond pas. Vérifiez que Docker Desktop est ouvert et que Neptune Video Engine est démarré.';
+    } else if (message.includes('Failed to fetch') || message.includes('NetworkError') || message === 'engine_connection_failed') {
+      detail.textContent = 'Le navigateur n’atteint pas le moteur local. Vérifiez Docker Desktop et autorisez l’accès « Réseau local » dans les permissions du site.';
+    } else {
+      detail.textContent = `Connexion refusée : ${message}. Vérifiez Docker Desktop, l’adresse et le code de connexion.`;
+    }
     document.documentElement.dataset.neptuneEngine = 'offline';
+    console.warn('neptune_engine_connection_failed', { message, endpoint: bridge.endpoint() });
   }
 }
 
@@ -249,8 +263,16 @@ function bindConnectionPanel() {
   if (endpoint) endpoint.value = bridge.endpoint();
   if (token) token.value = bridge.token();
   button?.addEventListener('click', async () => {
+    const previousLabel = button.textContent || 'Connecter';
+    button.disabled = true;
+    button.textContent = 'Connexion…';
     bridge.configure({ endpoint: endpoint?.value || DEFAULT_ENDPOINT, token: token?.value || '' });
-    await refreshConnection();
+    try {
+      await refreshConnection();
+    } finally {
+      button.disabled = false;
+      button.textContent = document.documentElement.dataset.neptuneEngine === 'connected' ? 'Reconnecter' : previousLabel;
+    }
   });
   $('#engineForgetButton')?.addEventListener('click', async () => {
     localStorage.removeItem(TOKEN_KEY);

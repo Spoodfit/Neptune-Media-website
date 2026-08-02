@@ -205,6 +205,7 @@ function withHeaders(response, pathname = '') {
   headers.set('X-Neptune-OpenAI-Video', OPENAI_RELEASE);
   headers.set('X-Neptune-Studio-IA', 'four-primary-destinations-v65');
   if (isLocalEngineAsset(pathname)) {
+    headers.set('Content-Security-Policy', allowLoopbackEngine(headers.get('Content-Security-Policy') || ''));
     headers.set('Cross-Origin-Opener-Policy', 'same-origin');
     headers.set('Cross-Origin-Embedder-Policy', 'require-corp');
     headers.set('Cross-Origin-Resource-Policy', 'same-origin');
@@ -214,6 +215,24 @@ function withHeaders(response, pathname = '') {
     statusText: response.statusText,
     headers,
   });
+}
+
+function allowLoopbackEngine(csp) {
+  const directives = String(csp || '')
+    .split(';')
+    .map((directive) => directive.trim())
+    .filter(Boolean)
+    .filter((directive) => !/^upgrade-insecure-requests$/iu.test(directive));
+  const loopbackSources = ['http://127.0.0.1:4318', 'http://localhost:4318', 'http://[::1]:4318'];
+  const connectIndex = directives.findIndex((directive) => /^connect-src(?:\s|$)/iu.test(directive));
+  if (connectIndex >= 0) {
+    const current = directives[connectIndex].split(/\s+/u);
+    for (const source of loopbackSources) if (!current.includes(source)) current.push(source);
+    directives[connectIndex] = current.join(' ');
+  } else {
+    directives.push(`connect-src 'self' ${loopbackSources.join(' ')}`);
+  }
+  return directives.join('; ');
 }
 
 function isLocalEngineAsset(pathname) {

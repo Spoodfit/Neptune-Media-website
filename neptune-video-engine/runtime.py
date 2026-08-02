@@ -23,6 +23,69 @@ async def local_network_access_headers(request: Request, call_next):
     return response
 
 
+def visual_profile_resilient(source: Path, media: dict[str, Any]) -> dict[str, Any]:
+    video_capture = getattr(core.cv2, "VideoCapture", None)
+    if not callable(video_capture):
+        return {
+            "luminance": 0.5,
+            "contrast": 0.5,
+            "faceCenterX": 0.5,
+            "faceDetected": False,
+            "faceDetector": "unavailable",
+            "sampleCount": 0,
+            "recommendedCaptionPreset": "neptune-premium",
+        }
+
+    capture = video_capture(str(source))
+    classifier = None
+    classifier_type = getattr(core.cv2, "CascadeClassifier", None)
+    cascade_root = getattr(getattr(core.cv2, "data", None), "haarcascades", "")
+    if callable(classifier_type) and cascade_root:
+        try:
+            candidate = classifier_type(cascade_root + "haarcascade_frontalface_default.xml")
+            if not getattr(candidate, "empty", lambda: True)():
+                classifier = candidate
+        except Exception:
+            classifier = None
+
+    duration = float(media["durationSeconds"])
+    samples = max(8, min(36, round(duration / 60)))
+    face_centers: list[float] = []
+    luminance: list[float] = []
+    contrast: list[float] = []
+    try:
+        for index in range(samples):
+            capture.set(core.cv2.CAP_PROP_POS_MSEC, duration * (index + 0.5) / samples * 1000)
+            ok, frame = capture.read()
+            if not ok or frame is None:
+                continue
+            scale = min(1.0, 720 / max(frame.shape[:2]))
+            small = core.cv2.resize(frame, None, fx=scale, fy=scale) if scale < 1 else frame
+            gray = core.cv2.cvtColor(small, core.cv2.COLOR_BGR2GRAY)
+            luminance.append(float(gray.mean()) / 255)
+            contrast.append(min(1.0, float(gray.std()) / 100))
+            if classifier is not None:
+                try:
+                    faces = classifier.detectMultiScale(gray, 1.12, 5, minSize=(30, 30))
+                except Exception:
+                    faces = []
+                if len(faces):
+                    x, _, width, _ = max(faces, key=lambda item: item[2] * item[3])
+                    face_centers.append((x + width / 2) / small.shape[1])
+    finally:
+        capture.release()
+
+    return {
+        "luminance": round(float(core.np.mean(luminance)) if luminance else 0.5, 4),
+        "contrast": round(float(core.np.mean(contrast)) if contrast else 0.5, 4),
+        "faceCenterX": round(float(core.np.median(face_centers)) if face_centers else 0.5, 4),
+        "faceDetected": bool(face_centers),
+        "faceDetector": "opencv-haar" if classifier is not None else "center-fallback",
+        "sampleCount": len(luminance),
+        "recommendedCaptionPreset": "neptune-premium",
+    }
+
+
 def test_transcribe(source: Path, job_dir: Path, job_id: str) -> dict[str, Any]:
     media = core.probe_media(source)
     duration = max(10.0, float(media["durationSeconds"]))
@@ -108,6 +171,7 @@ def render_clip_with_smart_crop(
         raise RuntimeError("rendered_clip_empty")
 
 
+core.visual_profile = visual_profile_resilient
 if TEST_MODE:
     core.transcribe = test_transcribe
 core.select_candidates = select_candidates_with_crop

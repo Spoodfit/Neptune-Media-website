@@ -186,7 +186,10 @@ jobs:
           short_bytes=$(stat -c%s /tmp/engine-short.mp4)
           echo "Rendered short bytes: $short_bytes"
           test "$short_bytes" -gt 20000
-          ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 /tmp/engine-short.mp4 > /tmp/engine-dimensions.txt
+          docker cp /tmp/engine-short.mp4 neptune-video-engine-ci:/tmp/downloaded-engine-short.mp4
+          docker exec neptune-video-engine-ci ffprobe -v error -select_streams v:0 \
+            -show_entries stream=width,height -of csv=p=0 \
+            /tmp/downloaded-engine-short.mp4 > /tmp/engine-dimensions.txt
           cat /tmp/engine-dimensions.txt
           grep -Fxq '1080,1920' /tmp/engine-dimensions.txt
 

@@ -5,7 +5,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg libglib2.0-0 libgl1 curl \
+    && apt-get install -y --no-install-recommends \
+      ffmpeg \
+      curl \
+      libglib2.0-0 \
+      libgl1 \
+      libgomp1 \
+      libsm6 \
+      libxext6 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

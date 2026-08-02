@@ -1,9 +1,8 @@
 name: Apply Neptune Video Engine Loopback Fix
 
 on:
-  push:
-    branches:
-      - fix/video-engine-local-connection-v73-1
+  pull_request:
+    branches: [main]
     paths:
       - 'scripts/apply-video-engine-loopback-fix.py'
       - '.github/workflows/apply-video-engine-loopback-fix.yml'

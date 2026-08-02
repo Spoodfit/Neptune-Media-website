@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="/studio/video-ai-local-v3.css?v=1">
   <link rel="stylesheet" href="/studio/studio-information-architecture-v65.css?v=1">
   <link rel="stylesheet" href="/studio/video-ai-openai-v1.css?v=1">
+  <link rel="stylesheet" href="/studio/video-ai-engine-v73.css?v=1">
 </head>
 <body>
   <div class="video-ai-shell">
@@ -20,7 +21,7 @@
         <img src="/assets/logo-neptune.svg" alt="">
         <span><b>Neptune</b><small>Media · Studio</small></span>
       </a>
-      <div class="video-ai-status"><i></i><span>Production locale</span></div>
+      <div class="video-ai-status"><i></i><span>Production autonome</span></div>
       <nav aria-label="Navigation principale du Studio">
         <a href="/studio/clients"><span>◎</span><strong>Parcours clients</strong></a>
         <a class="active" href="/studio/video-ai.html" aria-current="page"><span>✦</span><strong>Production vidéo</strong></a>
@@ -33,14 +34,14 @@
     <main class="video-ai-main">
       <header class="video-ai-topbar">
         <div><p class="eyebrow">NEPTUNE MEDIA STUDIO</p><h1>Production vidéo IA</h1></div>
-        <div class="topbar-actions"><span id="runtimeState" class="runtime-state"><i></i> Vérification locale…</span><button id="refreshButton" class="icon-button" type="button" aria-label="Actualiser">↻</button></div>
+        <div class="topbar-actions"><span id="runtimeState" class="runtime-state"><i></i> Vérification du moteur…</span><button id="refreshButton" class="icon-button" type="button" aria-label="Actualiser">↻</button></div>
       </header>
 
       <section class="video-ai-hero local-hero">
         <div>
-          <p class="eyebrow">NEPTUNE VIDEO ENGINE LOCAL</p>
-          <h2>Le montage se fait sur cet ordinateur.<br><span>Plus de Container bloqué, plus de fausse relance.</span></h2>
-          <p>Neptune extrait l’audio, transcrit l’interview, sélectionne les meilleurs passages puis crée les shorts directement dans Chrome ou Edge. OpenAI renforce la sélection lorsqu’il est connecté ; Workers AI prend le relais gratuitement si nécessaire.</p>
+          <p class="eyebrow">NEPTUNE VIDEO ENGINE</p>
+          <h2>Importez la vidéo. Neptune s’occupe du reste.<br><span>La production continue même après fermeture du Studio.</span></h2>
+          <p>Le moteur Neptune transcrit l’interview, repère les meilleurs passages, choisit l’angle TOFU, MOFU ou BOFU, recadre les intervenants, ajoute les sous-titres et prépare les shorts à valider.</p>
         </div>
         <div class="hero-metrics" aria-label="Résumé de production">
           <div><b id="activeJobsCount">0</b><span>en traitement</span></div>
@@ -49,19 +50,41 @@
         </div>
       </section>
 
-      <section class="local-privacy-banner" aria-label="Confidentialité du traitement">
-        <strong>Vidéo source 100 % locale</strong>
-        <span>Aucun fichier vidéo source n’est envoyé à OpenAI. Le fichier n’est plus envoyé dans un Container Cloudflare et reste sur cet ordinateur. Seuls la transcription horodatée et les métriques utiles peuvent être envoyées à OpenAI avec <code>store: false</code> ou à Workers AI pour améliorer la sélection éditoriale.</span>
+      <section class="engine-setup" aria-labelledby="engineConnectionStatus">
+        <div>
+          <div class="engine-setup__status">
+            <i aria-hidden="true"></i>
+            <div>
+              <h3 id="engineConnectionStatus" data-state="checking">Vérification…</h3>
+              <p id="engineConnectionDetail">Recherche du moteur Neptune sur cet ordinateur.</p>
+            </div>
+          </div>
+          <div class="engine-setup__benefits" aria-label="Fonctions du moteur">
+            <span>File persistante</span><span>Reprise automatique</span><span>Whisper local</span><span>OpenAI ou Ollama</span><span>FFmpeg</span><span>Recadrage visage</span>
+          </div>
+          <p class="engine-mode-note">Le service permanent est prioritaire. S’il n’est pas connecté, Neptune bascule automatiquement sur le moteur navigateur de secours.</p>
+        </div>
+        <div class="engine-setup__actions">
+          <div class="engine-setup__fields">
+            <label>Adresse du moteur<input id="engineEndpoint" type="url" value="http://127.0.0.1:4318" autocomplete="off"></label>
+            <label>Code de connexion<input id="engineToken" type="password" autocomplete="off" placeholder="Coller le code généré par l’installateur"></label>
+          </div>
+          <div class="engine-setup__buttons">
+            <a href="/studio/install-neptune-video-engine.ps1" download>Installer sur Windows</a>
+            <button id="engineConnectButton" type="button">Connecter</button>
+            <button id="engineForgetButton" class="quiet" type="button">Oublier le code</button>
+          </div>
+        </div>
       </section>
 
-      <section class="local-privacy-banner" aria-label="Information sur les anciennes productions">
-        <strong>Anciennes productions cloud</strong>
-        <span>Les traitements restés bloqués en « relance automatique » sont arrêtés proprement. Pour les reprendre, sélectionnez à nouveau le fichier source ci-dessous : il sera lu localement, sans nouvel envoi vers le cloud.</span>
+      <section class="local-privacy-banner" aria-label="Confidentialité du traitement">
+        <strong>Vidéo source conservée sur la machine Neptune</strong>
+        <span>Aucun fichier vidéo source n’est envoyé à OpenAI. Seule la transcription horodatée peut être transmise avec <code>store: false</code> pour améliorer la sélection éditoriale. Les rendus restent dans le stockage local permanent jusqu’à validation.</span>
       </section>
 
       <section class="video-ai-grid">
         <section class="upload-card" aria-labelledby="uploadTitle">
-          <div class="section-head"><div><p class="eyebrow">NOUVELLE PRODUCTION LOCALE</p><h2 id="uploadTitle">Choisir une vidéo longue</h2></div><span class="threshold">SEUIL 60/100</span></div>
+          <div class="section-head"><div><p class="eyebrow">NOUVELLE PRODUCTION</p><h2 id="uploadTitle">Choisir une vidéo longue</h2></div><span class="threshold">SEUIL 60/100</span></div>
           <form id="uploadForm">
             <div class="form-row">
               <label for="orderSelect"><span>Client et passage</span><select id="orderSelect" name="orderId" required><option value="">Chargement…</option></select></label>
@@ -73,16 +96,16 @@
               <span class="drop-icon">＋</span>
               <strong>Glissez la vidéo longue ici</strong>
               <small>ou cliquez pour la sélectionner sur cet ordinateur</small>
-              <em>MP4, MOV, WEBM ou M4V · la source reste locale</em>
+              <em>MP4, MOV, WEBM ou M4V · la source reste sur la machine Neptune</em>
             </label>
             <div id="selectedFile" class="selected-file" hidden></div>
             <div class="local-requirements">
-              <span><b>1.</b> Utiliser Chrome ou Edge à jour</span>
-              <span><b>2.</b> Garder l’onglet ouvert pendant le montage</span>
-              <span><b>3.</b> Les rendus sont sauvegardés localement</span>
+              <span><b>1.</b> Importer la vidéo</span>
+              <span><b>2.</b> Garder l’onglet ouvert uniquement pendant l’import</span>
+              <span><b>3.</b> Revenir quand les shorts sont prêts</span>
             </div>
-            <div id="uploadProgress" class="upload-progress" hidden><div><span id="uploadStage">Préparation locale…</span><b id="uploadPercent">0 %</b></div><progress id="uploadProgressBar" max="100" value="0"></progress></div>
-            <button id="startUpload" class="primary-button" type="submit" disabled>Lancer la production locale</button>
+            <div id="uploadProgress" class="upload-progress" hidden><div><span id="uploadStage">Préparation…</span><b id="uploadPercent">0 %</b></div><progress id="uploadProgressBar" max="100" value="0"></progress></div>
+            <button id="startUpload" class="primary-button" type="submit" disabled>Lancer la production</button>
             <p id="uploadMessage" class="form-message" aria-live="polite"></p>
           </form>
         </section>
@@ -98,7 +121,7 @@
           <div><button id="backToJobs" class="back-button" type="button">← Production</button><p class="eyebrow">VALIDATION INTERNE</p><h2 id="reviewTitle">Shorts générés</h2><p id="reviewSubtitle"></p></div>
           <div class="review-actions"><button id="approveAll" class="secondary-button" type="button">Valider tous les contenus affichés</button><button id="exportApproved" class="primary-button" type="button">Envoyer les validés dans Drive</button></div>
         </header>
-        <div id="jobProgressPanel" class="job-progress-panel" hidden><div><strong id="jobStageText">Traitement local en cours</strong><span id="jobProgressText">0 %</span></div><progress id="jobProgressBar" max="100" value="0"></progress><p id="jobProgressHint"></p></div>
+        <div id="jobProgressPanel" class="job-progress-panel" hidden><div><strong id="jobStageText">Production en cours</strong><span id="jobProgressText">0 %</span></div><progress id="jobProgressBar" max="100" value="0"></progress><p id="jobProgressHint"></p></div>
         <nav id="funnelFilters" class="funnel-filters" aria-label="Filtrer les contenus"><button class="active" data-funnel="all" type="button">Tous <span id="allCount">0</span></button><button data-funnel="TOFU" type="button">TOFU <span id="tofuCount">0</span></button><button data-funnel="MOFU" type="button">MOFU <span id="mofuCount">0</span></button><button data-funnel="BOFU" type="button">BOFU <span id="bofuCount">0</span></button></nav>
         <div id="clipsGrid" class="clips-grid"></div>
       </section>
@@ -107,6 +130,7 @@
 
   <div id="toast" class="toast" hidden role="status"></div>
   <script type="module" src="/studio/video-ai-openai-v1.js?v=1"></script>
-  <script type="module" src="/studio/local-engine/neptune-video-local-engine-v1.js?v=72"></script>
+  <script type="module" src="/studio/video-ai-engine-v73.js?v=1"></script>
+  <script type="module" src="/studio/local-engine/neptune-video-local-engine-v1.js?v=73"></script>
 </body>
 </html>

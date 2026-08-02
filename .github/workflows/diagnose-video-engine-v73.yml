@@ -1,0 +1,78 @@
+name: Diagnose Neptune Video Engine V73
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'neptune-video-engine/**'
+      - '.github/workflows/diagnose-video-engine-v73.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose-startup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build image quietly
+        run: docker build --quiet -t neptune-video-engine:diagnostic neptune-video-engine > /tmp/image-id.txt
+
+      - name: Start and capture diagnostics
+        id: diagnose
+        shell: bash
+        run: |
+          set +e
+          : > /tmp/neptune-engine-diagnostic.txt
+          echo '=== image ===' >> /tmp/neptune-engine-diagnostic.txt
+          cat /tmp/image-id.txt >> /tmp/neptune-engine-diagnostic.txt
+          docker run -d --name neptune-video-engine-diagnostic -p 127.0.0.1:4318:4318 \
+            -e NEPTUNE_ENGINE_TOKEN=ci-token \
+            -e NEPTUNE_ENGINE_WORKERS=1 \
+            -e NEPTUNE_ENGINE_TEST_MODE=1 \
+            neptune-video-engine:diagnostic >> /tmp/neptune-engine-diagnostic.txt 2>&1
+          run_status=$?
+          echo "docker_run_status=$run_status" >> /tmp/neptune-engine-diagnostic.txt
+          sleep 12
+          echo '=== ps ===' >> /tmp/neptune-engine-diagnostic.txt
+          docker ps -a --no-trunc >> /tmp/neptune-engine-diagnostic.txt 2>&1
+          echo '=== inspect state ===' >> /tmp/neptune-engine-diagnostic.txt
+          docker inspect --format '{{json .State}}' neptune-video-engine-diagnostic >> /tmp/neptune-engine-diagnostic.txt 2>&1
+          echo '=== logs ===' >> /tmp/neptune-engine-diagnostic.txt
+          docker logs --tail 120 neptune-video-engine-diagnostic >> /tmp/neptune-engine-diagnostic.txt 2>&1
+          echo '=== direct Python import ===' >> /tmp/neptune-engine-diagnostic.txt
+          docker run --rm --entrypoint python neptune-video-engine:diagnostic \
+            -c "import cv2, ctranslate2, faster_whisper, runtime; print('imports_ok', cv2.__version__, ctranslate2.__version__)" \
+            >> /tmp/neptune-engine-diagnostic.txt 2>&1
+          import_status=$?
+          echo "python_import_status=$import_status" >> /tmp/neptune-engine-diagnostic.txt
+          echo '=== health ===' >> /tmp/neptune-engine-diagnostic.txt
+          curl --connect-timeout 2 --max-time 5 -v \
+            -H 'X-Neptune-Engine-Token: ci-token' \
+            http://127.0.0.1:4318/health >> /tmp/neptune-engine-diagnostic.txt 2>&1
+          health_status=$?
+          echo "health_status=$health_status" >> /tmp/neptune-engine-diagnostic.txt
+          cat /tmp/neptune-engine-diagnostic.txt
+          echo "health_status=$health_status" >> "$GITHUB_OUTPUT"
+          echo "import_status=$import_status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload concise diagnostic
+        uses: actions/upload-artifact@v4
+        with:
+          name: neptune-video-engine-startup-diagnostic
+          path: /tmp/neptune-engine-diagnostic.txt
+          retention-days: 3
+
+      - name: Enforce healthy startup
+        run: |
+          test '${{ steps.diagnose.outputs.import_status }}' = '0'
+          test '${{ steps.diagnose.outputs.health_status }}' = '0'
+
+      - name: Cleanup
+        if: always()
+        run: docker rm -f neptune-video-engine-diagnostic || true

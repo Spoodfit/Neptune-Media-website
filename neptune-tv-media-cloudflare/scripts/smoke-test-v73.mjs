@@ -44,7 +44,7 @@ expect(bridge.includes('localStorage.setItem(JOBS_KEY'), 'le lien entre jobs Stu
 expect(bridge.includes('xhr.upload.onprogress'), 'la progression de copie réelle est absente');
 expect(bridge.includes('targetAddressSpace'), 'la compatibilité réseau local moderne est absente');
 expect(bridge.includes('engineLivePreview'), 'l’aperçu réel du moteur est absent');
-expect(bridge.includes('bridge.preview'), 'la récupération authentifiée de l’aperçu est absente');
+expect(bridge.includes('this.preview(jobId)'), 'la récupération authentifiée de l’aperçu est absente');
 expect(css.includes('.engine-setup'), 'le panneau de connexion n’est pas stylé');
 expect(css.includes('.engine-live-preview'), 'l’aperçu réel n’est pas stylé');
 
@@ -56,8 +56,13 @@ for (const marker of [
   'NeptuneVideoEngineBridge',
   'neptune-video-engine-bridge-20260802-v73',
 ]) expect(vite.includes(marker) || built.includes(marker), `marqueur d’orchestration absent: ${marker}`);
-expect(built.includes('processFileWithPreferredEngine'), 'le bundle construit n’utilise pas le moteur permanent');
-expect(built.includes('resumePermanentEngineJobs'), 'le bundle construit ne reprend pas les jobs terminés hors onglet');
+for (const marker of [
+  'neptune-video-engine-bridge-20260802-v73',
+  'permanent_engine_queued',
+  'permanent_engine_processing',
+  'Le moteur permanent n’est pas connecté',
+  'Import terminé. Vous pouvez fermer cet onglet',
+]) expect(built.includes(marker), `marqueur fonctionnel absent du bundle construit: ${marker}`);
 
 for (const marker of [
   'persistent-local-service',

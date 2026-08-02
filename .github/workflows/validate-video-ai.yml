@@ -74,8 +74,8 @@ jobs:
           grep -Fq 'xhr.upload.onprogress' neptune-tv-media-cloudflare/public/studio/video-ai-engine-v73.js
           grep -Fq 'engineLivePreview' neptune-tv-media-cloudflare/public/studio/video-ai-engine-v73.js
           grep -Fq 'targetAddressSpace' neptune-tv-media-cloudflare/public/studio/video-ai-engine-v73.js
-          grep -Fq 'processFileWithPreferredEngine' neptune-tv-media-cloudflare/public/studio/local-engine/neptune-video-local-engine-v1.js
-          grep -Fq 'resumePermanentEngineJobs' neptune-tv-media-cloudflare/public/studio/local-engine/neptune-video-local-engine-v1.js
+          grep -Fq 'neptune-video-engine-bridge-20260802-v73' neptune-tv-media-cloudflare/public/studio/local-engine/neptune-video-local-engine-v1.js
+          grep -Fq 'permanent_engine_processing' neptune-tv-media-cloudflare/public/studio/local-engine/neptune-video-local-engine-v1.js
           grep -Fq 'docker compose up -d --build' neptune-tv-media-cloudflare/public/studio/install-neptune-video-engine.ps1
 
       - name: Build permanent Neptune engine image

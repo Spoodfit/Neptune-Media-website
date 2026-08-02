@@ -1,0 +1,125 @@
+name: Probe Neptune Video Engine V73 Production
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/probe-video-v73-production.yml'
+      - '.github/workflows/deploy-cloudflare.yml'
+      - 'neptune-tv-media-cloudflare/src/entry-v16.js'
+      - 'neptune-tv-media-cloudflare/public/studio/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - slug: workers
+            base: https://neptune-media-webtv.neptunebusinessclub.workers.dev
+          - slug: public
+            base: https://tv.neptunebusiness.com
+    steps:
+      - name: Collect production responses
+        shell: bash
+        run: |
+          set -euo pipefail
+          dir="/tmp/probe-${{ matrix.slug }}"
+          mkdir -p "$dir"
+          query="probe_v73=$GITHUB_SHA"
+          curl -fsS -H 'Cache-Control: no-cache, no-store' \
+            '${{ matrix.base }}/api/public/release?'"$query" > "$dir/release.json"
+          curl -fsSL --max-redirs 5 -H 'Cache-Control: no-cache, no-store' \
+            '${{ matrix.base }}/studio/video-ai?'"$query" > "$dir/video-ai.html"
+          curl -fsS -H 'Cache-Control: no-cache, no-store' \
+            '${{ matrix.base }}/studio/video-ai-engine-v73.js?v=1&'"$query" > "$dir/bridge.js"
+          curl -fsS -H 'Cache-Control: no-cache, no-store' \
+            '${{ matrix.base }}/studio/video-ai-engine-v73.css?v=1&'"$query" > "$dir/engine.css"
+          curl -fsS -H 'Cache-Control: no-cache, no-store' \
+            '${{ matrix.base }}/studio/local-engine/neptune-video-local-engine-v1.js?v=73&'"$query" > "$dir/fallback.js"
+          curl -fsS -H 'Cache-Control: no-cache, no-store' \
+            '${{ matrix.base }}/studio/install-neptune-video-engine.ps1?'"$query" > "$dir/installer.ps1"
+          curl -fsSI -H 'Cache-Control: no-cache, no-store' \
+            '${{ matrix.base }}/studio/video-ai.html?'"$query" > "$dir/headers.txt"
+
+      - name: Print exact release values and marker matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          dir="/tmp/probe-${{ matrix.slug }}"
+          echo '=== release ==='
+          cat "$dir/release.json"
+          echo
+          echo '=== headers ==='
+          cat "$dir/headers.txt"
+          echo '=== sizes ==='
+          wc -c "$dir"/*
+          echo '=== marker matrix ==='
+          python - "$dir" <<'PY'
+          import json, pathlib, sys
+          root = pathlib.Path(sys.argv[1])
+          release = json.loads((root / 'release.json').read_text())
+          expected = {
+              'release': 'neptune-verified-content-runtime-20260730-v18',
+              'efficiencyRelease': 'neptune-studio-sidebar-authority-20260730-v12',
+              'editorialWorkspace': 'neptune-editorial-workspace-20260730-v2',
+              'videoAiStudio': 'neptune-video-engine-20260802-v73',
+              'videoAiOpenAiIntegration': 'neptune-openai-video-analysis-20260731-v1',
+              'videoAiEngineMode': 'persistent-local-service-with-browser-fallback',
+              'videoAiDispatchMode': 'localhost-persistent-sqlite-queue',
+              'videoAiPipeline': 'persistent-local-service-faster-whisper-openai-ollama-opencv-ffmpeg-studio-sync-browser-fallback',
+              'videoAiSourcePrivacy': 'source-kept-on-neptune-machine-transcript-only-optional-ai',
+              'videoAiPermanentEngineEndpoint': 'http://127.0.0.1:4318',
+              'videoAiPermanentEngineInstaller': '/studio/install-neptune-video-engine.ps1',
+          }
+          for key, value in expected.items():
+              actual = release.get(key)
+              print(f'release {key}: {actual == value} actual={actual!r} expected={value!r}')
+          for key, value in {
+              'videoAiContainerRequired': False,
+              'videoAiQueueBindingPresent': False,
+              'videoAiR2SourceUploadRequired': False,
+              'videoAiBackgroundProcessing': True,
+              'videoAiSafeToCloseAfterUpload': True,
+              'videoAiBrowserFallbackPresent': True,
+              'videoAiReady': True,
+              'videoAiMinimumScore': 60,
+              'videoAiEditorialProposals': 3,
+          }.items():
+              actual = release.get(key)
+              print(f'release {key}: {actual == value} actual={actual!r} expected={value!r}')
+          files = {
+              'html': root / 'video-ai.html',
+              'bridge': root / 'bridge.js',
+              'css': root / 'engine.css',
+              'fallback': root / 'fallback.js',
+              'installer': root / 'installer.ps1',
+              'headers': root / 'headers.txt',
+          }
+          markers = {
+              'html': ['NEPTUNE VIDEO ENGINE', 'id="engineConnectionStatus"', 'Installer sur Windows', '/studio/video-ai-engine-v73.js?v=1', '/studio/local-engine/neptune-video-local-engine-v1.js?v=73'],
+              'bridge': ['NeptuneVideoEngineBridge', 'Moteur Neptune connecté', 'xhr.upload.onprogress', 'engineLivePreview', 'localStorage.setItem(JOBS_KEY'],
+              'css': ['.engine-setup', '.engine-live-preview'],
+              'fallback': ['neptune-video-engine-bridge-20260802-v73', 'permanent_engine_processing'],
+              'installer': ['docker compose up -d --build'],
+              'headers': ['x-neptune-video-ai: neptune-video-engine-20260802-v73', 'cross-origin-opener-policy: same-origin', 'cross-origin-embedder-policy: require-corp'],
+          }
+          for name, wanted in markers.items():
+              content = files[name].read_text(errors='replace').lower() if name == 'headers' else files[name].read_text(errors='replace')
+              for marker in wanted:
+                  needle = marker.lower() if name == 'headers' else marker
+                  print(f'{name} marker {marker!r}: {needle in content}')
+          PY
+
+      - name: Upload production probe
+        uses: actions/upload-artifact@v4
+        with:
+          name: neptune-v73-production-${{ matrix.slug }}
+          path: /tmp/probe-${{ matrix.slug }}
+          retention-days: 3

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -9,6 +10,7 @@ import app as core
 
 app = core.app
 _original_select_candidates = core.select_candidates
+TEST_MODE = os.getenv("NEPTUNE_ENGINE_TEST_MODE", "").strip() == "1"
 
 
 @app.middleware("http")
@@ -21,13 +23,53 @@ async def local_network_access_headers(request: Request, call_next):
     return response
 
 
+def test_transcribe(source: Path, job_dir: Path, job_id: str) -> dict[str, Any]:
+    media = core.probe_media(source)
+    duration = max(10.0, float(media["durationSeconds"]))
+    phrases = [
+        "Pourquoi une entreprise sérieuse peut-elle rester invisible malgré la qualité de son travail ?",
+        "Le problème vient souvent d'une promesse trop abstraite que le client ne comprend pas immédiatement.",
+        "Une méthode simple consiste à nommer le problème, montrer sa conséquence et apporter une preuve concrète.",
+        "Cette structure clarifie le message, retient l'attention et facilite la décision du futur client.",
+    ]
+    segment_duration = duration / len(phrases)
+    segments = [
+        {
+            "start": round(index * segment_duration, 3),
+            "end": round(min(duration, (index + 1) * segment_duration), 3),
+            "text": phrase,
+        }
+        for index, phrase in enumerate(phrases)
+    ]
+    core.update_job(job_id, stage="transcription de test", progress=42)
+    return {
+        "text": " ".join(phrases),
+        "segments": segments,
+        "vtt": core.to_vtt(segments),
+    }
+
+
 def select_candidates_with_crop(
     transcript: dict[str, Any],
     media: dict[str, Any],
     visual: dict[str, Any],
     metadata: dict[str, Any],
 ):
-    candidates, provider, model = _original_select_candidates(transcript, media, visual, metadata)
+    if TEST_MODE:
+        duration = float(media["durationSeconds"])
+        raw = [{
+            "startSeconds": 0,
+            "endSeconds": max(10, min(duration, 12)),
+            "title": "Pourquoi une entreprise sérieuse reste invisible",
+            "funnel": "MOFU",
+            "score": 82,
+            "hook": "Votre entreprise est sérieuse, mais est-ce que cela se voit ?",
+            "rationale": "Validation intégrale du pipeline Neptune en environnement isolé.",
+        }]
+        candidates = core.normalize_candidates(raw, transcript["segments"], duration)
+        provider, model = "ci-deterministic", "neptune-ci-v1"
+    else:
+        candidates, provider, model = _original_select_candidates(transcript, media, visual, metadata)
     center = max(0.15, min(0.85, float(visual.get("faceCenterX") or 0.5)))
     for candidate in candidates:
         candidate["cropCenterX"] = center
@@ -66,5 +108,7 @@ def render_clip_with_smart_crop(
         raise RuntimeError("rendered_clip_empty")
 
 
+if TEST_MODE:
+    core.transcribe = test_transcribe
 core.select_candidates = select_candidates_with_crop
 core.render_clip = render_clip_with_smart_crop

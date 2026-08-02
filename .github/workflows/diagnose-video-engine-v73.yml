@@ -94,7 +94,8 @@ jobs:
                 "http://127.0.0.1:4318/v1/jobs/diagnostic-render-job/clips/$clip_id")
               clip_bytes=$(stat -c%s /tmp/short.mp4 2>/dev/null || echo 0)
               clip_type=$(file -b --mime-type /tmp/short.mp4 2>/dev/null || echo unknown)
-              dimensions=$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 /tmp/short.mp4 2>/dev/null | tr -d '\r\n')
+              docker cp /tmp/short.mp4 neptune-video-engine-diagnostic:/tmp/downloaded-short.mp4 >> "$report" 2>&1
+              dimensions=$(docker exec neptune-video-engine-diagnostic ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 /tmp/downloaded-short.mp4 2>/dev/null | tr -d '\r\n')
               ffprobe_status=${PIPESTATUS[0]}
               echo "clip_http=$clip_http clip_bytes=$clip_bytes clip_type=$clip_type dimensions=[$dimensions] ffprobe_status=$ffprobe_status" >> "$report"
               printf 'dimensions_hex=' >> "$report"

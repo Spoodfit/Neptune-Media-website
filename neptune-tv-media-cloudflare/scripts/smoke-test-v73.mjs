@@ -28,7 +28,10 @@ for (const [name, current] of [['root', rootPackage], ['nested', nestedPackage]]
   expect(!current.dependencies?.['@cloudflare/containers'], `${name}: la dépendance Cloudflare Containers est encore installée`);
 }
 
-expect(entry.includes("videoAiEngineMode: 'browser-local'"), 'le Worker ne conserve pas le secours navigateur');
+expect(entry.includes("videoAiEngineMode: 'persistent-local-service-with-browser-fallback'"), 'le Worker ne déclare pas le service permanent primaire');
+expect(entry.includes("videoAiDispatchMode: 'localhost-persistent-sqlite-queue'"), 'la file SQLite locale n’est pas déclarée');
+expect(entry.includes('videoAiBackgroundProcessing: true'), 'la poursuite hors onglet n’est pas déclarée');
+expect(entry.includes('videoAiBrowserFallbackPresent: true'), 'le secours navigateur n’est pas déclaré');
 expect(html.includes('NEPTUNE VIDEO ENGINE'), 'le Studio n’annonce pas le moteur permanent');
 expect(html.includes('La production continue même après fermeture du Studio'), 'la promesse d’autonomie est absente');
 expect(html.includes('/studio/video-ai-engine-v73.js?v=1'), 'le bridge v73 n’est pas chargé');

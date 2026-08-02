@@ -20,16 +20,21 @@ const files = {
 };
 
 const failures = [];
-check(files.localConfig, '"main": "src/entry-v16.js"', 'la configuration locale ne cible pas le runtime vidéo serveur entry-v16');
-check(files.rootConfig, '"main": "neptune-tv-media-cloudflare/src/entry-v16.js"', 'la configuration racine ne cible pas le runtime vidéo serveur entry-v16');
+check(files.localConfig, '"main": "src/entry-v16.js"', 'la configuration locale ne cible pas le runtime vidéo entry-v16');
+check(files.rootConfig, '"main": "neptune-tv-media-cloudflare/src/entry-v16.js"', 'la configuration racine ne cible pas le runtime vidéo entry-v16');
 check(files.videoEntry, "from './entry-v13.js'", 'entry-v16 ne prolonge pas le runtime visuel entry-v13');
-check(files.videoEntry, 'videoAiContainerRequired: true', 'entry-v16 ne confirme pas le moteur Container requis');
-check(files.videoEntry, "videoAiEngineMode: 'cloud-asynchronous-with-local-fallback'", 'entry-v16 ne confirme pas le mode serveur asynchrone avec secours local');
-check(files.videoEntry, 'videoAiSafeToCloseAfterUpload: true', 'entry-v16 ne confirme pas la poursuite après fermeture de l’onglet');
+check(files.videoEntry, 'videoAiContainerRequired: false', 'entry-v16 exige encore un moteur Container');
+check(files.videoEntry, "videoAiEngineMode: 'browser-local'", 'entry-v16 ne confirme pas le moteur navigateur local');
+check(files.videoEntry, 'videoAiSafeToCloseAfterUpload: false', 'entry-v16 prétend encore poursuivre le montage après fermeture de l’onglet');
+check(files.videoEntry, "videoAiDispatchMode: 'no-container-no-queue'", 'entry-v16 ne confirme pas la suppression du dispatch Container/Queue');
 check(files.activeEntry, "from './entry-v12.js'", 'entry-v13 ne prolonge pas entry-v12');
 check(files.editorialEntry, "from './entry-v11.js'", 'entry-v12 ne prolonge pas le runtime de contenu entry-v11');
 forbid(files.localConfig, '"analytics_engine_datasets"', 'la configuration locale exige encore Analytics Engine');
 forbid(files.rootConfig, '"analytics_engine_datasets"', 'la configuration racine exige encore Analytics Engine');
+forbid(files.localConfig, '"containers"', 'la configuration locale réintroduit Cloudflare Containers');
+forbid(files.rootConfig, '"containers"', 'la configuration racine réintroduit Cloudflare Containers');
+forbid(files.localConfig, '"VIDEO_JOBS"', 'la configuration locale réintroduit la Queue vidéo');
+forbid(files.rootConfig, '"VIDEO_JOBS"', 'la configuration racine réintroduit la Queue vidéo');
 check(files.runtime, "from './store-v7.js'", 'le runtime final ne réexporte pas store-v7');
 check(files.runtime, "workflowStore: 'store-v7'", 'le diagnostic final ne confirme pas store-v7');
 checkAny(files.runtime, [
@@ -77,7 +82,7 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Verified active entry chain through cloud Video AI with local fallback, current client architecture, compact horizontal dashboard rails and bounded content runtime passed.');
+console.log('Verified active entry chain through the local Neptune Video Engine, current client architecture, compact horizontal dashboard rails and bounded content runtime passed.');
 
 async function read(path) { return readFile(new URL(`../${path}`, import.meta.url), 'utf8'); }
 async function readRoot(path) { return readFile(new URL(`../../${path}`, import.meta.url), 'utf8'); }

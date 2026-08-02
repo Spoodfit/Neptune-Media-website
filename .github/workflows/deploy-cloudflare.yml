@@ -30,7 +30,7 @@ jobs:
       RELEASE_ID: neptune-verified-content-runtime-20260730-v18
       EFFICIENCY_RELEASE: neptune-efficiency-operational-fallback-20260730-v11
       EDITORIAL_RELEASE: neptune-editorial-workspace-20260730-v2
-      VIDEO_AI_RELEASE: neptune-video-orchestrator-20260801-v71
+      VIDEO_AI_RELEASE: neptune-video-local-engine-20260802-v72
       OPENAI_RELEASE: neptune-openai-video-analysis-20260731-v1
 
     steps:
@@ -49,38 +49,17 @@ jobs:
       - name: Build and validate application
         run: npm run check
 
-      - name: Validate Worker, Queue and Container bundle
+      - name: Validate free-plan Worker bundle
         run: npx wrangler deploy --config wrangler.jsonc --dry-run --outdir .wrangler-dry-run
 
-      - name: Ensure durable video Queues exist
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          ensure_queue() {
-            local queue_name="$1"
-            local log_file="/tmp/${queue_name}-create.log"
-            set +e
-            npx wrangler queues create "$queue_name" 2>&1 | tee "$log_file"
-            local status=${PIPESTATUS[0]}
-            set -e
-            if [ "$status" -ne 0 ] && ! grep -Eqi 'already exists|name is already in use|code.?10014' "$log_file"; then
-              echo "Impossible de créer ou confirmer la Queue $queue_name." >&2
-              exit "$status"
-            fi
-          }
-
-          ensure_queue neptune-video-jobs
-          ensure_queue neptune-video-jobs-dlq
-
-      - name: Deploy Worker, Queue consumer, Container and Studio assets
+      - name: Deploy Worker and Studio assets
         run: npx wrangler deploy --config wrangler.jsonc
 
-      - name: Verify video orchestrator v71 on both production domains
+      - name: Verify local video engine v72 on both production domains
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p /tmp/neptune-video-v71
+          mkdir -p /tmp/neptune-video-v72
 
           verify_domain() {
             local base="$1"
@@ -88,25 +67,17 @@ jobs:
             local ready=0
 
             for attempt in $(seq 1 30); do
-              local query="video_v71=$GITHUB_SHA&attempt=$attempt"
+              local query="video_v72=$GITHUB_SHA&attempt=$attempt"
               curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-                "$base/api/public/release?$query" > "/tmp/neptune-video-v71/$slug-release.json" || true
+                "$base/api/public/release?$query" > "/tmp/neptune-video-v72/$slug-release.json" || true
               curl --fail --silent --show-error --location --max-redirs 5 -H 'Cache-Control: no-cache, no-store' \
-                "$base/studio/video-ai?$query" > "/tmp/neptune-video-v71/$slug-video-ai.html" || true
+                "$base/studio/video-ai?$query" > "/tmp/neptune-video-v72/$slug-video-ai.html" || true
               curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-                "$base/studio/video-ai-cloud-resilience-v67.js?v=1&$query" > "/tmp/neptune-video-v71/$slug-resilience.js" || true
-              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-                "$base/studio/video-ai-v1.js?v=67&$query" > "/tmp/neptune-video-v71/$slug-client.js" || true
-              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-                "$base/studio/video-ai-story-v70.js?v=1&$query" > "/tmp/neptune-video-v71/$slug-story-v70.js" || true
-              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-                "$base/studio/video-ai-story-v70.css?v=1&$query" > "/tmp/neptune-video-v71/$slug-story-v70.css" || true
-              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-                "$base/studio/video-ai-story-v71.js?v=1&$query" > "/tmp/neptune-video-v71/$slug-story-v71.js" || true
+                "$base/studio/local-engine/neptune-video-local-engine-v1.js?v=72&$query" > "/tmp/neptune-video-v72/$slug-engine.js" || true
               curl --fail --silent --show-error -I -H 'Cache-Control: no-cache, no-store' \
-                "$base/studio/video-ai.html?$query" > "/tmp/neptune-video-v71/$slug-headers.txt" || true
+                "$base/studio/video-ai.html?$query" > "/tmp/neptune-video-v72/$slug-headers.txt" || true
 
-              if RELEASE_FILE="/tmp/neptune-video-v71/$slug-release.json" node <<'NODE'
+              if RELEASE_FILE="/tmp/neptune-video-v72/$slug-release.json" node <<'NODE'
           const fs = require('node:fs');
           const file = process.env.RELEASE_FILE;
           let data;
@@ -117,64 +88,44 @@ jobs:
             editorialWorkspace: process.env.EDITORIAL_RELEASE,
             videoAiStudio: process.env.VIDEO_AI_RELEASE,
             videoAiOpenAiIntegration: process.env.OPENAI_RELEASE,
-            videoAiEngineMode: 'cloud-asynchronous-with-local-fallback',
-            videoAiDispatchMode: 'direct-acceptance-then-durable-queue-fallback',
-            videoAiPipeline: 'multipart-r2-direct-container-acceptance-durable-queue-fallback-persisted-heartbeat-openai-ffmpeg-review-drive',
-            videoAiRecoveryPolicy: 'five-bounded-attempts-with-persisted-errors',
-            videoAiSourcePrivacy: 'encrypted-cloud-temporary-source-storage',
-            videoAiUpload: 'r2-multipart-16mb-three-way-parallel-retry',
-            videoAiSourceRetention: 'deleted-after-successful-generation',
-            videoAiStudioExperience: 'simple-production-story-with-honest-recovery-state',
+            videoAiEngineMode: 'browser-local',
+            videoAiDispatchMode: 'no-container-no-queue',
+            videoAiPipeline: 'browser-local-whisper-openai-workers-ai-selection-webcodecs-render-indexeddb-review-drive',
+            videoAiSourcePrivacy: 'source-never-uploaded',
+            videoAiLegacyCloudRecovery: 'retired-reselect-source-locally-no-upload',
+            videoAiStudioExperience: 'local-production-with-real-progress-no-fake-restarts',
           };
           for (const [key, value] of Object.entries(expected)) {
             if (data[key] !== value) process.exit(1);
           }
-          for (const key of [
-            'videoAiOpenAiConfigured',
-            'videoAiOpenAiStructuredOutputs',
-            'videoAiContainerRequired',
-            'videoAiContainerBindingPresent',
-            'videoAiStorageBindingPresent',
-            'videoAiWorkersAiBindingPresent',
-            'videoAiQueueBindingPresent',
-            'videoAiInternalSecretRequired',
-            'videoAiInternalSecretPresent',
-            'videoAiR2SourceUploadRequired',
-            'videoAiBackgroundProcessing',
-            'videoAiSafeToCloseAfterUpload',
-            'videoAiReady',
-            'resendSecretPresent',
-            'webhookSecretPresent',
-            'driveSecretPresent',
-          ]) {
-            if (data[key] !== true) process.exit(1);
-          }
-          if (data.videoAiStatusReadSideEffects !== false) process.exit(1);
-          if (data.videoAiPersistentHeartbeatSeconds !== 20 || data.videoAiProcessorPoolSize !== 2) process.exit(1);
+          if (data.videoAiContainerRequired !== false) process.exit(1);
+          if (data.videoAiContainerBindingPresent !== false) process.exit(1);
+          if (data.videoAiQueueBindingPresent !== false) process.exit(1);
+          if (data.videoAiR2SourceUploadRequired !== false) process.exit(1);
+          if (data.videoAiBackgroundProcessing !== false) process.exit(1);
+          if (data.videoAiSafeToCloseAfterUpload !== false) process.exit(1);
+          if (data.videoAiReady !== true) process.exit(1);
+          if (data.videoAiWorkersAiBindingPresent !== true) process.exit(1);
           if (data.videoAiMinimumScore !== 60 || data.videoAiEditorialProposals !== 3) process.exit(1);
           NODE
               then
-                if grep -Fq 'TRAITEMENT CLOUD RÉSILIENT' "/tmp/neptune-video-v71/$slug-video-ai.html" \
-                  && grep -Fq 'Production cloud' "/tmp/neptune-video-v71/$slug-video-ai.html" \
-                  && grep -Fq 'Importer et lancer la production' "/tmp/neptune-video-v71/$slug-video-ai.html" \
-                  && grep -Fq '/studio/video-ai-story-v70.js?v=1' "/tmp/neptune-video-v71/$slug-video-ai.html" \
-                  && grep -Fq '/studio/video-ai-story-v71.js?v=1' "/tmp/neptune-video-v71/$slug-video-ai.html" \
-                  && grep -Fq 'multipartUpload' "/tmp/neptune-video-v71/$slug-client.js" \
-                  && grep -Fq 'fetchWithRetry' "/tmp/neptune-video-v71/$slug-resilience.js" \
-                  && grep -Fq 'Neptune crée vos contenus' "/tmp/neptune-video-v71/$slug-story-v70.js" \
-                  && grep -Fq 'Vidéo prise en charge' "/tmp/neptune-video-v71/$slug-story-v70.js" \
-                  && grep -Fq '#videoLiveMonitor{display:none!important}' "/tmp/neptune-video-v71/$slug-story-v70.css" \
-                  && grep -Fq 'job.attemptStartedAt' "/tmp/neptune-video-v71/$slug-story-v71.js" \
-                  && grep -Fq 'job.errorDetail' "/tmp/neptune-video-v71/$slug-story-v71.js" \
-                  && grep -Fq 'stopped_with_code' "/tmp/neptune-video-v71/$slug-story-v71.js" \
-                  && grep -Fqi "x-neptune-video-ai: $VIDEO_AI_RELEASE" "/tmp/neptune-video-v71/$slug-headers.txt"; then
+                if grep -Fq 'NEPTUNE VIDEO ENGINE LOCAL' "/tmp/neptune-video-v72/$slug-video-ai.html" \
+                  && grep -Fq 'Production locale' "/tmp/neptune-video-v72/$slug-video-ai.html" \
+                  && grep -Fq 'Lancer la production locale' "/tmp/neptune-video-v72/$slug-video-ai.html" \
+                  && grep -Fq '/studio/local-engine/neptune-video-local-engine-v1.js?v=72' "/tmp/neptune-video-v72/$slug-video-ai.html" \
+                  && ! grep -Eq 'video-ai-(cloud-resilience-v67|dispatch-recovery-v68|story-v7[01])\.js' "/tmp/neptune-video-v72/$slug-video-ai.html" \
+                  && grep -Fq 'openAiAnalysisAvailable' "/tmp/neptune-video-v72/$slug-engine.js" \
+                  && grep -Fq 'workersAiAssistAvailable' "/tmp/neptune-video-v72/$slug-engine.js" \
+                  && grep -Fqi "x-neptune-video-ai: $VIDEO_AI_RELEASE" "/tmp/neptune-video-v72/$slug-headers.txt" \
+                  && grep -Fqi 'cross-origin-opener-policy: same-origin' "/tmp/neptune-video-v72/$slug-headers.txt" \
+                  && grep -Fqi 'cross-origin-embedder-policy: require-corp' "/tmp/neptune-video-v72/$slug-headers.txt"; then
                   ready=1
-                  echo "$base: Neptune Video orchestrator v71 verified on attempt $attempt."
+                  echo "$base: Neptune Video local engine v72 verified on attempt $attempt."
                   break
                 fi
               fi
 
-              echo "$base: video orchestrator v71 not fully propagated on attempt $attempt; retrying."
+              echo "$base: local video engine v72 not fully propagated on attempt $attempt; retrying."
               sleep 10
             done
 

@@ -1,4 +1,4 @@
-name: Validate Neptune Video Cloud Engine
+name: Validate Neptune Video Local Engine
 
 on:
   pull_request:
@@ -7,7 +7,6 @@ on:
       - 'neptune-tv-media-cloudflare/src/**'
       - 'neptune-tv-media-cloudflare/public/studio/**'
       - 'neptune-tv-media-cloudflare/local-video-engine/**'
-      - 'neptune-tv-media-cloudflare/containers/video-ai/**'
       - 'neptune-tv-media-cloudflare/scripts/**'
       - 'neptune-tv-media-cloudflare/wrangler.jsonc'
       - 'wrangler.jsonc'
@@ -33,72 +32,41 @@ jobs:
           node-version: '22'
           registry-url: https://registry.npmjs.org
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Install Worker and engine dependencies
+      - name: Install Worker and local engine dependencies
         run: npm install --package-lock=false --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org
 
       - name: Build and validate application
         run: npm run check
 
-      - name: Validate Python processor syntax
-        run: python -m py_compile neptune-tv-media-cloudflare/containers/video-ai/app.py neptune-tv-media-cloudflare/containers/video-ai/app_v69.py neptune-tv-media-cloudflare/containers/video-ai/app_v71.py
-
-      - name: Confirm bounded persistent video architecture
+      - name: Confirm local browser video architecture
         shell: bash
         run: |
           set -euo pipefail
-          grep -Fq '"containers"' wrangler.jsonc
-          grep -Fq '"VIDEO_PROCESSOR"' wrangler.jsonc
-          grep -Fq '"MEDIA"' wrangler.jsonc
-          grep -Fq '"VIDEO_JOBS"' wrangler.jsonc
-          grep -Fq '"neptune-video-jobs"' wrangler.jsonc
-          grep -Fq '"dead_letter_queue": "neptune-video-jobs-dlq"' wrangler.jsonc
-          grep -Fq '"VIDEO_JOBS"' neptune-tv-media-cloudflare/wrangler.jsonc
-          grep -Fq '@cloudflare/containers' package.json
-          grep -Fq "from './store-v13.js'" neptune-tv-media-cloudflare/src/entry-v16.js
-          grep -Fq "from './video-ai-routes-v5.js'" neptune-tv-media-cloudflare/src/entry-v16.js
-          grep -Fq "from './video-ai-queue-v71.js'" neptune-tv-media-cloudflare/src/entry-v16.js
-          grep -Fq 'async queue(batch, env, ctx)' neptune-tv-media-cloudflare/src/entry-v16.js
-          grep -Fq "videoAiDispatchMode: 'direct-acceptance-then-durable-queue-fallback'" neptune-tv-media-cloudflare/src/entry-v16.js
-          grep -Fq "videoAiRecoveryPolicy: 'five-bounded-attempts-with-persisted-errors'" neptune-tv-media-cloudflare/src/entry-v16.js
-          grep -Fq 'videoAiPersistentHeartbeatSeconds: 20' neptune-tv-media-cloudflare/src/entry-v16.js
-          grep -Fq 'videoAiStatusReadSideEffects: false' neptune-tv-media-cloudflare/src/entry-v16.js
-          grep -Fq 'async dispatchJob(payload)' neptune-tv-media-cloudflare/src/video-ai-container-v2.js
-          grep -Fq 'async readJob(jobId)' neptune-tv-media-cloudflare/src/video-ai-container-v2.js
-          grep -Fq 'portReadyTimeoutMS: 180_000' neptune-tv-media-cloudflare/src/video-ai-container-v2.js
-          grep -Fq 'instance.dispatchJob(requestPayload)' neptune-tv-media-cloudflare/src/video-ai-queue-v71.js
-          grep -Fq 'instance.readJob(String(jobId))' neptune-tv-media-cloudflare/src/video-ai-queue-v71.js
-          grep -Fq 'MAX_DISPATCH_ATTEMPTS = 5' neptune-tv-media-cloudflare/src/video-ai-queue-v71.js
-          grep -Fq "video_processor_attempts_exhausted" neptune-tv-media-cloudflare/src/video-ai-queue-v71.js
-          grep -Fq 'message.retry' neptune-tv-media-cloudflare/src/video-ai-queue-v71.js
-          grep -Fq 'v71_legacy_recovery' neptune-tv-media-cloudflare/src/video-ai-queue-v71.js
-          grep -Fq 'persistProcessorHeartbeat' neptune-tv-media-cloudflare/src/video-ai-routes-v5.js
-          grep -Fq 'startWithQueueFallback' neptune-tv-media-cloudflare/src/video-ai-routes-v5.js
-          grep -Fq "'/portal/video-ai-job-reset'" neptune-tv-media-cloudflare/src/store-v13.js
-          grep -Fq 'createMultipartUpload' neptune-tv-media-cloudflare/src/video-ai-routes-v1.js
-          grep -Fq 'analyzeVideoWithOpenAI' neptune-tv-media-cloudflare/src/video-ai-routes-v3-core.js
-          grep -Fq 'deleteCompletedSource' neptune-tv-media-cloudflare/src/video-ai-routes-v3-core.js
-          grep -Fq 'video-ai-story-v71.js' neptune-tv-media-cloudflare/public/studio/video-ai.html
-          grep -Fq 'job.attemptStartedAt' neptune-tv-media-cloudflare/public/studio/video-ai-story-v71.js
-          grep -Fq 'job.errorDetail' neptune-tv-media-cloudflare/public/studio/video-ai-story-v71.js
-          grep -Fq '#videoLiveMonitor{display:none!important}' neptune-tv-media-cloudflare/public/studio/video-ai-story-v70.css
-          grep -Fq 'run_ffmpeg_progress' neptune-tv-media-cloudflare/containers/video-ai/app_v69.py
-          grep -Fq 'make_vertical_preview' neptune-tv-media-cloudflare/containers/video-ai/app_v69.py
-          grep -Fq 'report_heartbeat' neptune-tv-media-cloudflare/containers/video-ai/app_v71.py
-          grep -Fq 'app_v71:app' neptune-tv-media-cloudflare/containers/video-ai/Dockerfile
+          ! grep -Fq '"containers"' wrangler.jsonc
+          ! grep -Fq '"VIDEO_PROCESSOR"' wrangler.jsonc
+          ! grep -Fq '"VIDEO_JOBS"' wrangler.jsonc
+          ! grep -Fq '"containers"' neptune-tv-media-cloudflare/wrangler.jsonc
+          ! grep -Fq '"VIDEO_PROCESSOR"' neptune-tv-media-cloudflare/wrangler.jsonc
+          ! grep -Fq '"VIDEO_JOBS"' neptune-tv-media-cloudflare/wrangler.jsonc
+          grep -Fq '"tag": "v5"' wrangler.jsonc
+          grep -Fq '"deleted_classes": ["VideoProcessorV2"]' wrangler.jsonc
+          grep -Fq "from './video-ai-local-routes-v1.js'" neptune-tv-media-cloudflare/src/entry-v16.js
+          grep -Fq "videoAiEngineMode: 'browser-local'" neptune-tv-media-cloudflare/src/entry-v16.js
+          grep -Fq "videoAiDispatchMode: 'no-container-no-queue'" neptune-tv-media-cloudflare/src/entry-v16.js
+          grep -Fq 'videoAiContainerRequired: false' neptune-tv-media-cloudflare/src/entry-v16.js
+          grep -Fq 'portal/video-ai-retire-cloud-jobs' neptune-tv-media-cloudflare/src/entry-v16.js
+          grep -Fq 'cloud_engine_retired_use_local' neptune-tv-media-cloudflare/src/store-v13.js
+          grep -Fq 'NEPTUNE VIDEO ENGINE LOCAL' neptune-tv-media-cloudflare/public/studio/video-ai.html
+          grep -Fq '/studio/local-engine/neptune-video-local-engine-v1.js?v=72' neptune-tv-media-cloudflare/public/studio/video-ai.html
           grep -Fq 'openAiSemanticAssistPlugin' neptune-tv-media-cloudflare/local-video-engine/vite.config.js
-          if grep -Fq 'recoverStuckStartup' neptune-tv-media-cloudflare/src/video-ai-routes-v5.js; then
-            echo 'Le statut GET déclenche encore une reprise du moteur.' >&2
-            exit 1
-          fi
-          if grep -Fq 'instance.fetch(new Request(`http://container/jobs/' neptune-tv-media-cloudflare/src/video-ai-queue-v71.js; then
-            echo 'La lecture de statut peut encore démarrer le Container.' >&2
+          grep -Fq 'startLocalProduction' neptune-tv-media-cloudflare/local-video-engine/src/main.js
+          grep -Fq 'processFileLocally' neptune-tv-media-cloudflare/local-video-engine/src/main.js
+          grep -Fq 'renderCandidate' neptune-tv-media-cloudflare/local-video-engine/src/main.js
+          grep -Fq 'workersAiAssistAvailable' neptune-tv-media-cloudflare/public/studio/local-engine/neptune-video-local-engine-v1.js
+          if grep -Eq 'video-ai-(cloud-resilience-v67|dispatch-recovery-v68|story-v7[01])\.js' neptune-tv-media-cloudflare/public/studio/video-ai.html; then
+            echo 'Un ancien runtime cloud ou de fausse relance est encore chargé.' >&2
             exit 1
           fi
 
-      - name: Validate Cloudflare Worker, Queue and Container configuration
+      - name: Validate deployable free-plan Worker bundle
         run: npx wrangler deploy --config wrangler.jsonc --dry-run --outdir .wrangler-dry-run

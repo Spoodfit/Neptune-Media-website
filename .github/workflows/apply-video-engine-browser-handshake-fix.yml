@@ -1,0 +1,48 @@
+name: Apply Neptune Video Engine Browser Handshake Fix
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/apply-video-engine-browser-handshake-fix.py'
+      - '.github/workflows/apply-video-engine-browser-handshake-fix.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fix branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/video-engine-browser-handshake-v73-2
+          fetch-depth: 0
+
+      - name: Apply targeted browser handshake patch
+        run: python scripts/apply-video-engine-browser-handshake-fix.py
+
+      - name: Validate bridge and complete application
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check neptune-tv-media-cloudflare/public/studio/video-ai-engine-v73.js
+          grep -Fq 'async probe(timeoutMs = 8000)' neptune-tv-media-cloudflare/public/studio/video-ai-engine-v73.js
+          grep -Fq "engine_token_missing" neptune-tv-media-cloudflare/public/studio/video-ai-engine-v73.js
+          grep -Fq "interactive: true" neptune-tv-media-cloudflare/public/studio/video-ai-engine-v73.js
+          grep -Fq "bridge.probe(interactive ? 30000 : 7000)" neptune-tv-media-cloudflare/public/studio/video-ai-engine-v73.js
+          npm install --package-lock=false --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org
+          npm run check
+
+      - name: Commit validated application file
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add neptune-tv-media-cloudflare/public/studio/video-ai-engine-v73.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'fix(video-engine): use resilient browser handshake'
+          git push origin HEAD:fix/video-engine-browser-handshake-v73-2

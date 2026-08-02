@@ -39,7 +39,7 @@ jobs:
           python-version: '3.12'
 
       - name: Validate Python service syntax
-        run: python -m py_compile neptune-video-engine/app.py
+        run: python -m py_compile neptune-video-engine/app.py neptune-video-engine/runtime.py
 
       - name: Install Worker and browser fallback dependencies
         run: npm install --package-lock=false --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org
@@ -62,12 +62,18 @@ jobs:
           grep -Fq 'openai_candidates' neptune-video-engine/app.py
           grep -Fq 'ollama_candidates' neptune-video-engine/app.py
           grep -Fq 'render_clip' neptune-video-engine/app.py
+          grep -Fq 'Access-Control-Allow-Private-Network' neptune-video-engine/runtime.py
+          grep -Fq 'cropCenterX' neptune-video-engine/runtime.py
+          grep -Fq 'runtime:app' neptune-video-engine/Dockerfile
           grep -Fq 'restart: unless-stopped' neptune-video-engine/docker-compose.yml
           grep -Fq 'neptune_video_data' neptune-video-engine/docker-compose.yml
           grep -Fq 'NEPTUNE VIDEO ENGINE' neptune-tv-media-cloudflare/public/studio/video-ai.html
           grep -Fq '/studio/video-ai-engine-v73.js?v=1' neptune-tv-media-cloudflare/public/studio/video-ai.html
           grep -Fq '/studio/local-engine/neptune-video-local-engine-v1.js?v=73' neptune-tv-media-cloudflare/public/studio/video-ai.html
           grep -Fq 'NeptuneVideoEngineBridge' neptune-tv-media-cloudflare/public/studio/video-ai-engine-v73.js
+          grep -Fq 'xhr.upload.onprogress' neptune-tv-media-cloudflare/public/studio/video-ai-engine-v73.js
+          grep -Fq 'engineLivePreview' neptune-tv-media-cloudflare/public/studio/video-ai-engine-v73.js
+          grep -Fq 'targetAddressSpace' neptune-tv-media-cloudflare/public/studio/video-ai-engine-v73.js
           grep -Fq 'processFileWithPreferredEngine' neptune-tv-media-cloudflare/public/studio/local-engine/neptune-video-local-engine-v1.js
           grep -Fq 'resumePermanentEngineJobs' neptune-tv-media-cloudflare/public/studio/local-engine/neptune-video-local-engine-v1.js
           grep -Fq 'docker compose up -d --build' neptune-tv-media-cloudflare/public/studio/install-neptune-video-engine.ps1
@@ -93,6 +99,12 @@ jobs:
           cat /tmp/engine-health.json
           grep -Fq '"ok":true' /tmp/engine-health.json
           grep -Fq '"mode":"persistent-local-service"' /tmp/engine-health.json
+          curl -fsSI -X OPTIONS \
+            -H 'Origin: https://tv.neptunebusiness.com' \
+            -H 'Access-Control-Request-Method: GET' \
+            -H 'Access-Control-Request-Private-Network: true' \
+            http://127.0.0.1:4318/health > /tmp/engine-pna-headers.txt
+          grep -Fqi 'access-control-allow-private-network: true' /tmp/engine-pna-headers.txt
 
       - name: Validate deployable Cloudflare Studio bundle
         run: npx wrangler deploy --config wrangler.jsonc --dry-run --outdir .wrangler-dry-run

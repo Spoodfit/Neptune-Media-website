@@ -18,6 +18,6 @@ VOLUME ["/data"]
 EXPOSE 4318
 
 HEALTHCHECK --interval=20s --timeout=5s --start-period=60s --retries=6 \
-  CMD-SHELL curl -fsS -H "X-Neptune-Engine-Token: ${NEPTUNE_ENGINE_TOKEN}" http://127.0.0.1:4318/health || exit 1
+  CMD curl -fsS -H "X-Neptune-Engine-Token: ${NEPTUNE_ENGINE_TOKEN}" http://127.0.0.1:4318/health || exit 1
 
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "4318", "--workers", "1"]

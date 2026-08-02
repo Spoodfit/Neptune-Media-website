@@ -30,7 +30,7 @@ expect(entry.includes("videoAiDispatchMode: 'no-container-no-queue'"), 'le mode 
 expect(entry.includes('videoAiContainerRequired: false'), 'le Container est encore déclaré obligatoire');
 expect(entry.includes('videoAiQueueBindingPresent: false'), 'la Queue est encore déclarée active');
 expect(entry.includes("videoAiLegacyCloudRecovery: 'retired-reselect-source-locally-no-upload'"), 'la migration des jobs cloud est absente');
-expect(entry.includes("'/portal/video-ai-retire-cloud-jobs'"), 'entry-v16 ne déclenche pas la clôture des jobs cloud bloqués');
+expect(entry.includes('portal/video-ai-retire-cloud-jobs'), 'entry-v16 ne déclenche pas la clôture des jobs cloud bloqués');
 expect(!entry.includes('consumeVideoQueue'), 'entry-v16 consomme encore la Queue vidéo');
 expect(!entry.includes('VideoProcessorV2'), 'entry-v16 exporte encore le Container vidéo');
 
@@ -40,7 +40,7 @@ expect(store.includes("source_key LIKE ?"), 'la migration n’est pas bornée au
 expect(store.includes("status IN ('uploading','queued','processing')"), 'la migration peut toucher des productions terminées');
 
 expect(localRoutes.includes("engineMode: 'browser-local'"), 'le bootstrap local est absent');
-expect(localRoutes.includes('workersAiAssistAvailable: Boolean(env.AI)'), 'Workers AI n’est pas disponible en secours');
+expect(localRoutes.includes('workersAiAssistAvailable: Boolean(env.AI)'), 'Workers AI n’est pas disponible comme secours');
 expect(localRoutes.includes("sourceUploadRequired: false"), 'la source est encore déclarée téléversée');
 expect(openAiRoutes.includes('openAiAnalysisAvailable: configured'), 'OpenAI n’est pas exposé au moteur local');
 expect(openAiRoutes.includes("fallback: 'workers-ai-then-local'"), 'la chaîne de repli sémantique est absente');
@@ -52,9 +52,11 @@ expect(!html.includes('video-ai-cloud-resilience-v67.js'), 'le runtime cloud est
 expect(!html.includes('video-ai-dispatch-recovery-v68.js'), 'le faux écran de relance est encore chargé');
 expect(!html.includes('video-ai-story-v71.js'), 'l’ancien récit de redémarrage est encore chargé');
 
-for (const marker of ['startLocalProduction', 'processFileLocally', 'extractAudioChunks', 'renderCandidate', 'indexeddb-generated-clips-only']) {
+for (const marker of ['startLocalProduction', 'processFileLocally', 'extractAudioChunks', 'renderCandidate', 'saveClip']) {
   expect(source.includes(marker) || built.includes(marker), `marqueur moteur local absent: ${marker}`);
 }
+expect(source.includes('requestPersistentStorage'), 'la demande de stockage persistant local est absente');
+expect(source.includes('storageEstimate'), 'le contrôle de quota local est absent');
 expect(built.includes('openAiAnalysisAvailable'), 'le bundle construit n’intègre pas l’assistance OpenAI');
 expect(built.includes('workersAiAssistAvailable'), 'le bundle construit n’intègre pas le secours Workers AI');
 

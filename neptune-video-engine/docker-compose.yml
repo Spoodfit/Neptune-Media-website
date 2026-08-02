@@ -1,0 +1,20 @@
+services:
+  neptune-video-engine:
+    build: .
+    container_name: neptune-video-engine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:4318:4318"
+    env_file:
+      - .env
+    environment:
+      NEPTUNE_ENGINE_DATA: /data
+      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
+    volumes:
+      - neptune_video_data:/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  neptune_video_data:
+    name: neptune_video_data

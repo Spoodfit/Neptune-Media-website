@@ -1,0 +1,141 @@
+name: Diagnose Neptune Video Engine V73
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'neptune-video-engine/**'
+      - '.github/workflows/diagnose-video-engine-v73.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose-render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build image quietly
+        run: docker build --quiet -t neptune-video-engine:diagnostic neptune-video-engine > /tmp/image-id.txt
+
+      - name: Exercise render and capture concise diagnostics
+        id: diagnose
+        shell: bash
+        run: |
+          set +e
+          report=/tmp/neptune-video-render-diagnostic.txt
+          : > "$report"
+          media_ok=0
+          docker run -d --name neptune-video-engine-diagnostic -p 127.0.0.1:4318:4318 \
+            -e NEPTUNE_ENGINE_TOKEN=ci-token \
+            -e NEPTUNE_ENGINE_WORKERS=1 \
+            -e NEPTUNE_ENGINE_TEST_MODE=1 \
+            neptune-video-engine:diagnostic >> "$report" 2>&1
+
+          healthy=0
+          for attempt in $(seq 1 40); do
+            if curl -fsS -H 'X-Neptune-Engine-Token: ci-token' http://127.0.0.1:4318/health > /tmp/health.json 2>/dev/null; then healthy=1; break; fi
+            sleep 1
+          done
+          echo "healthy=$healthy" >> "$report"
+          cat /tmp/health.json >> "$report" 2>/dev/null
+
+          if [ "$healthy" = 1 ]; then
+            docker exec neptune-video-engine-diagnostic ffmpeg -hide_banner -loglevel error \
+              -f lavfi -i testsrc2=size=1280x720:rate=25 \
+              -f lavfi -i sine=frequency=660:sample_rate=48000 \
+              -t 12 -c:v libx264 -preset ultrafast -pix_fmt yuv420p -c:a aac \
+              -shortest -y /tmp/source.mp4 >> "$report" 2>&1
+            source_status=$?
+            echo "source_status=$source_status" >> "$report"
+            docker cp neptune-video-engine-diagnostic:/tmp/source.mp4 /tmp/source.mp4 >> "$report" 2>&1
+            echo "source_bytes=$(stat -c%s /tmp/source.mp4 2>/dev/null || echo 0)" >> "$report"
+
+            curl -sS -w '\nsubmit_http=%{http_code}\n' \
+              -H 'X-Neptune-Engine-Token: ci-token' \
+              -F 'metadata={"jobId":"diagnostic-render-job","objective":"Diagnostic rendu Neptune"}' \
+              -F 'file=@/tmp/source.mp4;type=video/mp4' \
+              http://127.0.0.1:4318/v1/jobs > /tmp/submit.txt 2>&1
+            cat /tmp/submit.txt >> "$report"
+
+            for attempt in $(seq 1 90); do
+              curl -sS -H 'X-Neptune-Engine-Token: ci-token' \
+                http://127.0.0.1:4318/v1/jobs/diagnostic-render-job > /tmp/job.json 2>/dev/null
+              status=$(python -c "import json; print(json.load(open('/tmp/job.json'))['job']['status'])" 2>/dev/null)
+              progress=$(python -c "import json; print(json.load(open('/tmp/job.json'))['job']['progress'])" 2>/dev/null)
+              stage=$(python -c "import json; print(json.load(open('/tmp/job.json'))['job']['stage'])" 2>/dev/null)
+              echo "poll=$attempt status=$status progress=$progress stage=$stage" >> "$report"
+              if [ "$status" = completed ] || [ "$status" = failed ]; then break; fi
+              sleep 1
+            done
+
+            echo '=== final job ===' >> "$report"
+            cat /tmp/job.json >> "$report" 2>/dev/null
+            echo >> "$report"
+
+            final_status=$(python -c "import json; print(json.load(open('/tmp/job.json'))['job']['status'])" 2>/dev/null)
+            if [ "$final_status" = completed ]; then
+              clip_id=$(python -c "import json; print(json.load(open('/tmp/job.json'))['job']['result']['candidates'][0]['id'])" 2>/dev/null)
+              echo "clip_id=$clip_id" >> "$report"
+
+              preview_http=$(curl -sS -o /tmp/preview.jpg -w '%{http_code}' \
+                -H 'X-Neptune-Engine-Token: ci-token' \
+                http://127.0.0.1:4318/v1/jobs/diagnostic-render-job/preview)
+              preview_bytes=$(stat -c%s /tmp/preview.jpg 2>/dev/null || echo 0)
+              preview_type=$(file -b --mime-type /tmp/preview.jpg 2>/dev/null || echo unknown)
+              echo "preview_http=$preview_http preview_bytes=$preview_bytes preview_type=$preview_type" >> "$report"
+
+              clip_http=$(curl -sS -o /tmp/short.mp4 -w '%{http_code}' \
+                -H 'X-Neptune-Engine-Token: ci-token' \
+                "http://127.0.0.1:4318/v1/jobs/diagnostic-render-job/clips/$clip_id")
+              clip_bytes=$(stat -c%s /tmp/short.mp4 2>/dev/null || echo 0)
+              clip_type=$(file -b --mime-type /tmp/short.mp4 2>/dev/null || echo unknown)
+              docker cp /tmp/short.mp4 neptune-video-engine-diagnostic:/tmp/downloaded-short.mp4 >> "$report" 2>&1
+              dimensions=$(docker exec neptune-video-engine-diagnostic ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 /tmp/downloaded-short.mp4 2>/dev/null | tr -d '\r\n')
+              ffprobe_status=${PIPESTATUS[0]}
+              echo "clip_http=$clip_http clip_bytes=$clip_bytes clip_type=$clip_type dimensions=[$dimensions] ffprobe_status=$ffprobe_status" >> "$report"
+              printf 'dimensions_hex=' >> "$report"
+              printf '%s' "$dimensions" | od -An -tx1 | tr -d ' \n' >> "$report"
+              echo >> "$report"
+
+              if [ "$preview_http" = 200 ] && [ "$preview_bytes" -gt 1000 ] \
+                && [ "$clip_http" = 200 ] && [ "$clip_bytes" -gt 20000 ] \
+                && [ "$ffprobe_status" = 0 ] && [ "$dimensions" = '1080,1920' ]; then
+                media_ok=1
+              fi
+            fi
+
+            echo '=== files ===' >> "$report"
+            docker exec neptune-video-engine-diagnostic find /data -maxdepth 5 -type f -printf '%p %s bytes\n' >> "$report" 2>&1
+            echo '=== logs ===' >> "$report"
+            docker logs --tail 160 neptune-video-engine-diagnostic >> "$report" 2>&1
+          else
+            final_status=unhealthy
+            echo '=== startup logs ===' >> "$report"
+            docker logs --tail 160 neptune-video-engine-diagnostic >> "$report" 2>&1
+          fi
+
+          cat "$report"
+          echo "final_status=${final_status:-unknown}" >> "$GITHUB_OUTPUT"
+          echo "media_ok=$media_ok" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload concise render diagnostic
+        uses: actions/upload-artifact@v4
+        with:
+          name: neptune-video-engine-render-diagnostic
+          path: /tmp/neptune-video-render-diagnostic.txt
+          retention-days: 3
+
+      - name: Enforce completed render and downloadable media
+        run: |
+          test '${{ steps.diagnose.outputs.final_status }}' = 'completed'
+          test '${{ steps.diagnose.outputs.media_ok }}' = '1'
+
+      - name: Cleanup
+        if: always()
+        run: docker rm -f neptune-video-engine-diagnostic || true

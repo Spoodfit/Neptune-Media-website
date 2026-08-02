@@ -6,12 +6,13 @@ import { isOpenAiConfigured, openAiModel } from './openai-video-analysis-v1.js';
 
 export { StudioStore };
 
-const RELEASE = 'neptune-video-local-engine-20260802-v72';
+const RELEASE = 'neptune-video-engine-20260802-v73';
 const OPENAI_RELEASE = 'neptune-openai-video-analysis-20260731-v1';
 const STUDIO_IA_CSS = '/studio/studio-information-architecture-v65.css?v=1';
 const STUDIO_IA_JS = '/studio/studio-information-architecture-v65-1.js?v=1';
 const OPENAI_UI_CSS = '/studio/video-ai-openai-v1.css?v=1';
 const OPENAI_UI_JS = '/studio/video-ai-openai-v1.js?v=1';
+const PERMANENT_ENGINE_UI_JS = '/studio/video-ai-engine-v73.js?v=1';
 
 export default {
   async fetch(request, env, ctx) {
@@ -73,40 +74,45 @@ async function augmentRelease(response, env) {
     videoAiStudio: RELEASE,
     videoAiOpenAiIntegration: OPENAI_RELEASE,
     videoAiEntry: '/studio/video-ai',
-    videoAiPipeline: 'browser-local-whisper-openai-workers-ai-selection-webcodecs-render-indexeddb-review-drive',
-    videoAiEngineMode: 'browser-local',
-    videoAiDispatchMode: 'no-container-no-queue',
+    videoAiPipeline: 'persistent-local-service-faster-whisper-openai-ollama-opencv-ffmpeg-studio-sync-browser-fallback',
+    videoAiEngineMode: 'persistent-local-service-with-browser-fallback',
+    videoAiDispatchMode: 'localhost-persistent-sqlite-queue',
     videoAiMinimumScore: 60,
     videoAiFunnels: ['TOFU', 'MOFU', 'BOFU'],
     videoAiEditorialProposals: 3,
     videoAiReviewPolicy: 'internal-validation-required-before-drive-export',
-    videoAiSourcePrivacy: 'source-never-uploaded',
-    videoAiRendering: 'browser-mediabunny-webcodecs-vertical-1080x1920-adaptive-subtitles',
-    videoAiTranscription: 'onnx-community/whisper-base_timestamped-webgpu-wasm',
-    videoAiStorage: 'indexeddb-generated-clips-durable-object-metadata-only',
-    videoAiSemanticProvider: openAiConfigured ? 'openai-responses-api' : 'workers-ai-then-local',
-    videoAiSemanticPriority: 'openai-then-workers-ai-then-deterministic-local',
+    videoAiSourcePrivacy: 'source-kept-on-neptune-machine-transcript-only-optional-ai',
+    videoAiRendering: 'local-ffmpeg-opencv-smart-crop-vertical-1080x1920-ass-subtitles',
+    videoAiTranscription: 'faster-whisper-local-primary-browser-whisper-fallback',
+    videoAiStorage: 'local-sqlite-persistent-volume-plus-indexeddb-review-sync',
+    videoAiSemanticProvider: 'local-openai-then-ollama-then-rules-with-browser-cloud-assist-fallback',
+    videoAiSemanticPriority: 'openai-then-ollama-then-neptune-rules-then-browser-workers-ai',
     videoAiOpenAiConfigured: openAiConfigured,
     videoAiOpenAiModel: openAiModel(env),
-    videoAiOpenAiMode: 'always-before-render-when-configured',
+    videoAiOpenAiMode: 'server-side-browser-fallback-and-optional-local-engine-key',
     videoAiOpenAiStructuredOutputs: true,
-    videoAiOpenAiDataPolicy: 'store-false-timestamped-transcript-and-metrics-only-no-source-video',
+    videoAiOpenAiDataPolicy: 'store-false-timestamped-transcript-only-no-source-video',
     videoAiOpenAiStatusEndpoint: '/api/admin/video-ai/openai/status',
     videoAiOpenAiTestEndpoint: '/api/admin/video-ai/openai/test',
-    videoAiWorkersAiRole: 'fallback-when-openai-is-not-configured-or-unavailable',
+    videoAiWorkersAiRole: 'browser-fallback-when-openai-and-local-ollama-are-unavailable',
     videoAiWorkersAiBindingPresent: Boolean(env.AI),
+    videoAiPermanentEngineEndpoint: 'http://127.0.0.1:4318',
+    videoAiPermanentEngineInstaller: '/studio/install-neptune-video-engine.ps1',
+    videoAiPermanentEngineVersion: RELEASE,
+    videoAiPersistentQueue: 'local-sqlite-restart-resume',
     videoAiContainerRequired: false,
     videoAiContainerBindingPresent: false,
     videoAiQueueBindingPresent: false,
     videoAiInternalSecretRequired: false,
     videoAiR2SourceUploadRequired: false,
-    videoAiBackgroundProcessing: false,
-    videoAiSafeToCloseAfterUpload: false,
+    videoAiBackgroundProcessing: true,
+    videoAiSafeToCloseAfterUpload: true,
+    videoAiBrowserFallbackPresent: true,
     videoAiReady: true,
-    videoAiLegacyCloudRecovery: 'retired-reselect-source-locally-no-upload',
-    videoAiCrossOriginIsolation: 'scoped-to-studio-video-ai-and-local-engine-assets',
+    videoAiLegacyCloudRecovery: 'retired-reselect-source-into-permanent-local-engine',
+    videoAiCrossOriginIsolation: 'scoped-to-studio-video-ai-and-browser-fallback-assets',
     videoAiDriveTransport: 'approved-local-blob-streamed-directly-through-worker-to-drive',
-    videoAiStudioExperience: 'local-production-with-real-progress-no-fake-restarts',
+    videoAiStudioExperience: 'autonomous-production-story-with-permanent-engine-and-browser-fallback',
     studioInformationArchitecture: 'four-primary-destinations-v65',
     studioPrimaryNavigation: ['Parcours clients', 'Production vidéo', 'Diffusion', 'Réglages'],
     studioContextNavigation: 'diffusion-and-settings-secondary-tabs-v65',
@@ -130,12 +136,14 @@ async function injectStudioInformationArchitecture(response, pathname) {
   const jsPattern = /<script\b[^>]*src=["'][^"']*\/studio\/studio-information-architecture-v65(?:-1)?\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu;
   const openAiCssPattern = /<link\b[^>]*href=["'][^"']*\/studio\/video-ai-openai-v1\.css[^"']*["'][^>]*>\s*/giu;
   const openAiJsPattern = /<script\b[^>]*src=["'][^"']*\/studio\/video-ai-openai-v1\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu;
+  const permanentEngineJsPattern = /<script\b[^>]*src=["'][^"']*\/studio\/video-ai-engine-v73\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu;
   const retiredSidebarCssPattern = /<link\b[^>]*href=["'][^"']*\/studio\/studio-sidebar-authority-v64\.css[^"']*["'][^>]*>\s*/giu;
   const retiredSidebarJsPattern = /<script\b[^>]*src=["'][^"']*\/studio\/studio-sidebar-authority-v64\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu;
   body = body.replace(cssPattern, '');
   body = body.replace(jsPattern, '');
   body = body.replace(openAiCssPattern, '');
   body = body.replace(openAiJsPattern, '');
+  body = body.replace(permanentEngineJsPattern, '');
   body = body.replace(retiredSidebarCssPattern, '');
   body = body.replace(retiredSidebarJsPattern, '');
 
@@ -145,8 +153,8 @@ async function injectStudioInformationArchitecture(response, pathname) {
   body = body.replace('</head>', `${styles}</head>`);
 
   if (isVideoAiPage(pathname)) {
-    const firstEngineScript = '<script type="module" src="/studio/local-engine/neptune-video-local-engine-v1.js?v=72"></script>';
-    const studioScripts = `<script type="module" src="${STUDIO_IA_JS}"></script><script type="module" src="${OPENAI_UI_JS}"></script>`;
+    const firstEngineScript = '<script type="module" src="/studio/local-engine/neptune-video-local-engine-v1.js?v=73"></script>';
+    const studioScripts = `<script type="module" src="${STUDIO_IA_JS}"></script><script type="module" src="${OPENAI_UI_JS}"></script><script type="module" src="${PERMANENT_ENGINE_UI_JS}"></script>`;
     body = body.includes(firstEngineScript)
       ? body.replace(firstEngineScript, `${studioScripts}${firstEngineScript}`)
       : body.replace('</body>', `${studioScripts}${firstEngineScript}</body>`);

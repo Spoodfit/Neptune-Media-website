@@ -1,0 +1,48 @@
+name: Verify Neptune Loopback Production
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-video-engine-loopback-production.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        base:
+          - https://neptune-media-webtv.neptunebusinessclub.workers.dev
+          - https://tv.neptunebusiness.com
+    steps:
+      - name: Verify production CSP and Studio bridge
+        shell: bash
+        run: |
+          set -euo pipefail
+          query="loopback_verify=${GITHUB_SHA}-${RANDOM}"
+          curl -fsSI -H 'Cache-Control: no-cache, no-store' \
+            "${{ matrix.base }}/studio/video-ai.html?$query" > /tmp/headers.txt
+          curl -fsS -H 'Cache-Control: no-cache, no-store' \
+            "${{ matrix.base }}/studio/video-ai-engine-v73.js?v=1&$query" > /tmp/bridge.js
+          curl -fsS -H 'Cache-Control: no-cache, no-store' \
+            "${{ matrix.base }}/api/public/release?$query" > /tmp/release.json
+
+          cat /tmp/headers.txt
+          grep -Fqi 'x-neptune-video-ai: neptune-video-engine-20260802-v73' /tmp/headers.txt
+          grep -Fqi 'http://127.0.0.1:4318' /tmp/headers.txt
+          grep -Fqi 'http://localhost:4318' /tmp/headers.txt
+          ! grep -Fqi 'upgrade-insecure-requests' /tmp/headers.txt
+
+          grep -Fq 'Connexion au moteur impossible' /tmp/bridge.js
+          grep -Fq 'engine_health_401' /tmp/bridge.js
+          grep -Fq 'Connexion…' /tmp/bridge.js
+          grep -Fq 'neptune_engine_connection_failed' /tmp/bridge.js
+
+          node -e "const d=require('/tmp/release.json'); if(d.videoAiStudio!=='neptune-video-engine-20260802-v73'||d.videoAiReady!==true) process.exit(1)"
+          echo "${{ matrix.base }}: loopback connection fix verified."

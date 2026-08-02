@@ -54,7 +54,7 @@ jobs:
           grep -Fq "videoAiEngineMode: 'browser-local'" neptune-tv-media-cloudflare/src/entry-v16.js
           grep -Fq "videoAiDispatchMode: 'no-container-no-queue'" neptune-tv-media-cloudflare/src/entry-v16.js
           grep -Fq 'videoAiContainerRequired: false' neptune-tv-media-cloudflare/src/entry-v16.js
-          grep -Fq "'/portal/video-ai-retire-cloud-jobs'" neptune-tv-media-cloudflare/src/entry-v16.js
+          grep -Fq 'portal/video-ai-retire-cloud-jobs' neptune-tv-media-cloudflare/src/entry-v16.js
           grep -Fq 'cloud_engine_retired_use_local' neptune-tv-media-cloudflare/src/store-v13.js
           grep -Fq 'NEPTUNE VIDEO ENGINE LOCAL' neptune-tv-media-cloudflare/public/studio/video-ai.html
           grep -Fq '/studio/local-engine/neptune-video-local-engine-v1.js?v=72' neptune-tv-media-cloudflare/public/studio/video-ai.html

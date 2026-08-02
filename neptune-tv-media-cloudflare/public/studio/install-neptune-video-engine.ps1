@@ -1,6 +1,7 @@
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 Write-Host "Neptune Video Engine - installation" -ForegroundColor Cyan
+Write-Host ("PowerShell détecté : " + $PSVersionTable.PSVersion.ToString()) -ForegroundColor DarkGray
 if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
   Start-Process "https://www.docker.com/products/docker-desktop/"
   throw "Docker Desktop est requis. Installez-le, démarrez-le, puis relancez ce fichier."
@@ -25,8 +26,10 @@ if (Test-Path $installRoot) {
 }
 Copy-Item $engineSource $installRoot -Recurse -Force
 $bytes = New-Object byte[] 32
-[Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
-$token = [Convert]::ToHexString($bytes).ToLowerInvariant()
+$rng = [Security.Cryptography.RandomNumberGenerator]::Create()
+try { $rng.GetBytes($bytes) } finally { $rng.Dispose() }
+# Compatible avec Windows PowerShell 5.1 et PowerShell 7+.
+$token = ([System.BitConverter]::ToString($bytes)).Replace('-', '').ToLowerInvariant()
 $openAiKey = Read-Host "Clé OpenAI locale (facultatif, Entrée pour utiliser Ollama/règles Neptune)"
 $envContent = @"
 NEPTUNE_ENGINE_TOKEN=$token

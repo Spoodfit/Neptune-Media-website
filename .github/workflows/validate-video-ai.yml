@@ -64,6 +64,7 @@ jobs:
           grep -Fq 'render_clip' neptune-video-engine/app.py
           grep -Fq 'Access-Control-Allow-Private-Network' neptune-video-engine/runtime.py
           grep -Fq 'cropCenterX' neptune-video-engine/runtime.py
+          grep -Fq 'NEPTUNE_ENGINE_TEST_MODE' neptune-video-engine/runtime.py
           grep -Fq 'runtime:app' neptune-video-engine/Dockerfile
           grep -Fq 'restart: unless-stopped' neptune-video-engine/docker-compose.yml
           grep -Fq 'neptune_video_data' neptune-video-engine/docker-compose.yml
@@ -81,15 +82,17 @@ jobs:
       - name: Build permanent Neptune engine image
         run: docker build -t neptune-video-engine:ci neptune-video-engine
 
-      - name: Start engine and verify health
+      - name: Start engine and verify complete render pipeline
         shell: bash
         run: |
           set -euo pipefail
           docker run -d --name neptune-video-engine-ci -p 127.0.0.1:4318:4318 \
             -e NEPTUNE_ENGINE_TOKEN=ci-token \
             -e NEPTUNE_ENGINE_WORKERS=1 \
+            -e NEPTUNE_ENGINE_TEST_MODE=1 \
             neptune-video-engine:ci
           trap 'docker logs neptune-video-engine-ci || true; docker rm -f neptune-video-engine-ci || true' EXIT
+
           for attempt in $(seq 1 60); do
             if curl -fsS -H 'X-Neptune-Engine-Token: ci-token' http://127.0.0.1:4318/health > /tmp/engine-health.json; then
               break
@@ -99,12 +102,52 @@ jobs:
           cat /tmp/engine-health.json
           grep -Fq '"ok":true' /tmp/engine-health.json
           grep -Fq '"mode":"persistent-local-service"' /tmp/engine-health.json
+
           curl -fsSI -X OPTIONS \
             -H 'Origin: https://tv.neptunebusiness.com' \
             -H 'Access-Control-Request-Method: GET' \
+            -H 'Access-Control-Request-Headers: X-Neptune-Engine-Token' \
             -H 'Access-Control-Request-Private-Network: true' \
             http://127.0.0.1:4318/health > /tmp/engine-pna-headers.txt
           grep -Fqi 'access-control-allow-private-network: true' /tmp/engine-pna-headers.txt
+
+          docker exec neptune-video-engine-ci ffmpeg -hide_banner -loglevel error \
+            -f lavfi -i testsrc2=size=1280x720:rate=25 \
+            -f lavfi -i sine=frequency=660:sample_rate=48000 \
+            -t 12 -c:v libx264 -preset ultrafast -pix_fmt yuv420p -c:a aac \
+            -shortest -y /tmp/neptune-ci-source.mp4
+          docker cp neptune-video-engine-ci:/tmp/neptune-ci-source.mp4 /tmp/neptune-ci-source.mp4
+          test "$(stat -c%s /tmp/neptune-ci-source.mp4)" -gt 20000
+
+          curl -fsS -H 'X-Neptune-Engine-Token: ci-token' \
+            -F 'metadata={"jobId":"ci-render-job","objective":"Valider le pipeline Neptune"}' \
+            -F 'file=@/tmp/neptune-ci-source.mp4;type=video/mp4' \
+            http://127.0.0.1:4318/v1/jobs > /tmp/engine-submit.json
+          grep -Fq '"accepted":true' /tmp/engine-submit.json
+
+          completed=0
+          for attempt in $(seq 1 90); do
+            curl -fsS -H 'X-Neptune-Engine-Token: ci-token' \
+              http://127.0.0.1:4318/v1/jobs/ci-render-job > /tmp/engine-job.json
+            status=$(python -c "import json; print(json.load(open('/tmp/engine-job.json'))['job']['status'])")
+            if [ "$status" = "completed" ]; then completed=1; break; fi
+            if [ "$status" = "failed" ]; then cat /tmp/engine-job.json; exit 1; fi
+            sleep 2
+          done
+          test "$completed" = 1
+          cat /tmp/engine-job.json
+          grep -Fq '"progress":100' /tmp/engine-job.json
+          grep -Fq '"generationStatus":"ci-deterministic"' /tmp/engine-job.json
+          clip_id=$(python -c "import json; print(json.load(open('/tmp/engine-job.json'))['job']['result']['candidates'][0]['id'])")
+
+          curl -fsS -H 'X-Neptune-Engine-Token: ci-token' \
+            http://127.0.0.1:4318/v1/jobs/ci-render-job/preview > /tmp/engine-preview.jpg
+          test "$(stat -c%s /tmp/engine-preview.jpg)" -gt 1000
+          curl -fsS -H 'X-Neptune-Engine-Token: ci-token' \
+            "http://127.0.0.1:4318/v1/jobs/ci-render-job/clips/$clip_id" > /tmp/engine-short.mp4
+          test "$(stat -c%s /tmp/engine-short.mp4)" -gt 20000
+          ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 /tmp/engine-short.mp4 > /tmp/engine-dimensions.txt
+          grep -Fxq '1080,1920' /tmp/engine-dimensions.txt
 
       - name: Validate deployable Cloudflare Studio bundle
         run: npx wrangler deploy --config wrangler.jsonc --dry-run --outdir .wrangler-dry-run

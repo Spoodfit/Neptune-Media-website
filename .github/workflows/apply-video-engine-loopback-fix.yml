@@ -31,19 +31,20 @@ jobs:
           node --check neptune-tv-media-cloudflare/src/entry-v16.js
           node --check neptune-tv-media-cloudflare/public/studio/video-ai-engine-v73.js
           grep -Fq "http://127.0.0.1:4318" neptune-tv-media-cloudflare/src/entry-v16.js
-          grep -Fq "upgrade-insecure-requests" neptune-tv-media-cloudflare/src/entry-v16.js
+          grep -Fq "allowLoopbackEngine" neptune-tv-media-cloudflare/src/entry-v16.js
           grep -Fq "Connexion au moteur impossible" neptune-tv-media-cloudflare/public/studio/video-ai-engine-v73.js
           grep -Fq "engine_health_401" neptune-tv-media-cloudflare/public/studio/video-ai-engine-v73.js
           npm install --package-lock=false --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org
           npm run check
 
-      - name: Commit source fix and remove temporary files
+      - name: Commit validated application files
         shell: bash
         run: |
           set -euo pipefail
-          rm -f scripts/apply-video-engine-loopback-fix.py .github/workflows/apply-video-engine-loopback-fix.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A
+          git add neptune-tv-media-cloudflare/src/entry-v16.js \
+                  neptune-tv-media-cloudflare/public/studio/video-ai-engine-v73.js
+          git diff --cached --quiet && exit 0
           git commit -m 'fix(video-engine): allow and diagnose localhost connection'
           git push origin HEAD:fix/video-engine-local-connection-v73-1

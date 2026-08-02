@@ -24,9 +24,10 @@ check(files.localConfig, '"main": "src/entry-v16.js"', 'la configuration locale 
 check(files.rootConfig, '"main": "neptune-tv-media-cloudflare/src/entry-v16.js"', 'la configuration racine ne cible pas le runtime vidéo entry-v16');
 check(files.videoEntry, "from './entry-v13.js'", 'entry-v16 ne prolonge pas le runtime visuel entry-v13');
 check(files.videoEntry, 'videoAiContainerRequired: false', 'entry-v16 exige encore un moteur Container');
-check(files.videoEntry, "videoAiEngineMode: 'browser-local'", 'entry-v16 ne confirme pas le moteur navigateur local');
-check(files.videoEntry, 'videoAiSafeToCloseAfterUpload: false', 'entry-v16 prétend encore poursuivre le montage après fermeture de l’onglet');
-check(files.videoEntry, "videoAiDispatchMode: 'no-container-no-queue'", 'entry-v16 ne confirme pas la suppression du dispatch Container/Queue');
+check(files.videoEntry, "videoAiEngineMode: 'persistent-local-service-with-browser-fallback'", 'entry-v16 ne confirme pas le service vidéo permanent');
+check(files.videoEntry, 'videoAiSafeToCloseAfterUpload: true', 'entry-v16 ne confirme pas la poursuite après import');
+check(files.videoEntry, "videoAiDispatchMode: 'localhost-persistent-sqlite-queue'", 'entry-v16 ne confirme pas la file locale persistante');
+check(files.videoEntry, 'videoAiBrowserFallbackPresent: true', 'entry-v16 ne conserve pas le secours navigateur');
 check(files.activeEntry, "from './entry-v12.js'", 'entry-v13 ne prolonge pas entry-v12');
 check(files.editorialEntry, "from './entry-v11.js'", 'entry-v12 ne prolonge pas le runtime de contenu entry-v11');
 forbid(files.localConfig, '"analytics_engine_datasets"', 'la configuration locale exige encore Analytics Engine');
@@ -82,7 +83,7 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Verified active entry chain through the local Neptune Video Engine, current client architecture, compact horizontal dashboard rails and bounded content runtime passed.');
+console.log('Verified active entry chain through the persistent Neptune Video Engine with browser fallback, current client architecture, compact horizontal dashboard rails and bounded content runtime passed.');
 
 async function read(path) { return readFile(new URL(`../${path}`, import.meta.url), 'utf8'); }
 async function readRoot(path) { return readFile(new URL(`../../${path}`, import.meta.url), 'utf8'); }

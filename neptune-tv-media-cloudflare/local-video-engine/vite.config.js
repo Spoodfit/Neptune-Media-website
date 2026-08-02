@@ -66,12 +66,12 @@ async function syncPermanentEngineResult(cloudJobId, engineJob, bridge) {
   const completed = [];
   for (let index = 0; index < candidates.length; index += 1) {
     const candidate = candidates[index];
-    setUploadProgress(96 + Math.round(((index + 1) / candidates.length) * 3), `Récupération du short ${index + 1}/${candidates.length}…`);
+    setUploadProgress(96 + Math.round(((index + 1) / candidates.length) * 3), 'Récupération du short ' + (index + 1) + '/' + candidates.length + '…');
     const blob = await bridge.clip(engineJob.id, candidate.id);
     const stored = await saveClip(cloudJobId, candidate, blob);
     completed.push({ ...candidate, outputSizeBytes: stored.sizeBytes, outputMimeType: stored.mimeType });
   }
-  await api(`/api/admin/video-ai/local/jobs/${encodeURIComponent(cloudJobId)}/complete`, {
+  await api('/api/admin/video-ai/local/jobs/' + encodeURIComponent(cloudJobId) + '/complete', {
     method: 'POST',
     body: JSON.stringify({
       transcript: result.transcript || '',
@@ -104,7 +104,7 @@ async function resumePermanentEngineJobs() {
         await syncPermanentEngineResult(cloudJobId, engineJob, bridge);
         await loadBootstrap();
       } else if (engineJob.status === 'failed') {
-        await api(`/api/admin/video-ai/local/jobs/${encodeURIComponent(cloudJobId)}/fail`, {
+        await api('/api/admin/video-ai/local/jobs/' + encodeURIComponent(cloudJobId) + '/fail', {
           method: 'POST',
           body: JSON.stringify({
             stage: 'permanent_engine',
@@ -160,7 +160,7 @@ function openAiSemanticAssistPlugin() {
         .replace("console.warn('workers_ai_free_assist_unavailable', error);", "console.warn('semantic_ai_assist_unavailable', error);")
         .replace('await loadBootstrap();\n    const requested', 'await loadBootstrap();\n    await resumePermanentEngineJobs();\n    const requested')
         .replace('await processFileLocally(selectedFile, jobId);', 'await processFileWithPreferredEngine(selectedFile, jobId);')
-        .replace('function transcribeChunk(audio, onProgress) {', `${permanentEngineRuntime}\nfunction transcribeChunk(audio, onProgress) {`);
+        .replace('function transcribeChunk(audio, onProgress) {', permanentEngineRuntime + '\nfunction transcribeChunk(audio, onProgress) {');
       if (transformed === code
         || !transformed.includes('openAiAnalysisAvailable')
         || !transformed.includes("assistMode === 'openai-structured-analysis'")

@@ -2,7 +2,7 @@ const DEFAULT_ENDPOINT = 'http://127.0.0.1:4318';
 const ENDPOINT_KEY = 'neptune_video_engine_endpoint';
 const TOKEN_KEY = 'neptune_video_engine_token';
 const JOBS_KEY = 'neptune_video_engine_jobs_v1';
-const REQUIRED_ENGINE_VERSION = 'neptune-video-engine-20260803-v74';
+const REQUIRED_ENGINE_VERSION = 'neptune-video-engine-20260803-v75';
 const previewTimers = new Map();
 const previewUrls = new Map();
 
@@ -264,13 +264,13 @@ async function refreshConnection({ interactive = false } = {}) {
     if (updateRequired) {
       status.dataset.state = 'warning';
       status.textContent = 'Mise à jour du moteur requise';
-      detail.textContent = `Version actuelle : ${currentVersion}. Installez la v74 pour activer le recadrage de l’intervenant, les jump-cuts, les sous-titres verticaux sécurisés et la sélection multipasse.`;
+      detail.textContent = `Version actuelle : ${currentVersion}. Installez la v75 pour activer le recadrage de l’intervenant, les jump-cuts, les sous-titres verticaux sécurisés et la sélection multipasse.`;
       if (install) install.textContent = 'Mettre à jour le moteur';
     } else {
       status.dataset.state = 'connected';
-      status.textContent = 'Moteur Neptune v74 connecté';
+      status.textContent = 'Moteur Neptune v75 connecté';
       detail.textContent = health.openAiConfigured
-        ? 'Montage intelligent actif · intervenant suivi, silences resserrés, sous-titres verticaux et sélection OpenAI multipasse.'
+        ? 'Montage intelligent actif · sélection par phrases, cadrage YuNet sécurisé, sous-titres mot à mot et hooks exacts.'
         : 'Montage intelligent actif · intervenant suivi, silences resserrés, sous-titres verticaux et sélection locale/Ollama.';
       if (install) install.textContent = 'Réinstaller / mettre à jour';
     }

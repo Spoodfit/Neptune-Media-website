@@ -59,7 +59,7 @@ if ($existingOpenAiKey) {
   $openAiKey = $existingOpenAiKey
   Write-Host "Configuration OpenAI existante conservée." -ForegroundColor DarkGray
 } else {
-  $openAiKey = Read-Host "Clé OpenAI locale (facultatif, Entrée pour utiliser Ollama/règles Neptune)"
+  $openAiKey = Read-Host "Clé OpenAI locale pour les hooks avancés (recommandée ; Entrée = sélection locale v75)"
 }
 
 $envContent = @"
@@ -68,7 +68,7 @@ WHISPER_MODEL=small
 WHISPER_DEVICE=auto
 WHISPER_COMPUTE_TYPE=int8
 NEPTUNE_ENGINE_WORKERS=1
-NEPTUNE_MIN_EDITORIAL_SCORE=65
+NEPTUNE_MIN_EDITORIAL_SCORE=60
 NEPTUNE_MIN_CLIPS_PER_HOUR=16
 NEPTUNE_TARGET_CLIPS_PER_HOUR=20
 NEPTUNE_MAX_CLIPS_PER_HOUR=24

@@ -35,7 +35,7 @@ expect(entry.includes('videoAiBackgroundProcessing: true'), 'la poursuite hors o
 expect(entry.includes('videoAiBrowserFallbackPresent: true'), 'le secours navigateur n’est pas déclaré');
 expect(html.includes('NEPTUNE VIDEO ENGINE'), 'le Studio n’annonce pas le moteur permanent');
 expect(html.includes('La production continue même après fermeture du Studio'), 'la promesse d’autonomie est absente');
-expect(html.includes('/studio/video-ai-engine-v73.js?v=74'), 'le bridge v74 n’est pas chargé');
+expect(html.includes('/studio/video-ai-engine-v73.js?v=75'), 'le bridge v74 n’est pas chargé');
 expect(html.includes('/studio/local-engine/neptune-video-local-engine-v1.js?v=73'), 'le fallback navigateur v73 n’est pas chargé');
 expect(html.includes('/studio/install-neptune-video-engine.ps1'), 'l’installateur Windows n’est pas proposé');
 expect(bridge.includes('NeptuneVideoEngineBridge'), 'le bridge global est absent');
@@ -45,7 +45,7 @@ expect(bridge.includes('xhr.upload.onprogress'), 'la progression de copie réell
 expect(bridge.includes('targetAddressSpace'), 'la compatibilité réseau local moderne est absente');
 expect(bridge.includes('engineLivePreview'), 'l’aperçu réel du moteur est absent');
 expect(bridge.includes('this.preview(jobId)'), 'la récupération authentifiée de l’aperçu est absente');
-expect(bridge.includes('neptune-video-engine-20260803-v74'), 'le Studio ne détecte pas la version v74 du moteur');
+expect(bridge.includes('neptune-video-engine-20260803-v75'), 'le Studio ne détecte pas la version v74 du moteur');
 expect(bridge.includes('Mettre à jour le moteur'), 'le Studio ne propose pas la mise à jour du moteur');
 expect(css.includes('.engine-setup'), 'le panneau de connexion n’est pas stylé');
 expect(css.includes('.engine-live-preview'), 'l’aperçu réel n’est pas stylé');
@@ -97,4 +97,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Neptune Video Engine v74 validé : service local persistant, mise à jour visible, progression et aperçu réels, recadrage visage, Studio connecté, reprise hors onglet, OpenAI/Ollama/règles, FFmpeg/Whisper/OpenCV et fallback navigateur.');
+console.log('Neptune Video Engine v75 validé : service local persistant, mise à jour visible, progression et aperçu réels, recadrage visage, Studio connecté, reprise hors onglet, OpenAI/Ollama/règles, FFmpeg/Whisper/OpenCV et fallback navigateur.');

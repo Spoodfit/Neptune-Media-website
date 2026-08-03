@@ -18,7 +18,11 @@ RUN apt-get update \
 WORKDIR /app
 COPY requirements.txt ./
 RUN pip install --upgrade pip && pip install -r requirements.txt
-COPY app.py runtime.py runtime_v74.py ./
+COPY app.py runtime.py runtime_v74.py runtime_v75.py ./
+
+RUN curl -fL --retry 3 --retry-delay 2 \
+  https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx \
+  -o /app/face_detection_yunet_2023mar.onnx
 
 RUN mkdir -p /data
 VOLUME ["/data"]

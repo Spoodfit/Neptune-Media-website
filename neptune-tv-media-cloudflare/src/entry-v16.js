@@ -6,13 +6,13 @@ import { isOpenAiConfigured, openAiModel } from './openai-video-analysis-v1.js';
 
 export { StudioStore };
 
-const RELEASE = 'neptune-video-engine-20260802-v73';
+const RELEASE = 'neptune-video-engine-20260803-v75';
 const OPENAI_RELEASE = 'neptune-openai-video-analysis-20260731-v1';
 const STUDIO_IA_CSS = '/studio/studio-information-architecture-v65.css?v=1';
 const STUDIO_IA_JS = '/studio/studio-information-architecture-v65-1.js?v=1';
 const OPENAI_UI_CSS = '/studio/video-ai-openai-v1.css?v=1';
 const OPENAI_UI_JS = '/studio/video-ai-openai-v1.js?v=1';
-const PERMANENT_ENGINE_UI_JS = '/studio/video-ai-engine-v73.js?v=74';
+const PERMANENT_ENGINE_UI_JS = '/studio/video-ai-engine-v73.js?v=75';
 
 export default {
   async fetch(request, env, ctx) {
@@ -74,7 +74,7 @@ async function augmentRelease(response, env) {
     videoAiStudio: RELEASE,
     videoAiOpenAiIntegration: OPENAI_RELEASE,
     videoAiEntry: '/studio/video-ai',
-    videoAiPipeline: 'persistent-local-service-faster-whisper-openai-ollama-opencv-ffmpeg-studio-sync-browser-fallback',
+    videoAiPipeline: 'persistent-local-service-faster-whisper-sentence-density-openai-yunet-ffmpeg-studio-sync-browser-fallback',
     videoAiEngineMode: 'persistent-local-service-with-browser-fallback',
     videoAiDispatchMode: 'localhost-persistent-sqlite-queue',
     videoAiMinimumScore: 60,
@@ -82,7 +82,7 @@ async function augmentRelease(response, env) {
     videoAiEditorialProposals: 3,
     videoAiReviewPolicy: 'internal-validation-required-before-drive-export',
     videoAiSourcePrivacy: 'source-kept-on-neptune-machine-transcript-only-optional-ai',
-    videoAiRendering: 'local-ffmpeg-opencv-smart-crop-vertical-1080x1920-ass-subtitles',
+    videoAiRendering: 'local-ffmpeg-yunet-safe-layout-vertical-1080x1920-word-focus-ass-subtitles',
     videoAiTranscription: 'faster-whisper-local-primary-browser-whisper-fallback',
     videoAiStorage: 'local-sqlite-persistent-volume-plus-indexeddb-review-sync',
     videoAiSemanticProvider: 'local-openai-then-ollama-then-rules-with-browser-cloud-assist-fallback',

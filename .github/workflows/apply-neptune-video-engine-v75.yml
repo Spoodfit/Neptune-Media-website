@@ -1,0 +1,107 @@
+name: Apply Neptune Video Engine V75
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/apply-neptune-video-engine-v75.py'
+      - '.github/workflows/apply-neptune-video-engine-v75.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout v75 branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/neptune-video-engine-v75-runtime
+          fetch-depth: 0
+
+      - name: Apply v75 runtime
+        run: python scripts/apply-neptune-video-engine-v75.py
+
+      - name: Validate Python syntax and release contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile neptune-video-engine/app.py neptune-video-engine/runtime.py neptune-video-engine/runtime_v74.py neptune-video-engine/runtime_v75.py
+          grep -Fq 'from runtime_v75 import app as app' neptune-video-engine/runtime.py
+          grep -Fq 'neptune-video-engine-20260803-v75' neptune-video-engine/runtime_v75.py
+          grep -Fq 'FaceDetectorYN_create' neptune-video-engine/runtime_v75.py
+          grep -Fq 'sentence-density-v75' neptune-video-engine/runtime_v75.py
+          grep -Fq 'NeptuneCaption,DejaVu Sans,64' neptune-video-engine/runtime_v75.py
+          grep -Fq 'video-ai-engine-v73.js?v=75' neptune-tv-media-cloudflare/public/studio/video-ai.html
+
+      - name: Install and validate application
+        run: |
+          npm install --package-lock=false --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org
+          npm run check
+
+      - name: Build v75 Docker image
+        run: docker build -t neptune-video-engine:v75-ci neptune-video-engine
+
+      - name: Verify v75 candidate density, YuNet and subtitles
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm -i --entrypoint python neptune-video-engine:v75-ci - <<'PY'
+          import tempfile
+          from pathlib import Path
+          import runtime_v75 as v
+
+          assert v.VERSION == 'neptune-video-engine-20260803-v75'
+          assert v.get_yunet() is not None, 'YuNet model was not loaded'
+
+          segments = []
+          for index in range(120):
+              start = index * 30.0
+              text = (
+                  f"La vérité numéro {index + 1}, c'est que cette erreur coûte du temps aux entreprises. "
+                  "Voici comment un client peut appliquer une méthode concrète et obtenir un résultat mesurable."
+              )
+              words = v.v74.synthetic_words(text, start, start + 24.0)
+              segments.append({'start': start, 'end': start + 24.0, 'text': text, 'words': words})
+          transcript = {'text': ' '.join(item['text'] for item in segments), 'segments': segments}
+          media = {'durationSeconds': 3600.0, 'width': 1920, 'height': 1080, 'audioCodec': 'aac'}
+          candidates = v.local_sentence_candidates(transcript, media)
+          assert 16 <= len(candidates) <= 24, len(candidates)
+          assert all(item['score'] >= v.MIN_SCORE for item in candidates)
+          assert all(item['hookMoment'] in item['transcriptSegments'][0]['text'] for item in candidates)
+
+          candidate = candidates[0]
+          v.v74.build_montage_segments(candidate)
+          with tempfile.TemporaryDirectory() as directory:
+              path = Path(directory) / 'captions.ass'
+              v.write_subtitles._candidate = candidate
+              v.write_subtitles(path, candidate['transcriptSegments'], candidate['startSeconds'], candidate['endSeconds'])
+              v.write_subtitles._candidate = None
+              content = path.read_text(encoding='utf-8')
+              assert 'MarginL, MarginR, MarginV' in content
+              assert '&H006FE8FF' in content
+              assert 'NeptuneCaption' in content
+          print({'candidateCount': len(candidates), 'minimumScore': min(item['score'] for item in candidates)})
+          PY
+
+      - name: Commit validated v75 files
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            neptune-video-engine/runtime_v75.py \
+            neptune-video-engine/runtime.py \
+            neptune-video-engine/Dockerfile \
+            neptune-tv-media-cloudflare/public/studio/install-neptune-video-engine.ps1 \
+            neptune-tv-media-cloudflare/public/studio/video-ai-engine-v73.js \
+            neptune-tv-media-cloudflare/public/studio/video-ai.html \
+            neptune-tv-media-cloudflare/src/entry-v16.js \
+            neptune-tv-media-cloudflare/scripts/smoke-test-v73.mjs
+          git diff --cached --quiet && exit 0
+          git commit -m 'fix(video): replace v74 heuristics with Neptune Engine v75'
+          git push origin HEAD:fix/neptune-video-engine-v75-runtime

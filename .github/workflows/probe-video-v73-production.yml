@@ -1,4 +1,4 @@
-name: Probe Neptune Video Engine V73 Production
+name: Probe Neptune Video Engine V74 Production
 
 on:
   pull_request:
@@ -32,13 +32,13 @@ jobs:
           set -euo pipefail
           dir="/tmp/probe-${{ matrix.slug }}"
           mkdir -p "$dir"
-          query="probe_v73=$GITHUB_SHA"
+          query="probe_v74=$GITHUB_SHA"
           curl -fsS -H 'Cache-Control: no-cache, no-store' \
             '${{ matrix.base }}/api/public/release?'"$query" > "$dir/release.json"
           curl -fsSL --max-redirs 5 -H 'Cache-Control: no-cache, no-store' \
             '${{ matrix.base }}/studio/video-ai?'"$query" > "$dir/video-ai.html"
           curl -fsS -H 'Cache-Control: no-cache, no-store' \
-            '${{ matrix.base }}/studio/video-ai-engine-v73.js?v=1&'"$query" > "$dir/bridge.js"
+            '${{ matrix.base }}/studio/video-ai-engine-v73.js?v=74&'"$query" > "$dir/bridge.js"
           curl -fsS -H 'Cache-Control: no-cache, no-store' \
             '${{ matrix.base }}/studio/video-ai-engine-v73.css?v=1&'"$query" > "$dir/engine.css"
           curl -fsS -H 'Cache-Control: no-cache, no-store' \
@@ -103,11 +103,11 @@ jobs:
               'headers': root / 'headers.txt',
           }
           markers = {
-              'html': ['NEPTUNE VIDEO ENGINE', 'id="engineConnectionStatus"', 'Installer sur Windows', '/studio/video-ai-engine-v73.js?v=1', '/studio/local-engine/neptune-video-local-engine-v1.js?v=73'],
-              'bridge': ['NeptuneVideoEngineBridge', 'Moteur Neptune connecté', 'xhr.upload.onprogress', 'engineLivePreview', 'localStorage.setItem(JOBS_KEY'],
+              'html': ['NEPTUNE VIDEO ENGINE', 'id="engineConnectionStatus"', 'id="engineInstallButton"', '/studio/video-ai-engine-v73.js?v=74', '/studio/local-engine/neptune-video-local-engine-v1.js?v=73'],
+              'bridge': ['NeptuneVideoEngineBridge', 'neptune-video-engine-20260803-v74', 'Mettre à jour le moteur', 'Moteur Neptune v74 connecté', 'xhr.upload.onprogress', 'engineLivePreview', 'localStorage.setItem(JOBS_KEY'],
               'css': ['.engine-setup', '.engine-live-preview'],
               'fallback': ['neptune-video-engine-bridge-20260802-v73', 'permanent_engine_processing'],
-              'installer': ['docker compose up -d --build'],
+              'installer': ['NEPTUNE_TARGET_CLIPS_PER_HOUR=20', 'docker compose up -d --build'],
               'headers': ['x-neptune-video-ai: neptune-video-engine-20260802-v73', 'cross-origin-opener-policy: same-origin', 'cross-origin-embedder-policy: require-corp'],
           }
           for name, wanted in markers.items():
@@ -120,6 +120,6 @@ jobs:
       - name: Upload production probe
         uses: actions/upload-artifact@v4
         with:
-          name: neptune-v73-production-${{ matrix.slug }}
+          name: neptune-v74-production-${{ matrix.slug }}
           path: /tmp/probe-${{ matrix.slug }}
           retention-days: 3

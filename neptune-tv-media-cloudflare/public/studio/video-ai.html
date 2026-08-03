@@ -70,7 +70,7 @@
             <label>Code de connexion<input id="engineToken" type="password" autocomplete="off" placeholder="Coller le code généré par l’installateur"></label>
           </div>
           <div class="engine-setup__buttons">
-            <a href="/studio/install-neptune-video-engine.ps1" download>Installer sur Windows</a>
+            <a id="engineInstallButton" href="/studio/install-neptune-video-engine.ps1" download>Installer sur Windows</a>
             <button id="engineConnectButton" type="button">Connecter</button>
             <button id="engineForgetButton" class="quiet" type="button">Oublier le code</button>
           </div>
@@ -130,7 +130,7 @@
 
   <div id="toast" class="toast" hidden role="status"></div>
   <script type="module" src="/studio/video-ai-openai-v1.js?v=1"></script>
-  <script type="module" src="/studio/video-ai-engine-v73.js?v=1"></script>
+  <script type="module" src="/studio/video-ai-engine-v73.js?v=74"></script>
   <script type="module" src="/studio/local-engine/neptune-video-local-engine-v1.js?v=73"></script>
 </body>
 </html>

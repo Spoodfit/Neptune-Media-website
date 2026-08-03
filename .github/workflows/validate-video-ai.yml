@@ -39,7 +39,7 @@ jobs:
           python-version: '3.12'
 
       - name: Validate Python service syntax
-        run: python -m py_compile neptune-video-engine/app.py neptune-video-engine/runtime.py
+        run: python -m py_compile neptune-video-engine/app.py neptune-video-engine/runtime.py neptune-video-engine/runtime_v74.py
 
       - name: Install Worker and browser fallback dependencies
         run: npm install --package-lock=false --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org
@@ -56,12 +56,15 @@ jobs:
           ! grep -Fq '"VIDEO_JOBS"' wrangler.jsonc
           ! grep -Fq '@cloudflare/containers' package.json
           ! grep -Fq '@cloudflare/containers' neptune-tv-media-cloudflare/package.json
-          grep -Fq 'neptune-video-engine-20260802-v73' neptune-video-engine/app.py
+          grep -Fq 'neptune-video-engine-20260803-v74' neptune-video-engine/runtime_v74.py
           grep -Fq 'CREATE TABLE IF NOT EXISTS jobs' neptune-video-engine/app.py
           grep -Fq 'WhisperModel' neptune-video-engine/app.py
           grep -Fq 'openai_candidates' neptune-video-engine/app.py
           grep -Fq 'ollama_candidates' neptune-video-engine/app.py
-          grep -Fq 'render_clip' neptune-video-engine/app.py
+          grep -Fq 'openai_candidates' neptune-video-engine/runtime_v74.py
+          grep -Fq 'track_active_speaker' neptune-video-engine/runtime_v74.py
+          grep -Fq 'build_montage_segments' neptune-video-engine/runtime_v74.py
+          grep -Fq 'neptune-vertical-safe-v2' neptune-video-engine/runtime_v74.py
           grep -Fq 'Access-Control-Allow-Private-Network' neptune-video-engine/runtime.py
           grep -Fq 'cropCenterX' neptune-video-engine/runtime.py
           grep -Fq 'NEPTUNE_ENGINE_TEST_MODE' neptune-video-engine/runtime.py
@@ -69,9 +72,11 @@ jobs:
           grep -Fq 'restart: unless-stopped' neptune-video-engine/docker-compose.yml
           grep -Fq 'neptune_video_data' neptune-video-engine/docker-compose.yml
           grep -Fq 'NEPTUNE VIDEO ENGINE' neptune-tv-media-cloudflare/public/studio/video-ai.html
-          grep -Fq '/studio/video-ai-engine-v73.js?v=1' neptune-tv-media-cloudflare/public/studio/video-ai.html
+          grep -Fq '/studio/video-ai-engine-v73.js?v=74' neptune-tv-media-cloudflare/public/studio/video-ai.html
           grep -Fq '/studio/local-engine/neptune-video-local-engine-v1.js?v=73' neptune-tv-media-cloudflare/public/studio/video-ai.html
           grep -Fq 'NeptuneVideoEngineBridge' neptune-tv-media-cloudflare/public/studio/video-ai-engine-v73.js
+          grep -Fq 'neptune-video-engine-20260803-v74' neptune-tv-media-cloudflare/public/studio/video-ai-engine-v73.js
+          grep -Fq 'Mettre à jour le moteur' neptune-tv-media-cloudflare/public/studio/video-ai-engine-v73.js
           grep -Fq 'xhr.upload.onprogress' neptune-tv-media-cloudflare/public/studio/video-ai-engine-v73.js
           grep -Fq 'engineLivePreview' neptune-tv-media-cloudflare/public/studio/video-ai-engine-v73.js
           grep -Fq 'targetAddressSpace' neptune-tv-media-cloudflare/public/studio/video-ai-engine-v73.js
@@ -100,6 +105,7 @@ jobs:
           cat /tmp/engine-health.json
           grep -Fq '"ok":true' /tmp/engine-health.json
           grep -Fq '"mode":"persistent-local-service"' /tmp/engine-health.json
+          grep -Fq 'neptune-video-engine-20260803-v74' /tmp/engine-health.json
 
       - name: Verify local-network browser preflight
         shell: bash

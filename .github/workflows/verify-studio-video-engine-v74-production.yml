@@ -1,0 +1,50 @@
+name: Verify Studio Video Engine V74 Production
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-studio-video-engine-v74-production.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        base:
+          - https://tv.neptunebusiness.com
+          - https://neptune-media-webtv.neptunebusinessclub.workers.dev
+    steps:
+      - name: Verify deployed v74 Studio assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          ready=0
+          for attempt in $(seq 1 40); do
+            query="verify_v74=$GITHUB_SHA&attempt=$attempt"
+            curl -fsSL --max-redirs 5 -H 'Cache-Control: no-cache, no-store' \
+              "${{ matrix.base }}/studio/video-ai?$query" > /tmp/video-ai.html || true
+            curl -fsS -H 'Cache-Control: no-cache, no-store' \
+              "${{ matrix.base }}/studio/video-ai-engine-v73.js?v=74&$query" > /tmp/bridge.js || true
+            curl -fsS -H 'Cache-Control: no-cache, no-store' \
+              "${{ matrix.base }}/studio/install-neptune-video-engine.ps1?$query" > /tmp/installer.ps1 || true
+            if grep -Fq '/studio/video-ai-engine-v73.js?v=74' /tmp/video-ai.html \
+              && grep -Fq 'id="engineInstallButton"' /tmp/video-ai.html \
+              && grep -Fq 'neptune-video-engine-20260803-v74' /tmp/bridge.js \
+              && grep -Fq 'Mettre à jour le moteur' /tmp/bridge.js \
+              && grep -Fq 'Moteur Neptune v74 connecté' /tmp/bridge.js \
+              && grep -Fq 'NEPTUNE_TARGET_CLIPS_PER_HOUR=20' /tmp/installer.ps1 \
+              && grep -Fq 'Mise à jour du moteur existant sans supprimer les productions' /tmp/installer.ps1; then
+              ready=1
+              echo "${{ matrix.base }}: v74 verified on attempt $attempt"
+              break
+            fi
+            sleep 10
+          done
+          test "$ready" = 1

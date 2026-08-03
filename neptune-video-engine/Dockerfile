@@ -18,7 +18,7 @@ RUN apt-get update \
 WORKDIR /app
 COPY requirements.txt ./
 RUN pip install --upgrade pip && pip install -r requirements.txt
-COPY app.py runtime.py ./
+COPY app.py runtime.py runtime_v74.py ./
 
 RUN mkdir -p /data
 VOLUME ["/data"]
@@ -27,4 +27,4 @@ EXPOSE 4318
 HEALTHCHECK --interval=20s --timeout=5s --start-period=60s --retries=6 \
   CMD curl -fsS -H "X-Neptune-Engine-Token: ${NEPTUNE_ENGINE_TOKEN}" http://127.0.0.1:4318/health || exit 1
 
-CMD ["uvicorn", "runtime:app", "--host", "0.0.0.0", "--port", "4318", "--workers", "1"]
+CMD ["uvicorn", "runtime_v74:app", "--host", "0.0.0.0", "--port", "4318", "--workers", "1"]

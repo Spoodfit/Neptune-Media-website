@@ -13,7 +13,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 8
     strategy:
       fail-fast: false
       matrix:
@@ -21,30 +21,60 @@ jobs:
           - https://tv.neptunebusiness.com
           - https://neptune-media-webtv.neptunebusinessclub.workers.dev
     steps:
-      - name: Verify deployed v74 Studio assets
+      - name: Collect deployed Studio assets
         shell: bash
         run: |
           set -euo pipefail
-          ready=0
-          for attempt in $(seq 1 40); do
-            query="verify_v74=$GITHUB_SHA&attempt=$attempt"
-            curl -fsSL --max-redirs 5 -H 'Cache-Control: no-cache, no-store' \
-              "${{ matrix.base }}/studio/video-ai?$query" > /tmp/video-ai.html || true
-            curl -fsS -H 'Cache-Control: no-cache, no-store' \
-              "${{ matrix.base }}/studio/video-ai-engine-v73.js?v=74&$query" > /tmp/bridge.js || true
-            curl -fsS -H 'Cache-Control: no-cache, no-store' \
-              "${{ matrix.base }}/studio/install-neptune-video-engine.ps1?$query" > /tmp/installer.ps1 || true
-            if grep -Fq '/studio/video-ai-engine-v73.js?v=74' /tmp/video-ai.html \
-              && grep -Fq 'id="engineInstallButton"' /tmp/video-ai.html \
-              && grep -Fq 'neptune-video-engine-20260803-v74' /tmp/bridge.js \
-              && grep -Fq 'Mettre à jour le moteur' /tmp/bridge.js \
-              && grep -Fq 'Moteur Neptune v74 connecté' /tmp/bridge.js \
-              && grep -Fq 'NEPTUNE_TARGET_CLIPS_PER_HOUR=20' /tmp/installer.ps1 \
-              && grep -Fq 'Mise à jour du moteur existant sans supprimer les productions' /tmp/installer.ps1; then
-              ready=1
-              echo "${{ matrix.base }}: v74 verified on attempt $attempt"
-              break
+          query="verify_v74=$GITHUB_SHA"
+          curl -fsSL --max-redirs 5 -D /tmp/html-headers.txt -H 'Cache-Control: no-cache, no-store' \
+            "${{ matrix.base }}/studio/video-ai?$query" > /tmp/video-ai.html
+          curl -fsS -D /tmp/bridge-headers.txt -H 'Cache-Control: no-cache, no-store' \
+            "${{ matrix.base }}/studio/video-ai-engine-v73.js?v=74&$query" > /tmp/bridge.js
+          curl -fsS -D /tmp/installer-headers.txt -H 'Cache-Control: no-cache, no-store' \
+            "${{ matrix.base }}/studio/install-neptune-video-engine.ps1?$query" > /tmp/installer.ps1
+
+      - name: Print exact marker matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          check() {
+            local file="$1"
+            local marker="$2"
+            if grep -Fq "$marker" "$file"; then
+              printf 'true  | %s | %s\n' "$file" "$marker"
+            else
+              printf 'false | %s | %s\n' "$file" "$marker"
             fi
-            sleep 10
-          done
-          test "$ready" = 1
+          }
+          echo '=== sizes ==='
+          wc -c /tmp/video-ai.html /tmp/bridge.js /tmp/installer.ps1
+          echo '=== HTML script references ==='
+          grep -oE '<script[^>]+src="[^"]+"' /tmp/video-ai.html || true
+          echo '=== marker matrix ==='
+          check /tmp/video-ai.html '/studio/video-ai-engine-v73.js?v=74'
+          check /tmp/video-ai.html 'id="engineInstallButton"'
+          check /tmp/bridge.js 'neptune-video-engine-20260803-v74'
+          check /tmp/bridge.js 'Mettre à jour le moteur'
+          check /tmp/bridge.js 'Moteur Neptune v74 connecté'
+          check /tmp/installer.ps1 'NEPTUNE_TARGET_CLIPS_PER_HOUR=20'
+          check /tmp/installer.ps1 'Mise à jour du moteur existant sans supprimer les productions'
+          echo '=== relevant bridge lines ==='
+          grep -nE 'REQUIRED_ENGINE_VERSION|Mettre à jour|Moteur Neptune v74|Moteur Neptune connecté' /tmp/bridge.js || true
+          echo '=== relevant installer lines ==='
+          grep -nE 'NEPTUNE_(MIN|TARGET|MAX)_CLIPS_PER_HOUR|Mise à jour du moteur' /tmp/installer.ps1 || true
+          echo '=== response headers ==='
+          cat /tmp/html-headers.txt
+          cat /tmp/bridge-headers.txt
+          cat /tmp/installer-headers.txt
+
+      - name: Assert v74 production
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq '/studio/video-ai-engine-v73.js?v=74' /tmp/video-ai.html
+          grep -Fq 'id="engineInstallButton"' /tmp/video-ai.html
+          grep -Fq 'neptune-video-engine-20260803-v74' /tmp/bridge.js
+          grep -Fq 'Mettre à jour le moteur' /tmp/bridge.js
+          grep -Fq 'Moteur Neptune v74 connecté' /tmp/bridge.js
+          grep -Fq 'NEPTUNE_TARGET_CLIPS_PER_HOUR=20' /tmp/installer.ps1
+          grep -Fq 'Mise à jour du moteur existant sans supprimer les productions' /tmp/installer.ps1

@@ -12,7 +12,7 @@ const STUDIO_IA_CSS = '/studio/studio-information-architecture-v65.css?v=1';
 const STUDIO_IA_JS = '/studio/studio-information-architecture-v65-1.js?v=1';
 const OPENAI_UI_CSS = '/studio/video-ai-openai-v1.css?v=1';
 const OPENAI_UI_JS = '/studio/video-ai-openai-v1.js?v=1';
-const PERMANENT_ENGINE_UI_JS = '/studio/video-ai-engine-v73.js?v=1';
+const PERMANENT_ENGINE_UI_JS = '/studio/video-ai-engine-v73.js?v=74';
 
 export default {
   async fetch(request, env, ctx) {

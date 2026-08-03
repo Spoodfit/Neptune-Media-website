@@ -1,0 +1,43 @@
+name: Update Neptune Video Engine V74 Workflow Contract
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/update-video-engine-v74-workflow-contract.py'
+      - '.github/workflows/update-video-engine-v74-workflow-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fix branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/studio-video-engine-v74-update-notice
+          fetch-depth: 0
+
+      - name: Update historic workflow contract
+        run: python scripts/update-video-engine-v74-workflow-contract.py
+
+      - name: Validate changed workflow files
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -R -Fq '/studio/video-ai-engine-v73.js?v=74' .github/workflows
+          ! grep -R -Fq '/studio/video-ai-engine-v73.js?v=1' .github/workflows
+
+      - name: Commit workflow contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/workflows
+          git diff --cached --quiet && exit 0
+          git commit -m 'test(video-engine): align workflow with v74 bridge'
+          git push origin HEAD:fix/studio-video-engine-v74-update-notice

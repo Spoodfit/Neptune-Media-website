@@ -18,7 +18,7 @@ RUN apt-get update \
 WORKDIR /app
 COPY requirements.txt ./
 RUN pip install --upgrade pip && pip install -r requirements.txt
-COPY app.py runtime.py ./
+COPY app.py runtime.py runtime_v74.py ./
 
 RUN mkdir -p /data
 VOLUME ["/data"]

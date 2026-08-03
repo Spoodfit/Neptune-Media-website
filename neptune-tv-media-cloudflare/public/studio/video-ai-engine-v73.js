@@ -2,6 +2,7 @@ const DEFAULT_ENDPOINT = 'http://127.0.0.1:4318';
 const ENDPOINT_KEY = 'neptune_video_engine_endpoint';
 const TOKEN_KEY = 'neptune_video_engine_token';
 const JOBS_KEY = 'neptune_video_engine_jobs_v1';
+const REQUIRED_ENGINE_VERSION = 'neptune-video-engine-20260803-v74';
 const previewTimers = new Map();
 const previewUrls = new Map();
 
@@ -254,13 +255,26 @@ async function refreshConnection({ interactive = false } = {}) {
     const health = probe.status === 200 && probe.data?.ok
       ? probe.data
       : await bridge.health(interactive ? 12000 : 8000);
-    status.dataset.state = 'connected';
-    status.textContent = 'Moteur Neptune connecté';
-    detail.textContent = health.openAiConfigured
-      ? 'Production autonome active · Whisper, OpenAI, FFmpeg et reprise automatique.'
-      : 'Production autonome active · Whisper, FFmpeg et sélection locale/Ollama.';
-    if (connect) connect.textContent = 'Reconnecter';
+    const install = $('#engineInstallButton');
+    const currentVersion = String(health.version || 'version inconnue');
+    const updateRequired = currentVersion !== REQUIRED_ENGINE_VERSION;
+    globalThis.NeptuneVideoEngineHealth = health;
     document.documentElement.dataset.neptuneEngine = 'connected';
+    document.documentElement.dataset.neptuneEngineVersion = updateRequired ? 'outdated' : 'current';
+    if (updateRequired) {
+      status.dataset.state = 'warning';
+      status.textContent = 'Mise à jour du moteur requise';
+      detail.textContent = `Version actuelle : ${currentVersion}. Installez la v74 pour activer le recadrage de l’intervenant, les jump-cuts, les sous-titres verticaux sécurisés et la sélection multipasse.`;
+      if (install) install.textContent = 'Mettre à jour le moteur';
+    } else {
+      status.dataset.state = 'connected';
+      status.textContent = 'Moteur Neptune v74 connecté';
+      detail.textContent = health.openAiConfigured
+        ? 'Montage intelligent actif · intervenant suivi, silences resserrés, sous-titres verticaux et sélection OpenAI multipasse.'
+        : 'Montage intelligent actif · intervenant suivi, silences resserrés, sous-titres verticaux et sélection locale/Ollama.';
+      if (install) install.textContent = 'Réinstaller / mettre à jour';
+    }
+    if (connect) connect.textContent = 'Reconnecter';
   } catch (error) {
     const message = String(error?.message || error || 'engine_connection_failed');
     const timedOut = error?.name === 'TimeoutError' || message.includes('signal timed out') || message.includes('Timeout') || message.includes('timeout');

@@ -25,6 +25,26 @@ jobs:
       - name: Apply v75 runtime
         run: python scripts/apply-neptune-video-engine-v75.py
 
+      - name: Preserve distinct distant passages
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('neptune-video-engine/runtime_v75.py')
+          text = path.read_text(encoding='utf-8')
+          old_distance = 'abs(float(candidate["startSeconds"]) - float(existing["startSeconds"])) < 210'
+          new_distance = 'abs(float(candidate["startSeconds"]) - float(existing["startSeconds"])) < 75'
+          old_completion = 'candidate not in selected and _can_add(candidate, selected, 0.82)'
+          new_completion = 'candidate not in selected and _can_add(candidate, selected, 0.92)'
+          if text.count(old_distance) != 1 or text.count(old_completion) != 1:
+              raise SystemExit('v75 deduplication anchors missing')
+          text = text.replace(old_distance, new_distance, 1)
+          text = text.replace(old_completion, new_completion, 1)
+          path.write_text(text, encoding='utf-8')
+          print('Limited semantic deduplication to genuinely nearby passages.')
+          PY
+
       - name: Validate Python syntax and release contract
         shell: bash
         run: |
@@ -36,6 +56,8 @@ jobs:
           grep -Fq 'sentence-density-v75' neptune-video-engine/runtime_v75.py
           grep -Fq 'NeptuneCaption,DejaVu Sans,64' neptune-video-engine/runtime_v75.py
           grep -Fq 'video-ai-engine-v73.js?v=75' neptune-tv-media-cloudflare/public/studio/video-ai.html
+          grep -Fq '< 75' neptune-video-engine/runtime_v75.py
+          grep -Fq '_can_add(candidate, selected, 0.92)' neptune-video-engine/runtime_v75.py
 
       - name: Install and validate application
         run: |

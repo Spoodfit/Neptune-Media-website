@@ -56,11 +56,11 @@ jobs:
       - name: Deploy Worker and Studio assets
         run: npx wrangler deploy --config wrangler.jsonc
 
-      - name: Verify Neptune Video Engine v73 on both production domains
+      - name: Verify Neptune Video Engine v74 on both production domains
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p /tmp/neptune-video-v73
+          mkdir -p /tmp/neptune-video-v74
 
           verify_domain() {
             local base="$1"
@@ -68,23 +68,23 @@ jobs:
             local ready=0
 
             for attempt in $(seq 1 30); do
-              local query="video_v73=$GITHUB_SHA&attempt=$attempt"
+              local query="video_v74=$GITHUB_SHA&attempt=$attempt"
               curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-                "$base/api/public/release?$query" > "/tmp/neptune-video-v73/$slug-release.json" || true
+                "$base/api/public/release?$query" > "/tmp/neptune-video-v74/$slug-release.json" || true
               curl --fail --silent --show-error --location --max-redirs 5 -H 'Cache-Control: no-cache, no-store' \
-                "$base/studio/video-ai?$query" > "/tmp/neptune-video-v73/$slug-video-ai.html" || true
+                "$base/studio/video-ai?$query" > "/tmp/neptune-video-v74/$slug-video-ai.html" || true
               curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-                "$base/studio/video-ai-engine-v73.js?v=1&$query" > "/tmp/neptune-video-v73/$slug-bridge.js" || true
+                "$base/studio/video-ai-engine-v73.js?v=74&$query" > "/tmp/neptune-video-v74/$slug-bridge.js" || true
               curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-                "$base/studio/video-ai-engine-v73.css?v=1&$query" > "/tmp/neptune-video-v73/$slug-engine.css" || true
+                "$base/studio/video-ai-engine-v73.css?v=1&$query" > "/tmp/neptune-video-v74/$slug-engine.css" || true
               curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-                "$base/studio/local-engine/neptune-video-local-engine-v1.js?v=73&$query" > "/tmp/neptune-video-v73/$slug-fallback.js" || true
+                "$base/studio/local-engine/neptune-video-local-engine-v1.js?v=73&$query" > "/tmp/neptune-video-v74/$slug-fallback.js" || true
               curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-                "$base/studio/install-neptune-video-engine.ps1?$query" > "/tmp/neptune-video-v73/$slug-installer.ps1" || true
+                "$base/studio/install-neptune-video-engine.ps1?$query" > "/tmp/neptune-video-v74/$slug-installer.ps1" || true
               curl --fail --silent --show-error -I -H 'Cache-Control: no-cache, no-store' \
-                "$base/studio/video-ai.html?$query" > "/tmp/neptune-video-v73/$slug-headers.txt" || true
+                "$base/studio/video-ai.html?$query" > "/tmp/neptune-video-v74/$slug-headers.txt" || true
 
-              if RELEASE_FILE="/tmp/neptune-video-v73/$slug-release.json" node <<'NODE'
+              if RELEASE_FILE="/tmp/neptune-video-v74/$slug-release.json" node <<'NODE'
           const fs = require('node:fs');
           let data;
           try { data = JSON.parse(fs.readFileSync(process.env.RELEASE_FILE, 'utf8')); } catch { process.exit(1); }
@@ -112,30 +112,33 @@ jobs:
           if (data.videoAiMinimumScore !== 60 || data.videoAiEditorialProposals !== 3) process.exit(1);
           NODE
               then
-                if grep -Fq 'NEPTUNE VIDEO ENGINE' "/tmp/neptune-video-v73/$slug-video-ai.html" \
-                  && grep -Fq 'id="engineConnectionStatus"' "/tmp/neptune-video-v73/$slug-video-ai.html" \
-                  && grep -Fq 'Installer sur Windows' "/tmp/neptune-video-v73/$slug-video-ai.html" \
-                  && grep -Fq '/studio/video-ai-engine-v73.js?v=1' "/tmp/neptune-video-v73/$slug-video-ai.html" \
-                  && grep -Fq '/studio/local-engine/neptune-video-local-engine-v1.js?v=73' "/tmp/neptune-video-v73/$slug-video-ai.html" \
-                  && grep -Fq 'NeptuneVideoEngineBridge' "/tmp/neptune-video-v73/$slug-bridge.js" \
-                  && grep -Fq 'Moteur Neptune connecté' "/tmp/neptune-video-v73/$slug-bridge.js" \
-                  && grep -Fq 'xhr.upload.onprogress' "/tmp/neptune-video-v73/$slug-bridge.js" \
-                  && grep -Fq 'engineLivePreview' "/tmp/neptune-video-v73/$slug-bridge.js" \
-                  && grep -Fq 'localStorage.setItem(JOBS_KEY' "/tmp/neptune-video-v73/$slug-bridge.js" \
-                  && grep -Fq '.engine-setup' "/tmp/neptune-video-v73/$slug-engine.css" \
-                  && grep -Fq '.engine-live-preview' "/tmp/neptune-video-v73/$slug-engine.css" \
-                  && grep -Fq 'neptune-video-engine-bridge-20260802-v73' "/tmp/neptune-video-v73/$slug-fallback.js" \
-                  && grep -Fq 'permanent_engine_processing' "/tmp/neptune-video-v73/$slug-fallback.js" \
-                  && grep -Fq 'docker compose up -d --build' "/tmp/neptune-video-v73/$slug-installer.ps1" \
-                  && grep -Fqi "x-neptune-video-ai: $VIDEO_AI_RELEASE" "/tmp/neptune-video-v73/$slug-headers.txt" \
-                  && grep -Fqi 'cross-origin-opener-policy: same-origin' "/tmp/neptune-video-v73/$slug-headers.txt" \
-                  && grep -Fqi 'cross-origin-embedder-policy: require-corp' "/tmp/neptune-video-v73/$slug-headers.txt"; then
+                if grep -Fq 'NEPTUNE VIDEO ENGINE' "/tmp/neptune-video-v74/$slug-video-ai.html" \
+                  && grep -Fq 'id="engineConnectionStatus"' "/tmp/neptune-video-v74/$slug-video-ai.html" \
+                  && grep -Fq 'id="engineInstallButton"' "/tmp/neptune-video-v74/$slug-video-ai.html" \
+                  && grep -Fq '/studio/video-ai-engine-v73.js?v=74' "/tmp/neptune-video-v74/$slug-video-ai.html" \
+                  && grep -Fq '/studio/local-engine/neptune-video-local-engine-v1.js?v=73' "/tmp/neptune-video-v74/$slug-video-ai.html" \
+                  && grep -Fq 'NeptuneVideoEngineBridge' "/tmp/neptune-video-v74/$slug-bridge.js" \
+                  && grep -Fq 'neptune-video-engine-20260803-v74' "/tmp/neptune-video-v74/$slug-bridge.js" \
+                  && grep -Fq 'Mettre à jour le moteur' "/tmp/neptune-video-v74/$slug-bridge.js" \
+                  && grep -Fq 'Moteur Neptune v74 connecté' "/tmp/neptune-video-v74/$slug-bridge.js" \
+                  && grep -Fq 'xhr.upload.onprogress' "/tmp/neptune-video-v74/$slug-bridge.js" \
+                  && grep -Fq 'engineLivePreview' "/tmp/neptune-video-v74/$slug-bridge.js" \
+                  && grep -Fq 'localStorage.setItem(JOBS_KEY' "/tmp/neptune-video-v74/$slug-bridge.js" \
+                  && grep -Fq '.engine-setup' "/tmp/neptune-video-v74/$slug-engine.css" \
+                  && grep -Fq '.engine-live-preview' "/tmp/neptune-video-v74/$slug-engine.css" \
+                  && grep -Fq 'neptune-video-engine-bridge-20260802-v73' "/tmp/neptune-video-v74/$slug-fallback.js" \
+                  && grep -Fq 'permanent_engine_processing' "/tmp/neptune-video-v74/$slug-fallback.js" \
+                  && grep -Fq 'NEPTUNE_TARGET_CLIPS_PER_HOUR=20' "/tmp/neptune-video-v74/$slug-installer.ps1" \
+                  && grep -Fq 'docker compose up -d --build' "/tmp/neptune-video-v74/$slug-installer.ps1" \
+                  && grep -Fqi "x-neptune-video-ai: $VIDEO_AI_RELEASE" "/tmp/neptune-video-v74/$slug-headers.txt" \
+                  && grep -Fqi 'cross-origin-opener-policy: same-origin' "/tmp/neptune-video-v74/$slug-headers.txt" \
+                  && grep -Fqi 'cross-origin-embedder-policy: require-corp' "/tmp/neptune-video-v74/$slug-headers.txt"; then
                   ready=1
-                  echo "$base: Neptune Video Engine v73 verified on attempt $attempt."
+                  echo "$base: Neptune Video Engine v74 verified on attempt $attempt."
                   break
                 fi
               fi
-              echo "$base: Neptune Video Engine v73 not fully propagated on attempt $attempt; retrying."
+              echo "$base: Neptune Video Engine v74 not fully propagated on attempt $attempt; retrying."
               sleep 10
             done
             test "$ready" = 1

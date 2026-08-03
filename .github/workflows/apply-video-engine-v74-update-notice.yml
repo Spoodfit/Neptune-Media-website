@@ -1,0 +1,49 @@
+name: Apply Neptune Video Engine V74 Update Notice
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/apply-video-engine-v74-update-notice.py'
+      - '.github/workflows/apply-video-engine-v74-update-notice.yml'
+      - 'neptune-tv-media-cloudflare/public/studio/video-ai.html'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fix branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/studio-video-engine-v74-update-notice
+          fetch-depth: 0
+
+      - name: Apply v74 update notice
+        run: python scripts/apply-video-engine-v74-update-notice.py
+
+      - name: Validate Studio bridge and application
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check neptune-tv-media-cloudflare/public/studio/video-ai-engine-v73.js
+          grep -Fq "neptune-video-engine-20260803-v74" neptune-tv-media-cloudflare/public/studio/video-ai-engine-v73.js
+          grep -Fq "Mettre à jour le moteur" neptune-tv-media-cloudflare/public/studio/video-ai-engine-v73.js
+          grep -Fq 'id="engineInstallButton"' neptune-tv-media-cloudflare/public/studio/video-ai.html
+          grep -Fq 'video-ai-engine-v73.js?v=74' neptune-tv-media-cloudflare/public/studio/video-ai.html
+          npm install --package-lock=false --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org
+          npm run check
+
+      - name: Commit validated Studio files
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add neptune-tv-media-cloudflare/public/studio/video-ai-engine-v73.js neptune-tv-media-cloudflare/public/studio/video-ai.html
+          git diff --cached --quiet && exit 0
+          git commit -m 'feat(studio): detect and update Neptune engine v74'
+          git push origin HEAD:fix/studio-video-engine-v74-update-notice

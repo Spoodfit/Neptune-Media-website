@@ -178,4 +178,4 @@ core.select_candidates = select_candidates_with_crop
 core.render_clip = render_clip_with_smart_crop
 
 # Keep the historical runtime entrypoint while delegating the active engine to v74.
-from runtime_v74 import app as app  # noqa: E402,F401
+from runtime_v75 import app as app  # noqa: E402,F401

@@ -1,0 +1,229 @@
+name: Validate Neptune Video Engine V75
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'neptune-video-engine/**'
+      - 'neptune-tv-media-cloudflare/public/studio/install-neptune-video-engine.ps1'
+      - 'neptune-tv-media-cloudflare/public/studio/video-ai-engine-v73.js'
+      - 'neptune-tv-media-cloudflare/public/studio/video-ai.html'
+      - 'neptune-tv-media-cloudflare/src/entry-v16.js'
+      - 'neptune-tv-media-cloudflare/scripts/smoke-test-v73.mjs'
+      - '.github/workflows/validate-video-engine-v75.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout merge candidate
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: https://registry.npmjs.org
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate source and Studio contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile \
+            neptune-video-engine/app.py \
+            neptune-video-engine/runtime.py \
+            neptune-video-engine/runtime_v74.py \
+            neptune-video-engine/runtime_v75.py
+          grep -Fq 'from runtime_v75 import app as app' neptune-video-engine/runtime.py
+          grep -Fq 'neptune-video-engine-20260803-v75' neptune-video-engine/runtime_v75.py
+          grep -Fq 'FaceDetectorYN_create' neptune-video-engine/runtime_v75.py
+          grep -Fq 'sentence-density-v75' neptune-video-engine/runtime_v75.py
+          grep -Fq 'core.select_candidates = select_candidates' neptune-video-engine/runtime_v75.py
+          grep -Fq 'core.write_subtitles = write_subtitles' neptune-video-engine/runtime_v75.py
+          grep -Fq 'core.render_clip = render_clip' neptune-video-engine/runtime_v75.py
+          grep -Fq '/studio/video-ai-engine-v73.js?v=75' neptune-tv-media-cloudflare/public/studio/video-ai.html
+          grep -Fq 'neptune-video-engine-20260803-v75' neptune-tv-media-cloudflare/public/studio/video-ai-engine-v73.js
+
+      - name: Install and validate application
+        run: |
+          npm install --package-lock=false --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org
+          npm run check
+
+      - name: Build v75 Docker image
+        run: docker build -t neptune-video-engine:v75-ci neptune-video-engine
+
+      - name: Verify one-hour density, exact hooks, YuNet and captions
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm -i --entrypoint python neptune-video-engine:v75-ci - <<'PY'
+          import tempfile
+          from pathlib import Path
+          import runtime_v75 as v
+
+          assert v.VERSION == 'neptune-video-engine-20260803-v75'
+          assert v.get_yunet() is not None, 'YuNet model was not loaded'
+
+          segments = []
+          for index in range(120):
+              start = index * 30.0
+              text = (
+                  f"La vérité numéro {index + 1}, c'est que cette erreur coûte du temps aux entreprises. "
+                  "Voici comment un client peut appliquer une méthode concrète et obtenir un résultat mesurable."
+              )
+              words = v.v74.synthetic_words(text, start, start + 24.0)
+              segments.append({'start': start, 'end': start + 24.0, 'text': text, 'words': words})
+
+          transcript = {'text': ' '.join(item['text'] for item in segments), 'segments': segments}
+          media = {'durationSeconds': 3600.0, 'width': 1920, 'height': 1080, 'audioCodec': 'aac'}
+          candidates = v.local_sentence_candidates(transcript, media)
+          assert 16 <= len(candidates) <= 24, len(candidates)
+          assert all(item['score'] >= v.MIN_SCORE for item in candidates)
+          assert all(item['hookMoment'] in item['transcriptSegments'][0]['text'] for item in candidates)
+
+          candidate = candidates[0]
+          v.v74.build_montage_segments(candidate)
+          with tempfile.TemporaryDirectory() as directory:
+              subtitle_path = Path(directory) / 'captions.ass'
+              v.write_subtitles._candidate = candidate
+              v.write_subtitles(
+                  subtitle_path,
+                  candidate['transcriptSegments'],
+                  candidate['startSeconds'],
+                  candidate['endSeconds'],
+              )
+              v.write_subtitles._candidate = None
+              content = subtitle_path.read_text(encoding='utf-8')
+              assert 'MarginL, MarginR, MarginV' in content
+              assert '&H006FE8FF' in content
+              assert 'NeptuneCaption' in content
+          print({'candidateCount': len(candidates), 'minimumScore': min(item['score'] for item in candidates)})
+          PY
+
+      - name: Start v75 engine API
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --name neptune-video-engine-v75-ci \
+            -p 127.0.0.1:4318:4318 \
+            -e NEPTUNE_ENGINE_TOKEN=ci-token \
+            -e NEPTUNE_ENGINE_WORKERS=1 \
+            -e NEPTUNE_ENGINE_TEST_MODE=1 \
+            neptune-video-engine:v75-ci
+          ready=0
+          for attempt in $(seq 1 60); do
+            if curl -fsS -H 'X-Neptune-Engine-Token: ci-token' \
+              http://127.0.0.1:4318/health > /tmp/v75-health.json; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          test "$ready" = 1
+          cat /tmp/v75-health.json
+          grep -Fq '"ok":true' /tmp/v75-health.json
+          grep -Fq 'neptune-video-engine-20260803-v75' /tmp/v75-health.json
+
+      - name: Verify browser private-network preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fsS -D /tmp/v75-pna-headers.txt -o /tmp/v75-pna-body.txt -X OPTIONS \
+            -H 'Origin: https://tv.neptunebusiness.com' \
+            -H 'Access-Control-Request-Method: GET' \
+            -H 'Access-Control-Request-Headers: X-Neptune-Engine-Token' \
+            -H 'Access-Control-Request-Private-Network: true' \
+            http://127.0.0.1:4318/health
+          grep -Fqi 'access-control-allow-private-network: true' /tmp/v75-pna-headers.txt
+          grep -Fqi 'access-control-allow-origin: https://tv.neptunebusiness.com' /tmp/v75-pna-headers.txt
+
+      - name: Generate and submit synthetic interview
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker exec neptune-video-engine-v75-ci ffmpeg -hide_banner -loglevel error \
+            -f lavfi -i testsrc2=size=1280x720:rate=25 \
+            -f lavfi -i sine=frequency=660:sample_rate=48000 \
+            -t 12 -c:v libx264 -preset ultrafast -pix_fmt yuv420p -c:a aac \
+            -shortest -y /tmp/neptune-v75-source.mp4
+          docker cp neptune-video-engine-v75-ci:/tmp/neptune-v75-source.mp4 /tmp/neptune-v75-source.mp4
+          test "$(stat -c%s /tmp/neptune-v75-source.mp4)" -gt 20000
+          curl -fsS -H 'X-Neptune-Engine-Token: ci-token' \
+            -F 'metadata={"jobId":"ci-v75-render-job","objective":"Valider le rendu Neptune v75"}' \
+            -F 'file=@/tmp/neptune-v75-source.mp4;type=video/mp4' \
+            http://127.0.0.1:4318/v1/jobs > /tmp/v75-submit.json
+          cat /tmp/v75-submit.json
+          grep -Fq '"accepted":true' /tmp/v75-submit.json
+
+      - name: Wait for rendered v75 short
+        shell: bash
+        run: |
+          set -euo pipefail
+          completed=0
+          for attempt in $(seq 1 120); do
+            curl -fsS -H 'X-Neptune-Engine-Token: ci-token' \
+              http://127.0.0.1:4318/v1/jobs/ci-v75-render-job > /tmp/v75-job.json
+            status=$(python -c "import json; print(json.load(open('/tmp/v75-job.json'))['job']['status'])")
+            stage=$(python -c "import json; print(json.load(open('/tmp/v75-job.json'))['job']['stage'])")
+            progress=$(python -c "import json; print(json.load(open('/tmp/v75-job.json'))['job']['progress'])")
+            echo "attempt=$attempt status=$status progress=$progress stage=$stage"
+            if [ "$status" = 'completed' ]; then completed=1; break; fi
+            if [ "$status" = 'failed' ]; then
+              cat /tmp/v75-job.json
+              docker logs --tail 300 neptune-video-engine-v75-ci
+              exit 1
+            fi
+            sleep 2
+          done
+          test "$completed" = 1
+          python - <<'PY'
+          import json
+          data = json.load(open('/tmp/v75-job.json'))['job']
+          assert data['progress'] == 100, data
+          assert data['result']['candidates'], data['result']
+          open('/tmp/v75-clip-id.txt', 'w').write(data['result']['candidates'][0]['id'])
+          PY
+
+      - name: Download and inspect rendered media
+        shell: bash
+        run: |
+          set -euo pipefail
+          clip_id=$(cat /tmp/v75-clip-id.txt)
+          curl -fsS -H 'X-Neptune-Engine-Token: ci-token' \
+            http://127.0.0.1:4318/v1/jobs/ci-v75-render-job/preview > /tmp/v75-preview.jpg
+          test "$(stat -c%s /tmp/v75-preview.jpg)" -gt 1000
+          curl -fsS -H 'X-Neptune-Engine-Token: ci-token' \
+            "http://127.0.0.1:4318/v1/jobs/ci-v75-render-job/clips/$clip_id" > /tmp/v75-short.mp4
+          test "$(stat -c%s /tmp/v75-short.mp4)" -gt 20000
+          docker cp /tmp/v75-short.mp4 neptune-video-engine-v75-ci:/tmp/v75-short.mp4
+          docker exec neptune-video-engine-v75-ci ffprobe -v error -select_streams v:0 \
+            -show_entries stream=width,height -of csv=p=0 \
+            /tmp/v75-short.mp4 > /tmp/v75-dimensions.txt
+          cat /tmp/v75-dimensions.txt
+          grep -Fxq '1080,1920' /tmp/v75-dimensions.txt
+
+      - name: Print diagnostics on failure
+        if: failure()
+        shell: bash
+        run: |
+          cat /tmp/v75-health.json 2>/dev/null || true
+          cat /tmp/v75-job.json 2>/dev/null || true
+          docker logs --tail 400 neptune-video-engine-v75-ci 2>&1 || true
+          docker exec neptune-video-engine-v75-ci find /data -maxdepth 5 -type f -printf '%p %s bytes\n' 2>/dev/null || true
+
+      - name: Stop v75 engine API
+        if: always()
+        run: docker rm -f neptune-video-engine-v75-ci || true
+
+      - name: Validate deployable Cloudflare bundle
+        run: npx wrangler deploy --config wrangler.jsonc --dry-run --outdir .wrangler-v75-dry-run

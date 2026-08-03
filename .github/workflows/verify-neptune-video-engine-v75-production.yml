@@ -1,0 +1,79 @@
+name: Verify Neptune Video Engine V75 Production
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-neptune-video-engine-v75-production.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - slug: public
+            base: https://tv.neptunebusiness.com
+          - slug: workers
+            base: https://neptune-media-webtv.neptunebusinessclub.workers.dev
+    steps:
+      - name: Verify deployed v75 Studio and release
+        shell: bash
+        run: |
+          set -euo pipefail
+          ready=0
+          for attempt in $(seq 1 48); do
+            query="verify_v75=$GITHUB_SHA&attempt=$attempt"
+            curl -fsS -H 'Cache-Control: no-cache, no-store' \
+              "${{ matrix.base }}/api/public/release?$query" > /tmp/release.json || true
+            curl -fsSL --max-redirs 5 -H 'Cache-Control: no-cache, no-store' \
+              "${{ matrix.base }}/studio/video-ai?$query" > /tmp/video-ai.html || true
+            curl -fsS -H 'Cache-Control: no-cache, no-store' \
+              "${{ matrix.base }}/studio/video-ai-engine-v73.js?v=75&$query" > /tmp/bridge.js || true
+            curl -fsS -H 'Cache-Control: no-cache, no-store' \
+              "${{ matrix.base }}/studio/install-neptune-video-engine.ps1?$query" > /tmp/installer.ps1 || true
+
+            if RELEASE_FILE=/tmp/release.json node <<'NODE'
+          const fs = require('node:fs');
+          let data;
+          try { data = JSON.parse(fs.readFileSync(process.env.RELEASE_FILE, 'utf8')); } catch { process.exit(1); }
+          if (data.videoAiStudio !== 'neptune-video-engine-20260803-v75') process.exit(1);
+          if (data.videoAiPermanentEngineVersion !== 'neptune-video-engine-20260803-v75') process.exit(1);
+          if (data.videoAiPipeline !== 'persistent-local-service-faster-whisper-sentence-density-openai-yunet-ffmpeg-studio-sync-browser-fallback') process.exit(1);
+          if (data.videoAiRendering !== 'local-ffmpeg-yunet-safe-layout-vertical-1080x1920-word-focus-ass-subtitles') process.exit(1);
+          NODE
+            then
+              if grep -Fq '/studio/video-ai-engine-v73.js?v=75' /tmp/video-ai.html \
+                && grep -Fq 'id="engineInstallButton"' /tmp/video-ai.html \
+                && grep -Fq 'neptune-video-engine-20260803-v75' /tmp/bridge.js \
+                && grep -Fq 'Moteur Neptune v75 connecté' /tmp/bridge.js \
+                && grep -Fq 'Mettre à jour le moteur' /tmp/bridge.js \
+                && grep -Fq 'NEPTUNE_MIN_EDITORIAL_SCORE=60' /tmp/installer.ps1 \
+                && grep -Fq 'NEPTUNE_TARGET_CLIPS_PER_HOUR=20' /tmp/installer.ps1 \
+                && grep -Fq 'docker compose up -d --build' /tmp/installer.ps1; then
+                ready=1
+                echo "${{ matrix.base }}: Neptune Video Engine v75 verified on attempt $attempt"
+                break
+              fi
+            fi
+            echo "${{ matrix.base }}: waiting for v75 propagation, attempt $attempt"
+            sleep 10
+          done
+
+          if [ "$ready" != 1 ]; then
+            echo '=== release ==='
+            cat /tmp/release.json || true
+            echo '=== script references ==='
+            grep -oE '<script[^>]+src="[^"]+"' /tmp/video-ai.html || true
+            echo '=== bridge version markers ==='
+            grep -nE 'REQUIRED_ENGINE_VERSION|Moteur Neptune v7|Mettre à jour' /tmp/bridge.js || true
+            echo '=== installer markers ==='
+            grep -nE 'NEPTUNE_(MIN_EDITORIAL_SCORE|TARGET_CLIPS_PER_HOUR)|docker compose up' /tmp/installer.ps1 || true
+            exit 1
+          fi

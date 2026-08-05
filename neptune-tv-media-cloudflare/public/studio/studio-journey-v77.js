@@ -73,6 +73,19 @@ function renderPreparationShortcut() {
   const bookingUrl = safeUrl(order.bookingUrl) || PREPARATION_BOOKING;
   const supplierPending = order.workflow?.supplierStatus === 'pending' || order.status === 'studio_date_confirmation_pending';
   const prepComplete = order.workflow?.preparationStatus === 'completed';
+  const signature = [
+    order.id,
+    order.status,
+    order.appointmentAt,
+    order.filmingAt,
+    appointmentUrl,
+    bookingUrl,
+    order.appointmentSource,
+    order.workflow?.supplierStatus,
+    order.workflow?.preparationStatus,
+  ].join('|');
+  if (card.dataset.signature === signature) return;
+  card.dataset.signature = signature;
 
   card.innerHTML = `
     <div class="studio-preparation-v77__state">

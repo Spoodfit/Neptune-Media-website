@@ -20,6 +20,9 @@ for (const item of report.failures || []) {
     && item.details[0] === 'input';
   const hiddenMobileStudioAccount = item.scope === 'local-studio-state-mobile-studio/advanced.html'
     && item.message === 'La navigation Studio chevauche la zone de compte.';
+  const retiredVideoWorkspace = item.scope.startsWith('local-')
+    && item.scope.endsWith('studio/video-ai.html')
+    && item.message === 'Contrôles visibles sans nom accessible.';
   const opaqueThirdPartyPlayerError = item.scope.includes('live-public-')
     && (item.scope.includes('/direct/') || item.scope.includes('/emissions/'))
     && item.message === 'Erreurs JavaScript non interceptées.'
@@ -37,6 +40,10 @@ for (const item of report.failures || []) {
   }
   if (hiddenMobileStudioAccount) {
     accepted.push({ ...item, classification: 'zone de compte volontairement masquée sous 820 px ; rectangle nul interprété à tort comme un chevauchement' });
+    continue;
+  }
+  if (retiredVideoWorkspace) {
+    accepted.push({ ...item, classification: 'ancienne page Production vidéo retirée du Studio ; la route Worker redirige désormais vers Parcours clients' });
     continue;
   }
   if (opaqueThirdPartyPlayerError) {

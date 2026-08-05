@@ -8,12 +8,12 @@ await mkdir(outputDir, { recursive: true });
 
 const portal = {
   clients: [
-    { id: 'client-1', email: 'lea@example.com', fullName: 'Léa Martin', company: 'Capital Conseil' },
-    { id: 'client-2', email: 'marc@example.com', fullName: 'Marc Durand', company: 'Atelier Horizon' },
+    { id: 'client-1', email: 'lea@example.com', fullName: 'Léa Martin', company: 'Capital Conseil', active: true },
+    { id: 'client-2', email: 'marc@example.com', fullName: 'Marc Durand', company: 'Atelier Horizon', active: true },
   ],
   orders: [
-    order('order-1', 'lea@example.com', 'Léa Martin', 'Capital Conseil', 'Hors Norme', 'appointment_confirmed'),
-    order('order-2', 'marc@example.com', 'Marc Durand', 'Atelier Horizon', 'Concept Libre', 'videos_pending'),
+    order('order-1', 'client-1', 'lea@example.com', 'Léa Martin', 'Capital Conseil', 'Hors Norme', 'appointment_confirmed'),
+    order('order-2', 'client-2', 'marc@example.com', 'Marc Durand', 'Atelier Horizon', 'Concept Libre', 'videos_pending'),
   ],
   supplierPayments: [],
   refundRequests: [],
@@ -41,14 +41,13 @@ const adminState = {
 
 const screens = [
   { id: 'clients', path: '/studio/clients', active: 'Parcours clients' },
-  { id: 'production', path: '/studio/video-ai.html', active: 'Production vidéo' },
   { id: 'diffusion', path: '/studio/advanced.html#episodes', active: 'Diffusion' },
 ];
 const viewports = [
   { id: 'desktop', width: 1440, height: 900 },
   { id: 'mobile', width: 390, height: 844 },
 ];
-const expectedPrimary = ['Parcours clients', 'Production vidéo', 'Diffusion', 'Réglages'];
+const expectedPrimary = ['Parcours clients', 'Diffusion', 'Réglages'];
 
 const browser = await chromium.launch({ headless: true });
 const reports = [];
@@ -98,7 +97,7 @@ try {
           oldSidebarTerms: [...document.querySelectorAll('.neptune-studio-sidebar *')]
             .filter(visible)
             .map((node) => node.textContent.trim())
-            .filter((text) => ['Audience', 'Finances', 'Calendrier', 'Zone avancée', 'Administration avancée'].includes(text)),
+            .filter((text) => ['Production vidéo', 'Audience', 'Finances', 'Calendrier', 'Zone avancée', 'Administration avancée'].includes(text)),
           contextTexts: [...document.querySelectorAll('.studio-context-nav-v65 button')].filter(visible).map((button) => button.textContent.trim()),
         };
       });
@@ -156,7 +155,7 @@ try {
 }
 
 await writeFile(path.join(outputDir, 'report.json'), JSON.stringify({ ok: true, reports }, null, 2));
-console.log('Studio information architecture v65 visual audit passed on clients, production and diffusion/settings, desktop and mobile.');
+console.log('Studio information architecture visual audit passed on clients and diffusion/settings, with three primary destinations, desktop and mobile.');
 
 async function routeApi(route) {
   const url = new URL(route.request().url());
@@ -170,10 +169,11 @@ async function routeApi(route) {
   await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
 }
 
-function order(id, email, fullName, company, format, status) {
+function order(id, clientId, email, fullName, company, format, status) {
   const now = new Date();
   return {
     id,
+    clientId,
     email,
     fullName,
     company,

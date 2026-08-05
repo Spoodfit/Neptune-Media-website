@@ -1,10 +1,10 @@
 # Audit visuel Neptune Media
 
-Généré : 2026-08-05T18:35:13.810Z
+Généré : 2026-08-05T19:51:56.494Z
 
 - Captures : 15
 - Erreurs : 10
-- Avertissements : 349
+- Avertissements : 347
 
 ## Problèmes détectés
 

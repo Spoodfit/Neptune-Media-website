@@ -38,10 +38,10 @@ export default {
     }
 
     if (request.method === 'GET' && url.pathname === '/api/admin/content-thumbnail') {
-      return withHeaders(secure(await serveAdminThumbnail(request, env, studio)), url.pathname);
+      return withHeaders(secure(await serveAdminThumbnail(request, studio)), url.pathname);
     }
 
-    if (request.method === 'GET' && url.pathname === '/api/admin/content-media') {
+    if ((request.method === 'GET' || request.method === 'HEAD') && url.pathname === '/api/admin/content-media') {
       return withHeaders(secure(await serveAdminMedia(request, env, studio)), url.pathname);
     }
 
@@ -69,11 +69,48 @@ export default {
   },
 };
 
-async function serveAdminThumbnail(request, env, studio) {
+async function serveAdminThumbnail(request, studio) {
   const url = new URL(request.url);
   const source = await getFileSource(request, studio, url.searchParams.get('fileId') || '');
   if (!source.ok) return source.response;
   const file = source.file;
+
+  if (file.driveFileId) {
+    const credential = await loadDriveCredential(studio);
+    if (credential?.accessToken) {
+      try {
+        const id = encodeURIComponent(file.driveFileId);
+        const metadata = await fetch(
+          `https://www.googleapis.com/drive/v3/files/${id}?fields=thumbnailLink&supportsAllDrives=true`,
+          {
+            headers: {
+              Authorization: `Bearer ${credential.accessToken}`,
+              Accept: 'application/json',
+              'User-Agent': 'Neptune-Media-Studio/1.0',
+            },
+          },
+        );
+        if (metadata.ok) {
+          const result = await metadata.json().catch(() => ({}));
+          if (result.thumbnailLink) {
+            const thumbnail = await fetch(result.thumbnailLink, {
+              headers: {
+                Authorization: `Bearer ${credential.accessToken}`,
+                Accept: 'image/avif,image/webp,image/png,image/jpeg,*/*',
+                'User-Agent': 'Neptune-Media-Studio/1.0',
+              },
+              redirect: 'follow',
+            });
+            const type = thumbnail.headers.get('Content-Type') || '';
+            if (thumbnail.ok && type.startsWith('image/')) return imageResponse(thumbnail, type);
+          }
+        }
+      } catch (error) {
+        console.warn('studio_private_thumbnail_failed', String(error?.message || error).slice(0, 300));
+      }
+    }
+  }
+
   const candidates = [];
   if (file.driveFileId) candidates.push(`https://drive.google.com/thumbnail?id=${encodeURIComponent(file.driveFileId)}&sz=w1280`);
   if (String(file.mimeType || '').startsWith('image/')) candidates.push(file.driveDownloadUrl || file.externalUrl);
@@ -82,24 +119,35 @@ async function serveAdminThumbnail(request, env, studio) {
     try {
       const response = await fetch(candidate, {
         redirect: 'follow',
-        headers: { Accept: 'image/avif,image/webp,image/png,image/jpeg,*/*', 'User-Agent': 'Neptune-Media-Studio/1.0' },
+        headers: {
+          Accept: 'image/avif,image/webp,image/png,image/jpeg,*/*',
+          'User-Agent': 'Neptune-Media-Studio/1.0',
+        },
       });
-      const contentType = response.headers.get('Content-Type') || '';
-      if (response.ok && contentType.startsWith('image/')) {
-        return new Response(response.body, {
-          status: 200,
-          headers: {
-            'Content-Type': contentType,
-            'Cache-Control': 'private, max-age=900',
-            'X-Content-Type-Options': 'nosniff',
-          },
-        });
-      }
+      const type = response.headers.get('Content-Type') || '';
+      if (response.ok && type.startsWith('image/')) return imageResponse(response, type);
     } catch (error) {
-      console.warn('studio_thumbnail_proxy_failed', String(error?.message || error).slice(0, 300));
+      console.warn('studio_public_thumbnail_failed', String(error?.message || error).slice(0, 300));
     }
   }
-  return json({ error: 'thumbnail_unavailable' }, 404);
+
+  return new Response(null, {
+    status: 204,
+    headers: { 'Cache-Control': 'private, no-store' },
+  });
+}
+
+function imageResponse(upstream, contentType) {
+  const headers = new Headers({
+    'Content-Type': contentType,
+    'Cache-Control': 'private, max-age=900',
+    'X-Content-Type-Options': 'nosniff',
+  });
+  const length = upstream.headers.get('Content-Length');
+  const etag = upstream.headers.get('ETag');
+  if (length) headers.set('Content-Length', length);
+  if (etag) headers.set('ETag', etag);
+  return new Response(upstream.body, { status: 200, headers });
 }
 
 async function serveAdminMedia(request, env, studio) {
@@ -109,48 +157,150 @@ async function serveAdminMedia(request, env, studio) {
   const file = source.file;
   const rangeHeader = request.headers.get('Range') || '';
 
-  if (file.storageKey && env.MEDIA) {
-    const range = parseRange(rangeHeader);
-    const object = await env.MEDIA.get(file.storageKey, range ? { range } : undefined);
-    if (!object) return json({ error: 'media_not_found' }, 404);
-    const headers = new Headers();
-    object.writeHttpMetadata?.(headers);
-    headers.set('Content-Type', headers.get('Content-Type') || file.mimeType || 'application/octet-stream');
-    headers.set('Accept-Ranges', 'bytes');
-    headers.set('Cache-Control', 'private, max-age=300');
-    if (object.range) {
-      const offset = Number(object.range.offset || 0);
-      const length = Number(object.range.length || object.size || 0);
-      headers.set('Content-Range', `bytes ${offset}-${offset + length - 1}/${object.size}`);
-      headers.set('Content-Length', String(length));
-      return new Response(object.body, { status: 206, headers });
-    }
-    if (object.size) headers.set('Content-Length', String(object.size));
-    return new Response(object.body, { status: 200, headers });
+  if (file.storageKey && env.MEDIA) return serveR2Media(request, env.MEDIA, file, rangeHeader);
+  if (file.driveFileId) return serveDriveMedia(request, studio, file, rangeHeader);
+
+  if (file.externalUrl && /^https?:\/\//iu.test(file.externalUrl)) {
+    return proxyMediaCandidate(request, {
+      url: file.externalUrl,
+      headers: mediaRequestHeaders(rangeHeader),
+      authenticated: false,
+    }, file);
   }
 
-  const direct = file.driveDownloadUrl || file.externalUrl
-    || (file.driveFileId ? `https://drive.google.com/uc?export=download&id=${encodeURIComponent(file.driveFileId)}` : '');
-  if (!direct || !/^https?:\/\//iu.test(direct)) return json({ error: 'media_not_found' }, 404);
+  return json({ error: 'media_not_found' }, 404);
+}
 
-  try {
-    const headers = new Headers({ 'User-Agent': 'Neptune-Media-Studio/1.0' });
-    if (rangeHeader) headers.set('Range', rangeHeader);
-    const upstream = await fetch(direct, { redirect: 'follow', headers });
-    if (!upstream.ok && upstream.status !== 206) return json({ error: 'media_upstream_failed' }, 502);
-    const responseHeaders = new Headers();
-    for (const name of ['Content-Type', 'Content-Length', 'Content-Range', 'Accept-Ranges', 'ETag', 'Last-Modified']) {
-      const value = upstream.headers.get(name);
-      if (value) responseHeaders.set(name, value);
+async function serveR2Media(request, bucket, file, rangeHeader) {
+  const range = parseRange(rangeHeader);
+  const object = await bucket.get(file.storageKey, range ? { range } : undefined);
+  if (!object) return json({ error: 'media_not_found' }, 404);
+  const headers = new Headers();
+  object.writeHttpMetadata?.(headers);
+  headers.set('Content-Type', headers.get('Content-Type') || file.mimeType || 'application/octet-stream');
+  headers.set('Accept-Ranges', 'bytes');
+  headers.set('Cache-Control', 'private, max-age=300');
+  if (object.httpEtag) headers.set('ETag', object.httpEtag);
+  if (object.range) {
+    const offset = Number(object.range.offset || 0);
+    const length = Number(object.range.length || object.size || 0);
+    headers.set('Content-Range', `bytes ${offset}-${offset + length - 1}/${object.size}`);
+    headers.set('Content-Length', String(length));
+    return new Response(request.method === 'HEAD' ? null : object.body, { status: 206, headers });
+  }
+  if (object.size) headers.set('Content-Length', String(object.size));
+  return new Response(request.method === 'HEAD' ? null : object.body, { status: 200, headers });
+}
+
+async function serveDriveMedia(request, studio, file, rangeHeader) {
+  const id = encodeURIComponent(file.driveFileId);
+  const credential = await loadDriveCredential(studio);
+  const candidates = [];
+
+  if (credential?.accessToken) {
+    const headers = mediaRequestHeaders(rangeHeader);
+    headers.set('Authorization', `Bearer ${credential.accessToken}`);
+    candidates.push({
+      url: `https://www.googleapis.com/drive/v3/files/${id}?alt=media&supportsAllDrives=true&acknowledgeAbuse=true`,
+      headers,
+      authenticated: true,
+    });
+  }
+
+  if (file.driveDownloadUrl && /^https?:\/\//iu.test(file.driveDownloadUrl)) {
+    candidates.push({ url: file.driveDownloadUrl, headers: mediaRequestHeaders(rangeHeader), authenticated: false });
+  }
+  candidates.push(
+    {
+      url: `https://drive.usercontent.google.com/download?id=${id}&export=download&confirm=t`,
+      headers: mediaRequestHeaders(rangeHeader),
+      authenticated: false,
+    },
+    {
+      url: `https://drive.google.com/uc?export=download&id=${id}&confirm=t`,
+      headers: mediaRequestHeaders(rangeHeader),
+      authenticated: false,
+    },
+  );
+
+  let lastStatus = 0;
+  for (const candidate of candidates) {
+    try {
+      const response = await fetch(candidate.url, {
+        method: request.method,
+        headers: candidate.headers,
+        redirect: 'follow',
+      });
+      const type = String(response.headers.get('Content-Type') || '').toLowerCase();
+      lastStatus = response.status;
+      if ((response.ok || response.status === 206) && !type.includes('text/html')) {
+        return buildMediaResponse(request, response, file);
+      }
+    } catch (error) {
+      console.warn('studio_drive_media_candidate_failed', {
+        authenticated: candidate.authenticated,
+        message: String(error?.message || error).slice(0, 300),
+      });
     }
-    responseHeaders.set('Content-Type', responseHeaders.get('Content-Type') || file.mimeType || 'video/mp4');
-    responseHeaders.set('Accept-Ranges', responseHeaders.get('Accept-Ranges') || 'bytes');
-    responseHeaders.set('Cache-Control', 'private, max-age=300');
-    return new Response(upstream.body, { status: upstream.status, headers: responseHeaders });
+  }
+
+  console.error('studio_drive_media_unavailable', {
+    driveFileId: file.driveFileId,
+    tokenAvailable: Boolean(credential?.accessToken),
+    tokenExpiresAt: credential?.expiresAt || null,
+    lastStatus,
+  });
+  return json({
+    error: credential?.accessToken ? 'drive_file_unavailable' : 'drive_access_token_missing',
+    message: credential?.accessToken
+      ? 'Google Drive a refusé ce fichier. Relancez la synchronisation Drive puis réessayez.'
+      : 'Le jeton Drive privé n’est pas disponible. Exécutez publierJetonDriveNeptune() dans Apps Script.',
+  }, 502);
+}
+
+async function proxyMediaCandidate(request, candidate, file) {
+  try {
+    const response = await fetch(candidate.url, {
+      method: request.method,
+      headers: candidate.headers,
+      redirect: 'follow',
+    });
+    const type = String(response.headers.get('Content-Type') || '').toLowerCase();
+    if ((!response.ok && response.status !== 206) || type.includes('text/html')) {
+      return json({ error: 'media_upstream_failed' }, 502);
+    }
+    return buildMediaResponse(request, response, file);
   } catch (error) {
     console.error('studio_media_proxy_failed', String(error?.message || error).slice(0, 400));
     return json({ error: 'media_upstream_failed' }, 502);
   }
+}
+
+function mediaRequestHeaders(rangeHeader) {
+  const headers = new Headers({
+    Accept: '*/*',
+    'Accept-Encoding': 'identity',
+    'User-Agent': 'Neptune-Media-Studio/1.0',
+  });
+  if (rangeHeader) headers.set('Range', rangeHeader);
+  return headers;
+}
+
+function buildMediaResponse(request, upstream, file) {
+  const headers = new Headers();
+  for (const name of ['Content-Type', 'Content-Length', 'Content-Range', 'Accept-Ranges', 'ETag', 'Last-Modified']) {
+    const value = upstream.headers.get(name);
+    if (value) headers.set(name, value);
+  }
+  headers.set('Content-Type', headers.get('Content-Type') || file.mimeType || 'video/mp4');
+  headers.set('Accept-Ranges', headers.get('Accept-Ranges') || 'bytes');
+  headers.set('Cache-Control', 'private, max-age=300');
+  headers.set('X-Content-Type-Options', 'nosniff');
+  return new Response(request.method === 'HEAD' ? null : upstream.body, {
+    status: upstream.status,
+    statusText: upstream.statusText,
+    headers,
+  });
 }
 
 async function getFileSource(request, studio, fileId) {
@@ -161,6 +311,12 @@ async function getFileSource(request, studio, fileId) {
   const result = await response.json().catch(() => ({}));
   if (!response.ok) return { ok: false, response: json(result, response.status) };
   return { ok: true, file: result.file };
+}
+
+async function loadDriveCredential(studio) {
+  const response = await callStore(studio, '/portal/drive-token-get', {});
+  if (!response.ok) return null;
+  return response.json().catch(() => null);
 }
 
 function parseRange(value) {
@@ -186,7 +342,7 @@ async function augmentRelease(response) {
     ...current,
     studioContentCommandCenter: RELEASE,
     studioContentUx: 'no-code-saas-progressive-disclosure-v79',
-    studioNativeRatioThumbnails: 'same-origin-drive-proxy-plus-video-frame-fallback-v79',
+    studioNativeRatioThumbnails: 'private-drive-token-thumbnail-link-plus-video-frame-fallback-v79',
     studioContentCards: 'equal-height-native-ratio-media-wells-v79',
     studioCalendarControl: 'two-pane-direct-schedule-reschedule-drag-drop-v79',
     studioFastActions: ['preview', 'schedule', 'reschedule', 'remove-from-calendar'],
@@ -238,7 +394,9 @@ function withHeaders(response, pathname = '') {
   const headers = new Headers(response.headers);
   headers.set('X-Neptune-Studio-Content', RELEASE);
   if (pathname.startsWith('/studio') || pathname.startsWith('/api/admin') || pathname.startsWith('/espace-client')) {
-    headers.set('Cache-Control', pathname.includes('content-thumbnail') || pathname.includes('content-media') ? (headers.get('Cache-Control') || 'private, max-age=300') : 'private, no-store, max-age=0');
+    headers.set('Cache-Control', pathname.includes('content-thumbnail') || pathname.includes('content-media')
+      ? (headers.get('Cache-Control') || 'private, max-age=300')
+      : 'private, no-store, max-age=0');
   }
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }

@@ -15,6 +15,10 @@ const ADMIN_CONTENT_ROUTES = new Map([
   ['/portal/admin-content-schedule-upsert', adminContentScheduleUpsert],
   ['/portal/admin-content-schedule-delete', adminContentScheduleDelete],
 ]);
+const READ_ONLY_CONTENT_ROUTES = new Set([
+  '/portal/admin-content-calendar',
+  '/portal/admin-content-file-source',
+]);
 
 export class StudioStore extends LegacyStore {
   async fetch(request) {
@@ -36,12 +40,17 @@ export class StudioStore extends LegacyStore {
 
     if (method === 'POST' && ADMIN_CONTENT_ROUTES.has(url.pathname)) {
       const body = await request.clone().json().catch(() => ({}));
-      const validation = await super.fetch(new Request('https://store/portal/admin-list', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      }));
-      if (!validation.ok) return validation;
+      if (READ_ONLY_CONTENT_ROUTES.has(url.pathname)) {
+        const actor = await this.requireSession(body.token);
+        if (!actor || actor.role !== 'admin') return json({ error: 'unauthorized' }, 401);
+      } else {
+        const validation = await super.fetch(new Request('https://store/portal/admin-list', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        }));
+        if (!validation.ok) return validation;
+      }
       try {
         return ADMIN_CONTENT_ROUTES.get(url.pathname)(this, body.payload || {});
       } catch (error) {

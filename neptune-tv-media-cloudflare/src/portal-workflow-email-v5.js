@@ -12,7 +12,11 @@ export async function sendWorkflowOutboxItem(env,requestUrl,item={}){
 function context(requestUrl,item){const p=item.payload&&typeof item.payload==='object'?item.payload:{};return{...item,...p,portal:portalUrl(requestUrl,item.clientEmail),supplier:supplierUrl(requestUrl,p.supplierToken),filming:date(p.filmingAt||item.filmingAt||item.requestedFilmingAt),appointment:date(p.appointmentAt||item.appointmentAt),sourceDue:date(p.sourceDueAt||item.sourceDeliveryDueAt),deliveryDue:date(p.deliveryDueAt||item.deliveryDueAt),broadcast:date(p.broadcastAt||item.broadcastAt),broadcastUrl:p.broadcastUrl||item.broadcastUrl||''};}
 
 function content(key,c){
-  if(key.startsWith('supplier_date_confirmation'))return msg(key.includes('reminder')?'Rappel · confirmation studio attendue':'Nouvelle réservation HORS NORME à confirmer',key.includes('reminder')?'Votre réponse est attendue':'Pouvez-vous confirmer ce créneau ?',clientLine(c)+card('DATE DEMANDÉE',c.filming)+'<p>Confirmez la date, proposez un autre créneau ou signalez votre indisponibilité. Votre réponse synchronise Neptune et l’espace client.</p>'+button(c.supplier,'Répondre à la demande'));
+  if(key.startsWith('supplier_date_confirmation'))return msg(
+    key.includes('reminder')?'Rappel · confirmation studio attendue':'Nouvelle réservation HORS NORME à confirmer',
+    key.includes('reminder')?'Votre réponse est attendue':'Pouvez-vous confirmer ce créneau ?',
+    clientLine(c)+card('DATE DEMANDÉE',c.filming)+'<p>Choisissez directement l’action adaptée. Le bouton ouvre une page sécurisée déjà préremplie afin d’éviter toute erreur de date.</p>'+supplierDecisionButtons(c),
+  );
   if(key.startsWith('client_payment_received'))return msg('Paiement confirmé · Date en validation','Votre réservation Neptune Media est enregistrée',card('DATE DEMANDÉE',c.filming)+'<p>Le studio dispose de 48 heures pour confirmer cette date. Réservez dès maintenant votre échange de préparation de 15 à 30 minutes.</p>'+button(c.portal,'Accéder à mon espace client'));
   if(key.startsWith('admin_new_booking'))return msg(`Nouvelle réservation · ${name(c)}`,'Une réservation doit être suivie',clientLine(c)+card('DATE DEMANDÉE',c.filming)+'<p>La demande sécurisée a été envoyée au studio. Les relances et alertes sont automatiques.</p>');
   if(key.startsWith('client_appointment_booked'))return msg('Rendez-vous de préparation réservé','Votre préparation est planifiée',card('RENDEZ-VOUS',c.appointment)+'<p>Ce rendez-vous de 15 à 30 minutes sert à préparer votre venue et répondre à vos questions.</p>'+button(c.portal,'Voir mon suivi'));
@@ -40,6 +44,12 @@ function content(key,c){
   return msg('Mise à jour Neptune Media','Votre parcours a été mis à jour',`<p>${e(c.nextAction||'Consultez le suivi pour connaître la prochaine étape.')}</p>`+button(c.recipientType==='client'?c.portal:'','Voir mon suivi'));
 }
 
+function supplierDecisionButtons(c){
+  const confirm=decisionUrl(c.supplier,'confirm'),alternate=decisionUrl(c.supplier,'alternate');
+  return `<table role="presentation" cellspacing="0" cellpadding="0" style="margin:20px 0"><tr><td style="padding:0 10px 10px 0">${buttonInline(confirm,'Confirmer ce créneau')}</td><td style="padding:0 0 10px">${buttonInline(alternate,'Proposer un autre créneau',true)}</td></tr></table><p style="font-size:12px;color:#747b91">Par sécurité, le clic ouvre la réponse préremplie avant son enregistrement définitif. Cela évite qu’un scanner automatique d’e-mail confirme le rendez-vous à votre place.</p>`;
+}
+function decisionUrl(value,decision){try{const u=new URL(value);u.searchParams.set('decision',decision);return u.toString();}catch{return value||'';}}
+function buttonInline(url,label,secondary=false){return url?`<a href="${e(url)}" style="display:inline-block;padding:13px 18px;border-radius:999px;background:${secondary?'#eef0f8':'linear-gradient(120deg,#4267ff,#8d4cff,#ef4ba2)'};color:${secondary?'#26315c':'#fff'};border:${secondary?'1px solid #d9ddec':'0'};text-decoration:none;font-weight:800;white-space:nowrap">${e(label)}</a>`:'';}
 function reminder(c,title,advice){return msg(`Rappel passage · ${c.filming}`,title,card('DATE ET HEURE',c.filming)+practical()+`<p>${e(advice)}</p>`+button(c.recipientType==='client'?c.portal:'','Ouvrir la checklist'));}
 function partyNote(c){return c.recipientType==='client'?'<p>Les rappels J-7, J-3 et J-1 sont maintenant actifs.</p>':'<p>La campagne de préparation est maintenant active.</p>';}
 function clientLine(c){return `<p><strong>${e(c.fullName||'Client Neptune Media')}</strong>${c.company?` · ${e(c.company)}`:''}</p><p>${e(c.title||'Passage Neptune Media')} · ${e(c.format||'HORS NORME')}</p>`;}

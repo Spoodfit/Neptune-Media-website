@@ -1,5 +1,5 @@
 import { StudioStore as LegacyStore } from './store-v4.js';
-import { json } from './security.js';
+import { json, sanitizeUrl } from './security.js';
 import { ensurePortalSchema } from './portal-schema.js';
 import { latestCalendarAppointment } from './workflow-db-v5.js';
 import {
@@ -116,8 +116,29 @@ export class StudioStore extends LegacyStore {
       }
       if (url.pathname === '/portal/appointment-upsert' && result.orderId) {
         const appointmentAt = result.appointmentAt || body.appointmentAt || body.appointment_at || body.start || body.startAt;
+        const syncedAppointmentUrl = appointmentUrlFrom(body);
+        if (syncedAppointmentUrl) {
+          this.sql.exec(
+            'UPDATE portal_orders SET preparation_url=?,updated_at=? WHERE id=?',
+            syncedAppointmentUrl,
+            new Date().toISOString(),
+            result.orderId,
+          );
+        }
         const workflow = updateAppointmentWorkflow(this, result.orderId, appointmentAt);
-        return json({ ...result, ...workflow, appointmentAt, appointmentSource: 'google_calendar', status: this.currentOrderStatus(result.orderId) });
+        const storedAppointmentUrl = this.sql.exec(
+          'SELECT preparation_url AS appointmentUrl FROM portal_orders WHERE id=?',
+          result.orderId,
+        ).toArray()[0]?.appointmentUrl || '';
+        return json({
+          ...result,
+          ...workflow,
+          appointmentAt,
+          appointmentUrl: storedAppointmentUrl,
+          preparationUrl: storedAppointmentUrl,
+          appointmentSource: 'google_calendar',
+          status: this.currentOrderStatus(result.orderId),
+        });
       }
       if (url.pathname === '/portal/session') {
         const enriched = enrichOrderCollection(this, Array.isArray(result.orders) ? result.orders : []);
@@ -152,6 +173,32 @@ export class StudioStore extends LegacyStore {
   currentOrderStatus(orderId) {
     return this.sql.exec('SELECT status FROM portal_orders WHERE id=?', orderId).toArray()[0]?.status || '';
   }
+}
+
+function appointmentUrlFrom(raw = {}) {
+  const entryPoints = Array.isArray(raw.conferenceData?.entryPoints) ? raw.conferenceData.entryPoints : [];
+  const nestedEntryPoints = Array.isArray(raw.event?.conferenceData?.entryPoints) ? raw.event.conferenceData.entryPoints : [];
+  const candidates = [
+    raw.appointmentUrl,
+    raw.appointment_url,
+    raw.meetingUrl,
+    raw.meeting_url,
+    raw.videoCallUrl,
+    raw.video_call_url,
+    raw.hangoutLink,
+    raw.htmlLink,
+    raw.calendarEventUrl,
+    raw.calendar_event_url,
+    raw.event?.hangoutLink,
+    raw.event?.htmlLink,
+    ...entryPoints.map((entry) => entry?.uri),
+    ...nestedEntryPoints.map((entry) => entry?.uri),
+  ];
+  for (const candidate of candidates) {
+    const url = sanitizeUrl(candidate, 1500);
+    if (url) return url;
+  }
+  return '';
 }
 
 function requestWithJson(request, body) {

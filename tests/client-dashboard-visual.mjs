@@ -49,7 +49,8 @@ for (const viewport of viewports) {
   const pageErrors = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
   page.on('console', (message) => {
-    if (message.type() === 'error') pageErrors.push(message.text());
+    const text = message.text();
+    if (message.type() === 'error' && !isBenignBrowserNoise(text)) pageErrors.push(text);
   });
 
   await page.route('**/api/client/**', async (route) => {
@@ -174,3 +175,7 @@ if (report.errors.length) {
 }
 
 console.log(`Dashboard validé sur ${viewports.length} largeurs.`);
+
+function isBenignBrowserNoise(text) {
+  return /Permissions policy violation:\s*compute-pressure is not allowed in this document\.?/iu.test(String(text || ''));
+}

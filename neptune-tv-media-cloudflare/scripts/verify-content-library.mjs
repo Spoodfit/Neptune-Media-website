@@ -66,7 +66,8 @@ check(files.release, "contentScrollModel: 'bounded-by-passage-horizontal-rails-a
 check(files.release, "clientVideoLibrary: 'passage-selector-horizontal-rails-4-long-8-short-v4'", 'le diagnostic de bibliothèque vidéo est obsolète');
 check(files.snapshot, 'new MutationObserver', 'le snapshot ne surveille pas l’ouverture du dashboard après authentification');
 check(files.snapshot, 'if (!dashboard || dashboard.hidden || snapshotInFlight) return;', 'le snapshot peut encore charger lorsque le dashboard est masqué');
-check(files.snapshot, 'const SNAPSHOT_LIMITS = { long: 4, short: 8 };', 'les limites compactes du dashboard sont absentes');
+check(files.snapshot, 'const SNAPSHOT_LIMITS = { long: 4, short: 4 };', 'les limites compactes du dashboard sont absentes');
+check(files.snapshot, 'Voir les ${total} shorts', 'le raccourci vers la bibliothèque complète des shorts est absent');
 check(files.snapshot, "renderRail(longFiles, 'long', SNAPSHOT_LIMITS.long)", 'les émissions ne sont pas rendues en bande horizontale');
 check(files.snapshot, "renderRail(shortFiles, 'short', SNAPSHOT_LIMITS.short)", 'les shorts ne sont pas rendus en bande horizontale');
 check(files.snapshot, 'snapshot-rail-more', 'la carte Voir plus en fin de bande est absente');
@@ -107,7 +108,7 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Verified active entry chain through Studio v76, safe client account management, scalable thumbnail-first media library, three-destination navigation and preserved Drive synchronization.');
+console.log('Verified active entry chain through Studio v77, compact client snapshot, safe client account management, scalable media library, three-destination navigation and preserved Drive synchronization.');
 
 async function read(path) { return readFile(new URL(`../${path}`, import.meta.url), 'utf8'); }
 async function readRoot(path) { return readFile(new URL(`../../${path}`, import.meta.url), 'utf8'); }

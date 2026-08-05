@@ -1,5 +1,7 @@
 const $=(selector)=>document.querySelector(selector);
-const token=new URLSearchParams(location.search).get('token')||'';
+const params=new URLSearchParams(location.search);
+const token=params.get('token')||'';
+const requestedDecision=['confirm','alternate','reject'].includes(params.get('decision'))?params.get('decision'):'confirm';
 let booking=null;
 
 boot();
@@ -15,15 +17,25 @@ async function boot(){
     $('#company').textContent=booking.company||'—';
     $('#format').textContent=booking.format||'HORS NORME';
     $('#requestedDate').textContent=formatDate(booking.requestedFilmingAt);
+    applyDecision(requestedDecision);
     $('#loading').hidden=true;$('#content').hidden=false;
+    requestAnimationFrame(()=>requestedDecision==='alternate'?$('#proposedAt')?.focus():$('#submitButton')?.focus());
   }catch{showError();}
 }
 
-document.querySelectorAll('input[name="decision"]').forEach((input)=>input.addEventListener('change',()=>{
-  const alternate=input.value==='alternate'&&input.checked;
+document.querySelectorAll('input[name="decision"]').forEach((input)=>input.addEventListener('change',()=>applyDecision(input.value)));
+
+function applyDecision(decision){
+  const input=$(`input[name="decision"][value="${decision}"]`)||$('input[name="decision"][value="confirm"]');
+  if(input)input.checked=true;
+  const alternate=decision==='alternate';
   $('#alternateField').hidden=!alternate;
   $('#proposedAt').required=alternate;
-}));
+  const button=$('#submitButton');
+  if(button)button.textContent=decision==='confirm'?'Confirmer définitivement ce créneau':alternate?'Envoyer le nouveau créneau':'Signaler mon indisponibilité';
+  const message=$('#message');
+  if(message)message.textContent=decision==='confirm'?'Vérifiez la date ci-dessus puis confirmez. Cette dernière validation empêche les scanners automatiques d’e-mails de répondre à votre place.':'';
+}
 
 $('#responseForm').addEventListener('submit',async(event)=>{
   event.preventDefault();
@@ -39,7 +51,7 @@ $('#responseForm').addEventListener('submit',async(event)=>{
     $('#content').hidden=true;$('#success').hidden=false;
   }catch(error){
     $('#message').textContent=error.message==='invalid_or_expired_token'?'Ce lien a expiré. Demandez une nouvelle invitation.':'La réponse n’a pas pu être enregistrée. Réessayez.';
-    button.disabled=false;button.textContent='Envoyer ma réponse';
+    button.disabled=false;applyDecision(decision);
   }
 });
 

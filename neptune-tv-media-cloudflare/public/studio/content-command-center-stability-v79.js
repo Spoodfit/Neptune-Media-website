@@ -19,4 +19,12 @@
       });
     }
   };
+
+  document.addEventListener('click', (event) => {
+    if (!event.target.closest('[data-v79-calendar],[data-v79-content-tab],[data-detail-tab]')) return;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const scroller = document.querySelector('#clientDialog .drawer-card');
+      if (scroller) scroller.scrollTop = 0;
+    }));
+  }, true);
 })();

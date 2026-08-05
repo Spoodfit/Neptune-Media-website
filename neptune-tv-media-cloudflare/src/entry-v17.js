@@ -20,7 +20,7 @@ export default {
       return withHeaders(secure(await manageClient(request, env, studio)), url.pathname);
     }
 
-    if (request.method === 'GET' && isRetiredVideoWorkspace(url.pathname)) {
+    if (['GET', 'HEAD'].includes(request.method) && isRetiredVideoWorkspace(url.pathname)) {
       const target = new URL('/studio/clients', url.origin);
       target.search = url.search;
       return withHeaders(new Response(null, {

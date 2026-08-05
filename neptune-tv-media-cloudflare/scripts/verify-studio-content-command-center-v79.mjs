@@ -20,10 +20,15 @@ for (const route of [
 ]) expect(entry, route, `route publique absente : ${route}`);
 expect(entry, '/studio/content-command-center-v79.css?v=1', 'la feuille SaaS v79 n’est pas injectée');
 expect(entry, '/studio/content-command-center-v79.js?v=1', 'le runtime v79 n’est pas injecté');
-expect(entry, 'same-origin-drive-proxy-plus-video-frame-fallback-v79', 'le proxy de miniatures n’est pas déclaré');
+expect(entry, 'private-drive-token-thumbnail-link-plus-video-frame-fallback-v79', 'le proxy privé de miniatures n’est pas déclaré');
+expect(entry, '/portal/drive-token-get', 'le proxy média ne récupère pas le jeton Drive privé');
+expect(entry, 'fields=thumbnailLink&supportsAllDrives=true', 'la miniature Drive privée n’est pas résolue via metadata');
+expect(entry, 'Authorization', 'le proxy Drive ne transmet pas le jeton OAuth');
+expect(entry, 'alt=media&supportsAllDrives=true&acknowledgeAbuse=true', 'le streaming Drive authentifié est absent');
 expect(store, '/portal/admin-content-calendar', 'la route interne calendrier est absente');
 expect(store, '/portal/admin-content-schedule-upsert', 'la mutation de programmation est absente');
 expect(store, 'thumbnailProxyUrl', 'les fichiers admin ne déclarent pas leur miniature same-origin');
+expect(store, 'READ_ONLY_CONTENT_ROUTES', 'les lectures de miniatures ne sont pas distinguées des mutations CSRF');
 
 for (const marker of [
   'adminContentCalendar',
@@ -61,4 +66,4 @@ if (failures.length) {
   console.error(failures.map((failure) => `- ${failure}`).join('\n'));
   process.exit(1);
 }
-console.log('Studio content command center v79 validé : miniatures same-origin, ratios natifs, cartes uniformes, filtres rapides, programmation directe et calendrier deux panneaux.');
+console.log('Studio content command center v79 validé : Drive privé authentifié, miniatures same-origin, ratios natifs, cartes uniformes, filtres rapides, programmation directe et calendrier deux panneaux.');

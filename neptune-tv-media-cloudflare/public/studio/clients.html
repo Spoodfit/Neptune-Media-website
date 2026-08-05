@@ -2,74 +2,55 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="robots" content="noindex,nofollow">
-  <meta name="theme-color" content="#06183f">
-  <title>Parcours clients · Neptune Media Studio</title>
-  <link rel="icon" href="/assets/logo-neptune.svg">
-  <link rel="stylesheet" href="/studio/clients.css?v=30">
-  <link rel="stylesheet" href="/studio/clients-feedback-v31.css?v=1">
-  <link rel="stylesheet" href="/studio/clients-referral-v32.css?v=1">
-  <link rel="stylesheet" href="/studio/clients-content-ai-v33.css?v=1">
-  <link rel="stylesheet" href="/studio/clients-shell-v34.css?v=1">
-  <link rel="stylesheet" href="/studio/clients-automation-v35.css?v=1">
-  <link rel="stylesheet" href="/studio/workspace-v43.css?v=2">
-  <link rel="stylesheet" href="/studio/responsive-stability-v60.css?v=1">
-  <link rel="stylesheet" href="/studio/studio-clients-polish-v63.css?v=1">
-  <link rel="stylesheet" href="/studio/studio-clients-polish-v63-1.css?v=1">
-  <link rel="stylesheet" href="/studio/studio-information-architecture-v65.css?v=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Parcours clients · Neptune Studio</title>
+  <link rel="stylesheet" href="/studio/studio-sidebar-authority-v12.css?v=1">
+  <link rel="stylesheet" href="/studio/clients.css">
+  <link rel="stylesheet" href="/studio/studio-clients-polish-v63.css">
+  <link rel="stylesheet" href="/studio/studio-clients-polish-v63-1.css">
+  <link rel="stylesheet" href="/studio/studio-information-architecture-v65.css?v=2">
+  <link rel="stylesheet" href="/studio/content-gallery-v76.css?v=3">
+  <link rel="stylesheet" href="/studio/studio-client-operations-v76.css?v=1">
+  <link rel="stylesheet" href="/studio/content-command-center-v79.css?v=1">
 </head>
-<body class="clients-app studio-clients-v63">
-  <div class="studio-shell">
-    <aside id="studioSidebar" class="studio-sidebar">
-      <a class="studio-brand" href="/studio/clients" aria-label="Neptune Media Studio"><img src="/assets/logo-neptune.svg" alt=""><div><b>Neptune</b><small>Media · Studio</small></div></a>
-      <div class="studio-status"><i></i><span>Studio synchronisé</span></div>
-      <nav class="studio-nav" aria-label="Navigation principale du Studio">
-        <a class="studio-nav-link active" href="/studio/clients" aria-current="page"><span>◎</span><strong>Parcours clients</strong></a>
-        <a class="studio-nav-link studio-nav-link--accent" href="/studio/video-ai.html"><span>✦</span><strong>Production vidéo</strong></a>
-        <a class="studio-nav-link" href="/studio/advanced.html#episodes"><span>▶</span><strong>Diffusion</strong></a>
-        <a class="studio-nav-link" href="/studio/advanced.html#settings"><span>⚙</span><strong>Réglages</strong></a>
+<body>
+  <div class="shell">
+    <aside class="sidebar" aria-label="Navigation Studio">
+      <div class="brand"><span class="brand-mark">N</span><span><strong>Neptune</strong><small>Media · Studio</small></span></div>
+      <div class="sync-status"><span></span><strong>Studio synchronisé</strong></div>
+      <nav class="studio-nav">
+        <a class="active" href="/studio/clients"><span>◎</span>Parcours clients</a>
+        <a href="/studio/#broadcast"><span>▶</span>Diffusion</a>
+        <a href="/studio/#settings"><span>⚙</span>Réglages</a>
       </nav>
-      <a class="studio-account" href="/studio/advanced.html#settings" aria-label="Ouvrir les réglages du Studio"><span class="studio-avatar">NM</span><span><b>Compte Studio</b><small>Réglages et accès</small></span><i>→</i></a>
+      <a class="account-card" href="/studio/#settings"><b>NM</b><span><strong>Compte Studio</strong><small>Réglages et accès</small></span><em>→</em></a>
     </aside>
-    <section class="clients-workspace">
-      <header class="clients-topbar">
-        <div><p class="eyebrow">NEPTUNE MEDIA STUDIO</p><h1>Parcours clients</h1></div>
-        <div class="clients-top-actions"><span class="studio-sync"><i></i> Synchronisé</span><button id="newClient" class="button" type="button">Nouveau client</button></div>
-      </header>
-      <main class="clients-main">
-        <section class="clients-hero">
-          <div class="clients-hero-copy"><p class="eyebrow">PARCOURS CLIENTS</p><h2>Neptune surveille.<br><span>Vous validez l’exception.</span></h2><p>Les parcours avancent automatiquement. Cet écran ne remonte que les éléments qui méritent réellement votre attention.</p></div>
-          <div class="stats" aria-label="Résumé"><div><b id="clientCount">0</b><span>clients</span></div><div><b id="activeCount">0</b><span>parcours actifs</span></div><div><b id="urgentCount">0</b><span>urgences</span></div><button id="refresh" class="icon-button" type="button" aria-label="Vérifier maintenant">↻</button></div>
-        </section>
-        <section class="controls"><label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" aria-label="Rechercher un client ou une entreprise" placeholder="Rechercher un client ou une entreprise"></label><div class="view-links"><button type="button" data-open-section="contenus">Contenus</button><button type="button" data-open-section="calendrier">Calendrier</button><button type="button" data-open-section="finances">Facturation</button><button id="feedbackView" class="feedback-button" data-count="0" type="button">Avis clients</button></div></section>
-        <section id="pipeline" class="pipeline" aria-live="polite"></section>
-      </main>
-    </section>
+    <main class="main">
+      <header class="topbar"><div><p class="eyebrow">OPÉRATIONS</p><h1>Parcours clients</h1><p>Une vue simple : voyez l’étape, l’urgence et la seule action à réaliser.</p></div><div class="topbar-actions"><label class="search"><span>⌕</span><input id="search" type="search" placeholder="Rechercher un client"></label><button id="refresh" class="icon-button" type="button" aria-label="Actualiser">↻</button><button id="newClient" class="primary" type="button">＋ Nouveau client</button></div></header>
+      <section class="summary"><article><span>Clients</span><strong id="clientCount">0</strong></article><article><span>Projets actifs</span><strong id="activeCount">0</strong></article><article><span>À traiter maintenant</span><strong id="urgentCount">0</strong></article></section>
+      <section id="pipeline" class="pipeline" aria-live="polite"></section>
+    </main>
   </div>
-  <dialog id="newDialog" class="dialog">
+
+  <dialog id="newDialog">
     <form id="newOrder" class="dialog-card">
-      <div class="dialog-head"><div><p class="eyebrow">NOUVEAU PASSAGE</p><h2>Créer le dossier client</h2></div><button class="close" type="button" data-close="newDialog" aria-label="Fermer">×</button></div>
-      <div class="fields">
-        <label><span>E-mail client *</span><input name="email" type="email" required></label>
-        <label><span>Nom complet</span><input name="fullName" autocomplete="name"></label>
-        <label><span>Entreprise</span><input name="company"></label>
-        <label><span>Format</span><select name="format"><option>Hors Norme</option><option>Concept Libre</option><option>Sur mesure</option></select></label>
-        <label class="wide"><span>Nom du passage</span><input name="title" value="Passage Neptune Media" required></label>
-        <label><span>Montant payé (€)</span><input name="amountEuros" type="number" min="0" step="0.01"></label>
-        <label><span>Rendez-vous de préparation</span><input name="appointmentAt" type="datetime-local"></label>
-        <label class="wide"><span>Lien de préparation</span><input name="preparationUrl" type="url" placeholder="https://…"></label>
-      </div>
-      <label class="check"><input name="sendEmail" type="checkbox" checked><span>Envoyer immédiatement l’accès au client</span></label>
-      <button class="button" type="submit">Créer et envoyer l’accès</button><p id="formMessage" class="message" aria-live="polite"></p>
+      <button class="close" type="button" data-close="newDialog">×</button>
+      <p class="eyebrow">AJOUT MANUEL</p><h2>Créer un client et son passage</h2><p>Les réservations payées arrivent automatiquement. Utilisez ce formulaire uniquement pour une exception.</p>
+      <div class="form-grid"><label>Email<input name="email" type="email" required></label><label>Nom complet<input name="fullName" required></label><label>Entreprise<input name="company"></label><label>Format<select name="format"><option>Hors Norme</option><option>Concept Libre</option><option>Jeu Connexio</option><option>Portrait</option></select></label><label>Date de passage<input name="filmingAt" type="datetime-local"></label><label>Montant TTC (€)<input name="amount" type="number" min="0" step="1" value="1200"></label></div>
+      <footer><button type="button" class="secondary" data-close="newDialog">Annuler</button><button class="primary" type="submit">Créer le dossier</button></footer>
     </form>
   </dialog>
-  <dialog id="clientDialog" class="dialog drawer"><section class="dialog-card drawer-card"><div id="clientDetail"></div></section></dialog>
-  <dialog id="feedbackDialog" class="feedback-dialog" aria-labelledby="feedbackDialogTitle"><section class="feedback-dialog-card"><header class="feedback-dialog-head"><div><p class="eyebrow">EXPÉRIENCE CLIENT</p><h2 id="feedbackDialogTitle">Satisfaction et recommandations</h2><p>Les réponses envoyées après la livraison, centralisées sans retraitement.</p></div><button id="closeFeedback" class="feedback-close" type="button" aria-label="Fermer">×</button></header><div id="feedbackList" class="feedback-results" aria-live="polite"></div></section></dialog>
+
+  <dialog id="clientDialog" class="client-dialog">
+    <section class="client-detail" id="clientDetail"></section>
+  </dialog>
   <div id="toast" class="toast" hidden></div>
-  <script type="module" src="/studio/clients.js?v=32"></script>
-  <script type="module" src="/studio/clients-feedback-v31.js?v=2"></script>
-  <script type="module" src="/studio/studio-clients-polish-v63.js?v=1"></script>
-  <script type="module" src="/studio/studio-information-architecture-v65.js?v=1"></script>
+  <script src="/studio/clients.js"></script>
+  <script src="/studio/studio-information-architecture-v65.js?v=2"></script>
+  <script src="/studio/content-gallery-v76.js?v=3"></script>
+  <script src="/studio/studio-client-operations-v76.js?v=1"></script>
+  <script type="module" src="/studio/content-command-center-v79.js?v=1"></script>
+  <script src="/studio/studio-clients-polish-v63.js"></script>
 </body>
 </html>

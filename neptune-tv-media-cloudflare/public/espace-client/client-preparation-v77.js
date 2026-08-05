@@ -64,8 +64,28 @@ async function refresh(force = false) {
 function decorate(data) {
   const order = currentOrder(data.orders || []);
   if (!order) return;
+  const signature = clientSignature(order);
+  if (document.body.dataset.clientPreparationSignature === signature) return;
+  document.body.dataset.clientPreparationSignature = signature;
   renderPreparationAction(order);
   renderHorsNormeSeries(order);
+}
+
+function clientSignature(order) {
+  return [
+    order.id,
+    order.status,
+    order.format,
+    order.appointmentAt,
+    order.filmingAt,
+    order.appointmentUrl,
+    order.preparationUrl,
+    order.bookingUrl,
+    order.appointmentSource,
+    order.workflow?.preparationStatus,
+    order.workflow?.supplierStatus,
+    [...seenCards()].sort((a, b) => a - b).join(','),
+  ].join('|');
 }
 
 function currentOrder(orders) {
@@ -209,8 +229,9 @@ function openCard(index) {
   const seen = seenCards();
   seen.add(activeCard);
   localStorage.setItem('neptune_hors_norme_preparation_seen_v77', JSON.stringify([...seen]));
+  document.body.dataset.clientPreparationSignature = '';
   if (!dialog.open) dialog.showModal();
-  if (currentState) renderHorsNormeSeries(currentOrder(currentState.orders || []));
+  if (currentState) decorate(currentState);
 }
 
 function seenCards() {

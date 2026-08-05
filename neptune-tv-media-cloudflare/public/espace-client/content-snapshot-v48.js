@@ -1,6 +1,6 @@
 const $ = (selector, root = document) => root.querySelector(selector);
 
-const SNAPSHOT_LIMITS = { long: 4, short: 8 };
+const SNAPSHOT_LIMITS = { long: 4, short: 4 };
 
 let snapshotState = { orders: [] };
 let activeOrderId = '';
@@ -122,12 +122,14 @@ function renderRail(files, kind, limit) {
 
   const visible = files.slice(0, limit).map((file) => mediaTile(file, kind)).join('');
   const remaining = files.length - limit;
-  return `${visible}${remaining > 0 ? moreTile(kind, remaining) : ''}`;
+  return `${visible}${remaining > 0 ? moreTile(kind, remaining, files.length) : ''}`;
 }
 
-function moreTile(kind, remaining) {
-  const label = kind === 'long' ? 'émission' : 'short';
-  return `<a class="snapshot-rail-more snapshot-rail-more--${kind}" href="/espace-client/videos/"><small>VOIR PLUS</small><strong>${remaining} autre${remaining > 1 ? 's' : ''} ${label}${remaining > 1 ? 's' : ''}</strong><i aria-hidden="true">→</i></a>`;
+function moreTile(kind, remaining, total) {
+  if (kind === 'short') {
+    return `<a class="snapshot-rail-more snapshot-rail-more--short" href="/espace-client/videos/"><small>VOIR PLUS</small><strong>Voir les ${total} shorts</strong><i aria-hidden="true">→</i></a>`;
+  }
+  return `<a class="snapshot-rail-more snapshot-rail-more--long" href="/espace-client/videos/"><small>VOIR PLUS</small><strong>${remaining} autre${remaining > 1 ? 's' : ''} émission${remaining > 1 ? 's' : ''}</strong><i aria-hidden="true">→</i></a>`;
 }
 
 function mediaTile(file, kind) {

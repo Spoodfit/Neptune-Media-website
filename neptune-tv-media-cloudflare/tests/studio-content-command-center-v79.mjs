@@ -79,7 +79,6 @@ await page.route('**/api/admin/content-schedule', async (route) => {
   return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, occurrenceId, publishAt: body.publishAt }) });
 });
 await page.route('**/api/admin/content-schedule-delete', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: '{"ok":true}' }));
-await page.route('**/api/admin/**', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: '{}' }));
 
 const response = await page.goto(`${baseUrl}/studio/clients.html#${orderId}`, { waitUntil: 'domcontentloaded', timeout: 60_000 });
 if (!response || response.status() >= 400) throw new Error(`HTTP ${response?.status() || 0}`);
@@ -116,7 +115,7 @@ await page.screenshot({ path: path.join(outputDir, 'content-command-center-1440.
 await page.locator('[data-v79-calendar]').click();
 await page.waitForSelector('.v79-calendar-shell', { timeout: 10_000 });
 const queueCard = page.locator('[data-v79-drag-file]').first();
-const day = page.locator('[data-v79-drop-date]').filter({ has: page.locator('.v79-day-head b', { hasText: '25' }) }).first();
+const day = page.locator('[data-v79-drop-date="2026-08-25"]');
 await queueCard.dragTo(day);
 await page.waitForSelector('#v79ScheduleDialog[open]');
 await page.locator('#v79ScheduleDialog input[name="title"]').fill('Conseil programmé simplement');

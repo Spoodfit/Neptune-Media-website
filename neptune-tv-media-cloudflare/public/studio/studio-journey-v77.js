@@ -125,8 +125,10 @@ function appointmentLink(order) {
 }
 
 function safeUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
   try {
-    const url = new URL(String(value || ''), location.origin);
+    const url = new URL(raw, location.origin);
     return ['http:', 'https:'].includes(url.protocol) ? url.toString() : '';
   } catch {
     return '';

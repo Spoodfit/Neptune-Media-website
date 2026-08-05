@@ -2,16 +2,16 @@ const RELEASE = 'neptune-client-preparation-20260805-v77';
 const PREPARATION_BOOKING = 'https://calendar.app.google/nkYDeheuV8qjSMcRA';
 const FINISHED = new Set(['filmed', 'videos_pending', 'videos_received', 'editing', 'approval', 'delivered', 'completed']);
 const SERIES = [
-  ['Conducteur d’épisode', 'Le déroulé complet de votre interview'],
-  ['L’étincelle', 'Le point de départ de votre parcours'],
-  ['Le déclic', 'Le moment où votre regard a changé'],
-  ['Le miroir', 'Ce que votre expérience révèle aux autres'],
-  ['Les pièges', 'Les erreurs et fausses pistes à éviter'],
-  ['Le basculement', 'Le moment où tout devient concret'],
-  ['Le chemin', 'Les étapes qui ont construit votre méthode'],
-  ['Les preuves', 'Les résultats et signaux qui crédibilisent votre message'],
-  ['Le message à retenir', 'L’idée essentielle que le public doit garder'],
-  ['Contact et clôture', 'La manière simple de poursuivre la conversation'],
+  { title: 'Conducteur d’épisode', kicker: 'FACE CAMÉRA', time: '01:00', accent: '#745cff', objective: 'Voir le parcours complet avant le tournage.', description: 'Le déroulé de l’interview et la logique des neuf séquences.', prompts: ['Repérez les trois moments de votre histoire que vous ne voulez pas oublier.', 'Notez un exemple concret pour chaque grande étape.', 'Gardez de la spontanéité : ce conducteur est un repère, pas un texte à réciter.'] },
+  { title: 'L’étincelle', kicker: 'FACE CAMÉRA', time: '04:00', accent: '#ff9d20', objective: 'Raconter le point de départ.', description: 'Pourquoi cette histoire mérite d’être racontée maintenant.', prompts: ['Quel événement a réellement lancé votre parcours ?', 'Quelle frustration ou envie existait avant le projet ?', 'À quel moment avez-vous compris que vous deviez agir ?'] },
+  { title: 'Le déclic', kicker: 'FACE CAMÉRA', time: '11:00', accent: '#ff9d20', objective: 'Identifier le moment où tout bascule.', description: 'La décision ou la prise de conscience qui a changé la suite.', prompts: ['Qu’est-ce qui vous a fait changer de regard ?', 'Quelle décision avez-vous prise à ce moment-là ?', 'Qu’auriez-vous perdu en restant immobile ?'] },
+  { title: 'Le miroir', kicker: 'QUESTION', time: '19:00', accent: '#1677ff', objective: 'Créer l’identification du public.', description: 'Ce que votre histoire révèle chez les personnes qui vous écoutent.', prompts: ['Dans quelle situation votre public peut-il se reconnaître ?', 'Quelle pensée n’ose-t-il pas toujours formuler ?', 'Quel signe montre qu’il vit déjà ce problème ?'] },
+  { title: 'Les pièges', kicker: 'QUESTION', time: '32:00', accent: '#168cff', objective: 'Rendre les erreurs visibles.', description: 'Les fausses pistes et automatismes qui empêchent d’avancer.', prompts: ['Quelle erreur revient le plus souvent ?', 'Quelle croyance semble logique mais bloque les résultats ?', 'Pourquoi continue-t-on de faire ce qui ne fonctionne pas ?'] },
+  { title: 'Le basculement', kicker: 'QUESTION', time: '39:00', accent: '#1f8cff', objective: 'Montrer le changement réel.', description: 'Le moment où une nouvelle méthode devient concrète.', prompts: ['Qu’est-ce qui change vraiment dans la manière d’agir ?', 'Quel premier résultat valide ce changement ?', 'Quelle nouvelle perspective devient possible ?'] },
+  { title: 'Le chemin', kicker: 'QUESTION', time: '47:00', accent: '#168cff', objective: 'Donner une méthode simple.', description: 'Les premières étapes que le public peut comprendre et retenir.', prompts: ['Par où faut-il commencer ?', 'Quelles étapes sont indispensables et dans quel ordre ?', 'Quelle action peut être faite dès cette semaine ?'] },
+  { title: 'Les preuves', kicker: 'QUESTION', time: '53:00', accent: '#7758ff', objective: 'Crédibiliser la transformation.', description: 'Les faits, résultats et signaux qui rendent votre message tangible.', prompts: ['À quoi ressemble concrètement la transformation ?', 'Quels chiffres, exemples ou témoignages pouvez-vous citer ?', 'Quel résultat vous rend le plus fier ?'] },
+  { title: 'Le message à retenir', kicker: 'MESSAGE', time: '55:00', accent: '#9d5cff', objective: 'Ancrer une idée forte.', description: 'La phrase ou le principe que le public doit garder après l’émission.', prompts: ['Quelle vérité doit rester dans l’esprit du public ?', 'Qu’est-ce que vous voulez qu’il remette en question ?', 'Quel est le prochain pas que vous lui recommandez ?'] },
+  { title: 'Contact et clôture', kicker: 'CLÔTURE', time: '57:00', accent: '#ff9d20', objective: 'Conclure sans friction.', description: 'La manière la plus simple de vous retrouver et de poursuivre.', prompts: ['Comment peut-on vous contacter ?', 'Où peut-on découvrir votre travail ?', 'Terminez par un remerciement et une invitation claire.'] },
 ];
 
 let refreshTimer = 0;
@@ -28,6 +28,7 @@ function start() {
 
 function boot() {
   document.body.dataset.clientPreparationRelease = RELEASE;
+  document.body.dataset.horsNormeCardMode = 'cards-rendered-without-binary-assets-v77';
   ensureDialog();
   new MutationObserver(scheduleRefresh).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden'] });
   window.addEventListener('focus', () => refresh(true));
@@ -186,10 +187,13 @@ function renderHorsNormeSeries(order) {
       <span class="hors-norme-progress-v77"><b>${seen.size}</b> / ${SERIES.length} consultées</span>
     </header>
     <div class="hors-norme-series-v77" role="list">
-      ${SERIES.map(([title, description], index) => `
+      ${SERIES.map((card, index) => `
         <button type="button" role="listitem" data-preparation-card="${index}" class="${seen.has(index) ? 'is-seen' : ''}">
-          <span class="hors-norme-card-image-v77"><img src="/espace-client/preparation-hors-norme/hors-norme-card-${String(index + 1).padStart(2, '0')}.webp" alt="" loading="lazy"><i>${seen.has(index) ? '✓' : String(index + 1).padStart(2, '0')}</i></span>
-          <span class="hors-norme-card-copy-v77"><strong>${escapeHtml(title)}</strong><small>${escapeHtml(description)}</small></span>
+          <span class="hors-norme-card-visual-v77" style="--card-accent:${card.accent}">
+            <span class="hors-norme-card-top-v77"><small>${escapeHtml(card.kicker)}</small><time>${escapeHtml(card.time)}</time></span>
+            <span class="hors-norme-card-bottom-v77"><b class="hors-norme-card-number-v77">${String(index + 1).padStart(2, '0')}</b><span class="hors-norme-card-objective-v77">${escapeHtml(card.objective)}</span></span>
+          </span>
+          <span class="hors-norme-card-copy-v77"><strong>${escapeHtml(card.title)}</strong><small>${escapeHtml(card.description)}</small><em>${seen.has(index) ? '✓ Consultée' : 'Ouvrir la carte →'}</em></span>
         </button>`).join('')}
     </div>
   `;
@@ -204,7 +208,10 @@ function ensureDialog() {
   dialog.innerHTML = `
     <section>
       <header><div><span data-card-counter></span><h2 data-card-title></h2></div><button type="button" data-card-close aria-label="Fermer">×</button></header>
-      <img data-card-image alt="">
+      <div class="hors-norme-dialog-card-v77" data-dialog-card>
+        <div class="hors-norme-dialog-visual-v77"><small data-card-kicker></small><b class="hors-norme-dialog-number-v77" data-card-number></b><strong data-card-objective></strong></div>
+        <div class="hors-norme-dialog-content-v77"><span>QUESTIONS DE PRÉPARATION</span><h3 data-card-description></h3><p>Répondez avec des exemples vécus. Une phrase claire et une situation précise valent mieux qu’un discours appris.</p><ul data-card-prompts></ul></div>
+      </div>
       <footer><button type="button" data-card-prev>← Précédente</button><button type="button" data-card-next>Suivante →</button></footer>
     </section>`;
   document.body.append(dialog);
@@ -222,10 +229,15 @@ function openCard(index) {
   activeCard = Math.max(0, Math.min(SERIES.length - 1, index));
   const dialog = document.querySelector('#horsNormeCardDialogV77');
   if (!dialog) return;
-  const [title] = SERIES[activeCard];
-  dialog.querySelector('[data-card-counter]').textContent = `CARTE ${activeCard + 1} SUR ${SERIES.length}`;
-  dialog.querySelector('[data-card-title]').textContent = title;
-  dialog.querySelector('[data-card-image]').src = `/espace-client/preparation-hors-norme/hors-norme-card-${String(activeCard + 1).padStart(2, '0')}.webp`;
+  const card = SERIES[activeCard];
+  dialog.querySelector('[data-card-counter]').textContent = `CARTE ${activeCard + 1} SUR ${SERIES.length} · ${card.time}`;
+  dialog.querySelector('[data-card-title]').textContent = card.title;
+  dialog.querySelector('[data-card-kicker]').textContent = card.kicker;
+  dialog.querySelector('[data-card-number]').textContent = String(activeCard + 1).padStart(2, '0');
+  dialog.querySelector('[data-card-objective]').textContent = card.objective;
+  dialog.querySelector('[data-card-description]').textContent = card.description;
+  dialog.querySelector('[data-dialog-card]').style.setProperty('--dialog-accent', card.accent);
+  dialog.querySelector('[data-card-prompts]').innerHTML = card.prompts.map((prompt) => `<li>${escapeHtml(prompt)}</li>`).join('');
   const seen = seenCards();
   seen.add(activeCard);
   localStorage.setItem('neptune_hors_norme_preparation_seen_v77', JSON.stringify([...seen]));

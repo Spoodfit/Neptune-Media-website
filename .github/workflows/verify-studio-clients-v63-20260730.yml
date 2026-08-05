@@ -1,6 +1,6 @@
 name: Verify Studio Clients V63 20260730
 
-# Final visual proof: populated screenshots and compact refresh action are verified.
+# Visual and runtime proof for the client pipeline and the v79 editorial command center.
 on:
   push:
     branches: [main]
@@ -10,8 +10,15 @@ on:
       - 'neptune-tv-media-cloudflare/public/studio/studio-clients-polish-v63.css'
       - 'neptune-tv-media-cloudflare/public/studio/studio-clients-polish-v63-1.css'
       - 'neptune-tv-media-cloudflare/public/studio/studio-clients-polish-v63.js'
+      - 'neptune-tv-media-cloudflare/public/studio/content-command-center-v79.js'
+      - 'neptune-tv-media-cloudflare/public/studio/content-command-center-v79.css'
+      - 'neptune-tv-media-cloudflare/src/entry-v18.js'
+      - 'neptune-tv-media-cloudflare/src/store-v14.js'
+      - 'neptune-tv-media-cloudflare/src/portal-content-admin-v79.js'
       - 'neptune-tv-media-cloudflare/scripts/verify-studio-clients-v63.mjs'
+      - 'neptune-tv-media-cloudflare/scripts/verify-studio-content-command-center-v79.mjs'
       - 'neptune-tv-media-cloudflare/tests/audit-studio-clients-v63.mjs'
+      - 'neptune-tv-media-cloudflare/tests/studio-content-command-center-v79.mjs'
       - 'neptune-tv-media-cloudflare/package.json'
   pull_request:
     branches: [main]
@@ -21,8 +28,15 @@ on:
       - 'neptune-tv-media-cloudflare/public/studio/studio-clients-polish-v63.css'
       - 'neptune-tv-media-cloudflare/public/studio/studio-clients-polish-v63-1.css'
       - 'neptune-tv-media-cloudflare/public/studio/studio-clients-polish-v63.js'
+      - 'neptune-tv-media-cloudflare/public/studio/content-command-center-v79.js'
+      - 'neptune-tv-media-cloudflare/public/studio/content-command-center-v79.css'
+      - 'neptune-tv-media-cloudflare/src/entry-v18.js'
+      - 'neptune-tv-media-cloudflare/src/store-v14.js'
+      - 'neptune-tv-media-cloudflare/src/portal-content-admin-v79.js'
       - 'neptune-tv-media-cloudflare/scripts/verify-studio-clients-v63.mjs'
+      - 'neptune-tv-media-cloudflare/scripts/verify-studio-content-command-center-v79.mjs'
       - 'neptune-tv-media-cloudflare/tests/audit-studio-clients-v63.mjs'
+      - 'neptune-tv-media-cloudflare/tests/studio-content-command-center-v79.mjs'
       - 'neptune-tv-media-cloudflare/package.json'
   workflow_dispatch:
 
@@ -46,8 +60,11 @@ jobs:
         working-directory: neptune-tv-media-cloudflare
         run: |
           node --check public/studio/studio-clients-polish-v63.js
+          node --check public/studio/content-command-center-v79.js
           node --check tests/audit-studio-clients-v63.mjs
+          node --check tests/studio-content-command-center-v79.mjs
           node scripts/verify-studio-clients-v63.mjs
+          node scripts/verify-studio-content-command-center-v79.mjs
 
       - name: Install Playwright
         run: |
@@ -73,11 +90,19 @@ jobs:
           OUTPUT_DIR: test-results/studio-clients-v63
         run: node neptune-tv-media-cloudflare/tests/audit-studio-clients-v63.mjs
 
+      - name: Audit authenticated content command center
+        env:
+          LOCAL_BASE_URL: http://127.0.0.1:4173
+          OUTPUT_DIR: test-results/studio-content-command-center-v79
+        run: node neptune-tv-media-cloudflare/tests/studio-content-command-center-v79.mjs
+
       - name: Upload screenshots and report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: studio-clients-v63-evidence
-          path: test-results/studio-clients-v63
+          name: studio-clients-v79-evidence
+          path: |
+            test-results/studio-clients-v63
+            test-results/studio-content-command-center-v79
           if-no-files-found: error
           retention-days: 14

@@ -120,7 +120,7 @@ await queueCard.dragTo(day);
 await page.waitForSelector('#v79ScheduleDialog[open]');
 await page.locator('#v79ScheduleDialog input[name="title"]').fill('Conseil programmé simplement');
 await page.locator('#v79ScheduleDialog button[type="submit"]').click();
-await page.waitForSelector('#v79ScheduleDialog:not([open])');
+await page.waitForFunction(() => document.querySelector('#v79ScheduleDialog')?.open === false);
 await page.waitForSelector('.v79-calendar-shell');
 
 const calendarAudit = await page.evaluate(() => ({

@@ -8,6 +8,8 @@ const files = {
   activeEntry: await read('src/entry-v13.js'),
   videoEntry: await read('src/entry-v16.js'),
   operationsEntry: await read('src/entry-v17.js'),
+  clientDashboardEntry: await read('src/entry-v18.js'),
+  clientDashboardCss: await read('public/espace-client/client-dashboard-clean-v78.css'),
   clientStore: await read('src/store-v14.js'),
   clientManagement: await read('src/portal-client-management-v76.js'),
   localConfig: await read('wrangler.jsonc'),
@@ -25,8 +27,18 @@ const files = {
 };
 
 const failures = [];
-check(files.localConfig, '"main": "src/entry-v17.js"', 'la configuration locale ne cible pas le runtime Studio entry-v17');
-check(files.rootConfig, '"main": "neptune-tv-media-cloudflare/src/entry-v17.js"', 'la configuration racine ne cible pas le runtime Studio entry-v17');
+check(files.localConfig, '"main": "src/entry-v18.js"', 'la configuration locale ne cible pas le runtime client entry-v18');
+check(files.rootConfig, '"main": "neptune-tv-media-cloudflare/src/entry-v18.js"', 'la configuration racine ne cible pas le runtime client entry-v18');
+check(files.clientDashboardEntry, "from './entry-v17.js'", 'entry-v18 ne prolonge pas le runtime Studio entry-v17');
+check(files.clientDashboardEntry, "'/espace-client/client-dashboard-clean-v78.css?v=1'", 'entry-v18 n’injecte pas la feuille de correction client v78');
+check(files.clientDashboardEntry, "clientDashboardFirstViewport: 'quick-actions-visible-without-duplicate-summary-v78'", 'entry-v18 ne déclare pas les actions rapides dans le premier écran');
+check(files.clientDashboardEntry, "clientPreparationTheme: 'light-editorial-cards-and-dialog-v78'", 'entry-v18 ne déclare pas le thème clair de préparation');
+check(files.clientDashboardCss, '.client-preparation-action-v77', 'la neutralisation du résumé de préparation dupliqué est absente');
+check(files.clientDashboardCss, 'display: none !important', 'le résumé v77 dupliqué reste visible');
+check(files.clientDashboardCss, 'align-items: start', 'la carte Dernière livraison peut encore s’étirer inutilement');
+check(files.clientDashboardCss, '.hors-norme-card-visual-v77', 'la carte de préparation claire n’est pas stylée');
+check(files.clientDashboardCss, 'linear-gradient(145deg, #ffffff 0%, #f5f6fb 100%)', 'le visuel des cartes HORS NORME reste sombre');
+check(files.clientDashboardCss, '.hors-norme-dialog-visual-v77', 'la fenêtre de préparation claire n’est pas stylée');
 check(files.operationsEntry, "from './entry-v16.js'", 'entry-v17 ne prolonge pas le runtime vidéo entry-v16');
 check(files.operationsEntry, "from './store-v14.js'", 'entry-v17 ne réexporte pas le store de gestion clients');
 check(files.operationsEntry, "studioPrimaryNavigation: ['Parcours clients', 'Diffusion', 'Réglages']", 'la navigation Studio à trois destinations n’est pas déclarée');
@@ -108,7 +120,7 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Verified active entry chain through Studio v77, compact client snapshot, safe client account management, scalable media library, three-destination navigation and preserved Drive synchronization.');
+console.log('Verified active entry chain through client dashboard v78, light HORS NORME preparation, compact client snapshot, safe client account management, scalable media library, three-destination navigation and preserved Drive synchronization.');
 
 async function read(path) { return readFile(new URL(`../${path}`, import.meta.url), 'utf8'); }
 async function readRoot(path) { return readFile(new URL(`../../${path}`, import.meta.url), 'utf8'); }

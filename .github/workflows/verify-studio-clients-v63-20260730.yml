@@ -12,6 +12,7 @@ on:
       - 'neptune-tv-media-cloudflare/public/studio/studio-clients-polish-v63.js'
       - 'neptune-tv-media-cloudflare/public/studio/content-command-center-v79.js'
       - 'neptune-tv-media-cloudflare/public/studio/content-command-center-v79.css'
+      - 'neptune-tv-media-cloudflare/public/studio/content-command-center-stability-v79.js'
       - 'neptune-tv-media-cloudflare/src/entry-v18.js'
       - 'neptune-tv-media-cloudflare/src/store-v14.js'
       - 'neptune-tv-media-cloudflare/src/portal-content-admin-v79.js'
@@ -30,6 +31,7 @@ on:
       - 'neptune-tv-media-cloudflare/public/studio/studio-clients-polish-v63.js'
       - 'neptune-tv-media-cloudflare/public/studio/content-command-center-v79.js'
       - 'neptune-tv-media-cloudflare/public/studio/content-command-center-v79.css'
+      - 'neptune-tv-media-cloudflare/public/studio/content-command-center-stability-v79.js'
       - 'neptune-tv-media-cloudflare/src/entry-v18.js'
       - 'neptune-tv-media-cloudflare/src/store-v14.js'
       - 'neptune-tv-media-cloudflare/src/portal-content-admin-v79.js'
@@ -46,7 +48,7 @@ permissions:
 jobs:
   verify-studio-clients:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -60,6 +62,7 @@ jobs:
         working-directory: neptune-tv-media-cloudflare
         run: |
           node --check public/studio/studio-clients-polish-v63.js
+          node --check public/studio/content-command-center-stability-v79.js
           node --check public/studio/content-command-center-v79.js
           node --check tests/audit-studio-clients-v63.mjs
           node --check tests/studio-content-command-center-v79.mjs
@@ -69,7 +72,7 @@ jobs:
       - name: Install Playwright
         run: |
           npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
-          npx playwright install --with-deps chromium
+          npx playwright install chromium
 
       - name: Start static server
         shell: bash

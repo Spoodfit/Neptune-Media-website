@@ -97,7 +97,7 @@ function deleteClient(store, actor, client, payload) {
   const expected = clientIdentity(client);
   const confirmation = String(payload.confirmation || '').trim();
   if (!confirmation || confirmation.localeCompare(expected, 'fr', { sensitivity: 'accent' }) !== 0) {
-    return json({ error: 'client_delete_confirmation_failed', expected });
+    return json({ error: 'client_delete_confirmation_failed', expected }, 400);
   }
 
   const orderIds = store.sql.exec('SELECT id FROM portal_orders WHERE client_id=?', client.id).toArray().map((row) => row.id);

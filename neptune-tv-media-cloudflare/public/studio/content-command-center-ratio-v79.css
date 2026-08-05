@@ -1,0 +1,15 @@
+/* Native media ratios without changing the uniform card height. */
+.v79-media-card--landscape .v79-media-frame{
+  width:100%;
+  height:auto;
+  max-height:100%;
+  aspect-ratio:16/9;
+  box-shadow:none;
+}
+
+.v79-media-list .v79-media-card--landscape .v79-media-frame{
+  width:100%;
+  height:auto;
+  max-height:100%;
+  aspect-ratio:16/9;
+}

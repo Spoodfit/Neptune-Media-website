@@ -15,7 +15,7 @@ const [wrangler, entry, routes, store, ui, css, workflow] = await Promise.all([
   read('../.github/workflows/deploy-cloudflare.yml'),
 ]);
 
-assert.match(wrangler, /"main"\s*:\s*"neptune-tv-media-cloudflare\/src\/entry-v(?:13|14|15|16|17)\.js"/u);
+assert.match(wrangler, /"main"\s*:\s*"neptune-tv-media-cloudflare\/src\/entry-v(?:13|14|15|16|17|18)\.js"/u);
 assert.match(wrangler, /"AI_MODEL"\s*:\s*"@cf\/openai\/gpt-oss-120b"/u);
 
 assert.match(entry, /neptune-editorial-workspace-20260730-v2/u);

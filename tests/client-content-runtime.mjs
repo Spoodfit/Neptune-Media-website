@@ -48,7 +48,11 @@ const page = await context.newPage();
 const pageErrors = [];
 page.on('pageerror', (error) => pageErrors.push(error.message));
 page.on('console', (message) => {
-  if (message.type() === 'error' && !message.text().includes('Failed to load resource')) pageErrors.push(message.text());
+  const text = message.text();
+  const isKnownThirdPartyPolicyNoise = /Permissions policy violation: compute-pressure is not allowed/iu.test(text);
+  if (message.type() === 'error' && !text.includes('Failed to load resource') && !isKnownThirdPartyPolicyNoise) {
+    pageErrors.push(text);
+  }
 });
 
 await page.route('**/api/client/**', async (route) => {

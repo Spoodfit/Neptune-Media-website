@@ -7,6 +7,9 @@ const files = {
   editorialEntry: await read('src/entry-v12.js'),
   activeEntry: await read('src/entry-v13.js'),
   videoEntry: await read('src/entry-v16.js'),
+  operationsEntry: await read('src/entry-v17.js'),
+  clientStore: await read('src/store-v14.js'),
+  clientManagement: await read('src/portal-client-management-v76.js'),
   localConfig: await read('wrangler.jsonc'),
   rootConfig: await readRoot('wrangler.jsonc'),
   snapshot: await read('public/espace-client/content-snapshot-v48.js'),
@@ -15,13 +18,22 @@ const files = {
   videos: await read('public/espace-client/videos/videos-compact-v3.js'),
   calendarHtml: await read('public/espace-client/calendrier/index.html'),
   calendar: await read('public/espace-client/calendrier/calendar-compact-v5.js'),
-  studio: await read('public/studio/content-gallery-v49.js'),
+  studio: await read('public/studio/content-gallery-v76.js'),
+  studioCss: await read('public/studio/content-gallery-v76.css'),
+  studioOperations: await read('public/studio/studio-client-operations-v76.js'),
   mediaSafety: await read('public/assets/media-dialog-safety-v50.js'),
 };
 
 const failures = [];
-check(files.localConfig, '"main": "src/entry-v16.js"', 'la configuration locale ne cible pas le runtime vidéo entry-v16');
-check(files.rootConfig, '"main": "neptune-tv-media-cloudflare/src/entry-v16.js"', 'la configuration racine ne cible pas le runtime vidéo entry-v16');
+check(files.localConfig, '"main": "src/entry-v17.js"', 'la configuration locale ne cible pas le runtime Studio entry-v17');
+check(files.rootConfig, '"main": "neptune-tv-media-cloudflare/src/entry-v17.js"', 'la configuration racine ne cible pas le runtime Studio entry-v17');
+check(files.operationsEntry, "from './entry-v16.js'", 'entry-v17 ne prolonge pas le runtime vidéo entry-v16');
+check(files.operationsEntry, "from './store-v14.js'", 'entry-v17 ne réexporte pas le store de gestion clients');
+check(files.operationsEntry, "studioPrimaryNavigation: ['Parcours clients', 'Diffusion', 'Réglages']", 'la navigation Studio à trois destinations n’est pas déclarée');
+check(files.operationsEntry, "studioVideoProductionWorkspace: 'removed-external-editing-drive-sync-only'", 'la suppression de Production vidéo n’est pas déclarée');
+check(files.operationsEntry, "'/api/admin/client-manage'", 'la route de gestion des comptes clients est absente');
+check(files.operationsEntry, "'/studio/content-gallery-v76.js?v=1'", 'la galerie Studio v76 n’est pas injectée');
+check(files.operationsEntry, "'/studio/studio-client-operations-v76.js?v=1'", 'le gestionnaire de comptes Studio v76 n’est pas injecté');
 check(files.videoEntry, "from './entry-v13.js'", 'entry-v16 ne prolonge pas le runtime visuel entry-v13');
 check(files.videoEntry, 'videoAiContainerRequired: false', 'entry-v16 exige encore un moteur Container');
 check(files.videoEntry, "videoAiEngineMode: 'persistent-local-service-with-browser-fallback'", 'entry-v16 ne confirme pas le service vidéo permanent');
@@ -48,7 +60,6 @@ check(files.runtime, "analyticsEngineBinding: 'optional-not-required-for-deploym
 check(files.runtime, "telemetryStorage: 'operational-sqlite-with-optional-analytics-engine'", 'le stockage opérationnel de secours n’est pas déclaré');
 check(files.entry, '/espace-client/content-snapshot-v48.css?v=2', 'la feuille compacte du snapshot client n’est pas injectée');
 check(files.entry, '/espace-client/content-snapshot-v48.js?v=4', 'la version à bandes horizontales du snapshot client n’est pas injectée');
-check(files.entry, '/studio/content-gallery-v49.js?v=1', 'la galerie Studio n’est pas injectée');
 check(files.entry, '/assets/media-dialog-safety-v50.js?v=1', 'la protection de fermeture des médias n’est pas injectée');
 check(files.release, 'neptune-verified-content-runtime-20260730-v18', 'la release de contenu vérifiée v18 est absente');
 check(files.release, "contentScrollModel: 'bounded-by-passage-horizontal-rails-and-pagination'", 'le diagnostic du modèle de scroll actuel est absent');
@@ -71,10 +82,23 @@ check(files.videos, 'passage-selector', 'le sélecteur de passage vidéo est abs
 check(files.calendarHtml, '/espace-client/calendrier/calendar-compact-v5.js?v=1', 'la bibliothèque calendrier compacte n’est pas chargée');
 check(files.calendar, 'const PAGE_SIZE=8', 'la bibliothèque des shorts n’est pas paginée à huit éléments');
 check(files.calendar, 'observer?.disconnect()', 'l’observateur calendrier n’est pas suspendu pendant le rendu');
-check(files.studio, 'const PAGE_SIZE=8', 'la galerie Studio n’est pas paginée à huit éléments');
-check(files.studio, 'observer?.disconnect()', 'l’observateur Studio n’est pas suspendu pendant le rendu');
-check(files.studio, "if(!detailGrid)return", 'la garde de rendu Studio est absente');
-check(files.studio, 'studio-upload-details', 'l’import manuel Studio n’est pas replié');
+check(files.studio, 'const PAGE_SIZE = 24;', 'la galerie Studio v76 n’est pas paginée à vingt-quatre éléments');
+check(files.studio, 'observer?.disconnect()', 'l’observateur Studio v76 n’est pas suspendu pendant le rendu');
+check(files.studio, 'if (!detailGrid) return;', 'la garde de rendu Studio v76 est absente');
+check(files.studio, 'studio-upload-details', 'l’import manuel Studio v76 n’est pas replié');
+check(files.studio, 'studio-content-search', 'la recherche dans la bibliothèque Studio est absente');
+check(files.studio, 'data-studio-view', 'le changement grille/liste de la bibliothèque Studio est absent');
+check(files.studio, 'thumbnailUrl', 'les miniatures Drive ne sont pas utilisées');
+check(files.studioCss, '.studio-media-card--short .studio-media-preview', 'le ratio vertical des shorts est absent');
+check(files.studioCss, '-webkit-line-clamp:2', 'les titres de contenus ne sont pas lisibles sur deux lignes');
+check(files.studioOperations, 'data-client-edit', 'la modification des comptes clients est absente');
+check(files.studioOperations, "data-client-action=\"${active ? 'archive' : 'activate'}\"", 'l’archivage et la réactivation des comptes sont absents');
+check(files.studioOperations, 'data-client-delete-form', 'la suppression confirmée des comptes est absente');
+check(files.studioOperations, 'studio-calendar-summary-v76', 'le résumé de lisibilité du calendrier Studio est absent');
+check(files.clientStore, "'/portal/admin-client-manage'", 'le store ne route pas la gestion des comptes clients');
+check(files.clientManagement, "const ACTIONS = new Set(['update', 'archive', 'activate', 'delete'])", 'les opérations de gestion client sont incomplètes');
+check(files.clientManagement, "actor.role !== 'admin'", 'la suppression définitive n’est pas réservée aux administrateurs');
+check(files.clientManagement, "driveFilesDeleted: false", 'la politique de conservation Google Drive est absente');
 check(files.mediaSafety, "document.addEventListener('cancel'", 'la touche Échap peut encore contourner le nettoyage média');
 check(files.mediaSafety, "frame.src = 'about:blank'", 'les lecteurs Drive ne sont pas arrêtés à la fermeture');
 
@@ -83,7 +107,7 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Verified active entry chain through the persistent Neptune Video Engine with browser fallback, current client architecture, compact horizontal dashboard rails and bounded content runtime passed.');
+console.log('Verified active entry chain through Studio v76, safe client account management, scalable thumbnail-first media library, three-destination navigation and preserved Drive synchronization.');
 
 async function read(path) { return readFile(new URL(`../${path}`, import.meta.url), 'utf8'); }
 async function readRoot(path) { return readFile(new URL(`../../${path}`, import.meta.url), 'utf8'); }

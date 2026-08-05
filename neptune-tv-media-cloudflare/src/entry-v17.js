@@ -97,7 +97,7 @@ async function augmentRelease(response) {
     studioCalendarReadability: 'responsive-scrollable-month-grid-v76',
     studioPreparationJourney: 'calendar-synced-link-or-one-click-booking-v77',
     supplierDateConfirmation: 'two-preselected-safe-email-actions-v77',
-    clientHorsNormePreparation: 'ten-presenter-cards-v77',
+    clientHorsNormePreparation: 'ten-presenter-inspired-interactive-cards-v77',
     studioCanonicalVideoPath: null,
   }), {
     status: response.status,

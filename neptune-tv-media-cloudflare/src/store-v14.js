@@ -2,6 +2,23 @@ import { StudioStore as LegacyStore } from './store-v13.js';
 import { managePortalClient } from './portal-client-management-v76.js';
 import { ensureDriveSchema } from './portal-drive.js';
 import { json } from './security.js';
+import {
+  adminContentCalendar,
+  adminContentFileSource,
+  adminContentScheduleDelete,
+  adminContentScheduleUpsert,
+} from './portal-content-admin-v79.js';
+
+const ADMIN_CONTENT_ROUTES = new Map([
+  ['/portal/admin-content-calendar', adminContentCalendar],
+  ['/portal/admin-content-file-source', adminContentFileSource],
+  ['/portal/admin-content-schedule-upsert', adminContentScheduleUpsert],
+  ['/portal/admin-content-schedule-delete', adminContentScheduleDelete],
+]);
+const READ_ONLY_CONTENT_ROUTES = new Set([
+  '/portal/admin-content-calendar',
+  '/portal/admin-content-file-source',
+]);
 
 export class StudioStore extends LegacyStore {
   async fetch(request) {
@@ -18,6 +35,31 @@ export class StudioStore extends LegacyStore {
           message: String(error?.message || error || 'unknown').slice(0, 500),
         });
         return json({ error: 'client_management_failed' }, 500);
+      }
+    }
+
+    if (method === 'POST' && ADMIN_CONTENT_ROUTES.has(url.pathname)) {
+      const body = await request.clone().json().catch(() => ({}));
+      if (READ_ONLY_CONTENT_ROUTES.has(url.pathname)) {
+        const actor = await this.requireSession(body.token);
+        if (!actor || actor.role !== 'admin') return json({ error: 'unauthorized' }, 401);
+      } else {
+        const validation = await super.fetch(new Request('https://store/portal/admin-list', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        }));
+        if (!validation.ok) return validation;
+      }
+      try {
+        return ADMIN_CONTENT_ROUTES.get(url.pathname)(this, body.payload || {});
+      } catch (error) {
+        console.error('portal_admin_content_failed', {
+          route: url.pathname,
+          name: String(error?.name || 'Error').slice(0, 120),
+          message: String(error?.message || error || 'unknown').slice(0, 500),
+        });
+        return json({ error: 'content_management_failed' }, 500);
       }
     }
 
@@ -59,6 +101,8 @@ function enrichAdminOrderFiles(store, order) {
         source: file.storageKey ? 'r2' : 'external',
         previewUrl: file.externalUrl || '',
         downloadUrl: file.externalUrl || '',
+        thumbnailProxyUrl: `/api/admin/content-thumbnail?fileId=${encodeURIComponent(file.id)}`,
+        mediaProxyUrl: `/api/admin/content-media?fileId=${encodeURIComponent(file.id)}`,
       };
     }
     const driveFileId = String(drive.driveFileId || '');
@@ -72,6 +116,8 @@ function enrichAdminOrderFiles(store, order) {
       thumbnailUrl: driveFileId
         ? `https://drive.google.com/thumbnail?id=${encodeURIComponent(driveFileId)}&sz=w640`
         : '',
+      thumbnailProxyUrl: `/api/admin/content-thumbnail?fileId=${encodeURIComponent(file.id)}`,
+      mediaProxyUrl: `/api/admin/content-media?fileId=${encodeURIComponent(file.id)}`,
       previewUrl: drive.downloadUrl || file.externalUrl || drive.webViewUrl || '',
       downloadUrl: drive.downloadUrl || file.externalUrl || '',
       externalUrl: drive.webViewUrl || file.externalUrl || '',

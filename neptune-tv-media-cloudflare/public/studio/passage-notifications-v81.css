@@ -1,0 +1,85 @@
+.studio-passage-notifications-v81 .passage-v81-notification-preview{
+  display:grid;
+  grid-template-columns:44px minmax(0,1fr);
+  gap:12px;
+  align-items:start;
+  min-width:0;
+  padding:14px 16px;
+  border:1px solid #dfe3ef;
+  border-radius:16px;
+  background:#f8f9fc;
+  color:#152044;
+}
+.studio-passage-notifications-v81 .passage-v81-notification-preview[data-state="notify"]{
+  border-color:#cfd5ff;
+  background:linear-gradient(135deg,#f6f7ff 0%,#fff7fc 100%);
+}
+.studio-passage-notifications-v81 .passage-v81-notification-preview[data-state="internal"]{
+  background:#f7f8fa;
+  border-style:dashed;
+}
+.studio-passage-notifications-v81 .passage-v81-notification-icon{
+  display:grid;
+  place-items:center;
+  width:40px;
+  height:40px;
+  border-radius:12px;
+  background:#fff;
+  border:1px solid #e2e5ef;
+  font-size:18px;
+  font-weight:900;
+  color:#6557e8;
+  box-shadow:0 5px 18px rgba(31,42,94,.07);
+}
+.studio-passage-notifications-v81 .passage-v81-notification-preview strong{
+  display:block;
+  font-size:14px;
+  line-height:1.35;
+  color:#101a3b;
+}
+.studio-passage-notifications-v81 .passage-v81-notification-preview p{
+  margin:5px 0 0;
+  font-size:13px;
+  line-height:1.5;
+  color:#67708a;
+}
+.studio-passage-notifications-v81 .passage-v81-recipient-chips{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-top:9px;
+}
+.studio-passage-notifications-v81 .passage-v81-recipient-chips span{
+  display:inline-flex;
+  align-items:center;
+  min-height:28px;
+  padding:4px 9px;
+  border-radius:999px;
+  background:#fff;
+  border:1px solid #dfe3f3;
+  color:#34406a;
+  font-size:12px;
+  font-weight:800;
+}
+.studio-passage-notifications-v81 .passage-v80-footer{
+  grid-template-columns:minmax(280px,1fr) auto;
+}
+@media (max-width:760px){
+  .studio-passage-notifications-v81 .passage-v80-footer{
+    grid-template-columns:1fr;
+  }
+  .studio-passage-notifications-v81 .passage-v81-notification-preview{
+    grid-template-columns:38px minmax(0,1fr);
+    padding:13px;
+  }
+  .studio-passage-notifications-v81 .passage-v81-notification-icon{
+    width:36px;
+    height:36px;
+  }
+}
+@media (prefers-reduced-motion:reduce){
+  .studio-passage-notifications-v81 .passage-v81-notification-preview,
+  .studio-passage-notifications-v81 .passage-v81-notification-icon{
+    transition:none!important;
+  }
+}

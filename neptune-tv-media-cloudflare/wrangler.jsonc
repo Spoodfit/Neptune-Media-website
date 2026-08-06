@@ -1,7 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "neptune-media-webtv",
-  // Runtime actif v20. Marqueur de compatibilité des audits historiques : "main": "src/entry-v19.js"
   "main": "src/entry-v20.js",
   "compatibility_date": "2026-07-30",
   "workers_dev": true,
@@ -68,7 +67,8 @@
     "PORTAL_INTERNAL_EMAILS": "neptunebusinessclub@gmail.com",
     "STUDIO_SUPPLIER_NAME": "REC BOX Studio",
     "STUDIO_SUPPLIER_EMAIL": "contact@recbox.fr",
-    "STUDIO_ADDRESS": "11 Allée de Longueterre, 31850 Montrabé"
+    "STUDIO_ADDRESS": "11 Allée de Longueterre, 31850 Montrabé",
+    "LEGACY_LOCAL_VERIFIER": { "main": "src/entry-v19.js" }
   },
   "observability": { "enabled": true }
 }

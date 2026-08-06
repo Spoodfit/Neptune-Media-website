@@ -1,6 +1,6 @@
 import { adminAuth } from './portal-http-utils.js';
 import { isSameOrigin, json } from './security.js';
-import { sendWorkflowOutboxItem } from './portal-workflow-email-v5.js';
+import { sendWorkflowOutboxItem } from './portal-workflow-email-v6.js';
 
 export async function handleWorkflowRoute(request, env, studio) {
   const url = new URL(request.url);

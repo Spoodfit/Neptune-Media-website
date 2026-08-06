@@ -86,16 +86,19 @@ await page.waitForSelector('[data-passage-tab-v80]', { timeout: 10_000 });
 await page.locator('[data-passage-tab-v80]').click();
 await page.waitForSelector('#passageEditorFormV80', { timeout: 10_000 });
 
-const initialAudit = await page.evaluate(() => ({
-  snapshotCards: document.querySelectorAll('.passage-v80-snapshot-card').length,
-  sections: document.querySelectorAll('.passage-v80-card').length,
-  requiredTitle: document.querySelector('input[name="title"]')?.required || false,
-  requiredFormat: document.querySelector('input[name="format"]')?.required || false,
-  hasAppointment: Boolean(document.querySelector('input[name="appointmentAt"]')),
-  hasFilming: Boolean(document.querySelector('input[name="filmingAt"]')),
-  hasPayment: Boolean(document.querySelector('input[name="amountEuros"]')),
-  horizontalOverflow: Math.max(document.body.scrollWidth, document.documentElement.scrollWidth) - innerWidth,
-}));
+const initialAudit = await page.evaluate(() => {
+  const form = document.querySelector('#passageEditorFormV80');
+  return {
+    snapshotCards: document.querySelectorAll('.passage-v80-snapshot-card').length,
+    sections: document.querySelectorAll('.passage-v80-card').length,
+    requiredTitle: form?.querySelector('input[name="title"]')?.required || false,
+    requiredFormat: form?.querySelector('input[name="format"]')?.required || false,
+    hasAppointment: Boolean(form?.querySelector('input[name="appointmentAt"]')),
+    hasFilming: Boolean(form?.querySelector('input[name="filmingAt"]')),
+    hasPayment: Boolean(form?.querySelector('input[name="amountEuros"]')),
+    horizontalOverflow: Math.max(document.body.scrollWidth, document.documentElement.scrollWidth) - innerWidth,
+  };
+});
 
 if (initialAudit.snapshotCards !== 4) errors.push('Le résumé du passage doit contenir quatre cartes.');
 if (initialAudit.sections !== 4) errors.push('La fiche du passage doit contenir quatre sections principales.');
@@ -104,14 +107,15 @@ if (!initialAudit.hasAppointment || !initialAudit.hasFilming) errors.push('Les d
 if (!initialAudit.hasPayment) errors.push('Les informations de paiement sont absentes.');
 if (initialAudit.horizontalOverflow > 3) errors.push(`Débordement horizontal desktop : ${initialAudit.horizontalOverflow}px.`);
 
-await page.locator('input[name="title"]').fill('Passage stratégique septembre');
-await page.locator('input[name="format"]').fill('Concept Libre');
-await page.locator('select[name="status"]').selectOption('filming_scheduled');
-await page.locator('input[name="appointmentAt"]').fill('2026-08-18T10:00');
-await page.locator('input[name="filmingAt"]').fill('2026-09-02T14:30');
-await page.locator('input[name="nextAction"]').fill('Se présenter au studio avec les éléments validés');
-await page.locator('input[name="amountEuros"]').fill('3200,00');
-await page.locator('#passageEditorFormV80 button[type="submit"]').click();
+const form = page.locator('#passageEditorFormV80');
+await form.locator('input[name="title"]').fill('Passage stratégique septembre');
+await form.locator('input[name="format"]').fill('Concept Libre');
+await form.locator('select[name="status"]').selectOption('filming_scheduled');
+await form.locator('input[name="appointmentAt"]').fill('2026-08-18T10:00');
+await form.locator('input[name="filmingAt"]').fill('2026-09-02T14:30');
+await form.locator('input[name="nextAction"]').fill('Se présenter au studio avec les éléments validés');
+await form.locator('input[name="amountEuros"]').fill('3200,00');
+await form.locator('button[type="submit"]').click();
 await page.waitForFunction(() => document.querySelector('[data-passage-message]')?.textContent.includes('Passage mis à jour'));
 
 if (!updatedPayload) errors.push('La mutation du passage n’a pas été envoyée.');

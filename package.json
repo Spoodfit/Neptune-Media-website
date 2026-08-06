@@ -1,13 +1,13 @@
 {
   "name": "neptune-media-cloudflare",
   "private": true,
-  "version": "2.12.0",
+  "version": "2.13.0",
   "type": "module",
   "scripts": {
     "dev": "npm run build:video-local && wrangler dev --config wrangler.jsonc",
     "build:video-local": "vite build --config neptune-tv-media-cloudflare/local-video-engine/vite.config.js",
     "deploy": "npm run check && wrangler deploy --config wrangler.jsonc",
-    "check": "npm run build:video-local && find neptune-tv-media-cloudflare/src neptune-tv-media-cloudflare/public integrations/google-drive -type f -name '*.js' -print0 | xargs -0 -n1 node --check && node neptune-tv-media-cloudflare/scripts/verify-client-media-runtime-v51.mjs && node neptune-tv-media-cloudflare/scripts/verify-editorial-workspace-v59.mjs && node neptune-tv-media-cloudflare/scripts/verify-openai-video-integration-v66.mjs && node neptune-tv-media-cloudflare/scripts/smoke-test-v73.mjs && node neptune-tv-media-cloudflare/scripts/verify-video-generation-v75-1.mjs && node neptune-tv-media-cloudflare/scripts/verify-studio-preparation-v77.mjs && node neptune-tv-media-cloudflare/scripts/verify-studio-content-command-center-v79.mjs && node neptune-tv-media-cloudflare/scripts/verify-studio-passage-editor-v80.mjs && node neptune-tv-media-cloudflare/scripts/verify-studio-passage-notifications-v81.mjs"
+    "check": "npm run build:video-local && find neptune-tv-media-cloudflare/src neptune-tv-media-cloudflare/public integrations/google-drive -type f -name '*.js' -print0 | xargs -0 -n1 node --check && node neptune-tv-media-cloudflare/scripts/verify-client-media-runtime-v51.mjs && node neptune-tv-media-cloudflare/scripts/verify-editorial-workspace-v59.mjs && node neptune-tv-media-cloudflare/scripts/verify-openai-video-integration-v66.mjs && node neptune-tv-media-cloudflare/scripts/smoke-test-v73.mjs && node neptune-tv-media-cloudflare/scripts/verify-video-generation-v75-1.mjs && node neptune-tv-media-cloudflare/scripts/verify-studio-preparation-v77.mjs && node neptune-tv-media-cloudflare/scripts/verify-studio-content-command-center-v79.mjs && node neptune-tv-media-cloudflare/scripts/verify-studio-passage-editor-v80.mjs && node neptune-tv-media-cloudflare/scripts/verify-studio-passage-notifications-v81.mjs && node neptune-tv-media-cloudflare/scripts/verify-studio-email-activity-v82.mjs"
   },
   "dependencies": {
     "@huggingface/transformers": "4.2.0",

@@ -1,5 +1,5 @@
 import { StudioStore as LegacyStore } from './store-v17.js';
-import { notificationPolicyState, smartWorkflowEmailDue } from './portal-notification-governor-v84.js';
+import { smartWorkflowEmailDue } from './portal-notification-governor-v84.js';
 import { json } from './security.js';
 
 export class StudioStore extends LegacyStore {
@@ -11,9 +11,6 @@ export class StudioStore extends LegacyStore {
     try {
       if (method === 'POST' && url.pathname === '/portal/workflow-email-due') {
         return smartWorkflowEmailDue(this);
-      }
-      if (method === 'POST' && url.pathname === '/portal/notification-policy-state-v84') {
-        return notificationPolicyState(this, body);
       }
     } catch (error) {
       console.error('portal_notification_governor_v84_failed', {

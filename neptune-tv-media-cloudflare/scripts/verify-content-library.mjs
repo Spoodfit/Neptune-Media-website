@@ -9,8 +9,11 @@ const files = {
   videoEntry: await read('src/entry-v16.js'),
   operationsEntry: await read('src/entry-v17.js'),
   clientDashboardEntry: await read('src/entry-v18.js'),
+  passageEntry: await read('src/entry-v19.js'),
   clientDashboardCss: await read('public/espace-client/client-dashboard-clean-v78.css'),
   clientStore: await read('src/store-v14.js'),
+  passageStore: await read('src/store-v15.js'),
+  passageBackend: await read('src/portal-passage-admin-v80.js'),
   clientManagement: await read('src/portal-client-management-v76.js'),
   localConfig: await read('wrangler.jsonc'),
   rootConfig: await readRoot('wrangler.jsonc'),
@@ -23,12 +26,28 @@ const files = {
   studio: await read('public/studio/content-gallery-v76.js'),
   studioCss: await read('public/studio/content-gallery-v76.css'),
   studioOperations: await read('public/studio/studio-client-operations-v76.js'),
+  passageUi: await read('public/studio/passage-editor-v80.js'),
+  passageCss: await read('public/studio/passage-editor-v80.css'),
   mediaSafety: await read('public/assets/media-dialog-safety-v50.js'),
 };
 
 const failures = [];
-check(files.localConfig, '"main": "src/entry-v18.js"', 'la configuration locale ne cible pas le runtime client entry-v18');
-check(files.rootConfig, '"main": "neptune-tv-media-cloudflare/src/entry-v18.js"', 'la configuration racine ne cible pas le runtime client entry-v18');
+check(files.localConfig, '"main": "src/entry-v19.js"', 'la configuration locale ne cible pas le runtime passage entry-v19');
+check(files.rootConfig, '"main": "neptune-tv-media-cloudflare/src/entry-v19.js"', 'la configuration racine ne cible pas le runtime passage entry-v19');
+check(files.passageEntry, "from './entry-v18.js'", 'entry-v19 ne prolonge pas le runtime client entry-v18');
+check(files.passageEntry, "from './store-v15.js'", 'entry-v19 ne réexporte pas le store de modification des passages');
+check(files.passageEntry, "'/api/admin/passage-update'", 'entry-v19 n’expose pas la modification complète du passage');
+check(files.passageEntry, 'studioPassageEditor: RELEASE', 'entry-v19 ne déclare pas la fiche Passage v80');
+check(files.passageStore, "from './store-v14.js'", 'store-v15 ne prolonge pas le store de contenu v14');
+check(files.passageStore, "'/portal/admin-passage-update'", 'store-v15 ne route pas la mutation du passage');
+check(files.passageBackend, 'expectedUpdatedAt', 'la protection anti-écrasement du passage est absente');
+check(files.passageBackend, 'filming_before_preparation', 'la validation chronologique du passage est absente');
+check(files.passageUi, 'Modifier le passage', 'l’action visible de modification du passage est absente');
+check(files.passageUi, 'Rendez-vous de préparation', 'la date de préparation est absente de la fiche Passage');
+check(files.passageUi, 'Date et heure du passage', 'la date de tournage est absente de la fiche Passage');
+check(files.passageUi, 'Notifier le client', 'la notification client facultative est absente');
+check(files.passageCss, '.passage-v80-form', 'la structure SaaS de la fiche Passage est absente');
+check(files.passageCss, '.passage-v80-footer', 'la barre d’enregistrement du passage est absente');
 check(files.clientDashboardEntry, "from './entry-v17.js'", 'entry-v18 ne prolonge pas le runtime Studio entry-v17');
 check(files.clientDashboardEntry, "'/espace-client/client-dashboard-clean-v78.css?v=1'", 'entry-v18 n’injecte pas la feuille de correction client v78');
 check(files.clientDashboardEntry, "clientDashboardFirstViewport: 'quick-actions-visible-without-duplicate-summary-v78'", 'entry-v18 ne déclare pas les actions rapides dans le premier écran');
@@ -120,7 +139,7 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Verified active entry chain through client dashboard v78, light HORS NORME preparation, compact client snapshot, safe client account management, scalable media library, three-destination navigation and preserved Drive synchronization.');
+console.log('Verified active entry chain through passage editor v80, client dashboard v78, light HORS NORME preparation, compact client snapshot, safe client account management, scalable media library, three-destination navigation and preserved Drive synchronization.');
 
 async function read(path) { return readFile(new URL(`../${path}`, import.meta.url), 'utf8'); }
 async function readRoot(path) { return readFile(new URL(`../../${path}`, import.meta.url), 'utf8'); }

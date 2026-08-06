@@ -115,8 +115,13 @@ await form.locator('input[name="appointmentAt"]').fill('2026-08-18T10:00');
 await form.locator('input[name="filmingAt"]').fill('2026-09-02T14:30');
 await form.locator('input[name="nextAction"]').fill('Se présenter au studio avec les éléments validés');
 await form.locator('input[name="amountEuros"]').fill('3200,00');
+
+const saveResponse = page.waitForResponse((item) => item.url().includes('/api/admin/passage-update') && item.request().method() === 'POST');
 await form.locator('button[type="submit"]').click();
-await page.waitForFunction(() => document.querySelector('[data-passage-message]')?.textContent.includes('Passage mis à jour'));
+const saved = await saveResponse;
+if (!saved.ok()) errors.push(`La mutation du passage a répondu HTTP ${saved.status()}.`);
+await page.waitForTimeout(850);
+await page.waitForSelector('#passageEditorFormV80', { timeout: 10_000 });
 
 if (!updatedPayload) errors.push('La mutation du passage n’a pas été envoyée.');
 if (updatedPayload?.title !== 'Passage stratégique septembre') errors.push('Le nouveau nom du passage n’a pas été transmis.');
@@ -124,6 +129,19 @@ if (updatedPayload?.format !== 'Concept Libre') errors.push('Le nouveau format n
 if (updatedPayload?.status !== 'filming_scheduled') errors.push('Le nouveau statut n’a pas été transmis.');
 if (updatedPayload?.amountTotal !== 320000) errors.push(`Montant incorrect : ${updatedPayload?.amountTotal}.`);
 if (!updatedPayload?.expectedUpdatedAt) errors.push('Le verrou optimiste updatedAt est absent.');
+
+const persistedAudit = await page.evaluate(() => {
+  const form = document.querySelector('#passageEditorFormV80');
+  return {
+    title: form?.querySelector('input[name="title"]')?.value || '',
+    format: form?.querySelector('input[name="format"]')?.value || '',
+    status: form?.querySelector('select[name="status"]')?.value || '',
+    amount: form?.querySelector('input[name="amountEuros"]')?.value || '',
+  };
+});
+if (persistedAudit.title !== 'Passage stratégique septembre') errors.push('Le nom enregistré n’est pas rechargé dans la fiche.');
+if (persistedAudit.format !== 'Concept Libre') errors.push('Le format enregistré n’est pas rechargé dans la fiche.');
+if (persistedAudit.status !== 'filming_scheduled') errors.push('Le statut enregistré n’est pas rechargé dans la fiche.');
 
 await page.screenshot({ path: path.join(outputDir, 'passage-editor-desktop-1440.png'), fullPage: true });
 await page.setViewportSize({ width: 390, height: 844 });
@@ -137,7 +155,7 @@ if (mobileAudit.horizontalOverflow > 3) errors.push(`Débordement horizontal mob
 if (!mobileAudit.footerVisible || !mobileAudit.submitVisible) errors.push('L’action d’enregistrement mobile est absente.');
 await page.screenshot({ path: path.join(outputDir, 'passage-editor-mobile-390.png'), fullPage: true });
 
-await fs.writeFile(path.join(outputDir, 'report.json'), JSON.stringify({ initialAudit, mobileAudit, updatedPayload, errors }, null, 2));
+await fs.writeFile(path.join(outputDir, 'report.json'), JSON.stringify({ initialAudit, persistedAudit, mobileAudit, updatedPayload, errors }, null, 2));
 await context.close();
 await browser.close();
 

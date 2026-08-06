@@ -50,7 +50,7 @@ expect(routes, 'emailDelivery', 'les actions workflow ne retournent pas leur ré
 for (const marker of [
   'Historique des e-mails',
   'email-send-toast-v82',
-  'enqueueSendAnimation',
+  'enqueueAnimation',
   'Ouvert · lecture détectée',
   'Actualiser les statuts',
   'data-email-tab-v82',

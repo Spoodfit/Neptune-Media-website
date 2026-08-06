@@ -31,6 +31,7 @@ jobs:
       RELEASE_ID: neptune-verified-content-runtime-20260730-v18
       EDITORIAL_RELEASE: neptune-editorial-workspace-20260730-v2
       STUDIO_OPERATIONS_RELEASE: neptune-studio-client-journey-20260805-v77
+      SMART_EMAIL_RELEASE: neptune-smart-email-governor-20260806-v84
 
     steps:
       - name: Checkout
@@ -103,6 +104,10 @@ jobs:
           if (data.supplierDateConfirmation !== 'two-preselected-safe-email-actions-v77') process.exit(1);
           if (data.clientHorsNormePreparation !== 'ten-presenter-inspired-interactive-cards-v77') process.exit(1);
           if (data.studioCanonicalVideoPath !== null) process.exit(1);
+          if (data.studioSmartEmailGovernor !== process.env.SMART_EMAIL_RELEASE) process.exit(1);
+          if (data.testClientEmailProtection !== 'supplier-emails-rerouted-to-contact-neptunebusiness-com-v84') process.exit(1);
+          if (data.notificationCadence !== 'one-useful-email-per-recipient-context-every-45-minutes-v84') process.exit(1);
+          if (data.notificationDecisionMode !== 'state-aware-priority-and-stale-message-supersession-v84') process.exit(1);
           NODE
               then
                 if grep -Fq '/studio/content-gallery-v76.js?v=1' "/tmp/neptune-studio-v77/$slug-clients.html" \
@@ -119,11 +124,11 @@ jobs:
                   && grep -Eqi '^HTTP/[0-9.]+ 302' "/tmp/neptune-studio-v77/$slug-retired-route.txt" \
                   && grep -Eqi '^location: .*/studio/clients' "/tmp/neptune-studio-v77/$slug-retired-route.txt"; then
                   ready=1
-                  echo "$base: Studio and client journey v77 verified on attempt $attempt."
+                  echo "$base: Studio and client journey v77 plus smart email governor v84 verified on attempt $attempt."
                   break
                 fi
               fi
-              echo "$base: Studio and client journey v77 not fully propagated on attempt $attempt; retrying."
+              echo "$base: Studio and client journey v77 plus smart email governor v84 not fully propagated on attempt $attempt; retrying."
               sleep 10
             done
             test "$ready" = 1

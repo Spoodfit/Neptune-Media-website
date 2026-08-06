@@ -1,6 +1,6 @@
 name: Verify Studio Clients V63 20260730
 
-# Visual and runtime proof for the client pipeline and the v79 editorial command center.
+# Visual and runtime proof for the client pipeline, editorial command center and passage editor.
 on:
   push:
     branches: [main]
@@ -13,14 +13,22 @@ on:
       - 'neptune-tv-media-cloudflare/public/studio/content-command-center-v79.js'
       - 'neptune-tv-media-cloudflare/public/studio/content-command-center-v79.css'
       - 'neptune-tv-media-cloudflare/public/studio/content-command-center-stability-v79.js'
+      - 'neptune-tv-media-cloudflare/public/studio/passage-editor-v80.js'
+      - 'neptune-tv-media-cloudflare/public/studio/passage-editor-v80.css'
       - 'neptune-tv-media-cloudflare/src/entry-v18.js'
+      - 'neptune-tv-media-cloudflare/src/entry-v19.js'
       - 'neptune-tv-media-cloudflare/src/store-v14.js'
+      - 'neptune-tv-media-cloudflare/src/store-v15.js'
       - 'neptune-tv-media-cloudflare/src/portal-content-admin-v79.js'
+      - 'neptune-tv-media-cloudflare/src/portal-passage-admin-v80.js'
       - 'neptune-tv-media-cloudflare/scripts/verify-studio-clients-v63.mjs'
       - 'neptune-tv-media-cloudflare/scripts/verify-studio-content-command-center-v79.mjs'
+      - 'neptune-tv-media-cloudflare/scripts/verify-studio-passage-editor-v80.mjs'
       - 'neptune-tv-media-cloudflare/tests/audit-studio-clients-v63.mjs'
       - 'neptune-tv-media-cloudflare/tests/studio-content-command-center-v79.mjs'
+      - 'neptune-tv-media-cloudflare/tests/studio-passage-editor-v80.mjs'
       - 'neptune-tv-media-cloudflare/package.json'
+      - 'wrangler.jsonc'
   pull_request:
     branches: [main]
     paths:
@@ -32,14 +40,22 @@ on:
       - 'neptune-tv-media-cloudflare/public/studio/content-command-center-v79.js'
       - 'neptune-tv-media-cloudflare/public/studio/content-command-center-v79.css'
       - 'neptune-tv-media-cloudflare/public/studio/content-command-center-stability-v79.js'
+      - 'neptune-tv-media-cloudflare/public/studio/passage-editor-v80.js'
+      - 'neptune-tv-media-cloudflare/public/studio/passage-editor-v80.css'
       - 'neptune-tv-media-cloudflare/src/entry-v18.js'
+      - 'neptune-tv-media-cloudflare/src/entry-v19.js'
       - 'neptune-tv-media-cloudflare/src/store-v14.js'
+      - 'neptune-tv-media-cloudflare/src/store-v15.js'
       - 'neptune-tv-media-cloudflare/src/portal-content-admin-v79.js'
+      - 'neptune-tv-media-cloudflare/src/portal-passage-admin-v80.js'
       - 'neptune-tv-media-cloudflare/scripts/verify-studio-clients-v63.mjs'
       - 'neptune-tv-media-cloudflare/scripts/verify-studio-content-command-center-v79.mjs'
+      - 'neptune-tv-media-cloudflare/scripts/verify-studio-passage-editor-v80.mjs'
       - 'neptune-tv-media-cloudflare/tests/audit-studio-clients-v63.mjs'
       - 'neptune-tv-media-cloudflare/tests/studio-content-command-center-v79.mjs'
+      - 'neptune-tv-media-cloudflare/tests/studio-passage-editor-v80.mjs'
       - 'neptune-tv-media-cloudflare/package.json'
+      - 'wrangler.jsonc'
   workflow_dispatch:
 
 permissions:
@@ -48,7 +64,7 @@ permissions:
 jobs:
   verify-studio-clients:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 22
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -64,10 +80,16 @@ jobs:
           node --check public/studio/studio-clients-polish-v63.js
           node --check public/studio/content-command-center-stability-v79.js
           node --check public/studio/content-command-center-v79.js
+          node --check public/studio/passage-editor-v80.js
+          node --check src/entry-v19.js
+          node --check src/store-v15.js
+          node --check src/portal-passage-admin-v80.js
           node --check tests/audit-studio-clients-v63.mjs
           node --check tests/studio-content-command-center-v79.mjs
+          node --check tests/studio-passage-editor-v80.mjs
           node scripts/verify-studio-clients-v63.mjs
           node scripts/verify-studio-content-command-center-v79.mjs
+          node scripts/verify-studio-passage-editor-v80.mjs
 
       - name: Install Playwright
         run: |
@@ -99,13 +121,20 @@ jobs:
           OUTPUT_DIR: test-results/studio-content-command-center-v79
         run: node neptune-tv-media-cloudflare/tests/studio-content-command-center-v79.mjs
 
+      - name: Audit complete passage editor
+        env:
+          LOCAL_BASE_URL: http://127.0.0.1:4173
+          OUTPUT_DIR: test-results/studio-passage-editor-v80
+        run: node neptune-tv-media-cloudflare/tests/studio-passage-editor-v80.mjs
+
       - name: Upload screenshots and report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: studio-clients-v79-evidence
+          name: studio-clients-v80-evidence
           path: |
             test-results/studio-clients-v63
             test-results/studio-content-command-center-v79
+            test-results/studio-passage-editor-v80
           if-no-files-found: error
           retention-days: 14

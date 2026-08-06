@@ -17,9 +17,18 @@ const failures = [];
 const expect = (content, marker, message) => {
   if (!content.includes(marker)) failures.push(message);
 };
+const expectAny = (content, markers, message) => {
+  if (!markers.some((marker) => content.includes(marker))) failures.push(message);
+};
 
-expect(rootWrangler, 'neptune-tv-media-cloudflare/src/entry-v20.js', 'le Worker racine ne cible pas entry-v20');
-expect(nestedWrangler, 'src/entry-v20.js', 'le Worker local ne cible pas entry-v20');
+expectAny(rootWrangler, [
+  'neptune-tv-media-cloudflare/src/entry-v20.js',
+  'neptune-tv-media-cloudflare/src/entry-v21.js',
+], 'le Worker racine ne prolonge pas le runtime de notifications v81');
+expectAny(nestedWrangler, [
+  'src/entry-v20.js',
+  'src/entry-v21.js',
+], 'le Worker local ne prolonge pas le runtime de notifications v81');
 expect(entry, '/portal/admin-passage-update-v81', 'la route v81 du passage est absente');
 expect(entry, 'flushWorkflowOutbox', 'les notifications ne sont pas envoyées immédiatement');
 expect(entry, 'automatic-by-changed-field-v81', 'le mode de notification intelligent n’est pas déclaré');

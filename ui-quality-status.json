@@ -1,9 +1,9 @@
 {
   "status": "failed",
-  "source_sha": "4f1e277623a919669aa1b3669c9263617aea701e",
-  "source_workflow_id": "31053244784",
-  "ui_workflow_run_id": "31053302679",
-  "checked_at": "2026-08-05T22:36:43.858703+00:00",
+  "source_sha": "5a7a76ea815030813116bd9f5eaedffae59699b5",
+  "source_workflow_id": "31104547097",
+  "ui_workflow_run_id": "31104608095",
+  "checked_at": "2026-08-06T13:13:04.114784+00:00",
   "architecture": "conversion-voice-v10",
   "experience": "final-v12",
   "audit": "playwright-production",
@@ -17,90 +17,6 @@
     "/emissions/",
     "/direct/"
   ],
-  "issues": [
-    "home-desktop: texte critique coupé: Créez votre futur aveccommunication",
-    "home-desktop: pipeline de production absent",
-    "home-desktop: outil de choix de format absent",
-    "home-desktop: navigation de progression absente",
-    "home-tablet: texte critique coupé: Créez votre futur aveccommunication",
-    "home-tablet: pipeline de production absent",
-    "home-tablet: outil de choix de format absent",
-    "home-mobile: texte critique coupé: Créez votre futur aveccommunication",
-    "home-mobile: cibles tactiles trop petites: ‹ |  |  | › | ‹",
-    "home-mobile: pipeline de production absent",
-    "home-mobile: outil de choix de format absent",
-    "emissions-desktop: images non chargées: https://tv.neptunebusiness.com/media/posters/jeu-connexio.webp, https://tv.neptunebusiness.com/media/posters/hors-norme.webp",
-    "emissions-mobile: images non chargées: https://tv.neptunebusiness.com/media/posters/jeu-connexio.webp, https://tv.neptunebusiness.com/media/posters/hors-norme.webp",
-    "direct-desktop: texte critique coupé: Neptune Media en direct"
-  ],
-  "pages": [
-    {
-      "name": "home-desktop",
-      "route": "/",
-      "issues": [
-        "texte critique coupé: Créez votre futur aveccommunication",
-        "pipeline de production absent",
-        "outil de choix de format absent",
-        "navigation de progression absente"
-      ],
-      "width": 1440,
-      "height": 1100,
-      "scrollHeight": 13868
-    },
-    {
-      "name": "home-tablet",
-      "route": "/",
-      "issues": [
-        "texte critique coupé: Créez votre futur aveccommunication",
-        "pipeline de production absent",
-        "outil de choix de format absent"
-      ],
-      "width": 834,
-      "height": 1112,
-      "scrollHeight": 13133
-    },
-    {
-      "name": "home-mobile",
-      "route": "/",
-      "issues": [
-        "texte critique coupé: Créez votre futur aveccommunication",
-        "cibles tactiles trop petites: ‹ |  |  | › | ‹",
-        "pipeline de production absent",
-        "outil de choix de format absent"
-      ],
-      "width": 390,
-      "height": 844,
-      "scrollHeight": 15224
-    },
-    {
-      "name": "emissions-desktop",
-      "route": "/emissions/",
-      "issues": [
-        "images non chargées: https://tv.neptunebusiness.com/media/posters/jeu-connexio.webp, https://tv.neptunebusiness.com/media/posters/hors-norme.webp"
-      ],
-      "width": 1440,
-      "height": 1000,
-      "scrollHeight": 3016
-    },
-    {
-      "name": "emissions-mobile",
-      "route": "/emissions/",
-      "issues": [
-        "images non chargées: https://tv.neptunebusiness.com/media/posters/jeu-connexio.webp, https://tv.neptunebusiness.com/media/posters/hors-norme.webp"
-      ],
-      "width": 390,
-      "height": 844,
-      "scrollHeight": 3217
-    },
-    {
-      "name": "direct-desktop",
-      "route": "/direct/",
-      "issues": [
-        "texte critique coupé: Neptune Media en direct"
-      ],
-      "width": 1440,
-      "height": 1000,
-      "scrollHeight": 1607
-    }
-  ]
+  "issues": [],
+  "pages": []
 }

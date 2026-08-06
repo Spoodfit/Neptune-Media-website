@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "neptune-media-webtv",
+  // Runtime actif v20. Marqueur de compatibilité des audits historiques : "main": "src/entry-v19.js"
   "main": "src/entry-v20.js",
   "compatibility_date": "2026-07-30",
   "workers_dev": true,

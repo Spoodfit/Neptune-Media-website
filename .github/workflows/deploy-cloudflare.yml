@@ -35,6 +35,7 @@ jobs:
       EDITORIAL_RELEASE: neptune-editorial-workspace-20260730-v2
       STUDIO_OPERATIONS_RELEASE: neptune-studio-client-journey-20260805-v77
       SMART_EMAIL_RELEASE: neptune-smart-email-governor-20260806-v84
+      HORIZONTAL_JOURNEY_RELEASE: neptune-horizontal-client-journey-20260810-v93
 
     steps:
       - name: Checkout
@@ -139,6 +140,36 @@ jobs:
 
           verify_domain "$WORKERS_URL" workers
           verify_domain "$PUBLIC_URL" public
+
+      - name: Verify horizontal client journey v93 in production
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/neptune-horizontal-v93
+          verify_horizontal() {
+            local base="$1"
+            local slug="$2"
+            local ready=0
+            for attempt in $(seq 1 24); do
+              local query="horizontal_v93=$GITHUB_SHA&attempt=$attempt"
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/clients?$query" > "/tmp/neptune-horizontal-v93/$slug-clients.html" || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/horizontal-journey-v93.js?$query" > "/tmp/neptune-horizontal-v93/$slug-journey.js" || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/horizontal-journey-v93.css?$query" > "/tmp/neptune-horizontal-v93/$slug-journey.css" || true
+              if grep -Fq '/studio/horizontal-journey-v93.js?v=1' "/tmp/neptune-horizontal-v93/$slug-clients.html" \
+                && grep -Fq "$HORIZONTAL_JOURNEY_RELEASE" "/tmp/neptune-horizontal-v93/$slug-journey.js" \
+                && grep -Fq 'cards.length !== 8' "/tmp/neptune-horizontal-v93/$slug-journey.js" \
+                && grep -Fq 'grid-template-columns:repeat(8,minmax(0,1fr))' "/tmp/neptune-horizontal-v93/$slug-journey.css" \
+                && grep -Fq 'overflow-x:auto' "/tmp/neptune-horizontal-v93/$slug-journey.css"; then
+                ready=1
+                echo "$base: horizontal client journey v93 verified on attempt $attempt."
+                break
+              fi
+              sleep 5
+            done
+            test "$ready" = 1
+          }
+          verify_horizontal "$WORKERS_URL" workers
+          verify_horizontal "$PUBLIC_URL" public
 
       - name: Verify editorial production asset
         run: |

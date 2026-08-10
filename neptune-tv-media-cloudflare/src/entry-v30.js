@@ -26,9 +26,11 @@ export default {
       const paymentStatus = payload.paymentStatus === 'no_payment_required'
         ? 'no_payment_required'
         : 'payment_pending';
+      const headers = new Headers(request.headers);
+      headers.delete('Content-Length');
       const forwarded = new Request(request.url, {
         method: 'POST',
-        headers: request.headers,
+        headers,
         body: JSON.stringify({ ...payload, paymentStatus }),
       });
       return withHeaders(await base.fetch(forwarded, env, ctx), url.pathname);

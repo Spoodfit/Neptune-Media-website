@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "neptune-media-webtv",
-  "main": "neptune-tv-media-cloudflare/src/entry-v30.js",
+  "main": "neptune-tv-media-cloudflare/src/entry-v31.js",
   "compatibility_date": "2026-07-30",
   "workers_dev": true,
   "keep_vars": true,
@@ -55,7 +55,7 @@
   "ai": { "binding": "AI" },
   "vars": {
     "BOOKING_URL": "https://media.neptunebusiness.com",
-    "PREPARATION_BOOKING_URL": "https://calendar.app.google/nkYDeheuV8qjSMcRA",
+    "PREPARATION_BOOKING_URL": "https://calendar.app.google/X9q1T5JT9ngMfZY67",
     "PUBLIC_ORIGIN": "https://tv.neptunebusiness.com",
     "AI_MODEL": "@cf/openai/gpt-oss-120b",
     "OPENAI_MODEL": "gpt-5-mini",

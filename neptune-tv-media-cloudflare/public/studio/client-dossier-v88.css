@@ -1,0 +1,473 @@
+/* Neptune Studio — dossier client lisible, opérable et cohérent */
+body[data-client-dossier-release] #clientDialog.drawer{
+  width:min(1160px,calc(100vw - 24px))!important;
+  height:min(900px,calc(100dvh - 24px))!important;
+  max-height:calc(100dvh - 24px)!important;
+}
+body[data-client-dossier-release] #clientDialog .drawer-card{
+  height:100%!important;
+  min-height:0!important;
+  padding:0!important;
+  overflow:auto!important;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
+}
+body[data-client-dossier-release] #clientDetail{
+  min-width:0;
+  min-height:100%;
+  background:#f7f8fc;
+}
+body[data-client-dossier-release] #clientDetail .detail-title{
+  top:0!important;
+  z-index:20!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto auto auto;
+  align-items:center!important;
+  gap:10px!important;
+  min-height:86px!important;
+  margin:0!important;
+  padding:16px 20px!important;
+  border-bottom:1px solid #e5e8f0!important;
+  background:rgba(255,255,255,.97)!important;
+  backdrop-filter:blur(18px)!important;
+}
+body[data-client-dossier-release] #clientDetail .detail-title>div{
+  min-width:0;
+}
+body[data-client-dossier-release] #clientDetail .detail-title .eyebrow{
+  margin:0 0 3px!important;
+  font-size:9px!important;
+  letter-spacing:.14em!important;
+}
+body[data-client-dossier-release] #clientDetail .detail-title h2{
+  margin:0!important;
+  font-size:clamp(20px,2.2vw,27px)!important;
+  line-height:1.1!important;
+  letter-spacing:-.035em!important;
+}
+body[data-client-dossier-release] #clientDetail .detail-title p:last-child{
+  max-width:720px;
+  margin:4px 0 0!important;
+  overflow:hidden;
+  color:#6c758c!important;
+  font-size:11px!important;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+body[data-client-dossier-release] #clientDetail .detail-title>button:not(.close){
+  min-height:38px!important;
+  padding:0 13px!important;
+  border-radius:11px!important;
+  white-space:nowrap;
+  font-size:10px!important;
+}
+body[data-client-dossier-release] #clientDetail .detail-title .close{
+  width:38px!important;
+  height:38px!important;
+  min-width:38px!important;
+  box-shadow:none!important;
+}
+body[data-client-dossier-release] #clientDetail .tabs{
+  top:86px!important;
+  z-index:19!important;
+  display:flex!important;
+  gap:5px!important;
+  margin:0!important;
+  padding:9px 20px!important;
+  overflow-x:auto!important;
+  border-bottom:1px solid #e4e8f0!important;
+  background:rgba(247,248,252,.97)!important;
+  scrollbar-width:thin;
+}
+body[data-client-dossier-release] #clientDetail .tabs button{
+  min-height:34px!important;
+  padding:0 11px!important;
+  border-radius:999px!important;
+  font-size:10px!important;
+}
+body[data-client-dossier-release] #clientDetail.client-dossier-v88--tracking .studio-preparation-v77{
+  display:none!important;
+}
+body[data-client-dossier-release] #clientDetail #detailBody{
+  min-width:0;
+  padding:14px 18px 22px;
+}
+body[data-client-dossier-release] #clientDetail .workflow-command-center{
+  width:100%;
+  max-width:1040px;
+  margin:0 auto!important;
+  padding:0!important;
+  overflow:hidden;
+  border:1px solid #dfe4ee!important;
+  border-radius:19px!important;
+  background:#fff!important;
+  box-shadow:0 14px 40px rgba(20,34,76,.065)!important;
+}
+body[data-client-dossier-release] #clientDetail .workflow-command-center>header{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:14px!important;
+  align-items:start!important;
+  padding:20px 20px 16px!important;
+  border-bottom:1px solid #edf0f5;
+  background:#fff;
+}
+body[data-client-dossier-release] #clientDetail .workflow-command-center>header .eyebrow{
+  margin:0 0 4px!important;
+  color:#6855df!important;
+  font-size:9px!important;
+  letter-spacing:.13em!important;
+}
+body[data-client-dossier-release] #clientDetail .workflow-command-center h3{
+  margin:0!important;
+  color:#10172d!important;
+  font-size:clamp(21px,2.2vw,27px)!important;
+  line-height:1.12!important;
+  letter-spacing:-.035em!important;
+}
+body[data-client-dossier-release] #clientDetail .workflow-command-center header p:last-child{
+  max-width:760px!important;
+  margin:6px 0 0!important;
+  color:#667087!important;
+  font-size:12px!important;
+  line-height:1.45!important;
+}
+body[data-client-dossier-release] #clientDetail .workflow-live{
+  align-self:start;
+  padding:7px 10px!important;
+  border:1px solid #caecdc;
+  background:#effaf5!important;
+  color:#13764f!important;
+}
+body[data-client-dossier-release] #clientDetail .dossier-v88-alert{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  gap:10px;
+  align-items:center;
+  margin:14px 16px 0;
+  padding:11px 12px;
+  border:1px solid #f3cf8f;
+  border-radius:12px;
+  background:#fff9ed;
+  color:#7a4a06;
+}
+body[data-client-dossier-release] #clientDetail .dossier-v88-alert>i{
+  display:grid;
+  place-items:center;
+  width:26px;
+  height:26px;
+  border-radius:8px;
+  background:#ffe8b7;
+  font-style:normal;
+  font-weight:900;
+}
+body[data-client-dossier-release] #clientDetail .dossier-v88-alert strong,
+body[data-client-dossier-release] #clientDetail .dossier-v88-alert small{
+  display:block;
+}
+body[data-client-dossier-release] #clientDetail .dossier-v88-alert strong{
+  font-size:11px;
+}
+body[data-client-dossier-release] #clientDetail .dossier-v88-alert small{
+  margin-top:2px;
+  color:#8c641f;
+  font-size:10px;
+  line-height:1.35;
+}
+body[data-client-dossier-release] #clientDetail .dossier-v88-alert button{
+  min-height:34px;
+  padding:0 11px;
+  border:1px solid #e7c477;
+  border-radius:9px;
+  background:#fff;
+  color:#6d4509;
+  font:inherit;
+  font-size:10px;
+  font-weight:850;
+  cursor:pointer;
+}
+body[data-client-dossier-release] #clientDetail .workflow-essential{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:8px!important;
+  margin:0!important;
+  padding:14px 16px 10px!important;
+}
+body[data-client-dossier-release] #clientDetail .workflow-essential article{
+  display:grid;
+  align-content:start;
+  gap:3px;
+  min-width:0;
+  min-height:78px;
+  padding:11px 12px!important;
+  border:1px solid #e7eaf1!important;
+  border-radius:12px!important;
+  background:#f9fafc!important;
+}
+body[data-client-dossier-release] #clientDetail .workflow-essential article small{
+  color:#7d879b!important;
+  font-size:8px!important;
+  letter-spacing:.1em!important;
+}
+body[data-client-dossier-release] #clientDetail .workflow-essential article strong{
+  margin-top:2px!important;
+  color:#182039!important;
+  font-size:12px!important;
+  line-height:1.3!important;
+}
+body[data-client-dossier-release] #clientDetail .workflow-essential article span{
+  margin-top:1px;
+  color:#7a8498;
+  font-size:9px;
+  line-height:1.35;
+}
+body[data-client-dossier-release] #clientDetail .workflow-essential article[data-tone="warning"]{
+  border-color:#f0cd91!important;
+  background:#fffaf0!important;
+}
+body[data-client-dossier-release] #clientDetail .workflow-essential article[data-tone="ready"]{
+  border-color:#cfe8dd!important;
+  background:#f5fbf8!important;
+}
+body[data-client-dossier-release] #clientDetail .dossier-v88-progress{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:0;
+  margin:4px 16px 14px;
+  padding:11px 12px;
+  border:1px solid #e7eaf1;
+  border-radius:12px;
+  background:#fff;
+}
+body[data-client-dossier-release] #clientDetail .dossier-v88-progress__step{
+  position:relative;
+  display:grid;
+  grid-template-columns:18px minmax(0,1fr);
+  gap:6px;
+  align-items:center;
+  min-width:0;
+  padding-right:9px;
+  color:#8a93a5;
+  font-size:9px;
+  font-weight:800;
+}
+body[data-client-dossier-release] #clientDetail .dossier-v88-progress__step:not(:last-child)::after{
+  content:"";
+  position:absolute;
+  top:8px;
+  right:0;
+  width:calc(100% - 25px);
+  height:1px;
+  transform:translateX(50%);
+  background:#dde2eb;
+  z-index:0;
+}
+body[data-client-dossier-release] #clientDetail .dossier-v88-progress__step i{
+  position:relative;
+  z-index:1;
+  display:grid;
+  place-items:center;
+  width:18px;
+  height:18px;
+  border:1px solid #d9dee8;
+  border-radius:999px;
+  background:#fff;
+  color:#8a93a5;
+  font-style:normal;
+  font-size:8px;
+}
+body[data-client-dossier-release] #clientDetail .dossier-v88-progress__step span{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+body[data-client-dossier-release] #clientDetail .dossier-v88-progress__step.is-done{
+  color:#17744f;
+}
+body[data-client-dossier-release] #clientDetail .dossier-v88-progress__step.is-done i{
+  border-color:#bfe6d3;
+  background:#e9f8f1;
+  color:#17744f;
+}
+body[data-client-dossier-release] #clientDetail .dossier-v88-progress__step.is-current{
+  color:#5949d2;
+}
+body[data-client-dossier-release] #clientDetail .dossier-v88-progress__step.is-current i{
+  border-color:#9b8ff3;
+  background:#6756e7;
+  color:#fff;
+  box-shadow:0 0 0 4px rgba(103,86,231,.10);
+}
+body[data-client-dossier-release] #clientDetail .workflow-actions{
+  padding:0 16px 14px!important;
+}
+body[data-client-dossier-release] #clientDetail .workflow-actions>div{
+  padding:13px 14px!important;
+  border:1px solid #e5e9f0!important;
+  border-radius:13px!important;
+  background:#f9fafc!important;
+}
+body[data-client-dossier-release] #clientDetail .workflow-actions>div>small{
+  color:#7b8598!important;
+  font-size:8px!important;
+}
+body[data-client-dossier-release] #clientDetail .workflow-actions button{
+  width:auto!important;
+  min-width:0!important;
+  min-height:38px!important;
+  margin:8px 6px 0 0!important;
+  padding:0 14px!important;
+  border-radius:10px!important;
+  font-size:10px!important;
+}
+body[data-client-dossier-release] #clientDetail .workflow-actions [data-workflow-action="delivery_complete"]{
+  min-width:190px!important;
+}
+body[data-client-dossier-release] #clientDetail .dossier-v88-delivery-gate{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:12px;
+  align-items:center;
+  margin-top:7px;
+}
+body[data-client-dossier-release] #clientDetail .dossier-v88-delivery-gate strong,
+body[data-client-dossier-release] #clientDetail .dossier-v88-delivery-gate span{
+  display:block;
+}
+body[data-client-dossier-release] #clientDetail .dossier-v88-delivery-gate strong{
+  color:#1a233d;
+  font-size:12px;
+}
+body[data-client-dossier-release] #clientDetail .dossier-v88-delivery-gate span{
+  margin-top:3px;
+  color:#6d778c;
+  font-size:10px;
+  line-height:1.4;
+}
+body[data-client-dossier-release] #clientDetail .dossier-v88-delivery-gate button{
+  margin:0!important;
+  border:1px solid #dce1eb!important;
+  background:#fff!important;
+  color:#24304c!important;
+}
+body[data-client-dossier-release] #clientDetail .workflow-more{
+  margin:0 16px 14px!important;
+  border-color:#e5e9f0!important;
+  border-radius:12px!important;
+}
+body[data-client-dossier-release] #clientDetail .workflow-more summary{
+  padding:10px 0!important;
+  font-size:10px!important;
+}
+body[data-client-dossier-release] #clientDetail .workflow-message{
+  margin:0 16px 14px!important;
+}
+@media(max-width:900px){
+  body[data-client-dossier-release] #clientDetail .detail-title{
+    grid-template-columns:minmax(0,1fr) auto auto;
+  }
+  body[data-client-dossier-release] #clientDetail .detail-title .studio-current-client-manage{
+    display:none!important;
+  }
+  body[data-client-dossier-release] #clientDetail .workflow-essential{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  body[data-client-dossier-release] #clientDetail .workflow-essential article:last-child{
+    grid-column:1/-1;
+  }
+  body[data-client-dossier-release] #clientDetail .dossier-v88-progress{
+    overflow-x:auto;
+    grid-template-columns:repeat(5,minmax(120px,1fr));
+  }
+}
+@media(max-width:700px){
+  body[data-client-dossier-release] #clientDialog.drawer{
+    width:100vw!important;
+    height:100dvh!important;
+    max-height:100dvh!important;
+    margin:0!important;
+    border:0!important;
+    border-radius:0!important;
+  }
+  body[data-client-dossier-release] #clientDetail .detail-title{
+    top:0!important;
+    grid-template-columns:minmax(0,1fr) auto!important;
+    min-height:72px!important;
+    padding:13px 14px!important;
+  }
+  body[data-client-dossier-release] #clientDetail .detail-title>button:not(.close){
+    display:none!important;
+  }
+  body[data-client-dossier-release] #clientDetail .detail-title p:last-child{
+    max-width:calc(100vw - 76px);
+  }
+  body[data-client-dossier-release] #clientDetail .tabs{
+    top:72px!important;
+    padding:8px 12px!important;
+  }
+  body[data-client-dossier-release] #clientDetail #detailBody{
+    padding:10px 10px calc(18px + env(safe-area-inset-bottom));
+  }
+  body[data-client-dossier-release] #clientDetail .workflow-command-center>header{
+    grid-template-columns:1fr!important;
+    padding:16px 14px 13px!important;
+  }
+  body[data-client-dossier-release] #clientDetail .workflow-live{
+    width:max-content;
+  }
+  body[data-client-dossier-release] #clientDetail .dossier-v88-alert{
+    grid-template-columns:auto minmax(0,1fr);
+    margin:10px 10px 0;
+  }
+  body[data-client-dossier-release] #clientDetail .dossier-v88-alert button{
+    grid-column:1/-1;
+    width:100%;
+  }
+  body[data-client-dossier-release] #clientDetail .workflow-essential{
+    grid-template-columns:1fr!important;
+    padding:10px!important;
+  }
+  body[data-client-dossier-release] #clientDetail .workflow-essential article:last-child{
+    grid-column:auto;
+  }
+  body[data-client-dossier-release] #clientDetail .dossier-v88-progress{
+    margin:0 10px 10px;
+  }
+  body[data-client-dossier-release] #clientDetail .workflow-actions{
+    padding:0 10px 10px!important;
+  }
+  body[data-client-dossier-release] #clientDetail .workflow-actions button{
+    width:100%!important;
+    margin-right:0!important;
+  }
+  body[data-client-dossier-release] #clientDetail .dossier-v88-delivery-gate{
+    grid-template-columns:1fr;
+  }
+  body[data-client-dossier-release] #clientDetail .dossier-v88-delivery-gate button{
+    width:100%!important;
+  }
+  body[data-client-dossier-release] #clientDetail .workflow-more{
+    margin:0 10px 10px!important;
+  }
+  body[data-client-dossier-release] #clientDetail .workflow-message{
+    margin:0 10px 10px!important;
+  }
+}
+@media(max-height:560px) and (orientation:landscape){
+  body[data-client-dossier-release] #clientDialog.drawer{
+    width:100vw!important;
+    height:100dvh!important;
+    max-height:100dvh!important;
+    margin:0!important;
+    border-radius:0!important;
+  }
+  body[data-client-dossier-release] #clientDetail .detail-title{
+    min-height:64px!important;
+    padding:9px 14px!important;
+  }
+  body[data-client-dossier-release] #clientDetail .tabs{
+    top:64px!important;
+    padding-block:6px!important;
+  }
+}

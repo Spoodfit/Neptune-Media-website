@@ -1,11 +1,13 @@
 const RELEASE = 'neptune-horizontal-client-journey-20260810-v93';
 const STYLE_URL = '/studio/horizontal-journey-v93.css?v=1';
 const ROOT_SELECTOR = '#clientDetail.v92-detail';
+const contextCache = new Map();
 let scheduled = false;
 
 start();
 
 function start() {
+  installContextObserver();
   ensureStylesheet();
   document.readyState === 'loading'
     ? document.addEventListener('DOMContentLoaded', boot, { once: true })
@@ -17,6 +19,30 @@ function boot() {
   enhance();
   new MutationObserver(scheduleEnhance).observe(document.body, { childList: true, subtree: true });
   window.addEventListener('hashchange', scheduleEnhance);
+}
+
+function installContextObserver() {
+  if (window.__neptuneHorizontalV93FetchObserver) return;
+  const nativeFetch = window.fetch.bind(window);
+  window.fetch = async (...args) => {
+    const response = await nativeFetch(...args);
+    try {
+      const input = args[0];
+      const requestUrl = typeof input === 'string' ? input : input?.url || '';
+      if (String(requestUrl).includes('/api/admin/journey-v92/context') && response.ok) {
+        response.clone().json().then((data) => {
+          const orderId = String(data?.order?.id || '');
+          if (!orderId) return;
+          contextCache.set(orderId, data);
+          scheduleEnhance();
+        }).catch(() => {});
+      }
+    } catch {
+      // Lecture passive uniquement : ne jamais bloquer la requête v92.
+    }
+    return response;
+  };
+  window.__neptuneHorizontalV93FetchObserver = true;
 }
 
 function ensureStylesheet() {
@@ -43,10 +69,11 @@ function enhance() {
   if (!root || !steps) return;
   const cards = [...steps.querySelectorAll(':scope > .v92-step')];
   if (cards.length !== 8) return;
-  if (root.dataset.horizontalJourneyOwner === RELEASE && root.querySelector('.v93-journey-rail')) return;
+  const alreadyEnhanced = root.dataset.horizontalJourneyOwner === RELEASE && root.querySelector('.v93-journey-rail');
 
   preventDuplicateV92Actions(root);
-  enrichPassageInformation(cards);
+  enrichClientAvailability(root, cards);
+  if (alreadyEnhanced) return;
   root.dataset.horizontalJourneyOwner = RELEASE;
   root.classList.add('v93-horizontal-journey');
   steps.classList.add('v93-step-panel');
@@ -68,19 +95,30 @@ function preventDuplicateV92Actions(root) {
   root.__neptuneHorizontalV93Patched = true;
 }
 
-function enrichPassageInformation(cards) {
+function enrichClientAvailability(root, cards) {
+  const orderId = String(root.dataset.orderId || '');
+  const data = contextCache.get(orderId);
+  const raw = data?.preference?.preferences;
+  const dates = Array.isArray(raw) ? raw : Array.isArray(raw?.dates) ? raw.dates : [];
+  const formatted = dates.map(formatDateTime).filter(Boolean).slice(0, 3);
+  if (!formatted.length) return;
+
   const dateStep = cards[2];
-  const passageStep = cards[4];
-  const headline = dateStep?.querySelector('.v92-step-copy > strong')?.textContent?.trim() || '';
-  const availability = dateStep?.querySelector('.v92-step-copy > p')?.textContent?.trim() || '';
-  const comments = passageStep?.querySelector('.v92-passage-comments');
-  if (!comments || !/disponibilit[ée]s reçues/iu.test(headline) || !availability) return;
-  const exists = [...comments.querySelectorAll('p')].some((node) => /disponibilit[ée]s client/iu.test(node.textContent || ''));
-  if (exists) return;
-  const row = document.createElement('p');
-  row.dataset.v93ClientAvailability = 'true';
-  row.innerHTML = `<b>Disponibilités client :</b> ${escapeHtml(availability)}`;
-  comments.prepend(row);
+  const dateHeadline = dateStep?.querySelector('.v92-step-copy > strong')?.textContent?.trim() || '';
+  const dateDetail = dateStep?.querySelector('.v92-step-copy > p');
+  if (/disponibilit[ée]s reçues/iu.test(dateHeadline) && dateDetail) {
+    dateDetail.textContent = `Le client a proposé ${formatted.length} créneau(x) : ${formatted.join(' · ')}.`;
+  }
+
+  const infoValue = cards[4]?.querySelector('.v92-passage-detail > div:nth-child(2) > span');
+  if (infoValue) {
+    const existing = String(infoValue.textContent || '').trim();
+    const availability = `Disponibilités client : ${formatted.join(' · ')}`;
+    infoValue.textContent = !existing || existing === 'Aucune information complémentaire enregistrée.'
+      ? availability
+      : existing.includes('Disponibilités client') ? existing : `${availability} · ${existing}`;
+    infoValue.dataset.v93ClientAvailability = 'true';
+  }
 }
 
 function buildRail(cards) {
@@ -184,6 +222,14 @@ function toneOf(card) {
 
 function stateLabel(tone) {
   return ({ done: 'Validé', 'done-muted': 'Effectué', warning: 'À surveiller', current: 'À faire', pending: 'En attente' })[tone] || '';
+}
+
+function formatDateTime(value) {
+  const date = new Date(value || '');
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('fr-FR', {
+    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris',
+  }).format(date);
 }
 
 function reducedMotion() {

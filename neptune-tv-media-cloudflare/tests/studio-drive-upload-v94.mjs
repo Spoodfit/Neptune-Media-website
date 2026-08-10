@@ -150,12 +150,19 @@ const mobile = await page.evaluate(() => {
   const uploaderRect = uploader?.getBoundingClientRect();
   const rects = zones.map((node) => node.getBoundingClientRect());
   const buttons = zones.map((node) => node.querySelector('button')?.getBoundingClientRect()).filter(Boolean);
+  const buttonMetrics = buttons.map((rect, index) => ({
+    width: Math.round(rect.width),
+    height: Math.round(rect.height),
+    zoneWidth: Math.round(rects[index]?.width || 0),
+    widthRatio: rects[index]?.width ? Number((rect.width / rects[index].width).toFixed(3)) : 0,
+  }));
   return {
     zones: zones.length,
     bodyOverflow: Math.max(document.body.scrollWidth, document.documentElement.scrollWidth) - innerWidth,
     uploaderInsideViewport: Boolean(uploaderRect && uploaderRect.left >= -2 && uploaderRect.right <= innerWidth + 2),
     oneColumn: rects.length === 2 && rects[1].top > rects[0].bottom - 2 && Math.abs(rects[0].left - rects[1].left) <= 3,
-    buttonsWideEnough: buttons.every((rect) => rect.width >= 260 && rect.height >= 38),
+    buttonsTouchSafe: buttonMetrics.every((metric) => metric.height >= 44 && metric.widthRatio >= 0.8),
+    buttonMetrics,
     buttonTexts: zones.map((node) => node.querySelector('button')?.textContent?.trim() || ''),
   };
 });
@@ -163,7 +170,7 @@ if (mobile.zones !== 2) errors.push(`Mobile: ${mobile.zones} destinations au lie
 if (mobile.bodyOverflow > 3) errors.push(`Mobile: débordement global ${mobile.bodyOverflow}px.`);
 if (!mobile.uploaderInsideViewport) errors.push('Mobile: uploader hors viewport.');
 if (!mobile.oneColumn) errors.push('Mobile: les deux destinations ne passent pas proprement sur une colonne.');
-if (!mobile.buttonsWideEnough) errors.push('Mobile: les boutons de dépôt sont trop petits.');
+if (!mobile.buttonsTouchSafe) errors.push(`Mobile: boutons non tactiles ou trop étroits (${JSON.stringify(mobile.buttonMetrics)}).`);
 if (mobile.buttonTexts.some((text) => !text.includes('Choisir les fichiers'))) errors.push('Mobile: libellé des boutons de dépôt ambigu.');
 await page.screenshot({ path: path.join(outputDir, 'montage-drive-upload-mobile-390.png') });
 
@@ -175,4 +182,4 @@ if (errors.length) {
   console.error(errors.join('\n'));
   process.exit(1);
 }
-console.log('Studio Drive upload v94 visual audit passed: explicit Long/Short destinations, clean desktop two-column layout, one-column mobile layout, no global overflow and direct passage Drive access.');
+console.log('Studio Drive upload v94 visual audit passed: explicit Long/Short destinations, clean desktop two-column layout, one-column mobile layout, touch-safe full-card actions, no global overflow and direct passage Drive access.');

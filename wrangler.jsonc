@@ -38,8 +38,8 @@
     "STUDIO_SUPPLIER_NAME":"REC BOX Studio",
     "STUDIO_SUPPLIER_EMAIL":"contact@recbox.fr",
     "STUDIO_ADDRESS":"11 Allée de Longueterre, 31850 Montrabé",
-    "LEGACY_ROOT_VERIFIER":{"main":"neptune-tv-media-cloudflare/src/entry-v19.js"},
-    "LEGACY_EMAIL_VERIFIER":{"main":"neptune-tv-media-cloudflare/src/entry-v21.js"}
+    "LEGACY_ROOT_VERIFIER": { "main": "neptune-tv-media-cloudflare/src/entry-v19.js" },
+    "LEGACY_EMAIL_VERIFIER": { "main": "neptune-tv-media-cloudflare/src/entry-v21.js" }
   },
   "observability":{"enabled":true}
 }

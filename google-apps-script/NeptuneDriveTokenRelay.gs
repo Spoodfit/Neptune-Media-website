@@ -1,9 +1,10 @@
-const DRIVE_TOKEN_RELAY_VERSION = 'neptune-drive-token-relay-v1';
+const DRIVE_TOKEN_RELAY_VERSION = 'neptune-google-token-relay-v2';
 const DRIVE_TOKEN_RELAY_FUNCTION = 'publierJetonDriveNeptune';
 
 /**
- * À exécuter une seule fois après avoir ajouté ce fichier au projet Apps Script.
- * Le relais renouvelle ensuite automatiquement l'accès privé Drive toutes les 30 minutes.
+ * À exécuter une seule fois après avoir ajouté ou mis à jour ce fichier.
+ * Le relais renouvelle ensuite automatiquement l'accès privé Google
+ * (Drive + Agenda) toutes les 30 minutes.
  */
 function installerRelaisJetonDriveNeptune() {
   verifierConfigurationRelaisDriveNeptune_();
@@ -15,13 +16,14 @@ function installerRelaisJetonDriveNeptune() {
 }
 
 /**
- * Publie un jeton OAuth Drive de courte durée au Worker Neptune.
+ * Publie un jeton OAuth Google de courte durée au Worker Neptune.
+ * Il sert au proxy Drive existant et à la synchronisation Agenda/Meet du Studio.
  * Le jeton n'est jamais envoyé au navigateur et expire automatiquement côté Cloudflare.
  */
 function publierJetonDriveNeptune() {
   const config = verifierConfigurationRelaisDriveNeptune_();
   const accessToken = ScriptApp.getOAuthToken();
-  if (!accessToken) throw new Error('Jeton OAuth Drive indisponible. Autorisez à nouveau le projet Apps Script.');
+  if (!accessToken) throw new Error('Jeton OAuth Google indisponible. Autorisez à nouveau le projet Apps Script.');
 
   const response = UrlFetchApp.fetch(`${config.apiUrl}/api/webhooks/drive/access-token`, {
     method: 'post',
@@ -34,6 +36,7 @@ function publierJetonDriveNeptune() {
       version: DRIVE_TOKEN_RELAY_VERSION,
       accessToken,
       expiresAt: new Date(Date.now() + 50 * 60 * 1000).toISOString(),
+      capabilities: ['drive', 'calendar'],
     }),
     muteHttpExceptions: true,
   });
@@ -41,11 +44,11 @@ function publierJetonDriveNeptune() {
   const status = response.getResponseCode();
   const body = response.getContentText();
   if (status < 200 || status >= 300) {
-    throw new Error(`Relais Drive Neptune HTTP ${status}: ${body.slice(0, 500)}`);
+    throw new Error(`Relais Google Neptune HTTP ${status}: ${body.slice(0, 500)}`);
   }
   const result = JSON.parse(body || '{}');
-  if (!result.ok) throw new Error(`Relais Drive Neptune refusé: ${body.slice(0, 500)}`);
-  console.log('drive_token_relay_ok', result.expiresAt || 'expiration inconnue');
+  if (!result.ok) throw new Error(`Relais Google Neptune refusé: ${body.slice(0, 500)}`);
+  console.log('google_token_relay_ok', result.expiresAt || 'expiration inconnue');
   return result;
 }
 
@@ -56,6 +59,13 @@ function verifierConfigurationRelaisDriveNeptune_() {
     secret: String(properties.getProperty('DRIVE_WEBHOOK_SECRET') || '').trim(),
   };
   const missing = Object.entries(config).filter(([, value]) => !value).map(([key]) => key);
-  if (missing.length) throw new Error(`Configuration relais Drive incomplète : ${missing.join(', ')}`);
-  return config;
+  if (missing.length) throw new Error(`Configuration relais Google incomplète : ${missing.join(', ')}`);
+
+  // Ces deux accès forcent Apps Script à demander et conserver les scopes
+  // Drive + Calendar nécessaires au jeton relayé au Worker Neptune.
+  const driveRootId = DriveApp.getRootFolder().getId();
+  const calendarId = CalendarApp.getDefaultCalendar().getId();
+  if (!driveRootId || !calendarId) throw new Error('Autorisation Google Drive / Agenda incomplète.');
+
+  return { ...config, calendarId };
 }

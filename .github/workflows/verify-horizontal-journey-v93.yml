@@ -1,0 +1,82 @@
+name: Verify Horizontal Client Journey V93
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-horizontal-journey-v93.yml'
+      - 'neptune-tv-media-cloudflare/public/studio/clients.html'
+      - 'neptune-tv-media-cloudflare/public/studio/simple-journey-v92.js'
+      - 'neptune-tv-media-cloudflare/public/studio/simple-journey-v92.css'
+      - 'neptune-tv-media-cloudflare/public/studio/horizontal-journey-v93.js'
+      - 'neptune-tv-media-cloudflare/public/studio/horizontal-journey-v93.css'
+      - 'neptune-tv-media-cloudflare/scripts/verify-horizontal-journey-v93.mjs'
+      - 'neptune-tv-media-cloudflare/tests/studio-horizontal-journey-v93.mjs'
+      - 'neptune-tv-media-cloudflare/package.json'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-horizontal-journey-v93.yml'
+      - 'neptune-tv-media-cloudflare/public/studio/clients.html'
+      - 'neptune-tv-media-cloudflare/public/studio/simple-journey-v92.js'
+      - 'neptune-tv-media-cloudflare/public/studio/simple-journey-v92.css'
+      - 'neptune-tv-media-cloudflare/public/studio/horizontal-journey-v93.js'
+      - 'neptune-tv-media-cloudflare/public/studio/horizontal-journey-v93.css'
+      - 'neptune-tv-media-cloudflare/scripts/verify-horizontal-journey-v93.mjs'
+      - 'neptune-tv-media-cloudflare/tests/studio-horizontal-journey-v93.mjs'
+      - 'neptune-tv-media-cloudflare/package.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-horizontal-journey:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate v93 source contract
+        working-directory: neptune-tv-media-cloudflare
+        run: |
+          node --check public/studio/horizontal-journey-v93.js
+          node --check tests/studio-horizontal-journey-v93.mjs
+          node scripts/verify-horizontal-journey-v93.mjs
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium
+
+      - name: Start Studio static server
+        shell: bash
+        run: |
+          python3 -m http.server 4173 --directory neptune-tv-media-cloudflare/public >/tmp/studio-v93-server.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:4173/studio/clients.html >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/studio-v93-server.log
+          exit 1
+
+      - name: Audit horizontal journey desktop and mobile
+        env:
+          LOCAL_BASE_URL: http://127.0.0.1:4173
+          OUTPUT_DIR: test-results/studio-horizontal-journey-v93
+        run: node neptune-tv-media-cloudflare/tests/studio-horizontal-journey-v93.mjs
+
+      - name: Upload v93 visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: studio-horizontal-journey-v93-evidence
+          path: test-results/studio-horizontal-journey-v93
+          if-no-files-found: error
+          retention-days: 14

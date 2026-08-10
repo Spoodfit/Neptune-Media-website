@@ -1,71 +1,124 @@
-/* Neptune Studio — parcours client synchronisé v90 */
-body[data-client-journey-release="neptune-studio-client-journey-20260810-v90"]{
+/* Neptune Studio — UX opérationnelle v91 */
+body[data-client-journey-release]{
   --j90-ink:#121a31;
-  --j90-muted:#69758d;
+  --j90-muted:#667087;
   --j90-line:#e2e6ef;
-  --j90-soft:#f7f8fb;
   --j90-purple:#6653e7;
   --j90-green:#15734f;
   --j90-amber:#8a5a09;
   --j90-red:#aa3d50;
 }
+
 .j90-host{width:100%;margin:12px 0}
-.j90-journey{width:100%;padding:17px;border:1px solid var(--j90-line);border-radius:16px;background:#fff;box-shadow:0 8px 24px rgba(15,30,67,.035)}
+.j90-journey{width:100%;padding:18px;border:1px solid var(--j90-line);border-radius:16px;background:#fff;box-shadow:0 8px 24px rgba(15,30,67,.035)}
 .j90-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:start}
-.j90-head .eyebrow{margin:0 0 4px!important;color:var(--j90-purple)!important;font-size:8px!important;letter-spacing:.13em!important}
-.j90-head h4{margin:0;color:var(--j90-ink);font-size:17px;line-height:1.2;letter-spacing:-.025em}
-.j90-head>div>p:last-child{max-width:900px;margin:6px 0 0;color:var(--j90-muted);font-size:10px;line-height:1.48}
-.j90-refresh{min-height:36px;padding:0 11px;border:1px solid #dce1ea;border-radius:9px;background:#fff;color:#35415c;font:inherit;font-size:9px;font-weight:850;cursor:pointer;white-space:nowrap}
-.j90-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:14px}
-.j90-stage{position:relative;min-width:0;min-height:185px;display:flex;flex-direction:column;padding:13px;border:1px solid #e5e8ef;border-radius:13px;background:#fafbfc}
-.j90-stage.is-done{border-color:#cfe6da;background:#f6fbf8}
-.j90-stage.is-current{border-color:#d7d0fb;background:#faf9ff}
-.j90-stage.is-warning{border-color:#edd09a;background:#fffaf1}
-.j90-stage-top{display:grid;grid-template-columns:24px minmax(0,1fr);gap:8px;align-items:center}
-.j90-stage-top>i{width:24px;height:24px;display:grid;place-items:center;border:1px solid #d8dde7;border-radius:50%;background:#fff;color:#8490a4;font-style:normal;font-size:9px;font-weight:900}
-.j90-stage.is-done .j90-stage-top>i{border-color:#bce0ce;background:#e9f7f0;color:var(--j90-green)}
-.j90-stage.is-current .j90-stage-top>i{border-color:#9386ec;background:var(--j90-purple);color:#fff}
-.j90-stage.is-warning .j90-stage-top>i{border-color:#ebc577;background:#ffedc6;color:#754904}
-.j90-stage-top small{display:block;color:#4e5870;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.07em}
-.j90-stage-top span{display:block;margin-top:1px;color:#8790a2;font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.j90-stage>strong{display:block;margin-top:13px;color:#182039;font-size:13px;line-height:1.32;overflow-wrap:anywhere}
-.j90-stage.is-done>strong{color:#176543}
-.j90-stage.is-warning>strong{color:#7d5207}
-.j90-stage>p{margin:5px 0 0;color:#727d91;font-size:9px;line-height:1.45}
-.j90-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:12px}
-.j90-actions button,.j90-payment-options button,.j90-confirm button,.j90-error button{min-height:34px;padding:0 10px;border:1px solid #dce1ea;border-radius:9px;background:#fff;color:#26334f;font:inherit;font-size:8px;font-weight:850;cursor:pointer}
+.j90-head .eyebrow{margin:0 0 5px!important;color:var(--j90-purple)!important;font-size:11px!important;letter-spacing:.11em!important}
+.j90-head h4{margin:0;color:var(--j90-ink);font-size:20px;line-height:1.2;letter-spacing:-.025em}
+.j90-head>div>p:last-child{max-width:880px;margin:7px 0 0;color:var(--j90-muted);font-size:13px;line-height:1.5}
+.j90-refresh{min-height:42px;padding:0 14px;border:1px solid #dce1ea;border-radius:10px;background:#fff;color:#35415c;font:inherit;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap}
+
+.j90-layout{display:grid;grid-template-columns:minmax(320px,.95fr) minmax(0,1.35fr);gap:12px;margin-top:15px;align-items:stretch}
+.j90-payment{min-width:0;padding:16px;border:1px solid #e5e8ef;border-radius:14px;background:#fafbfc}
+.j90-payment.is-done{border-color:#cfe6da;background:#f6fbf8}
+.j90-payment.is-current{border-color:#d7d0fb;background:#faf9ff}
+.j90-payment.is-warning{border-color:#edd09a;background:#fffaf1}
+.j90-payment-head{display:grid;grid-template-columns:12px minmax(0,1fr);gap:10px;align-items:start}
+.j90-dot{width:10px;height:10px;margin-top:4px;border-radius:50%;background:#9ba4b5;box-shadow:0 0 0 4px rgba(155,164,181,.12)}
+.j90-payment.is-done .j90-dot{background:#1ba86c;box-shadow:0 0 0 4px rgba(27,168,108,.12)}
+.j90-payment.is-current .j90-dot{background:#6653e7;box-shadow:0 0 0 4px rgba(102,83,231,.12)}
+.j90-payment.is-warning .j90-dot{background:#d69a2e;box-shadow:0 0 0 4px rgba(214,154,46,.14)}
+.j90-payment-head small{display:block;color:#69748a;font-size:11px;font-weight:850;text-transform:uppercase;letter-spacing:.07em}
+.j90-payment-head strong{display:block;margin-top:4px;color:#182039;font-size:18px;line-height:1.25;overflow-wrap:anywhere}
+.j90-payment.is-done .j90-payment-head strong{color:#176543}
+.j90-payment.is-warning .j90-payment-head strong{color:#7d5207}
+.j90-payment>p{margin:9px 0 0;color:#6b768b;font-size:13px;line-height:1.5}
+
+.j90-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.j90-actions button,.j90-payment-options button,.j90-confirm button,.j90-error button{min-height:42px;padding:0 13px;border:1px solid #dce1ea;border-radius:10px;background:#fff;color:#26334f;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
 .j90-actions button.primary,.j90-confirm button.primary{border-color:var(--j90-purple);background:var(--j90-purple);color:#fff}
 .j90-actions button:disabled{opacity:.55;cursor:wait}
-.j90-no-action{display:block;margin-top:auto;padding-top:12px;color:#8a93a5;font-size:8px}
-.j90-payment-options{display:grid;gap:6px;margin-top:10px}
-.j90-payment-options button{min-height:42px;display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:7px;align-items:center;text-align:left}
-.j90-payment-options button span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#3d4861;font-weight:700}
-.j90-payment-options button b{color:#1c2640;font-size:9px}
-.j90-payment-options button small{padding:3px 5px;border-radius:999px;background:#efeaff;color:#5e4ed0;font-size:7px}
-.j90-confirm{margin-top:8px;padding:9px;border:1px solid #dfe3ec;border-radius:10px;background:#fff}
+.j90-no-action{display:block;margin-top:14px;color:#708096;font-size:12px;font-weight:650}
+
+.j90-payment-options{margin-top:13px;border-top:1px solid #e7e9ef;padding-top:11px}
+.j90-payment-options summary{cursor:pointer;color:#4d5870;font-size:12px;font-weight:800;list-style:none}
+.j90-payment-options summary::-webkit-details-marker{display:none}
+.j90-payment-options summary::after{content:'+';margin-left:7px;color:#8a93a4}
+.j90-payment-options[open] summary::after{content:'−'}
+.j90-payment-options>div{display:grid;gap:7px;margin-top:9px}
+.j90-payment-options article{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px;border:1px solid #e5e8ef;border-radius:10px;background:#fff}
+.j90-payment-options article span{min-width:0}
+.j90-payment-options article b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#27324d;font-size:12px}
+.j90-payment-options article small{display:block;margin-top:2px;color:#7c8699;font-size:11px}
+.j90-payment-options article button{min-height:36px;font-size:11px}
+
+.j90-checks{display:grid;grid-template-columns:1fr;gap:8px}
+.j90-check{min-width:0;display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;align-items:start;padding:12px 13px;border:1px solid #e6e9f0;border-radius:12px;background:#fafbfc}
+.j90-check>i{width:28px;height:28px;display:grid;place-items:center;border:1px solid #d8dde7;border-radius:50%;background:#fff;color:#8490a4;font-style:normal;font-size:10px;font-weight:900}
+.j90-check.is-done>i{border-color:#bce0ce;background:#e9f7f0;color:var(--j90-green)}
+.j90-check.is-current>i{border-color:#9386ec;background:var(--j90-purple);color:#fff}
+.j90-check.is-warning>i{border-color:#ebc577;background:#ffedc6;color:#754904}
+.j90-check small{display:block;color:#788399;font-size:11px;font-weight:800}
+.j90-check strong{display:block;margin-top:3px;color:#1a233b;font-size:14px;line-height:1.3;overflow-wrap:anywhere}
+.j90-check span{display:block;margin-top:3px;color:#717c90;font-size:12px;line-height:1.4}
+
+.j90-confirm{margin-top:10px;padding:11px;border:1px solid #dfe3ec;border-radius:10px;background:#fff}
 .j90-confirm[hidden]{display:none!important}
-.j90-confirm p{margin:0;color:#35405a;font-size:9px;line-height:1.45}
-.j90-confirm>div{display:flex;justify-content:flex-end;gap:6px;margin-top:8px}
-.j90-message,.j90-global-message{min-height:13px;margin:7px 0 0!important;color:#5d4bd6!important;font-size:8px!important;font-weight:750}
+.j90-confirm p{margin:0;color:#35405a;font-size:12px;line-height:1.45}
+.j90-confirm>div{display:flex;justify-content:flex-end;gap:7px;margin-top:9px}
+.j90-message,.j90-global-message{min-height:16px;margin:8px 0 0!important;color:#5d4bd6!important;font-size:12px!important;font-weight:700}
 .j90-message.is-error,.j90-global-message.is-error{color:var(--j90-red)!important}
-.j90-skeleton{height:145px;margin-top:14px;border-radius:12px;background:linear-gradient(90deg,#f5f6f9,#eceef4,#f5f6f9);background-size:220% 100%;animation:j90-shimmer 1.1s linear infinite}
-.j90-error{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:11px;border:1px solid #efcbd2;border-radius:11px;background:#fff7f8;color:#7f2f3f}
-.j90-error strong{font-size:10px}.j90-error span{flex:1;min-width:180px;font-size:9px}.j90-error button{border-color:#e3b8c0}
+.j90-skeleton{height:110px;margin-top:14px;border-radius:12px;background:linear-gradient(90deg,#f5f6f9,#eceef4,#f5f6f9);background-size:220% 100%;animation:j90-shimmer 1.1s linear infinite}
+.j90-error{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:13px;border:1px solid #efcbd2;border-radius:11px;background:#fff7f8;color:#7f2f3f}
+.j90-error strong{font-size:13px}.j90-error span{flex:1;min-width:180px;font-size:12px}.j90-error button{border-color:#e3b8c0}
 @keyframes j90-shimmer{to{background-position:-220% 0}}
+
+/* Lisibilité du dossier v89 : aucun texte opérationnel minuscule. */
+body[data-client-dossier-release] #clientDialog .detail-title .eyebrow{font-size:11px!important}
+body[data-client-dossier-release] #clientDialog .detail-title p:last-child{font-size:13px!important}
+body[data-client-dossier-release] #clientDialog .detail-title>button:not(.close){font-size:12px!important}
+body[data-client-dossier-release] #clientDialog .tabs button{min-height:40px!important;padding:0 14px!important;font-size:13px!important}
+.dossier-v89-state .eyebrow{font-size:11px!important}
+.dossier-v89-state>div>p:last-child{font-size:14px!important}
+.dossier-v89-sync{font-size:12px!important}
+.dossier-v89-alert strong{font-size:14px!important}.dossier-v89-alert span{font-size:12px!important}.dossier-v89-alert button{font-size:12px!important}
+.dossier-v89-progress-step{font-size:11px!important}
+.dossier-v89-section-head span,.dossier-v89-action>small{font-size:10px!important}
+.dossier-v89-section-head h4{font-size:18px!important}
+.dossier-v89-fact small{font-size:10px!important}.dossier-v89-fact strong{font-size:14px!important}.dossier-v89-fact span{font-size:12px!important}
+.dossier-v89-action h4{font-size:20px!important}.dossier-v89-action>p{font-size:13px!important}
+.dossier-v89-action button,.dossier-v89-broadcast-form button,.dossier-v89-qc-fail button{min-height:42px!important;font-size:12px!important}
+.dossier-v89-no-action,.dossier-v89-message,.dossier-v89-confirm p{font-size:12px!important}
+.dossier-v89-details summary{font-size:13px!important}.dossier-v89-details summary small{font-size:11px!important}
+.dossier-v89-timeline-row strong{font-size:13px!important}.dossier-v89-timeline-row span{font-size:12px!important}.dossier-v89-timeline-row small{font-size:11px!important}
+.dossier-v89-manage strong{font-size:13px!important}.dossier-v89-manage span{font-size:12px!important}.dossier-v89-manage button{min-height:42px!important;font-size:12px!important}
+
+/* Formulaire de création manuelle */
+body[data-manual-scheduling-release] [data-payment-mode-v91]{position:relative}
+body[data-manual-scheduling-release] [data-payment-mode-v91] small{display:block;margin-top:4px;color:#70788f;font-size:12px;line-height:1.4}
+body[data-manual-scheduling-release] #newOrder label.is-disabled{opacity:.55}
+body[data-manual-scheduling-release] #newOrder input,body[data-manual-scheduling-release] #newOrder select{min-width:0;max-width:100%}
+
 @media(max-width:980px){
-  .j90-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .j90-layout{grid-template-columns:1fr}
+  .j90-checks{grid-template-columns:repeat(3,minmax(0,1fr))}
 }
-@media(max-width:680px){
-  .j90-journey{padding:13px;border-radius:13px}
+@media(max-width:760px){
+  .j90-journey{padding:14px;border-radius:14px}
   .j90-head{grid-template-columns:1fr}
-  .j90-refresh{justify-self:start}
-  .j90-grid{grid-template-columns:1fr}
-  .j90-stage{min-height:0}
-  .j90-payment-options button{grid-template-columns:minmax(0,1fr) auto}
-  .j90-payment-options button small{grid-column:1/-1;justify-self:start}
+  .j90-refresh{justify-self:start;width:100%;white-space:normal}
+  .j90-checks{grid-template-columns:1fr}
+  .j90-payment-options article{grid-template-columns:1fr}
+  .j90-payment-options article button{width:100%}
+  body[data-client-dossier-release] #clientDialog .detail-title p:last-child{font-size:12px!important;white-space:normal!important;max-width:calc(100vw - 70px)!important}
+  body[data-client-dossier-release] #clientDialog .tabs button{font-size:12px!important}
+  .dossier-v89-progress{grid-template-columns:repeat(6,minmax(132px,1fr))!important}
 }
-@media(max-width:420px){
+@media(max-width:520px){
   .j90-actions{display:grid;grid-template-columns:1fr}
   .j90-actions button{width:100%;white-space:normal}
-  .j90-head h4{font-size:15px}
+  .j90-head h4{font-size:18px}
+  .j90-confirm>div{display:grid}
+  .j90-confirm button{width:100%}
+  .dossier-v89-state>div>p:last-child{font-size:13px!important}
 }
+@media(prefers-reduced-motion:reduce){.j90-skeleton{animation:none!important}}

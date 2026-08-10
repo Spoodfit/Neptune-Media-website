@@ -59,10 +59,10 @@
         <label><span>E-mail client *</span><input name="email" type="email" required></label>
         <label><span>Nom complet</span><input name="fullName" autocomplete="name"></label>
         <label><span>Entreprise</span><input name="company"></label>
-        <label><span>Format</span><select name="format"><option>Hors Norme</option><option>Concept Libre</option><option>Sur mesure</option></select></label>
+        <label><span>Format</span><select name="format"><option selected>À choisir</option><option>Hors Norme</option><option>Concept Libre</option><option>Sur mesure</option></select><small>Si le client n’a pas encore choisi, créez le passage puis envoyez le lien de réservation depuis l’étape 1.</small></label>
         <label class="wide"><span>Nom du passage</span><input name="title" value="Passage Neptune Media" required></label>
         <label data-payment-mode-v91><span>Paiement du dossier</span><select name="paymentRequirement"><option value="stripe" selected>À vérifier sur Stripe</option><option value="none">Aucun paiement requis</option></select><small>Un montant saisi ne signifie jamais que le client a payé. Seul Stripe confirme un règlement.</small></label>
-        <label><span>Montant à régler (€)</span><input name="amountEuros" type="number" min="0.01" step="0.01" required inputmode="decimal"></label>
+        <label><span>Montant à régler (€)</span><input name="amountEuros" type="number" min="0.01" step="0.01" inputmode="decimal"><small>Facultatif tant que le format n’est pas choisi.</small></label>
         <label><span>Rendez-vous de préparation</span><input name="appointmentAt" type="datetime-local"></label>
         <label><span>Date et heure du passage</span><input name="filmingAt" type="datetime-local"></label>
         <label class="wide"><span>Lien de réunion de préparation</span><input name="preparationUrl" type="url" placeholder="Créé automatiquement avec Google Meet si possible"></label>

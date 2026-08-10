@@ -10,7 +10,6 @@ const v92 = read('public/studio/simple-journey-v92.js');
 
 const checks = [];
 const expect = (name, condition) => checks.push({ name, ok: Boolean(condition) });
-
 expect('Studio loads horizontal journey after legacy client scripts', html.includes('/studio/horizontal-journey-v93.js?v=1'));
 expect('v93 activates only on the v92 passage detail', js.includes("#clientDetail.v92-detail") && js.includes('cards.length !== 8'));
 expect('v93 creates one horizontal tablist for the eight steps', js.includes('role="tablist"') && js.includes('data-v93-step'));
@@ -23,7 +22,8 @@ expect('keyboard navigation is supported', js.includes("event.key === 'ArrowRigh
 expect('tabpanel is linked to its selected tab', js.includes("setAttribute('aria-labelledby'") && js.includes('v93-step-tab-'));
 expect('reduced motion is respected', js.includes('prefers-reduced-motion: reduce') && css.includes('@media(prefers-reduced-motion:reduce)'));
 expect('v92 button delegation is protected from duplicate registration', js.includes("listener?.name === 'onAction'") && js.includes('__neptuneHorizontalV93Patched'));
-expect('client availability submitted in step 3 is surfaced in passage information', js.includes('enrichPassageInformation') && js.includes('Disponibilités client :'));
+expect('v93 reuses the existing v92 context instead of issuing a second context request', js.includes('installContextObserver') && js.includes('response.clone().json()') && js.includes('contextCache'));
+expect('client availability is surfaced in both date and passage information', js.includes('enrichClientAvailability') && js.includes('Disponibilités client :') && js.includes('créneau(x)'));
 expect('v92 still defines all eight business steps', ['Format','Paiement','Date du passage','Préparation','Passage','Réception des vidéos','Montage','Terminé'].every((label) => v92.includes(`'${label}'`)));
 
 const failed = checks.filter((check) => !check.ok);

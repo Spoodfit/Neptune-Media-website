@@ -28,7 +28,9 @@ expect('Drive upload registers immediately through the existing Drive inventory 
 expect('Montage has explicit Long format and Shorts destinations', ui.includes("dropzone('long', 'Long format'") && ui.includes("dropzone('short', 'Shorts'"));
 expect('uploader mounts only on the Montage step', ui.includes("data-v93-step=\"6\"") && ui.includes('/montage/iu'));
 expect('passage Drive remains directly accessible from the Montage UI', ui.includes('Ouvrir le Drive') && ui.includes('passageFolderUrl'));
-expect('responsive layout keeps two desktop destinations and one mobile column', css.includes('grid-template-columns:repeat(2,minmax(0,1fr))') && css.includes('@media(max-width:760px)') && css.includes('.v94-destinations{grid-template-columns:1fr}'));
+expect('responsive layout keeps two desktop destinations and one mobile column', css.includes('grid-template-columns:repeat(2,minmax(0,1fr))') && css.includes('@media(max-width:760px)') && css.includes('.v94-destinations{grid-template-columns:minmax(0,1fr);width:100%}'));
+expect('mobile file pickers are touch-safe and cannot inherit a narrow legacy max-width', css.includes('min-height:46px!important') && css.includes('max-width:none!important') && css.includes('width:100%!important'));
+expect('redundant legacy Drive refresh action is hidden inside Montage', css.includes('.v92-step[data-v93-step="6"]>.v92-step-actions{display:none!important}'));
 expect('Studio CSP explicitly permits the temporary Google upload session', entry.includes("DRIVE_UPLOAD_ORIGIN = 'https://www.googleapis.com'") && entry.includes('allowGoogleApiConnect'));
 expect('v94 release is exposed for production verification', entry.includes('studioDriveUpload: RELEASE') && entry.includes("studioDriveUploadMode: 'direct-resumable-google-drive-v94'"));
 

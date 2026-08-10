@@ -73,18 +73,23 @@ await page.waitForSelector('.v93-tab.is-selected', { timeout: 10_000 });
 const desktop = await page.evaluate(() => {
   const root = document.querySelector('#clientDetail');
   const rail = document.querySelector('.v93-rail-scroll');
+  const railSection = document.querySelector('.v93-journey-rail');
+  const summary = document.querySelector('.v92-summary');
   const tabs = [...document.querySelectorAll('.v93-tab')];
   const panels = [...document.querySelectorAll('.v93-step-panel > .v92-step')];
   const visiblePanels = panels.filter((node) => !node.hidden && getComputedStyle(node).display !== 'none');
   const selected = document.querySelector('.v93-tab.is-selected');
   const selectedRect = selected?.getBoundingClientRect();
   const rootRect = root?.getBoundingClientRect();
+  const summaryRect = summary?.getBoundingClientRect();
+  const railRect = railSection?.getBoundingClientRect();
   return {
     tabs: tabs.length,
     visiblePanels: visiblePanels.length,
     selectedText: selected?.innerText || '',
     bodyOverflow: Math.max(document.body.scrollWidth, document.documentElement.scrollWidth) - innerWidth,
     railOverflow: rail ? rail.scrollWidth - rail.clientWidth : 999,
+    verticalGap: summaryRect && railRect ? Math.round(railRect.top - summaryRect.bottom) : 999,
     selectedInsideViewport: Boolean(selectedRect && selectedRect.left >= 0 && selectedRect.right <= innerWidth),
     rootInsideViewport: Boolean(rootRect && rootRect.left >= 0 && rootRect.right <= innerWidth),
   };
@@ -93,13 +98,14 @@ if (desktop.tabs !== 8) errors.push(`Desktop: ${desktop.tabs} étapes au lieu de
 if (desktop.visiblePanels !== 1) errors.push(`Desktop: ${desktop.visiblePanels} panneaux détaillés visibles.`);
 if (desktop.bodyOverflow > 3) errors.push(`Desktop: débordement global ${desktop.bodyOverflow}px.`);
 if (desktop.railOverflow > 3) errors.push(`Desktop: les 8 étapes ne tiennent pas sur la largeur (${desktop.railOverflow}px).`);
+if (desktop.verticalGap < 0 || desktop.verticalGap > 35) errors.push(`Desktop: espace résumé → rail anormal (${desktop.verticalGap}px).`);
 if (!desktop.selectedInsideViewport || !desktop.rootInsideViewport) errors.push('Desktop: rail ou dossier hors viewport.');
 
 await page.locator('[role="tab"][data-v93-step="4"]').click();
 await page.waitForTimeout(100);
 const availability = await page.locator('[data-v93-client-availability="true"]').textContent().catch(() => '');
 if (!availability || !availability.includes('Disponibilités client')) errors.push('Les disponibilités client ne sont pas visibles dans l’étape Passage.');
-await page.screenshot({ path: path.join(outputDir, 'horizontal-journey-desktop-1440.png'), fullPage: true });
+await page.screenshot({ path: path.join(outputDir, 'horizontal-journey-desktop-1440.png') });
 
 await page.setViewportSize({ width: 390, height: 844 });
 await page.waitForTimeout(180);
@@ -107,13 +113,18 @@ await page.locator('[role="tab"][data-v93-step="2"]').click();
 await page.waitForTimeout(80);
 const mobile = await page.evaluate(() => {
   const rail = document.querySelector('.v93-rail-scroll');
+  const railSection = document.querySelector('.v93-journey-rail');
+  const summary = document.querySelector('.v92-summary');
   const selected = document.querySelector('.v93-tab.is-selected');
   const detail = document.querySelector('.v93-selected-step');
   const selectedRect = selected?.getBoundingClientRect();
   const detailRect = detail?.getBoundingClientRect();
+  const summaryRect = summary?.getBoundingClientRect();
+  const railRect = railSection?.getBoundingClientRect();
   return {
     bodyOverflow: Math.max(document.body.scrollWidth, document.documentElement.scrollWidth) - innerWidth,
     railScrollable: Boolean(rail && rail.scrollWidth > rail.clientWidth + 20),
+    verticalGap: summaryRect && railRect ? Math.round(railRect.top - summaryRect.bottom) : 999,
     selectedInsideViewport: Boolean(selectedRect && selectedRect.left >= -2 && selectedRect.right <= innerWidth + 2),
     detailInsideViewport: Boolean(detailRect && detailRect.left >= -2 && detailRect.right <= innerWidth + 2),
     visiblePanels: [...document.querySelectorAll('.v93-step-panel > .v92-step')].filter((node) => !node.hidden && getComputedStyle(node).display !== 'none').length,
@@ -121,9 +132,10 @@ const mobile = await page.evaluate(() => {
 });
 if (mobile.bodyOverflow > 3) errors.push(`Mobile: débordement global ${mobile.bodyOverflow}px.`);
 if (!mobile.railScrollable) errors.push('Mobile: le rail n’est pas horizontalement scrollable.');
+if (mobile.verticalGap < 0 || mobile.verticalGap > 28) errors.push(`Mobile: espace résumé → rail anormal (${mobile.verticalGap}px).`);
 if (!mobile.selectedInsideViewport || !mobile.detailInsideViewport) errors.push('Mobile: étape sélectionnée ou détail hors viewport.');
 if (mobile.visiblePanels !== 1) errors.push(`Mobile: ${mobile.visiblePanels} panneaux détaillés visibles.`);
-await page.screenshot({ path: path.join(outputDir, 'horizontal-journey-mobile-390.png'), fullPage: true });
+await page.screenshot({ path: path.join(outputDir, 'horizontal-journey-mobile-390.png') });
 
 await fs.writeFile(path.join(outputDir, 'report.json'), JSON.stringify({ desktop, mobile, availability, errors }, null, 2));
 await context.close();
@@ -133,4 +145,4 @@ if (errors.length) {
   console.error(errors.join('\n'));
   process.exit(1);
 }
-console.log('Horizontal journey v93 visual audit passed: 8-step desktop rail, single detail panel, exact availability and mobile horizontal navigation.');
+console.log('Horizontal journey v93 visual audit passed: 8-step desktop rail, single detail panel, compact spacing, exact availability and mobile horizontal navigation.');

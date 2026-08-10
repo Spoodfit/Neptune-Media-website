@@ -5,12 +5,13 @@ const root = path.resolve(import.meta.dirname, '..');
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 const checks = [
   ['src/entry-v29.js', ['/api/webhooks/stripe','/api/admin/stripe/reconcile','verifyStripeWebhook','paymentAuthority']],
-  ['src/entry-v30.js', ['/api/admin/stripe/status','payment_pending','single-next-action-plus-automatic-checks-v91','client-journey-v90.js?v=2','manual-scheduling-v85.js?v=2']],
+  ['src/entry-v30.js', ['/api/admin/stripe/status','payment_pending','single-next-action-plus-automatic-checks-v91','stripe-verified-or-no-payment-required-before-operational-actions-v91','open-dossier-only-v91','amount-is-not-payment-proof-v91','client-journey-v90.js?v=3','operational-clarity-v91.js?v=1']],
   ['src/stripe-journey-v90.js', ['customer_details[email]','client_reference_id','locked_prefilled_email','/payment_links']],
   ['src/portal-stripe-v90.js', ['portal_stripe_events_v90','stripe_payment_verified','stripe_payment_unmatched']],
   ['public/studio/manual-scheduling-v85.js', ['paymentRequirement','payment_pending','Aucun paiement requis','Montant à régler']],
-  ['public/studio/client-journey-v90.js', ['VÉRIFICATIONS AUTOMATIQUES','Vérifier le paiement dans Stripe','Google Agenda / Meet','Studio fournisseur','Google Drive / R2','/api/admin/stripe/status']],
-  ['public/studio/client-journey-v90.css', ['@media(max-width:760px)','j90-layout','font-size:13px']],
+  ['public/studio/client-journey-v90.js', ['VÉRIFICATIONS AUTOMATIQUES','PROCHAINE ACTION · PAIEMENT','Vérifier le paiement dans Stripe','Google Agenda / Meet','Studio fournisseur','Google Drive / R2','/api/admin/stripe/status','j90-payment-gate']],
+  ['public/studio/operational-clarity-v91.js', ['Ouvrir le dossier','Montant du dossier','Voir le statut Stripe','Chargement de la prochaine action']],
+  ['public/studio/client-journey-v90.css', ['@media(max-width:760px)','j90-layout','j90-payment-gate','billing-clarity-v91','font-size:13px']],
 ];
 for (const [file, needles] of checks) {
   const content = read(file);
@@ -20,4 +21,4 @@ for (const [file, needles] of checks) {
 }
 const wrangler = read('wrangler.jsonc');
 if (!wrangler.includes('"main": "src/entry-v30.js"')) throw new Error('wrangler main must be entry-v30.js');
-console.log('Stripe journey v90 + operational UX v91 verified');
+console.log('Stripe journey v90 + operational UX v91.1 verified: one next action, Stripe payment gate, explicit billing and open-only pipeline cards');

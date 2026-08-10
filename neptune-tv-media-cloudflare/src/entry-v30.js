@@ -10,9 +10,10 @@ import { isSameOrigin, json, securityHeaders } from './security.js';
 export { StudioStore };
 
 const RELEASE = 'neptune-studio-operational-ux-20260810-v91';
-const JOURNEY_CSS = '/studio/client-journey-v90.css?v=2';
-const JOURNEY_JS = '/studio/client-journey-v90.js?v=2';
+const JOURNEY_CSS = '/studio/client-journey-v90.css?v=3';
+const JOURNEY_JS = '/studio/client-journey-v90.js?v=3';
 const MANUAL_JS = '/studio/manual-scheduling-v85.js?v=2';
+const CLARITY_JS = '/studio/operational-clarity-v91.js?v=1';
 const STRIPE_STATUS_PATH = '/api/admin/stripe/status';
 
 export default {
@@ -129,6 +130,9 @@ async function augmentRelease(response) {
     studioJourneyPresentation: 'single-next-action-plus-automatic-checks-v91',
     stripeReadMode: 'read-only-status-until-explicit-reconcile-v91',
     manualPaymentMode: 'explicit-stripe-pending-or-no-payment-required-v91',
+    paymentGate: 'stripe-verified-or-no-payment-required-before-operational-actions-v91',
+    pipelineActions: 'open-dossier-only-v91',
+    billingSemantics: 'amount-is-not-payment-proof-v91',
     responsiveReadability: 'minimum-readable-controls-and-mobile-stack-v91',
   }), {
     status: response.status,
@@ -141,8 +145,9 @@ async function injectOperationalAssets(response) {
   body = body.replace(/<script\b[^>]*src=["'][^"']*\/studio\/manual-scheduling-v85\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu, '');
   body = body.replace(/<link\b[^>]*href=["'][^"']*\/studio\/client-journey-v90\.css[^"']*["'][^>]*>\s*/giu, '');
   body = body.replace(/<script\b[^>]*src=["'][^"']*\/studio\/client-journey-v90\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu, '');
+  body = body.replace(/<script\b[^>]*src=["'][^"']*\/studio\/operational-clarity-v91\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu, '');
   body = body.replace('</head>', `<link rel="stylesheet" href="${JOURNEY_CSS}"></head>`);
-  body = body.replace('</body>', `<script type="module" src="${MANUAL_JS}"></script><script type="module" src="${JOURNEY_JS}"></script></body>`);
+  body = body.replace('</body>', `<script type="module" src="${MANUAL_JS}"></script><script type="module" src="${CLARITY_JS}"></script><script type="module" src="${JOURNEY_JS}"></script></body>`);
   const headers = new Headers(response.headers);
   headers.delete('Content-Length');
   headers.set('Cache-Control', 'private, no-store, max-age=0');

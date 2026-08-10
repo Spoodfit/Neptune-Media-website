@@ -1,4 +1,4 @@
-const RELEASE = 'neptune-studio-operational-clarity-20260810-v91';
+const RELEASE = 'neptune-studio-operational-clarity-20260810-v91-1';
 let frame = 0;
 
 start();
@@ -20,10 +20,27 @@ function schedule() {
   if (frame) return;
   frame = requestAnimationFrame(() => {
     frame = 0;
+    simplifyGlobalNavigation();
     simplifyPipeline();
     clarifyBilling();
     protectLegacyDetailAdvance();
   });
+}
+
+function simplifyGlobalNavigation() {
+  const controls = document.querySelector('.controls');
+  if (!controls) return;
+  for (const button of controls.querySelectorAll('[data-open-section]')) {
+    button.hidden = true;
+    button.setAttribute('aria-hidden', 'true');
+    button.tabIndex = -1;
+  }
+  if (!controls.querySelector('.pipeline-help-v91')) {
+    const hint = document.createElement('p');
+    hint.className = 'pipeline-help-v91';
+    hint.textContent = 'Ouvrez un dossier client pour accéder à son suivi, ses contenus, son calendrier et sa facturation.';
+    controls.append(hint);
+  }
 }
 
 function simplifyPipeline() {

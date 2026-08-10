@@ -95,7 +95,7 @@ if (desktop.bodyOverflow > 3) errors.push(`Desktop: débordement global ${deskto
 if (desktop.railOverflow > 3) errors.push(`Desktop: les 8 étapes ne tiennent pas sur la largeur (${desktop.railOverflow}px).`);
 if (!desktop.selectedInsideViewport || !desktop.rootInsideViewport) errors.push('Desktop: rail ou dossier hors viewport.');
 
-await page.locator('[data-v93-step="4"]').click();
+await page.locator('[role="tab"][data-v93-step="4"]').click();
 await page.waitForTimeout(100);
 const availability = await page.locator('[data-v93-client-availability="true"]').textContent().catch(() => '');
 if (!availability || !availability.includes('Disponibilités client')) errors.push('Les disponibilités client ne sont pas visibles dans l’étape Passage.');
@@ -103,7 +103,7 @@ await page.screenshot({ path: path.join(outputDir, 'horizontal-journey-desktop-1
 
 await page.setViewportSize({ width: 390, height: 844 });
 await page.waitForTimeout(180);
-await page.locator('[data-v93-step="2"]').click();
+await page.locator('[role="tab"][data-v93-step="2"]').click();
 await page.waitForTimeout(80);
 const mobile = await page.evaluate(() => {
   const rail = document.querySelector('.v93-rail-scroll');

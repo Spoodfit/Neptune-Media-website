@@ -1,0 +1,328 @@
+/* Neptune Media Studio · reservation flow stability v87 */
+
+#newDialog.dialog {
+  width: min(940px, calc(100vw - 24px));
+  max-width: 940px;
+  max-height: calc(100dvh - 24px);
+  margin: auto;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 24px;
+}
+
+#newDialog .dialog-card {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  max-height: calc(100dvh - 24px);
+  margin: 0;
+  padding: 0 28px 28px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
+}
+
+#newDialog .dialog-head {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  margin: 0 -28px 18px;
+  padding: 24px 28px 17px;
+  border-bottom: 1px solid rgba(218, 222, 236, .92);
+  background: rgba(255, 255, 255, .96);
+  backdrop-filter: blur(16px);
+}
+
+#newDialog .dialog-head > div,
+#newDialog .fields,
+#newDialog .fields > *,
+#newDialog .crm-v86__picker,
+#newDialog .manual-scheduling-options-v85,
+#newDialog input,
+#newDialog select,
+#newDialog textarea {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+#newDialog .fields {
+  align-items: start;
+}
+
+#newDialog .fields label,
+#newDialog .crm-v86__picker label {
+  min-width: 0;
+}
+
+#newDialog input,
+#newDialog select,
+#newDialog textarea {
+  width: 100%;
+}
+
+#newDialog .crm-v86__picker-results {
+  max-height: min(300px, 30dvh);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+#newDialog .crm-v86__picker-results button,
+#newDialog .crm-v86__selected,
+#newDialog .manual-scheduling-options-v85 .check {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.reservation-flow-v87__section-title {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 8px 0 -2px;
+  padding-top: 12px;
+  border-top: 1px solid #eceef5;
+}
+
+.reservation-flow-v87__section-title:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.reservation-flow-v87__section-title strong {
+  color: #202640;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.reservation-flow-v87__section-title small {
+  max-width: 58%;
+  color: #7a8094;
+  font-size: 11px;
+  line-height: 1.35;
+  text-align: right;
+}
+
+.reservation-flow-v87__planning-gate {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0 0 2px;
+  padding: 11px 13px;
+  border: 1px solid #e3e1fb;
+  border-radius: 13px;
+  background: #f7f6ff;
+  color: #5f657d;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.reservation-flow-v87__planning-gate::before {
+  content: 'i';
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  border-radius: 999px;
+  background: #6652dc;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.reservation-flow-v87__planning-gate[data-locked='true'] {
+  border-color: #eadfc9;
+  background: #fffbf3;
+  color: #6e6250;
+}
+
+.reservation-flow-v87__planning-gate[data-locked='true']::before {
+  content: '1';
+  background: #9b7431;
+}
+
+#newDialog [data-reservation-planning-locked='true'] {
+  opacity: .56;
+}
+
+#newDialog [data-reservation-planning-locked='true'] input,
+#newDialog [data-reservation-planning-locked='true'] select {
+  cursor: not-allowed;
+}
+
+.reservation-flow-v87__footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 25;
+  display: grid;
+  gap: 8px;
+  margin: 18px -28px -28px;
+  padding: 14px 28px max(18px, env(safe-area-inset-bottom));
+  border-top: 1px solid rgba(218, 222, 236, .92);
+  background: rgba(255, 255, 255, .97);
+  box-shadow: 0 -14px 32px rgba(30, 37, 70, .07);
+  backdrop-filter: blur(16px);
+}
+
+.reservation-flow-v87__footer > .button[type='submit'] {
+  width: 100%;
+  min-height: 48px;
+  margin: 0;
+}
+
+.reservation-flow-v87__footer .crm-v86__autopilot-note {
+  margin: 0;
+}
+
+.reservation-flow-v87__footer .message {
+  min-height: 0;
+  margin: 0;
+}
+
+#clientDialog.dialog.drawer {
+  width: min(1180px, calc(100vw - 20px));
+  height: min(900px, calc(100dvh - 20px));
+  max-height: calc(100dvh - 20px);
+  overflow: hidden;
+}
+
+#clientDialog .drawer-card {
+  max-width: 100%;
+  max-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+#feedbackDialog.feedback-dialog {
+  max-width: calc(100vw - 20px);
+  max-height: calc(100dvh - 20px);
+  overflow: hidden;
+}
+
+#feedbackDialog .feedback-dialog-card {
+  max-height: calc(100dvh - 20px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 720px) {
+  #newDialog.dialog {
+    width: calc(100vw - 10px);
+    max-height: calc(100dvh - 10px);
+    border-radius: 18px;
+  }
+
+  #newDialog .dialog-card {
+    max-height: calc(100dvh - 10px);
+    padding: 0 16px 20px;
+  }
+
+  #newDialog .dialog-head {
+    margin: 0 -16px 14px;
+    padding: max(16px, env(safe-area-inset-top)) 16px 13px;
+  }
+
+  #newDialog .dialog-head h2 {
+    font-size: clamp(1.35rem, 6vw, 1.7rem);
+    line-height: 1.06;
+  }
+
+  #newDialog .close {
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+  }
+
+  #newDialog .fields {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 11px;
+  }
+
+  #newDialog .fields .wide,
+  #newDialog .reservation-flow-v87__section-title,
+  #newDialog .reservation-flow-v87__planning-gate {
+    grid-column: 1;
+  }
+
+  .reservation-flow-v87__section-title {
+    display: block;
+  }
+
+  .reservation-flow-v87__section-title small {
+    display: block;
+    max-width: none;
+    margin-top: 3px;
+    text-align: left;
+  }
+
+  #newDialog .crm-v86__picker {
+    padding: 12px;
+  }
+
+  #newDialog .crm-v86__picker-results {
+    max-height: 26dvh;
+  }
+
+  #newDialog .manual-scheduling-options-v85 {
+    grid-template-columns: 1fr !important;
+  }
+
+  .reservation-flow-v87__footer {
+    margin: 15px -16px -20px;
+    padding: 12px 16px max(14px, env(safe-area-inset-bottom));
+  }
+
+  #clientDialog.dialog.drawer {
+    width: calc(100vw - 8px);
+    height: calc(100dvh - 8px);
+    max-height: calc(100dvh - 8px);
+    border-radius: 16px;
+  }
+
+  #feedbackDialog.feedback-dialog {
+    max-width: calc(100vw - 8px);
+    max-height: calc(100dvh - 8px);
+  }
+}
+
+@media (max-height: 650px) and (orientation: landscape) {
+  #newDialog.dialog {
+    max-height: calc(100dvh - 8px);
+  }
+
+  #newDialog .dialog-card {
+    max-height: calc(100dvh - 8px);
+    padding-bottom: 16px;
+  }
+
+  #newDialog .dialog-head {
+    padding-top: 11px;
+    padding-bottom: 10px;
+    margin-bottom: 11px;
+  }
+
+  #newDialog .dialog-head .eyebrow {
+    display: none;
+  }
+
+  .reservation-flow-v87__footer {
+    padding-top: 9px;
+    padding-bottom: max(9px, env(safe-area-inset-bottom));
+  }
+
+  .reservation-flow-v87__footer .crm-v86__autopilot-note {
+    display: none;
+  }
+}

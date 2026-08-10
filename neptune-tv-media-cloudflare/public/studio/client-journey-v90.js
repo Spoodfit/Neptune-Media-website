@@ -1,4 +1,4 @@
-const RELEASE = 'neptune-studio-client-journey-20260810-v91';
+const RELEASE = 'neptune-studio-client-journey-20260810-v91-1';
 const $ = (selector, root = document) => root?.querySelector(selector) || null;
 const $$ = (selector, root = document) => [...(root?.querySelectorAll(selector) || [])];
 const cache = new Map();
@@ -74,7 +74,10 @@ function enhance() {
       if (host.isConnected && host.dataset.orderId === orderId) render(host, data);
     })
     .catch((error) => {
-      if (host.isConnected) host.innerHTML = errorMarkup(errorLabel(error.message));
+      if (host.isConnected) {
+        host.innerHTML = errorMarkup(errorLabel(error.message));
+        $('[data-j90-reload]', host)?.addEventListener('click', () => location.reload());
+      }
     })
     .finally(() => {
       if (loadingOrderId === orderId) loadingOrderId = '';
@@ -106,7 +109,7 @@ function render(host, data) {
     filesCheck(order, workflow),
   ];
   const shell = host.closest('.dossier-v89-shell');
-  shell?.classList.toggle('j90-payment-attention', payment.tone === 'warning' || payment.tone === 'current');
+  shell?.classList.toggle('j90-payment-attention', payment.blocking);
   if (shell) shell.dataset.j90PaymentState = stripe.state || 'unknown';
 
   host.innerHTML = `
@@ -115,7 +118,7 @@ function render(host, data) {
         <div>
           <p class="eyebrow">VÉRIFICATIONS AUTOMATIQUES</p>
           <h4>${escapeHtml(payment.heading)}</h4>
-          <p>Neptune contrôle les données utiles. Le panneau « Prochaine action » plus bas reste l’unique endroit où valider l’avancement du dossier.</p>
+          <p>Neptune vérifie les données utiles. Il n’y a qu’un seul endroit pour agir : le panneau « Prochaine action ».</p>
         </div>
         <button type="button" class="j90-refresh" data-j90-refresh>Actualiser les vérifications</button>
       </header>
@@ -126,6 +129,8 @@ function render(host, data) {
       </div>
       <p class="j90-global-message" data-j90-global-message aria-live="polite"></p>
     </section>`;
+
+  applyPaymentGate(host, payment, data);
   bind(host, data);
 }
 
@@ -135,53 +140,43 @@ function paymentState(order, stripe, target) {
   const amount = money(order.amountTotal || target.amountTotal, order.currency || target.currency);
   if (state === 'not_required') {
     return {
-      state, tone: 'done', heading: 'Aucun paiement requis', title: 'Paiement', value: 'Aucun paiement requis',
-      detail: 'Ce dossier a été créé comme partenaire, adhérent ou exception interne sans règlement à encaisser.', options: [], actions: [],
+      state, blocking: false, tone: 'done', heading: 'Dossier prêt à avancer', title: 'Paiement', value: 'Aucun paiement requis',
+      detail: 'Ce dossier est explicitement exempté de règlement. Le parcours opérationnel peut continuer.', options: [],
     };
   }
   if (state === 'paid_verified') {
     return {
-      state, tone: 'done', heading: 'Paiement Stripe vérifié', title: 'Paiement', value: amount,
-      detail: 'Le règlement est rattaché à ce dossier dans Stripe. Aucune action n’est nécessaire.', options: [], actions: [],
+      state, blocking: false, tone: 'done', heading: 'Dossier prêt à avancer', title: 'Paiement Stripe', value: amount,
+      detail: 'Le règlement est vérifié et rattaché à ce dossier dans Stripe. Aucune action de paiement n’est nécessaire.', options: [],
     };
   }
   if (state === 'payment_found') {
     return {
-      state, tone: 'current', heading: 'Un paiement Stripe a été trouvé', title: 'Paiement', value: amount,
-      detail: 'Neptune a trouvé un paiement correspondant. Vérifiez puis rattachez-le explicitement à ce dossier.', options,
-      actions: [{ kind: 'reconcile', label: 'Vérifier et rattacher le paiement', tone: 'primary' }],
+      state, blocking: true, tone: 'current', heading: 'Paiement à rattacher avant de poursuivre', title: 'Paiement Stripe', value: amount,
+      detail: 'Neptune a trouvé un paiement correspondant. Le dossier reste bloqué tant qu’il n’est pas explicitement rattaché.', options,
     };
   }
   if (state === 'ambiguous') {
     return {
-      state, tone: 'warning', heading: 'Le paiement doit être vérifié', title: 'Paiement', value: amount,
-      detail: 'Plusieurs paiements Stripe peuvent correspondre à ce dossier. Neptune refuse de choisir automatiquement.', options,
-      actions: [{ kind: 'reconcile', label: 'Rechercher à nouveau dans Stripe' }],
+      state, blocking: true, tone: 'warning', heading: 'Paiement à vérifier avant de poursuivre', title: 'Paiement Stripe', value: amount,
+      detail: 'Plusieurs paiements Stripe peuvent correspondre. Neptune ne choisit jamais arbitrairement.', options,
     };
   }
   if (state === 'local_paid_unverified') {
     return {
-      state, tone: 'warning', heading: 'Ancien statut « payé » à vérifier', title: 'Paiement', value: amount,
-      detail: 'Le dossier était marqué payé dans Neptune, mais aucun identifiant Stripe n’est encore rattaché. Ce statut local ne vaut pas preuve de paiement.', options,
-      actions: [{ kind: 'reconcile', label: 'Vérifier le paiement dans Stripe', tone: 'primary' }],
+      state, blocking: true, tone: 'warning', heading: 'Ancien statut “payé” non vérifié', title: 'Paiement Stripe', value: amount,
+      detail: 'Le dossier était marqué payé dans Neptune, mais aucune preuve Stripe n’est rattachée. Le parcours reste bloqué.', options,
     };
   }
   if (state === 'unconfigured') {
     return {
-      state, tone: 'warning', heading: 'Stripe n’est pas disponible', title: 'Paiement', value: amount,
-      detail: 'La connexion Stripe du Worker n’est pas configurée. Le dossier reste visible mais le paiement ne peut pas être vérifié.', options: [], actions: [],
+      state, blocking: true, tone: 'warning', heading: 'Stripe indisponible : dossier bloqué', title: 'Paiement Stripe', value: amount,
+      detail: 'Neptune ne peut pas vérifier le règlement. Aucune étape opérationnelle ne doit être validée tant que Stripe n’est pas disponible.', options: [],
     };
   }
-
-  const actions = [{ kind: 'reconcile', label: 'Vérifier le paiement dans Stripe', tone: 'primary' }];
-  const preferred = options.find((item) => item.recommended) || (options.length === 1 ? options[0] : null);
-  if (preferred) {
-    actions.push({ kind: 'copy-payment', label: 'Copier le lien de paiement', payload: preferred.url });
-    if (target.opportunityId) actions.push({ kind: 'send-payment', label: 'Envoyer le lien au client' });
-  }
   return {
-    state, tone: 'current', heading: 'Paiement en attente', title: 'Paiement', value: amount,
-    detail: 'Aucun règlement Stripe vérifié n’est rattaché à ce dossier pour le moment.', options, actions,
+    state, blocking: true, tone: 'current', heading: 'Paiement en attente avant la suite', title: 'Paiement Stripe', value: amount,
+    detail: 'Aucun règlement Stripe vérifié n’est rattaché à ce dossier. La prochaine action est donc le paiement.', options,
   };
 }
 
@@ -229,13 +224,10 @@ function paymentMarkup(payment) {
     ? `<details class="j90-payment-options"><summary>Voir les liens Stripe disponibles</summary><div>${payment.options.slice(0, 4).map((option) => `
         <article>
           <span><b>${escapeHtml(option.description || 'Tarif Stripe')}</b><small>${escapeHtml(money(option.amountTotal, option.currency))}${option.recommended ? ' · recommandé' : ''}</small></span>
-          <button type="button" data-j90-copy-payment="${escapeHtml(option.url)}">Copier ce lien</button>
+          <span class="j90-option-note">Utilisable depuis « Prochaine action »</span>
         </article>`).join('')}</div></details>`
     : '';
-  const actions = payment.actions?.length
-    ? `<div class="j90-actions">${payment.actions.map(actionButton).join('')}</div>`
-    : '<span class="j90-no-action">Aucune action nécessaire.</span>';
-  return `<article class="j90-payment is-${escapeHtml(payment.tone)}"><div class="j90-payment-head"><span class="j90-dot"></span><div><small>${escapeHtml(payment.title)}</small><strong>${escapeHtml(payment.value)}</strong></div></div><p>${escapeHtml(payment.detail)}</p>${options}${actions}<div class="j90-confirm" data-j90-confirm hidden></div><p class="j90-message" data-j90-message></p></article>`;
+  return `<article class="j90-payment is-${escapeHtml(payment.tone)}"><div class="j90-payment-head"><span class="j90-dot"></span><div><small>${escapeHtml(payment.title)}</small><strong>${escapeHtml(payment.value)}</strong></div></div><p>${escapeHtml(payment.detail)}</p>${options}<span class="j90-no-action">${payment.blocking ? 'Action requise dans « Prochaine action » ci-dessous.' : 'Aucune action de paiement nécessaire.'}</span></article>`;
 }
 
 function checkMarkup(check) {
@@ -243,33 +235,61 @@ function checkMarkup(check) {
   return `<article class="j90-check is-${escapeHtml(check.tone)}"><i>${icon}</i><div><small>${escapeHtml(check.label)} · ${escapeHtml(check.source)}</small><strong>${escapeHtml(check.value)}</strong><span>${escapeHtml(check.detail)}</span></div></article>`;
 }
 
-function actionButton(action) {
-  const attrs = [];
-  if (action.kind === 'reconcile') attrs.push('data-j90-reconcile');
-  if (action.kind === 'send-payment') attrs.push('data-j90-send-payment');
-  if (action.kind === 'copy-payment') attrs.push(`data-j90-copy-payment="${escapeHtml(action.payload)}"`);
-  return `<button type="button" class="${action.tone === 'primary' ? 'primary' : ''}" ${attrs.join(' ')}>${escapeHtml(action.label)}</button>`;
-}
+function applyPaymentGate(host, payment, data) {
+  if (!payment.blocking) return;
+  const shell = host.closest('.dossier-v89-shell');
+  const card = $('[data-d89-action-card]', shell);
+  if (!card) return;
+  const target = data.stripe?.target || {};
+  const preferred = payment.options?.find((item) => item.recommended) || (payment.options?.length === 1 ? payment.options[0] : null);
+  const copyButton = preferred
+    ? `<button type="button" class="secondary" data-j90-gate-copy="${escapeHtml(preferred.url)}">Copier le lien de paiement</button>`
+    : '';
+  const sendButton = preferred && target.opportunityId
+    ? '<button type="button" class="secondary" data-j90-gate-send>Envoyer le lien au client</button>'
+    : '';
+  const reconcileLabel = payment.state === 'payment_found'
+    ? 'Rattacher le paiement trouvé'
+    : payment.state === 'ambiguous'
+      ? 'Actualiser après vérification Stripe'
+      : 'Vérifier le paiement dans Stripe';
+  const reconcileButton = payment.state === 'unconfigured'
+    ? ''
+    : `<button type="button" data-j90-gate-reconcile>${escapeHtml(reconcileLabel)}</button>`;
+  const title = payment.state === 'payment_found'
+    ? 'Rattacher le paiement Stripe'
+    : payment.state === 'ambiguous'
+      ? 'Vérifier le bon paiement Stripe'
+      : payment.state === 'unconfigured'
+        ? 'Rétablir la connexion Stripe'
+        : 'Vérifier le paiement du client';
+  const text = payment.state === 'ambiguous'
+    ? 'Plusieurs transactions peuvent correspondre. Vérifiez le paiement côté Stripe puis actualisez. Neptune ne fera aucun rapprochement incertain.'
+    : payment.state === 'unconfigured'
+      ? 'Stripe n’est pas accessible depuis Neptune. Le dossier reste volontairement bloqué pour éviter une validation erronée.'
+      : payment.state === 'payment_found'
+        ? 'Un règlement correspondant a été trouvé. Rattachez-le explicitement avant de continuer le parcours.'
+        : 'Aucun règlement Stripe vérifié n’est encore rattaché. Le dossier ne doit pas avancer avant cette vérification.';
 
-function bind(host, data) {
-  $('[data-j90-refresh]', host)?.addEventListener('click', () => refresh(host.dataset.orderId, host, false));
-  $$('[data-j90-reconcile]', host).forEach((button) => button.addEventListener('click', () => reconcile(host.dataset.orderId, host, button)));
-  $$('[data-j90-copy-payment]', host).forEach((button) => button.addEventListener('click', async () => {
-    const url = safeHttp(button.dataset.j90CopyPayment);
+  card.classList.add('j90-payment-gate');
+  card.innerHTML = `<small>PROCHAINE ACTION · PAIEMENT</small><h4>${escapeHtml(title)}</h4><p>${escapeHtml(text)}</p>${reconcileButton || copyButton || sendButton ? `<div class="dossier-v89-action-buttons">${reconcileButton}${copyButton}${sendButton}</div>` : '<span class="dossier-v89-no-action">Aucune validation opérationnelle disponible tant que Stripe est indisponible.</span>'}<p class="dossier-v89-message" data-j90-gate-message aria-live="polite"></p>`;
+
+  $('[data-j90-gate-reconcile]', card)?.addEventListener('click', (event) => reconcile(host.dataset.orderId, host, event.currentTarget));
+  $('[data-j90-gate-copy]', card)?.addEventListener('click', async (event) => {
+    const url = safeHttp(event.currentTarget.dataset.j90GateCopy);
     if (!url) return;
     try {
       await navigator.clipboard.writeText(url);
-      setCardMessage(button.closest('.j90-payment'), 'Lien Stripe copié.');
+      setGateMessage(card, 'Lien de paiement copié.');
     } catch {
-      setCardMessage(button.closest('.j90-payment'), 'Copie impossible sur cet appareil.', true);
+      setGateMessage(card, 'Copie impossible sur cet appareil.', true);
     }
-  }));
-  $$('[data-j90-send-payment]', host).forEach((button) => button.addEventListener('click', () => {
-    const card = button.closest('.j90-payment');
-    confirmAction(card, 'Envoyer maintenant le lien de paiement Stripe au client ?', async () => {
+  });
+  $('[data-j90-gate-send]', card)?.addEventListener('click', (event) => {
+    const button = event.currentTarget;
+    confirmGate(card, 'Envoyer maintenant le lien de paiement Stripe au client ?', async () => {
       button.disabled = true;
       try {
-        const target = data.stripe?.target || {};
         const result = await api('/api/admin/crm-v86/action', {
           method: 'POST',
           body: JSON.stringify({
@@ -279,14 +299,18 @@ function bind(host, data) {
             action: 'payment',
           }),
         });
-        setCardMessage(card, result.suppressed ? 'Un lien de paiement récent a déjà été envoyé. Aucun doublon.' : 'Lien de paiement envoyé au client.');
+        setGateMessage(card, result.suppressed ? 'Un lien récent a déjà été envoyé. Aucun doublon.' : 'Lien de paiement envoyé au client.');
       } catch (error) {
-        setCardMessage(card, errorLabel(error.message), true);
+        setGateMessage(card, errorLabel(error.message), true);
       } finally {
         button.disabled = false;
       }
     });
-  }));
+  });
+}
+
+function bind(host) {
+  $('[data-j90-refresh]', host)?.addEventListener('click', () => refresh(host.dataset.orderId, host, false));
 }
 
 async function reconcile(orderId, host, button) {
@@ -302,7 +326,7 @@ async function reconcile(orderId, host, button) {
   } catch (error) {
     setGlobalMessage(host, errorLabel(error.message), true);
   } finally {
-    button.disabled = false;
+    if (button.isConnected) button.disabled = false;
   }
 }
 
@@ -319,13 +343,15 @@ async function refresh(orderId, host, applyStripe) {
   }
 }
 
-function confirmAction(card, text, callback) {
-  const box = $('[data-j90-confirm]', card);
-  if (!box) return;
-  box.innerHTML = `<p>${escapeHtml(text)}</p><div><button type="button" data-cancel>Annuler</button><button type="button" class="primary" data-confirm>Confirmer</button></div>`;
-  box.hidden = false;
-  $('[data-cancel]', box)?.addEventListener('click', () => { box.hidden = true; }, { once: true });
-  $('[data-confirm]', box)?.addEventListener('click', async () => { box.hidden = true; await callback(); }, { once: true });
+function confirmGate(card, text, callback) {
+  const existing = $('.j90-gate-confirm', card);
+  existing?.remove();
+  const box = document.createElement('div');
+  box.className = 'dossier-v89-confirm j90-gate-confirm';
+  box.innerHTML = `<p>${escapeHtml(text)}</p><div><button type="button" class="secondary" data-cancel>Annuler</button><button type="button" data-confirm>Confirmer</button></div>`;
+  $('[data-j90-gate-message]', card)?.before(box);
+  $('[data-cancel]', box)?.addEventListener('click', () => box.remove(), { once: true });
+  $('[data-confirm]', box)?.addEventListener('click', async () => { box.remove(); await callback(); }, { once: true });
 }
 
 function loadingMarkup() {
@@ -333,11 +359,11 @@ function loadingMarkup() {
 }
 
 function errorMarkup(message) {
-  return `<section class="j90-journey"><div class="j90-error"><strong>Vérifications indisponibles</strong><span>${escapeHtml(message)}</span><button type="button" onclick="location.reload()">Actualiser la page</button></div></section>`;
+  return `<section class="j90-journey"><div class="j90-error"><strong>Vérifications indisponibles</strong><span>${escapeHtml(message)}</span><button type="button" data-j90-reload>Actualiser la page</button></div></section>`;
 }
 
-function setCardMessage(card, text, error = false) {
-  const node = $('[data-j90-message]', card);
+function setGateMessage(card, text, error = false) {
+  const node = $('[data-j90-gate-message]', card);
   if (!node) return;
   node.textContent = text || '';
   node.classList.toggle('is-error', error);
@@ -407,7 +433,7 @@ function errorLabel(value) {
     order_not_found: 'Dossier introuvable.',
     unauthorized: 'Votre session Studio a expiré.',
     csrf_failed: 'Votre session de sécurité a expiré. Actualisez la page.',
-    payment_passage_required: 'Ce dossier ne possède pas encore de lien de paiement envoyable automatiquement. Utilisez « Copier le lien de paiement ».',
+    payment_passage_required: 'Ce dossier ne possède pas encore de lien de paiement envoyable automatiquement. Utilisez le lien Stripe disponible.',
   })[value] || String(value || 'Erreur de synchronisation.');
 }
 

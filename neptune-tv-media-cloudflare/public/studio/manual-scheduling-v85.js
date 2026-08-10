@@ -1,4 +1,4 @@
-const RELEASE = 'neptune-studio-manual-scheduling-20260810-v85';
+const RELEASE = 'neptune-studio-manual-scheduling-20260810-v91';
 const $ = (selector, root = document) => root.querySelector(selector);
 let enhanceTimer = 0;
 let adminStatePromise = null;
@@ -30,26 +30,43 @@ function scheduleEnhance() {
 
 function enhanceNewPassageForm() {
   const form = $('#newOrder');
-  if (!form || form.dataset.manualSchedulingV85) return;
+  if (!form || form.dataset.manualSchedulingV91) return;
+  form.dataset.manualSchedulingV91 = 'true';
   form.dataset.manualSchedulingV85 = 'true';
+
   const trigger = $('#newClient');
   if (trigger) trigger.textContent = 'Nouveau passage';
   const title = $('.dialog-head h2', form);
-  if (title) title.textContent = 'Créer un passage sans tunnel de vente';
+  if (title) title.textContent = 'Créer un passage';
   const eyebrow = $('.dialog-head .eyebrow', form);
-  if (eyebrow) eyebrow.textContent = 'NOUVEAU PASSAGE MANUEL';
+  if (eyebrow) eyebrow.textContent = 'SANS PASSER PAR LE TUNNEL DE VENTE';
 
   const fields = $('.fields', form);
   if (!fields) return;
+
   const emailLabel = $('[name="email"]', fields)?.closest('label');
   if (emailLabel && !$('[name="sourceType"]', fields)) {
     emailLabel.insertAdjacentHTML('beforebegin', `
-      <label><span>Origine du dossier</span><select name="sourceType">
+      <label><span>Type de dossier</span><select name="sourceType">
         <option value="partner">Partenaire</option>
         <option value="member">Adhérent Neptune</option>
         <option value="direct" selected>Client direct</option>
         <option value="other">Autre</option>
       </select></label>`);
+  }
+
+  const amountInput = $('[name="amountEuros"]', fields);
+  const amountLabel = amountInput?.closest('label');
+  if (amountLabel) {
+    const label = $('span', amountLabel);
+    if (label) label.textContent = 'Montant à régler (€)';
+    if (!$('[name="paymentRequirement"]', fields)) {
+      amountLabel.insertAdjacentHTML('beforebegin', `
+        <label data-payment-mode-v91><span>Paiement du dossier</span><select name="paymentRequirement">
+          <option value="stripe" selected>À vérifier sur Stripe</option>
+          <option value="none">Aucun paiement requis</option>
+        </select><small>Neptune ne considère jamais un montant saisi ici comme un paiement reçu.</small></label>`);
+    }
   }
 
   const appointmentLabel = $('[name="appointmentAt"]', fields)?.closest('label');
@@ -61,17 +78,21 @@ function enhanceNewPassageForm() {
   const prepUrl = $('[name="preparationUrl"]', fields);
   if (prepUrl) {
     const label = prepUrl.closest('label')?.querySelector('span');
-    if (label) label.textContent = 'Lien visio de préparation (optionnel)';
+    if (label) label.textContent = 'Lien de réunion de préparation';
     prepUrl.placeholder = 'Créé automatiquement avec Google Meet si possible';
   }
 
   const sendEmail = $('[name="sendEmail"]', form)?.closest('.check');
-  if (sendEmail && !$('.manual-scheduling-options-v85', form)) {
-    sendEmail.insertAdjacentHTML('beforebegin', `
-      <section class="manual-scheduling-options-v85">
-        <label class="check"><input name="filmingConfirmed" type="checkbox"><span><b>Date de passage déjà convenue</b><small>À cocher uniquement si le créneau a déjà été validé en amont. Sinon Neptune demandera la confirmation au fournisseur.</small></span></label>
-        <label class="check"><input name="createCalendar" type="checkbox" checked><span><b>Créer / synchroniser Google Agenda + Meet</b><small>Le client reçoit l’invitation Google et retrouve le bouton de réunion dans son espace.</small></span></label>
-      </section>`);
+  if (sendEmail) {
+    const text = $('span', sendEmail);
+    if (text) text.textContent = 'Envoyer l’accès à l’espace client maintenant';
+    if (!$('.manual-scheduling-options-v85', form)) {
+      sendEmail.insertAdjacentHTML('beforebegin', `
+        <section class="manual-scheduling-options-v85">
+          <label class="check"><input name="filmingConfirmed" type="checkbox"><span><b>Date de passage déjà validée</b><small>À cocher si le client et le studio ont déjà convenu du créneau. Sinon Neptune demande la confirmation au fournisseur.</small></span></label>
+          <label class="check"><input name="createCalendar" type="checkbox" checked><span><b>Créer le rendez-vous Google Agenda + Meet</b><small>Si une date de préparation est renseignée, le client reçoit l’invitation et retrouve le bouton de réunion dans son espace.</small></span></label>
+        </section>`);
+    }
   }
 
   const filmingInput = $('[name="filmingAt"]', form);
@@ -84,13 +105,27 @@ function enhanceNewPassageForm() {
   filmingInput?.addEventListener('input', refreshConfirmed);
   refreshConfirmed();
 
+  const paymentSelect = $('[name="paymentRequirement"]', form);
+  const refreshPayment = () => {
+    if (!amountInput || !paymentSelect) return;
+    const noPayment = paymentSelect.value === 'none';
+    amountInput.disabled = noPayment;
+    amountInput.required = !noPayment;
+    amountInput.min = '0.01';
+    if (noPayment) amountInput.value = '';
+    amountLabel?.classList.toggle('is-disabled', noPayment);
+  };
+  paymentSelect?.addEventListener('change', refreshPayment);
+  refreshPayment();
+
   const submit = $('button[type="submit"]', form);
   if (submit) submit.textContent = 'Créer le passage';
 }
 
 function enhancePassageEditor() {
   const form = $('#passageEditorFormV80');
-  if (!form || form.dataset.manualSchedulingV85) return;
+  if (!form || form.dataset.manualSchedulingV91) return;
+  form.dataset.manualSchedulingV91 = 'true';
   form.dataset.manualSchedulingV85 = 'true';
   const dateCard = $('[name="appointmentAt"]', form)?.closest('.passage-v80-card');
   const fields = dateCard?.querySelector('.passage-v80-fields');
@@ -98,7 +133,7 @@ function enhancePassageEditor() {
     fields.insertAdjacentHTML('afterend', `
       <label class="passage-calendar-sync-v85">
         <input name="syncGoogleCalendar" type="checkbox" checked>
-        <span><b>Synchroniser la préparation avec Google Agenda + Meet</b><small>Créer, déplacer ou annuler le même événement Google sans doublon.</small></span>
+        <span><b>Synchroniser avec Google Agenda + Meet</b><small>Créer, déplacer ou annuler le même rendez-vous sans doublon.</small></span>
       </label>`);
   }
   preserveNoPaymentStatus(form);
@@ -113,13 +148,15 @@ async function preserveNoPaymentStatus(form) {
     const orderId = String(new FormData(form).get('orderId') || '');
     const order = (state.orders || []).find((item) => item.id === orderId);
     if (order?.paymentStatus !== 'no_payment_required') return;
-    const option = document.createElement('option');
-    option.value = 'no_payment_required';
-    option.textContent = 'Sans paiement requis';
-    option.selected = true;
-    select.prepend(option);
+    if (![...select.options].some((option) => option.value === 'no_payment_required')) {
+      const option = document.createElement('option');
+      option.value = 'no_payment_required';
+      option.textContent = 'Aucun paiement requis';
+      select.prepend(option);
+    }
+    select.value = 'no_payment_required';
   } catch {
-    // Non-blocking: the existing editor remains usable.
+    // Non bloquant.
   }
 }
 
@@ -127,14 +164,14 @@ async function interceptSubmit(event) {
   const form = event.target;
   if (!(form instanceof HTMLFormElement)) return;
 
-  if (form.id === 'newOrder' && form.dataset.manualSchedulingV85) {
+  if (form.id === 'newOrder' && form.dataset.manualSchedulingV91) {
     event.preventDefault();
     event.stopImmediatePropagation();
     await createManualPassage(form);
     return;
   }
 
-  if (form.id !== 'passageEditorFormV80' || !form.dataset.manualSchedulingV85) return;
+  if (form.id !== 'passageEditorFormV80' || !form.dataset.manualSchedulingV91) return;
   if (form.dataset.calendarBypassV85 === 'true') {
     delete form.dataset.calendarBypassV85;
     return;
@@ -154,14 +191,18 @@ async function createManualPassage(form) {
   const appointmentAt = localToIso(data.get('appointmentAt'));
   const filmingAt = localToIso(data.get('filmingAt'));
   const createCalendar = data.get('createCalendar') === 'on' && Boolean(appointmentAt);
+  const paymentRequirement = String(data.get('paymentRequirement') || 'stripe');
   const amountEuros = Number(data.get('amountEuros') || 0);
 
   if (appointmentAt && filmingAt && new Date(filmingAt) < new Date(appointmentAt)) {
-    return setMessage(message, 'La date du passage ne peut pas être antérieure au rendez-vous de préparation.', true);
+    return setMessage(message, 'Le passage ne peut pas avoir lieu avant le rendez-vous de préparation.', true);
+  }
+  if (paymentRequirement === 'stripe' && (!Number.isFinite(amountEuros) || amountEuros <= 0)) {
+    return setMessage(message, 'Indiquez le montant à régler, ou choisissez « Aucun paiement requis ».', true);
   }
 
   button.disabled = true;
-  setMessage(message, 'Création du passage et synchronisation du parcours…');
+  setMessage(message, 'Création du passage…');
   try {
     const result = await api('/api/admin/manual-passage', {
       method: 'POST',
@@ -171,9 +212,9 @@ async function createManualPassage(form) {
         company: data.get('company'),
         title: data.get('title'),
         format: data.get('format'),
-        amountTotal: Math.round((Number.isFinite(amountEuros) ? amountEuros : 0) * 100),
+        amountTotal: paymentRequirement === 'stripe' ? Math.round(amountEuros * 100) : 0,
         currency: 'eur',
-        paymentStatus: amountEuros > 0 ? 'paid' : 'no_payment_required',
+        paymentStatus: paymentRequirement === 'none' ? 'no_payment_required' : 'payment_pending',
         appointmentAt,
         filmingAt,
         preparationUrl: data.get('preparationUrl'),
@@ -196,15 +237,13 @@ async function createManualPassage(form) {
       }
     }
 
-    const supplierNote = result.supplierStatus === 'pending' && filmingAt
-      ? ' La confirmation de date a été transmise au fournisseur.'
-      : '';
-    const calendarNote = calendar
-      ? ' Google Agenda et Meet sont synchronisés.'
-      : calendarWarning
-        ? ` ${calendarWarning}`
-        : '';
-    setMessage(message, `Passage créé.${supplierNote}${calendarNote}`, Boolean(calendarWarning));
+    const notes = [];
+    notes.push(paymentRequirement === 'none' ? 'Aucun paiement requis.' : 'Paiement à vérifier sur Stripe.');
+    if (result.supplierStatus === 'pending' && filmingAt) notes.push('Confirmation du studio fournisseur demandée.');
+    if (calendar) notes.push('Google Agenda et Meet synchronisés.');
+    if (calendarWarning) notes.push(calendarWarning);
+    setMessage(message, `Passage créé. ${notes.join(' ')}`, Boolean(calendarWarning));
+
     form.reset();
     form.elements.title.value = 'Passage Neptune Media';
     form.elements.sendEmail.checked = true;
@@ -212,8 +251,14 @@ async function createManualPassage(form) {
     if (calendarCheck) calendarCheck.checked = true;
     const source = $('[name="sourceType"]', form);
     if (source) source.value = 'direct';
+    const payment = $('[name="paymentRequirement"]', form);
+    if (payment) payment.value = 'stripe';
+    enhanceTimer = 0;
+    form.removeAttribute('data-manual-scheduling-v91');
+    form.removeAttribute('data-manual-scheduling-v85');
+    enhanceNewPassageForm();
     await refreshStudio();
-    setTimeout(() => $('#newDialog')?.close(), calendarWarning ? 1700 : 800);
+    setTimeout(() => $('#newDialog')?.close(), calendarWarning ? 1900 : 900);
   } catch (error) {
     setMessage(message, errorLabel(error.message), true);
   } finally {
@@ -247,10 +292,10 @@ async function syncPassageCalendarThenSave(form) {
     if (!appointmentAt && preparationUrl && isGoogleAppointmentUrl(preparationUrl.value)) preparationUrl.value = '';
     form.dataset.calendarBypassV85 = 'true';
     form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-    setTimeout(() => showToast(appointmentAt ? 'Google Agenda et l’espace client sont synchronisés.' : 'Rendez-vous Google annulé et espace client mis à jour.'), 450);
+    setTimeout(() => showToast(appointmentAt ? 'Rendez-vous et espace client synchronisés.' : 'Rendez-vous annulé et espace client mis à jour.'), 450);
   } catch (error) {
     const warning = calendarErrorLabel(error.message);
-    setMessage(message, `${warning} Les informations Neptune vont quand même être enregistrées.`, true);
+    setMessage(message, `${warning} Les informations Neptune sont quand même enregistrées.`, true);
     form.dataset.calendarBypassV85 = 'true';
     form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     setTimeout(() => showToast(warning, true), 650);
@@ -297,8 +342,8 @@ function isGoogleAppointmentUrl(value) {
 
 function calendarErrorLabel(code) {
   return ({
-    calendar_access_missing: 'Google Agenda n’est pas encore autorisé : relancez une fois le relais Apps Script.',
-    calendar_permission_required: 'Google Agenda doit être réautorisé dans Apps Script avant de pouvoir créer la visio.',
+    calendar_access_missing: 'Google Agenda n’est pas autorisé. Réautorisez le relais Google dans les réglages.',
+    calendar_permission_required: 'Google Agenda doit être réautorisé avant de créer la réunion.',
     calendar_sync_failed: 'Google Agenda n’a pas pu être synchronisé.',
     appointment_in_past: 'Le rendez-vous de préparation doit être placé dans le futur.',
   })[code] || 'La synchronisation Google Agenda n’a pas été confirmée.';
@@ -308,9 +353,9 @@ function errorLabel(code) {
   return ({
     unauthorized: 'Reconnectez-vous au Studio.',
     csrf_failed: 'La session de sécurité a expiré. Rechargez la page.',
-    invalid_order: 'Les informations du passage sont incomplètes.',
-    payment_not_confirmed: 'Le statut de paiement ne permet pas de créer ce passage.',
-    supplier_confirmation_failed: 'Le passage est créé, mais la demande fournisseur doit être vérifiée.',
+    invalid_order: 'Vérifiez l’e-mail et les informations du passage.',
+    payment_not_confirmed: 'Le paiement doit être vérifié avant cette action.',
+    supplier_confirmation_failed: 'Le passage est créé, mais la demande au studio fournisseur doit être vérifiée.',
   })[code] || 'Une erreur est survenue. Vérifiez les informations puis réessayez.';
 }
 

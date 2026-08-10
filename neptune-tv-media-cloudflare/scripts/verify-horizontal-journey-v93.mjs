@@ -24,7 +24,7 @@ expect('tabpanel is linked to its selected tab', js.includes("setAttribute('aria
 expect('reduced motion is respected', js.includes('prefers-reduced-motion: reduce') && css.includes('@media(prefers-reduced-motion:reduce)'));
 expect('v92 button delegation is protected from duplicate registration', js.includes("listener?.name === 'onAction'") && js.includes('__neptuneHorizontalV93Patched'));
 expect('client availability submitted in step 3 is surfaced in passage information', js.includes('enrichPassageInformation') && js.includes('Disponibilités client :'));
-expect('v92 still defines all eight business steps', ['Format','Paiement','Date du passage','Préparation','Passage','Réception vidéos','Montage','Terminé'].every((label) => v92.includes(`'${label}'`)));
+expect('v92 still defines all eight business steps', ['Format','Paiement','Date du passage','Préparation','Passage','Réception des vidéos','Montage','Terminé'].every((label) => v92.includes(`'${label}'`)));
 
 const failed = checks.filter((check) => !check.ok);
 for (const check of checks) console.log(`${check.ok ? '✓' : '✗'} ${check.name}`);

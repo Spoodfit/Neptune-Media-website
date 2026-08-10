@@ -1,0 +1,89 @@
+name: Verify Studio Drive Upload V94
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-studio-drive-upload-v94.yml'
+      - 'neptune-tv-media-cloudflare/src/entry-v32.js'
+      - 'neptune-tv-media-cloudflare/src/store-v26.js'
+      - 'neptune-tv-media-cloudflare/src/portal-drive-upload-v94.js'
+      - 'neptune-tv-media-cloudflare/public/studio/drive-upload-v94.js'
+      - 'neptune-tv-media-cloudflare/public/studio/drive-upload-v94.css'
+      - 'neptune-tv-media-cloudflare/scripts/verify-studio-drive-upload-v94.mjs'
+      - 'neptune-tv-media-cloudflare/tests/studio-drive-upload-v94.mjs'
+      - 'neptune-tv-media-cloudflare/wrangler.jsonc'
+      - 'wrangler.jsonc'
+      - 'package.json'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-studio-drive-upload-v94.yml'
+      - 'neptune-tv-media-cloudflare/src/entry-v32.js'
+      - 'neptune-tv-media-cloudflare/src/store-v26.js'
+      - 'neptune-tv-media-cloudflare/src/portal-drive-upload-v94.js'
+      - 'neptune-tv-media-cloudflare/public/studio/drive-upload-v94.js'
+      - 'neptune-tv-media-cloudflare/public/studio/drive-upload-v94.css'
+      - 'neptune-tv-media-cloudflare/scripts/verify-studio-drive-upload-v94.mjs'
+      - 'neptune-tv-media-cloudflare/tests/studio-drive-upload-v94.mjs'
+      - 'neptune-tv-media-cloudflare/wrangler.jsonc'
+      - 'wrangler.jsonc'
+      - 'package.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-drive-upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate v94 source contract
+        working-directory: neptune-tv-media-cloudflare
+        run: |
+          node --check src/entry-v32.js
+          node --check src/store-v26.js
+          node --check src/portal-drive-upload-v94.js
+          node --check public/studio/drive-upload-v94.js
+          node --check tests/studio-drive-upload-v94.mjs
+          node scripts/verify-studio-drive-upload-v94.mjs
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium
+
+      - name: Start Studio static server
+        shell: bash
+        run: |
+          python3 -m http.server 4173 --directory neptune-tv-media-cloudflare/public >/tmp/studio-v94-server.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:4173/studio/clients.html >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/studio-v94-server.log
+          exit 1
+
+      - name: Audit Montage Drive uploader desktop and mobile
+        env:
+          LOCAL_BASE_URL: http://127.0.0.1:4173
+          OUTPUT_DIR: test-results/studio-drive-upload-v94
+        run: node neptune-tv-media-cloudflare/tests/studio-drive-upload-v94.mjs
+
+      - name: Upload v94 visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: studio-drive-upload-v94-evidence
+          path: test-results/studio-drive-upload-v94
+          if-no-files-found: error
+          retention-days: 14

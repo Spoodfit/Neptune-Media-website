@@ -1,4 +1,5 @@
 import { StudioStore as LegacyStore } from './store-v22.js';
+import { ensureCrmV86Schema } from './portal-crm-v86.js';
 import { json } from './security.js';
 
 const RECIPIENT_COOLDOWN_MS = 45 * 60 * 1000;
@@ -9,6 +10,7 @@ export class StudioStore extends LegacyStore {
     const method = request.method.toUpperCase();
 
     if (method === 'POST' && url.pathname === '/portal/crm-action-prepare-v86') {
+      ensureCrmV86Schema(this);
       const response = await super.fetch(request);
       if (!response.ok) return response;
       const prepared = await response.json().catch(() => ({}));
@@ -39,6 +41,7 @@ export class StudioStore extends LegacyStore {
     }
 
     if (method === 'POST' && url.pathname === '/portal/workflow-email-due') {
+      ensureCrmV86Schema(this);
       const response = await super.fetch(request);
       if (!response.ok) return response;
       const due = await response.json().catch(() => ({}));

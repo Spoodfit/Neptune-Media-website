@@ -86,6 +86,7 @@ function bindDialogViewport(dialog, form) {
 
   const resetScroll = () => {
     if (!dialog.open) return;
+    syncPaymentLogic(form);
     requestAnimationFrame(() => {
       form.scrollTop = 0;
       const search = $('[data-client-search]', form);
@@ -98,6 +99,7 @@ function bindDialogViewport(dialog, form) {
     if (dialog.open) resetScroll();
   }).observe(dialog, { attributes: true, attributeFilter: ['open'] });
 
+  form.addEventListener('reset', () => setTimeout(() => syncPaymentLogic(form), 0));
   form.addEventListener('focusin', (event) => {
     const target = event.target;
     if (!(target instanceof HTMLElement) || !target.matches('input,select,textarea,button')) return;

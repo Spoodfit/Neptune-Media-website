@@ -15,6 +15,7 @@ const JOURNEY_JS = '/studio/client-journey-v90.js?v=3';
 const MANUAL_JS = '/studio/manual-scheduling-v85.js?v=2';
 const CLARITY_JS = '/studio/operational-clarity-v91.js?v=1';
 const STRIPE_STATUS_PATH = '/api/admin/stripe/status';
+const WORKFLOW_ACTION_PATH = '/api/admin/workflow/action';
 
 export default {
   async fetch(request, env, ctx) {
@@ -27,19 +28,20 @@ export default {
       const paymentStatus = payload.paymentStatus === 'no_payment_required'
         ? 'no_payment_required'
         : 'payment_pending';
-      const headers = new Headers(request.headers);
-      headers.delete('Content-Length');
-      const forwarded = new Request(request.url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ ...payload, paymentStatus }),
-      });
-      return withHeaders(await base.fetch(forwarded, env, ctx), url.pathname);
+      return withHeaders(await forwardJson(request, base, env, ctx, { ...payload, paymentStatus }), url.pathname);
     }
 
     if (request.method === 'POST' && url.pathname === STRIPE_STATUS_PATH) {
       if (!isSameOrigin(request)) return withHeaders(json({ error: 'origin_forbidden' }, 403), url.pathname);
       return withHeaders(secure(await stripeStatus(request, env, studio)), url.pathname);
+    }
+
+    if (request.method === 'POST' && url.pathname === WORKFLOW_ACTION_PATH) {
+      if (!isSameOrigin(request)) return withHeaders(json({ error: 'origin_forbidden' }, 403), url.pathname);
+      const payload = await request.json().catch(() => ({}));
+      const gate = await operationalPaymentGate(request, studio, payload.orderId);
+      if (!gate.ok) return withHeaders(json({ error: gate.error, paymentStatus: gate.paymentStatus }, gate.status), url.pathname);
+      return withHeaders(await forwardJson(request, base, env, ctx, payload), url.pathname);
     }
 
     let response = await base.fetch(request, env, ctx);
@@ -60,6 +62,22 @@ export default {
     if (typeof base.scheduled === 'function') return base.scheduled(controller, env, ctx);
   },
 };
+
+async function operationalPaymentGate(request, studio, orderId) {
+  const id = String(orderId || '').trim();
+  if (!id) return { ok: false, error: 'invalid_order', paymentStatus: '', status: 400 };
+  const auth = adminAuth(request);
+  const targetResponse = await callStore(studio, '/portal/stripe-target-v90', { ...auth, payload: { orderId: id } });
+  const target = await targetResponse.json().catch(() => ({}));
+  if (!targetResponse.ok) return { ok: false, error: target.error || 'stripe_target_not_found', paymentStatus: '', status: targetResponse.status };
+  const paymentStatus = String(target.order?.paymentStatus || '').toLowerCase();
+  if (paymentStatus === 'no_payment_required') return { ok: true, paymentStatus };
+  const locallyPaid = ['paid', 'succeeded', 'complete', 'completed'].includes(paymentStatus);
+  const verified = locallyPaid && Boolean(target.externalPaymentId || target.order?.externalPaymentId);
+  return verified
+    ? { ok: true, paymentStatus }
+    : { ok: false, error: 'payment_not_verified', paymentStatus, status: 409 };
+}
 
 async function stripeStatus(request, env, studio) {
   const payload = await request.json().catch(() => ({}));
@@ -131,6 +149,7 @@ async function augmentRelease(response) {
     stripeReadMode: 'read-only-status-until-explicit-reconcile-v91',
     manualPaymentMode: 'explicit-stripe-pending-or-no-payment-required-v91',
     paymentGate: 'stripe-verified-or-no-payment-required-before-operational-actions-v91',
+    paymentGateEnforcement: 'server-and-ui-v91',
     pipelineActions: 'open-dossier-only-v91',
     billingSemantics: 'amount-is-not-payment-proof-v91',
     responsiveReadability: 'minimum-readable-controls-and-mobile-stack-v91',
@@ -152,6 +171,17 @@ async function injectOperationalAssets(response) {
   headers.delete('Content-Length');
   headers.set('Cache-Control', 'private, no-store, max-age=0');
   return new Response(body, { status: response.status, statusText: response.statusText, headers });
+}
+
+async function forwardJson(request, handler, env, ctx, payload) {
+  const headers = new Headers(request.headers);
+  headers.delete('Content-Length');
+  const forwarded = new Request(request.url, {
+    method: request.method,
+    headers,
+    body: JSON.stringify(payload || {}),
+  });
+  return handler.fetch(forwarded, env, ctx);
 }
 
 function callStore(studio, path, body) {

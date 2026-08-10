@@ -4,11 +4,13 @@ import path from 'node:path';
 const root = path.resolve(import.meta.dirname, '..');
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 const checks = [
-  ['src/entry-v29.js', ['/api/webhooks/stripe','/api/admin/stripe/reconcile','verifyStripeWebhook','client-journey-v90.js','paymentAuthority']],
+  ['src/entry-v29.js', ['/api/webhooks/stripe','/api/admin/stripe/reconcile','verifyStripeWebhook','paymentAuthority']],
+  ['src/entry-v30.js', ['/api/admin/stripe/status','payment_pending','single-next-action-plus-automatic-checks-v91','client-journey-v90.js?v=2','manual-scheduling-v85.js?v=2']],
   ['src/stripe-journey-v90.js', ['customer_details[email]','client_reference_id','locked_prefilled_email','/payment_links']],
   ['src/portal-stripe-v90.js', ['portal_stripe_events_v90','stripe_payment_verified','stripe_payment_unmatched']],
-  ['public/studio/client-journey-v90.js', ['Vérifier Stripe','Google Agenda / Meet','Studio fournisseur','Google Drive / R2','data-j90-workflow']],
-  ['public/studio/client-journey-v90.css', ['@media(max-width:680px)','j90-grid']],
+  ['public/studio/manual-scheduling-v85.js', ['paymentRequirement','payment_pending','Aucun paiement requis','Montant à régler']],
+  ['public/studio/client-journey-v90.js', ['VÉRIFICATIONS AUTOMATIQUES','Vérifier le paiement dans Stripe','Google Agenda / Meet','Studio fournisseur','Google Drive / R2','/api/admin/stripe/status']],
+  ['public/studio/client-journey-v90.css', ['@media(max-width:760px)','j90-layout','font-size:13px']],
 ];
 for (const [file, needles] of checks) {
   const content = read(file);
@@ -17,5 +19,5 @@ for (const [file, needles] of checks) {
   }
 }
 const wrangler = read('wrangler.jsonc');
-if (!wrangler.includes('"main": "src/entry-v29.js"')) throw new Error('wrangler main must be entry-v29.js');
-console.log('stripe client journey v90 verified');
+if (!wrangler.includes('"main": "src/entry-v30.js"')) throw new Error('wrangler main must be entry-v30.js');
+console.log('Stripe journey v90 + operational UX v91 verified');

@@ -12,10 +12,18 @@ export class StudioStore extends LegacyStore {
       const prepared = await response.json().catch(() => ({}));
       if (prepared.suppressed || !prepared.client?.id || prepared.action === 'none') return json(prepared);
       const since = new Date(Date.now() - RECIPIENT_COOLDOWN_MS).toISOString();
-      const recent = this.sql.exec(`
+      const recentCrm = this.sql.exec(`
         SELECT action,sent_at AS sentAt FROM portal_crm_messages_v86
         WHERE client_id=? AND sent_at>=? ORDER BY sent_at DESC LIMIT 1
       `, prepared.client.id, since).toArray()[0];
+      const recentWorkflow = this.sql.exec(`
+        SELECT e.message_key AS action,e.sent_at AS sentAt
+        FROM portal_email_outbox e
+        JOIN portal_orders o ON o.id=e.order_id
+        WHERE o.client_id=? AND LOWER(e.to_email)=LOWER(?) AND e.status='sent' AND e.sent_at>=?
+        ORDER BY e.sent_at DESC LIMIT 1
+      `, prepared.client.id, prepared.client.email || '', since).toArray()[0];
+      const recent = latest(recentCrm, recentWorkflow);
       if (recent) {
         return json({
           ...prepared,
@@ -29,4 +37,10 @@ export class StudioStore extends LegacyStore {
     }
     return super.fetch(request);
   }
+}
+
+function latest(left, right) {
+  if (!left) return right || null;
+  if (!right) return left;
+  return new Date(left.sentAt || 0).getTime() >= new Date(right.sentAt || 0).getTime() ? left : right;
 }

@@ -1,4 +1,4 @@
-#clientDetail.v92-detail .v94-drive-upload{margin-top:18px;padding:18px;border:1px solid rgba(91,71,255,.18);border-radius:18px;background:linear-gradient(180deg,#fff 0%,#faf9ff 100%);box-shadow:0 10px 30px rgba(26,35,67,.06)}
+#clientDetail.v92-detail .v94-drive-upload{grid-column:2/-1;min-width:0;margin-top:18px;padding:18px;border:1px solid rgba(91,71,255,.18);border-radius:18px;background:linear-gradient(180deg,#fff 0%,#faf9ff 100%);box-shadow:0 10px 30px rgba(26,35,67,.06)}
 #clientDetail.v92-detail .v94-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:14px}
 #clientDetail.v92-detail .v94-head>div{min-width:0}
 #clientDetail.v92-detail .v94-head span{display:block;margin-bottom:5px;font-size:11px;font-weight:850;letter-spacing:.09em;color:#6a43ef}
@@ -46,7 +46,7 @@
 #clientDetail.v92-detail .v92-step[data-v93-step="6"]>.v92-step-actions{display:none!important}
 @keyframes v94spin{to{transform:rotate(360deg)}}
 @media(max-width:760px){
-  #clientDetail.v92-detail .v94-drive-upload{width:100%;max-width:none!important;margin-top:14px;padding:14px;border-radius:15px;box-sizing:border-box}
+  #clientDetail.v92-detail .v94-drive-upload{grid-column:1/-1;width:100%;max-width:none!important;margin-top:14px;padding:14px;border-radius:15px;box-sizing:border-box}
   #clientDetail.v92-detail .v94-head{display:grid;grid-template-columns:minmax(0,1fr);width:100%;gap:10px}
   #clientDetail.v92-detail .v94-head>div{width:100%;max-width:none}
   #clientDetail.v92-detail .v94-head strong,#clientDetail.v92-detail .v94-head p{max-width:none;width:100%}

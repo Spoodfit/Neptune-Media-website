@@ -6,6 +6,7 @@ const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 const checks = [
   ['src/entry-v29.js', ['/api/webhooks/stripe','/api/admin/stripe/reconcile','verifyStripeWebhook','paymentAuthority']],
   ['src/entry-v30.js', ['/api/admin/stripe/status','/api/admin/workflow/action','payment_pending','payment_not_verified','paymentGateEnforcement','server-and-ui-v91','single-next-action-plus-automatic-checks-v91','stripe-verified-or-no-payment-required-before-operational-actions-v91','open-dossier-only-v91','amount-is-not-payment-proof-v91','client-journey-v90.js?v=3','operational-clarity-v91.js?v=1']],
+  ['src/entry-v31.js', ["import base from './entry-v30.js'",'/api/admin/journey-v92/context']],
   ['src/stripe-journey-v90.js', ['customer_details[email]','client_reference_id','locked_prefilled_email','/payment_links']],
   ['src/portal-stripe-v90.js', ['portal_stripe_events_v90','stripe_payment_verified','stripe_payment_unmatched']],
   ['public/studio/manual-scheduling-v85.js', ['paymentRequirement','payment_pending','Aucun paiement requis','Montant à régler']],
@@ -20,5 +21,5 @@ for (const [file, needles] of checks) {
   }
 }
 const wrangler = read('wrangler.jsonc');
-if (!wrangler.includes('"main": "src/entry-v30.js"')) throw new Error('wrangler main must be entry-v30.js');
-console.log('Stripe journey v90 + operational UX v91.1 verified: one next action, Stripe gate enforced server-side, explicit billing and open-only pipeline cards');
+if (!wrangler.includes('"main": "src/entry-v31.js"')) throw new Error('wrangler main must be entry-v31.js');
+console.log('Stripe journey v90 + operational UX v91 preserved behind simple journey v92; Stripe gate remains server-side');

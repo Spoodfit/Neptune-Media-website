@@ -6,6 +6,7 @@ const baseUrl = process.env.LOCAL_BASE_URL || 'http://127.0.0.1:4173';
 const outputDir = path.resolve(process.env.OUTPUT_DIR || 'test-results/studio-horizontal-journey-v93');
 await fs.rm(outputDir, { recursive: true, force: true });
 await fs.mkdir(outputDir, { recursive: true });
+await fs.writeFile(path.join(outputDir, 'started.json'), JSON.stringify({ startedAt: new Date().toISOString() }, null, 2));
 
 const orderId = 'order-v93';
 const now = Date.now();
@@ -52,13 +53,17 @@ page.on('console', (message) => {
 });
 
 const json = (route, body) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
-await page.route('**/api/auth/status', (route) => json(route, { authenticated: true, csrfToken: 'csrf-v93' }));
-await page.route('**/api/admin/clients', (route) => json(route, adminState));
-await page.route('**/api/admin/journey-v92/context', (route) => json(route, journey));
+// Playwright prioritizes the most recently registered matching route.
 await page.route('**/api/admin/**', (route) => json(route, { ok: true }));
+await page.route('**/api/admin/journey-v92/context', (route) => json(route, journey));
+await page.route('**/api/admin/clients', (route) => json(route, adminState));
+await page.route('**/api/auth/status', (route) => json(route, { authenticated: true, csrfToken: 'csrf-v93' }));
 
-const response = await page.goto(`${baseUrl}/studio/clients.html#${orderId}`, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+const response = await page.goto(`${baseUrl}/studio/clients.html`, { waitUntil: 'networkidle', timeout: 60_000 });
 if (!response || response.status() >= 400) throw new Error(`HTTP ${response?.status() || 0}`);
+const card = page.locator(`[data-order-card="${orderId}"]`);
+await card.waitFor({ state: 'visible', timeout: 10_000 });
+await card.click();
 await page.waitForSelector('#clientDialog[open]', { timeout: 10_000 });
 await page.addStyleTag({ url: `${baseUrl}/studio/simple-journey-v92.css?v=3` });
 await page.addScriptTag({ url: `${baseUrl}/studio/simple-journey-v92.js?v=1`, type: 'module' });

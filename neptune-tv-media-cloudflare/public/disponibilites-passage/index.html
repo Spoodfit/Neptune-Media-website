@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#090b18">
+  <title>Choisir mes disponibilités · Neptune Media</title>
+  <link rel="icon" href="/assets/logo-neptune.svg">
+  <style>
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;font-family:Inter,Arial,sans-serif;background:radial-gradient(circle at 50% -10%,#27214d 0,#0d1021 35%,#070914 75%);color:#f7f7fb}.page{width:min(720px,calc(100% - 30px));margin:0 auto;padding:38px 0 60px}.brand{display:flex;justify-content:center;margin-bottom:30px}.brand img{width:140px;max-height:48px}.card{padding:clamp(22px,5vw,42px);border:1px solid rgba(255,255,255,.1);border-radius:28px;background:rgba(16,18,36,.88);box-shadow:0 30px 90px rgba(0,0,0,.35);backdrop-filter:blur(18px)}.eyebrow{margin:0 0 9px;color:#a998ff;font-size:11px;letter-spacing:.15em;font-weight:850}.card h1{margin:0;font-size:clamp(30px,6vw,46px);line-height:1.03;letter-spacing:-.045em}.lead{margin:14px 0 26px;color:#b9bfd1;line-height:1.6}.context{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:24px}.context span{padding:7px 10px;border-radius:999px;background:#1e223d;color:#d6d9e7;font-size:12px}.slots{display:grid;gap:12px}.slot{display:grid;grid-template-columns:86px 1fr;gap:12px;align-items:center;padding:13px;border:1px solid #30344f;border-radius:15px;background:#12152a}.slot b{font-size:12px;color:#c4baff}.slot input{width:100%;padding:11px 12px;border:1px solid #3b405e;border-radius:10px;background:#0b0e1e;color:#fff;font:inherit;color-scheme:dark}.submit{width:100%;margin-top:22px;padding:15px 20px;border:0;border-radius:999px;background:linear-gradient(120deg,#5270ff,#8e5cff,#e65aa7);color:#fff;font-weight:850;font-size:15px;cursor:pointer}.submit:disabled{opacity:.55;cursor:wait}.message{min-height:22px;margin:14px 0 0;text-align:center;color:#b9bfd1;font-size:13px}.message[data-type=success]{color:#88e1ad}.message[data-type=error]{color:#ff9ca8}.done{text-align:center}.done h1{margin-bottom:14px}.done p{color:#bbc0d2;line-height:1.6}.hidden{display:none!important}@media(max-width:560px){.page{padding-top:22px}.card{border-radius:22px}.slot{grid-template-columns:1fr;gap:7px}}
+  </style>
+</head>
+<body>
+  <main class="page">
+    <a class="brand" href="/" aria-label="Neptune Media"><img src="/assets/logo-neptune.svg" alt="Neptune Media"></a>
+    <section class="card" id="choiceCard">
+      <p class="eyebrow">VOTRE PASSAGE NEPTUNE MEDIA</p>
+      <h1>Quand pouvez-vous venir au studio ?</h1>
+      <p class="lead" id="lead">Choisissez jusqu’à trois créneaux qui vous conviennent. Neptune vérifie ensuite la disponibilité du studio et vous confirme la date définitive.</p>
+      <div class="context" id="context" hidden></div>
+      <form id="availabilityForm">
+        <div class="slots">
+          <label class="slot"><b>1er choix *</b><input name="slot" type="datetime-local" required></label>
+          <label class="slot"><b>2e choix</b><input name="slot" type="datetime-local"></label>
+          <label class="slot"><b>3e choix</b><input name="slot" type="datetime-local"></label>
+        </div>
+        <button class="submit" type="submit">Envoyer mes disponibilités</button>
+        <p class="message" id="message" aria-live="polite"></p>
+      </form>
+    </section>
+    <section class="card done hidden" id="doneCard">
+      <p class="eyebrow">C’EST ENVOYÉ</p><h1>Neptune s’occupe de la suite.</h1><p>Vos disponibilités ont bien été enregistrées. Vous recevrez la confirmation lorsque le créneau définitif sera validé.</p>
+    </section>
+  </main>
+  <script type="module" src="/disponibilites-passage/availability-v86.js?v=1"></script>
+</body>
+</html>

@@ -28,6 +28,8 @@ expect('CRM keeps hashed capability tokens', crm.includes('sha256(token)') && cr
 expect('CRM never stores raw action token column', !crm.includes(' token TEXT NOT NULL'));
 expect('CRM has same-action two-hour cooldown', crm.includes('MESSAGE_COOLDOWN_MS = 2 * 60 * 60 * 1000'));
 expect('CRM has cross-action recipient cooldown', guard.includes('RECIPIENT_COOLDOWN_MS = 45 * 60 * 1000') && guard.includes("reason: 'recipient_cooldown'"));
+expect('CRM checks recent workflow emails before sending', guard.includes('FROM portal_email_outbox e') && guard.includes("e.status='sent'"));
+expect('workflow governor is deferred after CRM email', guard.includes("url.pathname === '/portal/workflow-email-due'") && guard.includes('notification_governor:crm_recipient_cooldown'));
 expect('CRM calculates one next action', crm.includes('function nextAction(target)'));
 expect('CRM supports existing clients', studio.includes('Rechercher un client, un prospect ou une entreprise') && studio.includes('clientId'));
 expect('amount is labelled as format price', studio.includes('Montant du format (€)'));

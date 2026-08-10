@@ -20,7 +20,7 @@ function boot() {
 }
 
 function ensureStylesheet() {
-  if (document.querySelector(`link[data-horizontal-journey-v93]`)) return;
+  if (document.querySelector('link[data-horizontal-journey-v93]')) return;
   const link = document.createElement('link');
   link.rel = 'stylesheet';
   link.href = STYLE_URL;
@@ -46,6 +46,7 @@ function enhance() {
   if (root.dataset.horizontalJourneyOwner === RELEASE && root.querySelector('.v93-journey-rail')) return;
 
   preventDuplicateV92Actions(root);
+  enrichPassageInformation(cards);
   root.dataset.horizontalJourneyOwner = RELEASE;
   root.classList.add('v93-horizontal-journey');
   steps.classList.add('v93-step-panel');
@@ -65,6 +66,21 @@ function preventDuplicateV92Actions(root) {
     return nativeAdd.call(this, type, listener, options);
   };
   root.__neptuneHorizontalV93Patched = true;
+}
+
+function enrichPassageInformation(cards) {
+  const dateStep = cards[2];
+  const passageStep = cards[4];
+  const headline = dateStep?.querySelector('.v92-step-copy > strong')?.textContent?.trim() || '';
+  const availability = dateStep?.querySelector('.v92-step-copy > p')?.textContent?.trim() || '';
+  const comments = passageStep?.querySelector('.v92-passage-comments');
+  if (!comments || !/disponibilit[ée]s reçues/iu.test(headline) || !availability) return;
+  const exists = [...comments.querySelectorAll('p')].some((node) => /disponibilit[ée]s client/iu.test(node.textContent || ''));
+  if (exists) return;
+  const row = document.createElement('p');
+  row.dataset.v93ClientAvailability = 'true';
+  row.innerHTML = `<b>Disponibilités client :</b> ${escapeHtml(availability)}`;
+  comments.prepend(row);
 }
 
 function buildRail(cards) {
@@ -89,7 +105,7 @@ function railButton(card, index) {
   const title = card.querySelector('.v92-step-title h3')?.textContent?.trim() || `Étape ${index + 1}`;
   const state = card.querySelector('.v92-step-title span')?.textContent?.trim() || stateLabel(tone);
   const done = tone === 'done' || tone === 'done-muted';
-  return `<button type="button" class="v93-tab is-${tone}" role="tab" aria-selected="false" tabindex="-1" data-v93-step="${index}"><span class="v93-tab-marker"><b>${done ? '✓' : index + 1}</b></span><span class="v93-tab-copy"><strong>${escapeHtml(title)}</strong><small>${escapeHtml(state)}</small></span></button>`;
+  return `<button type="button" class="v93-tab is-${tone}" role="tab" aria-selected="false" tabindex="-1" data-v93-step="${index}" id="v93-step-tab-${index + 1}"><span class="v93-tab-marker"><b>${done ? '✓' : index + 1}</b></span><span class="v93-tab-copy"><strong>${escapeHtml(title)}</strong><small>${escapeHtml(state)}</small></span></button>`;
 }
 
 function installRailEvents(root, cards, rail) {
@@ -119,6 +135,7 @@ function selectStep(root, cards, rail, index, userInitiated) {
     card.classList.toggle('v93-selected-step', selected);
     card.setAttribute('role', 'tabpanel');
     card.setAttribute('aria-hidden', selected ? 'false' : 'true');
+    card.setAttribute('aria-labelledby', `v93-step-tab-${cardIndex + 1}`);
     card.dataset.v93Step = String(cardIndex);
   });
   tabs.forEach((tab, tabIndex) => {

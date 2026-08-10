@@ -38,7 +38,7 @@
     <section class="clients-workspace">
       <header class="clients-topbar">
         <div><p class="eyebrow">NEPTUNE MEDIA STUDIO</p><h1>Parcours clients</h1></div>
-        <div class="clients-top-actions"><span class="studio-sync"><i></i> Synchronisé</span><button id="newClient" class="button" type="button">Nouveau client</button></div>
+        <div class="clients-top-actions"><span class="studio-sync"><i></i> Synchronisé</span><button id="newClient" class="button" type="button">Nouveau passage</button></div>
       </header>
       <main class="clients-main">
         <section class="clients-hero">
@@ -50,23 +50,32 @@
       </main>
     </section>
   </div>
+
   <dialog id="newDialog" class="dialog">
     <form id="newOrder" class="dialog-card">
-      <div class="dialog-head"><div><p class="eyebrow">NOUVEAU PASSAGE</p><h2>Créer le dossier client</h2></div><button class="close" type="button" data-close="newDialog" aria-label="Fermer">×</button></div>
+      <div class="dialog-head"><div><p class="eyebrow">SANS PASSER PAR LE TUNNEL DE VENTE</p><h2>Créer un passage</h2></div><button class="close" type="button" data-close="newDialog" aria-label="Fermer">×</button></div>
       <div class="fields">
+        <label><span>Type de dossier</span><select name="sourceType"><option value="partner">Partenaire</option><option value="member">Adhérent Neptune</option><option value="direct" selected>Client direct</option><option value="other">Autre</option></select></label>
         <label><span>E-mail client *</span><input name="email" type="email" required></label>
         <label><span>Nom complet</span><input name="fullName" autocomplete="name"></label>
         <label><span>Entreprise</span><input name="company"></label>
         <label><span>Format</span><select name="format"><option>Hors Norme</option><option>Concept Libre</option><option>Sur mesure</option></select></label>
         <label class="wide"><span>Nom du passage</span><input name="title" value="Passage Neptune Media" required></label>
-        <label><span>Montant payé (€)</span><input name="amountEuros" type="number" min="0" step="0.01"></label>
+        <label data-payment-mode-v91><span>Paiement du dossier</span><select name="paymentRequirement"><option value="stripe" selected>À vérifier sur Stripe</option><option value="none">Aucun paiement requis</option></select><small>Un montant saisi ne signifie jamais que le client a payé. Seul Stripe confirme un règlement.</small></label>
+        <label><span>Montant à régler (€)</span><input name="amountEuros" type="number" min="0.01" step="0.01" required inputmode="decimal"></label>
         <label><span>Rendez-vous de préparation</span><input name="appointmentAt" type="datetime-local"></label>
-        <label class="wide"><span>Lien de préparation</span><input name="preparationUrl" type="url" placeholder="https://…"></label>
+        <label><span>Date et heure du passage</span><input name="filmingAt" type="datetime-local"></label>
+        <label class="wide"><span>Lien de réunion de préparation</span><input name="preparationUrl" type="url" placeholder="Créé automatiquement avec Google Meet si possible"></label>
       </div>
-      <label class="check"><input name="sendEmail" type="checkbox" checked><span>Envoyer immédiatement l’accès au client</span></label>
-      <button class="button" type="submit">Créer et envoyer l’accès</button><p id="formMessage" class="message" aria-live="polite"></p>
+      <section class="manual-scheduling-options-v85">
+        <label class="check"><input name="filmingConfirmed" type="checkbox" disabled><span><b>Date de passage déjà validée</b><small>À cocher si le client et le studio ont déjà convenu du créneau. Sinon Neptune demandera la confirmation au fournisseur.</small></span></label>
+        <label class="check"><input name="createCalendar" type="checkbox" checked><span><b>Créer le rendez-vous Google Agenda + Meet</b><small>Si une date de préparation est renseignée, le client reçoit l’invitation et retrouve le bouton de réunion dans son espace.</small></span></label>
+      </section>
+      <label class="check"><input name="sendEmail" type="checkbox" checked><span>Envoyer l’accès à l’espace client maintenant</span></label>
+      <button class="button" type="submit">Créer le passage</button><p id="formMessage" class="message" aria-live="polite"></p>
     </form>
   </dialog>
+
   <dialog id="clientDialog" class="dialog drawer"><section class="dialog-card drawer-card"><div id="clientDetail"></div></section></dialog>
   <dialog id="feedbackDialog" class="feedback-dialog" aria-labelledby="feedbackDialogTitle"><section class="feedback-dialog-card"><header class="feedback-dialog-head"><div><p class="eyebrow">EXPÉRIENCE CLIENT</p><h2 id="feedbackDialogTitle">Satisfaction et recommandations</h2><p>Les réponses envoyées après la livraison, centralisées sans retraitement.</p></div><button id="closeFeedback" class="feedback-close" type="button" aria-label="Fermer">×</button></header><div id="feedbackList" class="feedback-results" aria-live="polite"></div></section></dialog>
   <div id="toast" class="toast" hidden></div>

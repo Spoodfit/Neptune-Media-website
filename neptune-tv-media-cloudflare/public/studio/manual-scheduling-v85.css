@@ -1,0 +1,44 @@
+body[data-manual-scheduling-release] .manual-scheduling-options-v85 {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0;
+  padding: 14px;
+  border: 1px solid rgba(99, 85, 224, .16);
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(247, 246, 255, .92), rgba(255, 255, 255, .96));
+}
+
+body[data-manual-scheduling-release] .manual-scheduling-options-v85 .check {
+  margin: 0;
+  align-items: flex-start;
+}
+
+body[data-manual-scheduling-release] .manual-scheduling-options-v85 .check span {
+  display: grid;
+  gap: 3px;
+}
+
+body[data-manual-scheduling-release] .manual-scheduling-options-v85 .check small,
+body[data-manual-scheduling-release] .passage-calendar-sync-v85 small {
+  color: #70788f;
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+body[data-manual-scheduling-release] .passage-calendar-sync-v85 {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-top: 14px;
+  padding: 14px 16px;
+  border: 1px solid rgba(66, 103, 255, .18);
+  border-radius: 14px;
+  background: #f7f9ff;
+  cursor: pointer;
+}
+
+body[data-manual-scheduling-release] .passage-calendar-sync-v85 > span {
+  display: grid;
+  gap: 3px;
+}

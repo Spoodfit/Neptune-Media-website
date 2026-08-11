@@ -2,14 +2,16 @@ import { readFile } from 'node:fs/promises';
 
 const read=(path)=>readFile(new URL(`../${path}`,import.meta.url),'utf8');
 const readRoot=(path)=>readFile(new URL(`../../${path}`,import.meta.url),'utf8');
-const [activeEntry,appEntry,webtvEntry,control,media,directR2,encoder,html,ui,uploadUi,ia,navCompat,rootRaw,localRaw,rootPackageRaw,localPackageRaw]=await Promise.all([
-  read('src/entry-v35.js'),read('src/entry-v34.js'),read('src/entry-v33.js'),read('src/webtv-control-v1.js'),read('src/webtv-media-v1.js'),read('src/webtv-r2-direct-v1.js'),read('containers/webtv/encoder.mjs'),read('public/studio/webtv.html'),read('public/studio/webtv-v1.js'),read('public/studio/webtv-upload-v3.js'),read('public/studio/studio-information-architecture-v65-1.js'),read('public/studio/webtv-nav-compat-v1.js'),readRoot('wrangler.jsonc'),read('wrangler.jsonc'),readRoot('package.json'),read('package.json'),
+const [activeEntry36,activeEntry,appEntry,webtvEntry,control,media,directR2,encoder,html,ui,uploadUi,ia,navCompat,rootRaw,localRaw,rootPackageRaw,localPackageRaw]=await Promise.all([
+  read('src/entry-v36.js'),read('src/entry-v35.js'),read('src/entry-v34.js'),read('src/entry-v33.js'),read('src/webtv-control-v1.js'),read('src/webtv-media-v1.js'),read('src/webtv-r2-direct-v1.js'),read('containers/webtv/encoder.mjs'),read('public/studio/webtv.html'),read('public/studio/webtv-v1.js'),read('public/studio/webtv-upload-v3.js'),read('public/studio/studio-information-architecture-v65-1.js'),read('public/studio/webtv-nav-compat-v1.js'),readRoot('wrangler.jsonc'),read('wrangler.jsonc'),readRoot('package.json'),read('package.json'),
 ]);
 const root=JSON.parse(rootRaw),local=JSON.parse(localRaw),rootPackage=JSON.parse(rootPackageRaw),localPackage=JSON.parse(localPackageRaw),failures=[];
 const expect=(condition,message)=>{if(!condition)failures.push(message);};
 
-expect(root.main==='neptune-tv-media-cloudflare/src/entry-v35.js','le Worker racine doit cibler entry-v35 avec la médiathèque WebTV');
-expect(local.main==='src/entry-v35.js','le Worker local doit cibler entry-v35 avec la médiathèque WebTV');
+expect(root.main==='neptune-tv-media-cloudflare/src/entry-v35.js','le pointeur Worker racine historique doit rester entry-v35');
+expect(local.main==='src/entry-v36.js','le Worker local doit cibler entry-v36');
+expect(activeEntry36.includes("from './entry-v35.js'"),'entry-v36 ne prolonge plus entry-v35');
+expect(activeEntry36.includes('WebTvEncoder'),'entry-v36 ne réexporte plus WebTvEncoder');
 expect(activeEntry.includes("from './entry-v34.js'"),'entry-v35 ne prolonge plus entry-v34');
 expect(activeEntry.includes("from './webtv-media-v1.js'"),'entry-v35 ne branche plus la médiathèque WebTV');
 expect(activeEntry.includes("typeof base.scheduled==='function'"),'entry-v35 ne délègue plus les crons');
@@ -50,6 +52,6 @@ expect(ia.includes("'/studio/webtv.html'"),'la navigation Diffusion ne pointe pa
 expect(navCompat.includes("querySelectorAll('.studio-context-nav-v65')")&&navCompat.includes('.remove()'),'les onglets Diffusion historiques ne sont pas neutralisés');
 
 if(failures.length){console.error(failures.map(failure=>`- ${failure}`).join('\n'));process.exit(1);}
-console.log('WebTV validée derrière entry-v35 : régie compacte, import vidéo direct navigateur→R2 par URLs S3 présignées, reprise par bloc, bibliothèque persistante, lecture Range, programme modifiable puis application explicite à l’antenne, Container FFmpeg et RTMPS préservés.');
+console.log('WebTV validée derrière entry-v36 → entry-v35 : régie compacte, import vidéo direct navigateur→R2 par URLs S3 présignées, reprise par bloc, bibliothèque persistante, lecture Range, programme modifiable puis application explicite à l’antenne, Container FFmpeg et RTMPS préservés.');
 
 function API_PLACEHOLDER(){return'/api/admin/webtv/media';}

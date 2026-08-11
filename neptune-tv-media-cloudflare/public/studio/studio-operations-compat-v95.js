@@ -2,9 +2,14 @@ const RELEASE='neptune-studio-operations-compat-20260811-v95';
 let scheduled=false;
 start();
 function start(){document.readyState==='loading'?document.addEventListener('DOMContentLoaded',boot,{once:true}):boot();}
-function boot(){document.body.dataset.studioOperationsCompatRelease=RELEASE;enhance();new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});}
+function boot(){
+  document.body.dataset.studioOperationsCompatRelease=RELEASE;
+  enhance();
+  document.addEventListener('click',captureNewPassagePrefill,true);
+  new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});
+}
 function schedule(){if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;enhance();});}
-function enhance(){bridgeManagerButton();bridgeManagerSearch();}
+function enhance(){bridgeManagerButton();bridgeManagerSearch();enhanceSupplierSummaries();}
 function bridgeManagerButton(){
   if(document.getElementById('openClientManager'))return;
   const current=document.getElementById('manageClientAccounts');
@@ -27,3 +32,44 @@ function bridgeManagerSearch(){
     bridge.querySelector('input').addEventListener('input',event=>{currentInput.value=event.target.value||'';currentInput.dispatchEvent(new Event('input',{bubbles:true}));});
   }
 }
+function captureNewPassagePrefill(event){
+  if(!event.target.closest('[data-v95-new-passage]'))return;
+  const account=document.getElementById('clientAccountV95');
+  if(!account)return;
+  const fullName=account.querySelector('[data-v95-account-title]')?.textContent?.trim()||'';
+  const readInfo=label=>{
+    const box=[...account.querySelectorAll('.v95-client-info>div')].find(node=>(node.querySelector('small')?.textContent||'').trim().toUpperCase()===label);
+    return box?.querySelector('strong')?.textContent?.trim()||'';
+  };
+  const payload={fullName,email:readInfo('E-MAIL'),company:readInfo('ENTREPRISE')};
+  queueMicrotask(()=>applyPrefill(payload));
+  requestAnimationFrame(()=>applyPrefill(payload));
+}
+function applyPrefill(payload){
+  const form=document.getElementById('newOrder');
+  if(!form)return;
+  for(const [name,value] of Object.entries(payload)){
+    const input=form.elements?.namedItem(name)||form.querySelector(`[name="${name}"]`);
+    if(!input||!value)continue;
+    input.value=value;
+    input.dispatchEvent(new Event('input',{bubbles:true}));
+    input.dispatchEvent(new Event('change',{bubbles:true}));
+  }
+}
+function enhanceSupplierSummaries(){
+  document.querySelectorAll('[data-v95-supplier-form]').forEach(form=>{
+    const title=form.querySelector('.v95-config-card-title>div');
+    if(!title)return;
+    let summary=title.querySelector('[data-v95-supplier-summary]');
+    if(!summary){summary=document.createElement('small');summary.dataset.v95SupplierSummary='';title.append(summary);}
+    const net=Number(form.querySelector('[name="netEuros"]')?.value||0);
+    const vat=Number(form.querySelector('[name="vatRate"]')?.value||0);
+    const gross=net*(1+vat/100);
+    summary.textContent=`${money(net)} HT · ${money(gross)} TTC`;
+    for(const input of [form.querySelector('[name="netEuros"]'),form.querySelector('[name="vatRate"]')]){
+      if(!input||input.dataset.v95SummaryBound)return;
+      input.dataset.v95SummaryBound='1';input.addEventListener('input',()=>{delete form.dataset.v95SummaryPending;schedule();});
+    }
+  });
+}
+function money(euros){return new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(Number(euros||0));}

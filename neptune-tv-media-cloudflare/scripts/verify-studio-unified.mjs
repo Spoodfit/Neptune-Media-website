@@ -14,6 +14,8 @@ function expect(condition, message) {
 const entry = read('public/studio/index.html');
 const app = read('public/studio/app.html');
 const router = read('public/studio/studio-app-router-v104.js');
+const advanced = read('public/studio/advanced.html');
+const catalogLoader = read('public/studio/media-catalog-loader-v104.js');
 const ia = read('public/studio/studio-information-architecture-v65-1.js');
 const login = read('public/studio/studio-login-v48.js');
 const worker = read('src/entry-v36.js');
@@ -22,6 +24,7 @@ const packageJson = read('package.json');
 
 expect(exists('public/studio/app.html'), 'La route de compatibilité app.html doit exister.');
 expect(exists('public/studio/studio-app-router-v104.js'), 'Le routeur top-level v104 doit exister.');
+expect(exists('public/studio/media-catalog-loader-v104.js'), 'Le loader route-aware du Catalogue Media doit exister.');
 expect(!app.includes('<iframe'), 'app.html ne doit plus contenir d’iframe Studio.');
 expect(!app.includes('studio-shell-v100.js'), 'app.html ne doit plus charger l’ancien shell iframe.');
 expect(app.includes('/studio/studio-app-router-v104.js?v=1'), 'app.html doit charger le routeur top-level v104.');
@@ -36,6 +39,10 @@ expect(!ia.includes("['programs', 'Formats']"), 'Formats ne doit plus être pré
 expect(ia.includes("groupForTab(tab) { return ['programs', 'finances', 'users', 'audit', 'settings'].includes(tab) ? 'settings' : 'diffusion'; }"), 'Le catalogue doit activer Réglages et non Diffusion.');
 expect(ia.includes("location.href = '/studio/advanced.html#programs'"), 'Le compte Studio doit ouvrir les réglages utiles.');
 
+expect(advanced.includes('/studio/media-catalog-loader-v104.js?v=1'), 'advanced.html doit charger le loader Catalogue v104.');
+expect(catalogLoader.includes("const CATALOG_HASH='programs'"), 'Le loader Catalogue ne doit s’activer que sur #programs.');
+expect(catalogLoader.includes('await import(CATALOG_MANAGER)') && catalogLoader.includes('await import(CATALOG_UX)'), 'Le loader doit charger le moteur et l’UX du catalogue.');
+
 expect(entry.includes('/studio/studio-login-v48.js?v=2'), 'La racine Studio doit conserver la passerelle de connexion.');
 expect(login.includes("const CANONICAL_STUDIO_PATH = '/studio/clients'"), 'La connexion doit ouvrir directement Parcours clients.');
 expect(login.includes('location.replace(destination)'), 'Une session valide doit naviguer vers la page métier.');
@@ -48,8 +55,8 @@ expect(worker.includes('secureStudioDocument(await injectStudioNavigation(respon
 expect(worker.includes("headers.set('X-Frame-Options','DENY')"), 'Les pages Studio top-level doivent refuser l’intégration iframe.');
 expect(!worker.includes('prepareStudioEmbeddedDocument'), 'Le Worker ne doit plus préparer de document Studio embarqué.');
 expect(!worker.includes('STUDIO_EMBED_CSS'), 'Le Worker ne doit plus dépendre d’un CSS d’isolation iframe.');
+expect(!worker.includes('ADMIN_CSS') && !worker.includes('ADMIN_JS') && !worker.includes('ADMIN_UX_JS'), 'Le Worker ne doit plus réécrire advanced.html une seconde fois pour le Catalogue.');
 expect(worker.includes("allowSameOriginFrame(response,'X-Neptune-Studio-Preview')"), 'Seule la prévisualisation réelle du tunnel doit conserver une intégration same-origin.');
-expect(worker.includes('inject(response,ADMIN_CSS,[ADMIN_JS,ADMIN_UX_JS])'), 'Le Catalogue Media doit conserver son moteur métier et son UX.');
 expect(worker.includes('studioUi:STUDIO_UI_RELEASE'), 'Le diagnostic public doit exposer la release Studio v104.');
 expect(legacyWorker.includes("const STUDIO_CANONICAL_PATH = '/studio/clients'"), 'Les anciennes routes Studio doivent converger directement vers Parcours clients.');
 
@@ -60,4 +67,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Studio v104 validé : navigation top-level unique, aucune iframe métier, Catalogue Media dans Réglages et preview tunnel isolée.');
+console.log('Studio v104 validé : navigation top-level unique, aucune iframe métier, Catalogue Media chargé uniquement dans Réglages et preview tunnel isolée.');

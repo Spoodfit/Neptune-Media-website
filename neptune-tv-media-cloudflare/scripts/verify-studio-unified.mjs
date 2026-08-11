@@ -41,9 +41,10 @@ expect(login.includes("const CANONICAL_STUDIO_PATH = '/studio/clients'"), 'La co
 expect(login.includes('location.replace(destination)'), 'Une session valide doit naviguer vers la page métier.');
 
 expect(worker.includes("const STUDIO_UI_RELEASE='neptune-studio-ui-20260811-v104-no-iframe'"), 'Le Worker doit déclarer la release Studio v104.');
+expect(worker.includes("const STUDIO_NAV_JS='/studio/studio-information-architecture-v65-1.js?v=104'"), 'Toutes les pages Studio doivent recevoir la même navigation cache-bustée.');
 expect(worker.includes("url.searchParams.has('studio_embed')"), 'Le Worker doit nettoyer les anciennes URLs iframe encore en cache.');
 expect(worker.includes("target.searchParams.delete('studio_embed')"), 'Le paramètre iframe historique doit être supprimé.');
-expect(worker.includes('isStudioTopLevelPath(url.pathname)'), 'Les écrans Studio doivent être protégés comme documents top-level.');
+expect(worker.includes('secureStudioDocument(await injectStudioNavigation(response))'), 'Les écrans métier doivent être servis top-level avec une navigation commune.');
 expect(worker.includes("headers.set('X-Frame-Options','DENY')"), 'Les pages Studio top-level doivent refuser l’intégration iframe.');
 expect(!worker.includes('prepareStudioEmbeddedDocument'), 'Le Worker ne doit plus préparer de document Studio embarqué.');
 expect(!worker.includes('STUDIO_EMBED_CSS'), 'Le Worker ne doit plus dépendre d’un CSS d’isolation iframe.');

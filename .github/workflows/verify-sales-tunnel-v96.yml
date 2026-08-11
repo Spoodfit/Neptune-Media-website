@@ -31,7 +31,6 @@ jobs:
       SALES_TUNNEL_RELEASE: neptune-sales-tunnel-20260811-v96
       TV_URL: https://tv.neptunebusiness.com
       WORKERS_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
-      MEDIA_URL: https://media.neptunebusiness.com
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -96,8 +95,8 @@ jobs:
           verify "$WORKERS_URL"
           verify "$TV_URL"
           for attempt in $(seq 1 48); do
-            html=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$MEDIA_URL/reserver?v96=$GITHUB_SHA&attempt=$attempt" || true)
-            if grep -Fq '/reserver/assets/app-v96.js' <<<"$html"; then echo "$MEDIA_URL tunnel ready on attempt $attempt"; exit 0; fi
+            html=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$TV_URL/reserver?v96=$GITHUB_SHA&attempt=$attempt" || true)
+            if grep -Fq '/reserver/assets/app-v96.js' <<<"$html"; then echo "$TV_URL/reserver ready on attempt $attempt"; exit 0; fi
             sleep 5
           done
           exit 1

@@ -105,9 +105,9 @@ async function run(viewport,label){
   if(!href?.startsWith(paymentBase)||!href.includes(`NPOPP_${opportunityId}`))throw new Error(`${label}: wrong Stripe tier link ${href}`);
   if(await pay.getAttribute('target'))throw new Error(`${label}: Stripe payment must stay in the same tab for the confirmation return`);
   if((await pay.getAttribute('aria-disabled'))!=='true')throw new Error(`${label}: payment must be locked before CGV`);
+  await shot(page,label,'payment');await visualGuard(page,label,'payment',viewport.width<=420);
   await page.locator('#termsAccepted').check();
   if((await pay.getAttribute('aria-disabled'))!=='false'||await pay.evaluate(el=>el.classList.contains('is-disabled')))throw new Error(`${label}: payment button did not become clickable after CGV`);
-  await shot(page,label,'payment');await visualGuard(page,label,'payment',viewport.width<=420);
 
   paid=true;
   await page.goto(`${base}/reserver/?payment=success&session_id=cs_test_v97&reservation_token=${token}`,{waitUntil:'networkidle'});

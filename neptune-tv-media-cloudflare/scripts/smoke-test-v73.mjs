@@ -21,12 +21,14 @@ const failures = [];
 const expect = (condition, message) => { if (!condition) failures.push(message); };
 
 for (const [name, current] of [['root', rootConfig], ['nested', config]]) {
-  expect(!current.containers, `${name}: Cloudflare Containers est encore configuré`);
+  const containers = Array.isArray(current.containers) ? current.containers : [];
+  expect(containers.every((item) => item.class_name === 'WebTvEncoder'), `${name}: un Container autre que WebTvEncoder est configuré`);
+  expect(containers.filter((item) => item.class_name === 'WebTvEncoder').length === 1, `${name}: la Web TV doit utiliser exactement un Container déclaré`);
   expect(!current.queues, `${name}: la Queue Cloudflare vidéo est encore configurée`);
   expect(!current.durable_objects?.bindings?.some((item) => item.name === 'VIDEO_PROCESSOR'), `${name}: VIDEO_PROCESSOR est encore lié`);
 }
 for (const [name, current] of [['root', rootPackage], ['nested', nestedPackage]]) {
-  expect(!current.dependencies?.['@cloudflare/containers'], `${name}: la dépendance Cloudflare Containers est encore installée`);
+  expect(Boolean(current.dependencies?.['@cloudflare/containers']), `${name}: la dépendance Containers requise par la Web TV est absente`);
 }
 
 expect(entry.includes("videoAiEngineMode: 'persistent-local-service-with-browser-fallback'"), 'le Worker ne déclare pas le service permanent primaire');
@@ -97,4 +99,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Neptune Video Engine v75 validé : service local persistant, mise à jour visible, progression et aperçu réels, recadrage visage, Studio connecté, reprise hors onglet, OpenAI/Ollama/règles, FFmpeg/Whisper/OpenCV et fallback navigateur.');
+console.log('Neptune Video Engine v75 validé : moteur vidéo local préservé et Cloudflare Containers strictement réservé à la Web TV.');

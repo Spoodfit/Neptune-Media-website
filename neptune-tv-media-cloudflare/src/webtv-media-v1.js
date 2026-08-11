@@ -1,3 +1,5 @@
+import { DIRECT_R2_TRANSPORT,abortDirectMultipart,completeDirectMultipart,createDirectMultipart,decodeDirectMeta,directR2Configured,presignDirectPart } from './webtv-r2-direct-v1.js';
+
 const API_PREFIX='/api/admin/webtv/media';
 const PUBLIC_PREFIX='/media/webtv/';
 const R2_PREFIX='webtv/uploads/';
@@ -5,7 +7,8 @@ const MAX_FILE_BYTES=20*1024*1024*1024;
 const MULTIPART_CHUNK_BYTES=10*1024*1024;
 const LIST_PAGE_SIZE=500;
 const MAX_LIBRARY_ITEMS=2000;
-export const WEBTV_MEDIA_RELEASE='neptune-webtv-media-20260811-v3';
+const LEGACY_TRANSPORT='worker-r2-binding-v3';
+export const WEBTV_MEDIA_RELEASE='neptune-webtv-media-20260811-v4-direct-r2';
 
 export function isWebTvMediaRoute(pathname){
   return pathname===API_PREFIX||pathname.startsWith(`${API_PREFIX}/`)||pathname.startsWith(PUBLIC_PREFIX);
@@ -20,6 +23,7 @@ export async function handleWebTvMediaRequest(request,env,{user=null,authenticat
 
   if(request.method==='GET'&&url.pathname===API_PREFIX)return listMedia(env);
   if(request.method==='POST'&&url.pathname===`${API_PREFIX}/init`)return initUpload(request,env,user);
+  if(request.method==='POST'&&url.pathname===`${API_PREFIX}/part-url`)return directPartUrl(request,env);
   if(request.method==='PUT'&&url.pathname===`${API_PREFIX}/part`)return uploadPart(request,env,url);
   if(request.method==='POST'&&url.pathname===`${API_PREFIX}/complete`)return completeUpload(request,env);
   if(request.method==='POST'&&url.pathname===`${API_PREFIX}/abort`)return abortUpload(request,env);
@@ -36,7 +40,7 @@ async function listMedia(env){
   }while(cursor&&objects.length<MAX_LIBRARY_ITEMS);
   const items=objects.slice(0,MAX_LIBRARY_ITEMS).filter(object=>object.key&&!object.key.endsWith('/')).map(object=>objectToMedia(object));
   items.sort((a,b)=>String(b.uploadedAt||'').localeCompare(String(a.uploadedAt||'')));
-  return json({ok:true,release:WEBTV_MEDIA_RELEASE,items,truncated:Boolean(cursor)});
+  return json({ok:true,release:WEBTV_MEDIA_RELEASE,items,truncated:Boolean(cursor),directUploadConfigured:directR2Configured(env)});
 }
 
 async function initUpload(request,env,user){
@@ -49,42 +53,73 @@ async function initUpload(request,env,user){
   if(!originalName)return json({error:'filename_required'},400);
   if(!Number.isFinite(size)||size<=0||size>MAX_FILE_BYTES)return json({error:'invalid_file_size',maxBytes:MAX_FILE_BYTES},413);
   if(!isVideoType(mime,originalName))return json({error:'unsupported_video_type'},415);
+  if(!directR2Configured(env)){
+    return json({
+      error:'direct_r2_not_configured',
+      message:'Le transport direct R2 doit être configuré pour les imports vidéo.',
+      required:['R2_ACCOUNT_ID','R2_ACCESS_KEY_ID','R2_SECRET_ACCESS_KEY'],
+    },503);
+  }
 
   const id=crypto.randomUUID();
   const ext=safeExtension(originalName,mime);
   const key=`${R2_PREFIX}${id}-${slug(title)}${ext}`;
   const uploadedAt=new Date().toISOString();
-  const upload=await env.MEDIA.createMultipartUpload(key,{
-    httpMetadata:{contentType:mime,cacheControl:'public, max-age=3600'},
-    customMetadata:{
+  const metadata={
+    title,
+    originalname:originalName.slice(0,220),
+    durationseconds:String(durationSeconds||0),
+    uploadedat:uploadedAt,
+    uploadedby:clean(user?.fullName||user?.email||'Studio Admin',180),
+    release:WEBTV_MEDIA_RELEASE,
+  };
+  try{
+    const direct=await createDirectMultipart(env,key,{contentType:mime,cacheControl:'public, max-age=3600',metadata});
+    return json({
+      ok:true,
+      uploadId:direct.uploadId,
+      key,
+      mediaUrl:publicUrlForKey(key),
       title,
-      originalName:originalName.slice(0,220),
-      durationSeconds:String(durationSeconds||0),
-      uploadedAt,
-      uploadedBy:clean(user?.fullName||user?.email||'Studio Admin',180),
-      release:WEBTV_MEDIA_RELEASE,
-    },
-  });
-  return json({ok:true,uploadId:upload.uploadId,key,mediaUrl:publicUrlForKey(key),title,durationSeconds,chunkSize:MULTIPART_CHUNK_BYTES});
+      durationSeconds,
+      chunkSize:MULTIPART_CHUNK_BYTES,
+      transport:DIRECT_R2_TRANSPORT,
+      directUpload:true,
+    });
+  }catch(error){
+    return json({error:error?.code||'direct_r2_init_failed',detail:clean(error?.detail||error?.message,500),stage:'r2-direct-init'},Number(error?.status||502));
+  }
+}
+
+async function directPartUrl(request,env){
+  if(!directR2Configured(env))return json({error:'direct_r2_not_configured'},503);
+  const body=await request.json().catch(()=>({}));
+  const key=validateUploadKey(body.key);
+  const uploadId=clean(body.uploadId,300);
+  const partNumber=Number(body.partNumber||0);
+  if(!key||!uploadId||!Number.isInteger(partNumber)||partNumber<1||partNumber>10000)return json({error:'invalid_upload_part'},400);
+  try{
+    const signed=await presignDirectPart(env,key,uploadId,partNumber);
+    return json({ok:true,url:signed.url,expiresIn:signed.expiresIn,transport:DIRECT_R2_TRANSPORT,partNumber});
+  }catch(error){
+    return json({error:error?.code||'direct_r2_presign_failed',detail:clean(error?.detail||error?.message,500),stage:'r2-direct-presign'},Number(error?.status||502));
+  }
 }
 
 async function uploadPart(request,env,url){
+  // Compatibility endpoint only. The Studio v4 import path no longer sends
+  // video bytes through the Worker; it uses presigned S3 UploadPart URLs.
   const key=validateUploadKey(url.searchParams.get('key'));
   const uploadId=clean(url.searchParams.get('uploadId'),300);
   const partNumber=Number(url.searchParams.get('partNumber')||0);
   if(!key||!uploadId||!Number.isInteger(partNumber)||partNumber<1||partNumber>10000)return json({error:'invalid_upload_part'},400);
   if(!request.body)return json({error:'empty_upload_part'},400);
-
   const contentLength=Number(request.headers.get('Content-Length')||0);
   if(Number.isFinite(contentLength)&&contentLength>0&&contentLength>MULTIPART_CHUNK_BYTES)return json({error:'upload_part_too_large',maxBytes:MULTIPART_CHUNK_BYTES},413);
-
   try{
     const multipart=env.MEDIA.resumeMultipartUpload(key,uploadId);
-    // Keep the request body as a stream all the way into R2. Cloudflare's
-    // Worker multipart API is designed for this path and it avoids buffering
-    // every video part in Worker memory before R2 receives it.
     const part=await multipart.uploadPart(partNumber,request.body);
-    return json({ok:true,partNumber,etag:part.etag});
+    return json({ok:true,partNumber,etag:part.etag,transport:LEGACY_TRANSPORT});
   }catch(error){
     const detail=clean(error?.message||String(error||'R2 multipart upload failed'),400);
     const providerCode=clean(error?.code||error?.name||'',120);
@@ -96,16 +131,22 @@ async function completeUpload(request,env){
   const body=await request.json().catch(()=>({}));
   const key=validateUploadKey(body.key);
   const uploadId=clean(body.uploadId,300);
-  const parts=Array.isArray(body.parts)?body.parts.map(part=>({partNumber:Number(part.partNumber),etag:clean(part.etag,300)})).filter(part=>Number.isInteger(part.partNumber)&&part.partNumber>0&&part.etag):[];
+  const transport=clean(body.transport,80);
+  const parts=normalizeParts(body.parts);
   if(!key||!uploadId||!parts.length)return json({error:'invalid_complete_payload'},400);
-  parts.sort((a,b)=>a.partNumber-b.partNumber);
   try{
+    if(transport===DIRECT_R2_TRANSPORT){
+      await completeDirectMultipart(env,key,uploadId,parts);
+      const head=await headWithRetry(env,key);
+      if(!head)return json({error:'upload_complete_head_missing'},502);
+      return json({ok:true,item:objectToMedia(head,key),transport:DIRECT_R2_TRANSPORT});
+    }
     const multipart=env.MEDIA.resumeMultipartUpload(key,uploadId);
     const object=await multipart.complete(parts);
     const head=await env.MEDIA.head(key);
-    return json({ok:true,item:objectToMedia(head||object,key)});
+    return json({ok:true,item:objectToMedia(head||object,key),transport:LEGACY_TRANSPORT});
   }catch(error){
-    return json({error:'upload_complete_failed',detail:clean(error?.message,240)},502);
+    return json({error:error?.code||'upload_complete_failed',detail:clean(error?.detail||error?.message,500),stage:transport===DIRECT_R2_TRANSPORT?'r2-direct-complete':'r2-complete'},Number(error?.status||502));
   }
 }
 
@@ -113,8 +154,12 @@ async function abortUpload(request,env){
   const body=await request.json().catch(()=>({}));
   const key=validateUploadKey(body.key);
   const uploadId=clean(body.uploadId,300);
+  const transport=clean(body.transport,80);
   if(!key||!uploadId)return json({error:'invalid_abort_payload'},400);
-  try{await env.MEDIA.resumeMultipartUpload(key,uploadId).abort();}catch{}
+  try{
+    if(transport===DIRECT_R2_TRANSPORT)await abortDirectMultipart(env,key,uploadId);
+    else await env.MEDIA.resumeMultipartUpload(key,uploadId).abort();
+  }catch{}
   return json({ok:true});
 }
 
@@ -154,20 +199,28 @@ async function servePublicMedia(request,env,url){
 function objectToMedia(object,keyOverride=''){
   const key=String(keyOverride||object?.key||'');
   const meta=object?.customMetadata||{};
+  const title=metaValue(meta,'title');
+  const originalName=metaValue(meta,'originalName','originalname');
+  const duration=metaValue(meta,'durationSeconds','durationseconds');
+  const uploadedAt=metaValue(meta,'uploadedAt','uploadedat');
+  const uploadedBy=metaValue(meta,'uploadedBy','uploadedby');
   return{
     id:`upload:${key.split('/').pop()||crypto.randomUUID()}`,
-    title:clean(meta.title,180)||titleFromFilename(meta.originalName||key.split('/').pop()||'Vidéo Web TV'),
+    title:clean(title,180)||titleFromFilename(originalName||key.split('/').pop()||'Vidéo Web TV'),
     mediaUrl:publicUrlForKey(key),
-    durationSeconds:clampNumber(meta.durationSeconds,0,12*60*60),
+    durationSeconds:clampNumber(duration,0,12*60*60),
     size:Number(object?.size||0),
     contentType:object?.httpMetadata?.contentType||'video/mp4',
-    originalName:clean(meta.originalName,220),
-    uploadedAt:clean(meta.uploadedAt,60),
-    uploadedBy:clean(meta.uploadedBy,180),
+    originalName:clean(originalName,220),
+    uploadedAt:clean(uploadedAt,60),
+    uploadedBy:clean(uploadedBy,180),
     type:'episode',enabled:true,
   };
 }
 
+function metaValue(meta,...names){for(const name of names){if(meta?.[name]!==undefined&&meta?.[name]!==null&&String(meta[name])!=='')return decodeDirectMeta(meta[name]);}return'';}
+function normalizeParts(value){return Array.isArray(value)?value.map(part=>({partNumber:Number(part.partNumber),etag:clean(part.etag,300)})).filter(part=>Number.isInteger(part.partNumber)&&part.partNumber>0&&part.etag).sort((a,b)=>a.partNumber-b.partNumber):[];}
+async function headWithRetry(env,key){for(const wait of [0,150,400,900,1800]){if(wait)await sleep(wait);const head=await env.MEDIA.head(key);if(head)return head;}return null;}
 function publicUrlForKey(key){return `${PUBLIC_PREFIX}${encodeURIComponent(String(key).slice(R2_PREFIX.length))}`;}
 function validateUploadKey(value){const key=clean(value,500);if(!key.startsWith(R2_PREFIX))return'';const tail=key.slice(R2_PREFIX.length);return tail&&!tail.includes('/')&&!tail.includes('\\')&&!tail.includes('..')?key:'';}
 function parseRange(value,size){
@@ -187,4 +240,5 @@ function safeDecode(value){try{return decodeURIComponent(value);}catch{return'';
 function clean(value,max){return String(value??'').trim().slice(0,max);}
 function clampNumber(value,min,max){const n=Number(value||0);return Number.isFinite(n)?Math.min(max,Math.max(min,Math.round(n))):0;}
 function sameOrigin(request){const origin=request.headers.get('Origin');if(!origin)return true;try{return new URL(origin).origin===new URL(request.url).origin;}catch{return false;}}
+function sleep(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
 function json(payload,status=200){return new Response(JSON.stringify(payload),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','X-Neptune-WebTV-Media':WEBTV_MEDIA_RELEASE}});}

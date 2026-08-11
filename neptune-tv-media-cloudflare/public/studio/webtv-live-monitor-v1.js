@@ -1,6 +1,7 @@
-const monitor={state:null,itemKey:'',timer:null,lastSyncAt:0};
+const monitor={state:null,itemKey:'',youtubeKey:'',timer:null,lastSyncAt:0};
 
 const els={
+  youtube:document.getElementById('youtubeLivePreview'),
   video:document.getElementById('antennaPreview'),
   screen:document.getElementById('antennaScreen'),
   placeholder:document.getElementById('antennaPlaceholder'),
@@ -13,10 +14,10 @@ const els={
   resync:document.getElementById('monitorResync'),
 };
 
-if(els.video){
-  els.video.addEventListener('loadedmetadata',()=>syncVideo(true));
-  els.video.addEventListener('canplay',()=>{els.video.play().catch(()=>{});});
-  els.video.addEventListener('error',()=>showVideoError());
+if(els.screen){
+  els.video?.addEventListener('loadedmetadata',()=>syncVideo(true));
+  els.video?.addEventListener('canplay',()=>{els.video.play().catch(()=>{});});
+  els.video?.addEventListener('error',()=>showVideoError());
   els.resync?.addEventListener('click',()=>refresh(true));
   refresh(true);
   monitor.timer=setInterval(()=>refresh(false),5000);
@@ -42,18 +43,26 @@ function render(state,forceSync){
   const status=String(encoder.status||'not_connected');
   const live=state?.enabled===true&&['running','live','streaming'].includes(status);
   const current=encoder.currentItem||null;
-  const source=resolveSource(state,current);
+  const youtubeId=String(state?.output?.videoId||'').trim();
 
   setBadge(live,live?'EN DIRECT':state?.enabled?'EN ATTENTE':'HORS LIGNE');
   els.screen.classList.toggle('is-live',live);
   els.program.textContent=current?.title||'Aucun programme';
   els.overlay.textContent=live?'NEPTUNE · EN DIRECT':'NEPTUNE · ANTENNE';
 
+  if(youtubeId){
+    showYoutube(youtubeId,forceSync);
+    els.sync.textContent=live?'Retour YouTube · direct':'Retour YouTube chargé';
+    return;
+  }
+
+  clearYoutube();
+  const source=resolveSource(state,current);
   if(!live||!current){
     clearVideo();
     showPlaceholder(
       state?.enabled?'Aucun programme diffusé':'Web TV hors ligne',
-      state?.enabled?'Le moniteur démarrera dès que l’encodeur prendra un programme.':'Activez la Web TV et enregistrez la programmation pour lancer l’antenne.'
+      state?.enabled?'Le moniteur démarrera dès que l’encodeur prendra un programme.':'Renseignez le lien du live YouTube ou activez la Web TV pour afficher le retour source.'
     );
     els.sync.textContent=state?.enabled?'En attente du signal':'Antenne arrêtée';
     return;
@@ -69,6 +78,32 @@ function render(state,forceSync){
     return;
   }
 
+  showSource(source,current,forceSync);
+  els.sync.textContent=`Retour source · ${heartbeatLabel(encoder.lastHeartbeatAt||encoder.heartbeatAt)}`;
+}
+
+function showYoutube(videoId,forceReload=false){
+  clearVideo();
+  hidePlaceholder();
+  els.screen.classList.remove('has-error');
+  els.youtube.hidden=false;
+  const key=videoId;
+  if(monitor.youtubeKey===key&&!forceReload)return;
+  monitor.youtubeKey=key;
+  const src=`https://www.youtube.com/embed/${encodeURIComponent(videoId)}?autoplay=1&mute=1&playsinline=1&rel=0&origin=${encodeURIComponent(location.origin)}`;
+  if(forceReload&&els.youtube.getAttribute('src'))els.youtube.removeAttribute('src');
+  els.youtube.src=src;
+}
+
+function clearYoutube(){
+  if(!els.youtube)return;
+  els.youtube.hidden=true;
+  if(els.youtube.getAttribute('src'))els.youtube.removeAttribute('src');
+  monitor.youtubeKey='';
+}
+
+function showSource(source,current,forceSync){
+  els.video.hidden=false;
   const nextKey=`${current.id||''}|${source}|${current.startedAt||''}`;
   if(monitor.itemKey!==nextKey){
     monitor.itemKey=nextKey;
@@ -77,8 +112,6 @@ function render(state,forceSync){
   }
   hidePlaceholder();
   els.screen.classList.remove('has-error');
-  els.sync.textContent=heartbeatLabel(encoder.lastHeartbeatAt||encoder.heartbeatAt);
-
   if(forceSync||Date.now()-monitor.lastSyncAt>12000)syncVideo(forceSync);
 }
 
@@ -101,7 +134,7 @@ function safeMedia(value){
 
 function syncVideo(force=false){
   const current=monitor.state?.encoder?.currentItem;
-  if(!current?.startedAt||!els.video.src)return;
+  if(!current?.startedAt||!els.video?.src)return;
   const started=new Date(current.startedAt).getTime();
   if(!Number.isFinite(started))return;
   let target=Math.max(0,(Date.now()-started)/1000);
@@ -117,6 +150,7 @@ function syncVideo(force=false){
 
 function clearVideo(){
   if(!els.video)return;
+  els.video.hidden=true;
   if(els.video.getAttribute('src')){
     els.video.pause();
     els.video.removeAttribute('src');
@@ -127,7 +161,7 @@ function clearVideo(){
 
 function showVideoError(){
   els.screen.classList.add('has-error');
-  showPlaceholder('Prévisualisation indisponible','Le flux peut continuer vers YouTube. Cliquez sur Resynchroniser ou vérifiez que la source vidéo est directement lisible en HTTPS.');
+  showPlaceholder('Prévisualisation indisponible','Le flux peut continuer vers YouTube. Vérifiez le lien du live ou cliquez sur Resynchroniser.');
   els.sync.textContent='Erreur de lecture locale';
 }
 

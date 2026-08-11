@@ -20,7 +20,7 @@ const ADMIN_JS='/studio/media-catalog-manager-v98.js?v=1';
 const ADMIN_UX_JS='/studio/media-catalog-ux-v99.js?v=1';
 const ADMIN_CSS='/studio/media-catalog-manager-v98.css?v=1';
 const RELEASE_TAG='neptune-media-catalog-ux-20260811-v99';
-const STUDIO_SHELL_RELEASE='neptune-studio-shell-20260811-v100';
+const STUDIO_SHELL_RELEASE='neptune-studio-shell-20260811-v102';
 
 export default{
   async fetch(request,env,ctx){
@@ -43,8 +43,9 @@ export default{
     if(request.method==='GET'&&response.ok&&isAdvancedPath(url.pathname)&&(response.headers.get('Content-Type')||'').includes('text/html')){
       response=await inject(response,ADMIN_CSS,[ADMIN_JS,ADMIN_UX_JS]);
     }
-    if(request.method==='GET'&&response.ok&&isStudioShellPath(url.pathname)&&(response.headers.get('Content-Type')||'').includes('text/html')){
-      response=secureStudioDocument(response);
+    if(request.method==='GET'&&response.ok&&(response.headers.get('Content-Type')||'').includes('text/html')){
+      if(isEmbeddedStudioRequest(url)||isCatalogPreviewRequest(url))response=allowStudioEmbeddedDocument(response);
+      else if(isStudioShellPath(url.pathname))response=secureStudioDocument(response);
     }
     return response;
   },
@@ -93,6 +94,8 @@ function secure(response){const h=new Headers(response.headers);h.set('Cache-Con
 function isAdvancedPath(path){return path==='/studio/advanced'||path==='/studio/advanced/'||path==='/studio/advanced.html';}
 function isStudioShellPath(path){return path==='/studio/app'||path==='/studio/app/'||path==='/studio/app.html';}
 function isLegacyStudioPath(path){return path==='/studio/clients'||path==='/studio/clients/'||path==='/studio/clients.html'||path==='/studio/video-ai'||path==='/studio/video-ai/'||path==='/studio/video-ai.html'||path==='/studio/webtv'||path==='/studio/webtv/'||path==='/studio/webtv.html'||isAdvancedPath(path);}
+function isEmbeddedStudioRequest(url){return isLegacyStudioPath(url.pathname)&&url.searchParams.get('studio_embed')==='v100';}
+function isCatalogPreviewRequest(url){return (url.pathname==='/reserver'||url.pathname==='/reserver/')&&url.searchParams.get('catalog_preview')==='studio';}
 function legacyStudioRedirect(url){
   if(url.searchParams.get('reset')){
     const next='/studio/app.html#settings/general';
@@ -105,8 +108,26 @@ function legacyStudioRedirect(url){
   return Response.redirect(`${url.origin}${target}`,302);
 }
 function secureStudioDocument(response){
-  const headers=new Headers(response.headers);headers.delete('Content-Length');headers.set('Cache-Control','private, no-store, max-age=0');headers.set('X-Content-Type-Options','nosniff');headers.set('X-Frame-Options','DENY');headers.set('Referrer-Policy','same-origin');headers.set('X-Neptune-Studio-Shell',STUDIO_SHELL_RELEASE);
+  const headers=new Headers(response.headers);headers.delete('Content-Length');headers.set('Cache-Control','private, no-store, max-age=0');headers.set('X-Content-Type-Options','nosniff');headers.set('X-Frame-Options','DENY');headers.set('Referrer-Policy','same-origin');headers.set('Content-Security-Policy',studioShellCsp(headers.get('Content-Security-Policy')||''));headers.set('X-Neptune-Studio-Shell',STUDIO_SHELL_RELEASE);
   return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
+}
+function allowStudioEmbeddedDocument(response){
+  const headers=new Headers(response.headers);headers.delete('Content-Length');headers.set('Cache-Control','private, no-store, max-age=0');headers.set('X-Content-Type-Options','nosniff');headers.set('X-Frame-Options','SAMEORIGIN');headers.set('Referrer-Policy','same-origin');headers.set('Content-Security-Policy',studioEmbeddedCsp(headers.get('Content-Security-Policy')||''));headers.set('X-Neptune-Studio-Embed',STUDIO_SHELL_RELEASE);
+  return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
+}
+function studioShellCsp(value){return addCspSource(setCspDirective(value,'frame-ancestors',["'none'"]),'frame-src',"'self'");}
+function studioEmbeddedCsp(value){return addCspSource(setCspDirective(value,'frame-ancestors',["'self'"]),'frame-src',"'self'");}
+function setCspDirective(value,name,sources){
+  const directives=String(value||"default-src 'self'").split(';').map(item=>item.trim()).filter(Boolean),prefix=`${name} `;
+  const next=`${name} ${sources.join(' ')}`;let replaced=false;
+  for(let index=0;index<directives.length;index+=1){if(directives[index]===name||directives[index].startsWith(prefix)){directives[index]=next;replaced=true;break;}}
+  if(!replaced)directives.push(next);return directives.join('; ');
+}
+function addCspSource(value,name,source){
+  const directives=String(value||"default-src 'self'").split(';').map(item=>item.trim()).filter(Boolean),prefix=`${name} `;
+  let index=directives.findIndex(item=>item===name||item.startsWith(prefix));
+  if(index<0){directives.push(`${name} ${source}`);return directives.join('; ');}
+  const tokens=directives[index].split(/\s+/u);if(!tokens.includes(source))tokens.push(source);directives[index]=tokens.join(' ');return directives.join('; ');
 }
 async function inject(response,css,scripts){
   let body=await response.text(),cssPath=css.split('?')[0];

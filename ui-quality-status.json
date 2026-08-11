@@ -1,9 +1,9 @@
 {
   "status": "failed",
-  "source_sha": "3ea1a4610c933a21a0fe4e7c700ca2b005d4ac3f",
-  "source_workflow_id": "31489822321",
-  "ui_workflow_run_id": "31490978211",
-  "checked_at": "2026-08-11T12:24:52.839363+00:00",
+  "source_sha": "700c2e3d2ec381b6cac7a12d032c736d9e9291ac",
+  "source_workflow_id": "31493404903",
+  "ui_workflow_run_id": "31493572116",
+  "checked_at": "2026-08-11T12:56:50.236197+00:00",
   "architecture": "conversion-voice-v10",
   "experience": "final-v12",
   "audit": "playwright-production",
@@ -29,7 +29,6 @@
     "home-mobile: cibles tactiles trop petites: ‹ |  |  | › | ‹",
     "home-mobile: pipeline de production absent",
     "home-mobile: outil de choix de format absent",
-    "emissions-desktop: images non chargées: https://tv.neptunebusiness.com/media/posters/jeu-connexio.webp, https://tv.neptunebusiness.com/media/posters/hors-norme.webp",
     "emissions-mobile: images non chargées: https://tv.neptunebusiness.com/media/posters/jeu-connexio.webp, https://tv.neptunebusiness.com/media/posters/hors-norme.webp",
     "direct-desktop: texte critique coupé: Neptune Media en direct"
   ],
@@ -75,9 +74,7 @@
     {
       "name": "emissions-desktop",
       "route": "/emissions/",
-      "issues": [
-        "images non chargées: https://tv.neptunebusiness.com/media/posters/jeu-connexio.webp, https://tv.neptunebusiness.com/media/posters/hors-norme.webp"
-      ],
+      "issues": [],
       "width": 1440,
       "height": 1000,
       "scrollHeight": 3016

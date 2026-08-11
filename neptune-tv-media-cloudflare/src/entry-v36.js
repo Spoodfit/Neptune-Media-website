@@ -17,6 +17,7 @@ const ROUTES=new Map([
   ['configuration-visual/save','/portal/media-catalog-v98/configuration-visual-save'],
 ]);
 const ADMIN_JS='/studio/media-catalog-manager-v98.js?v=1';
+const ADMIN_NAV_JS='/studio/media-catalog-nav-v98.js?v=1';
 const ADMIN_CSS='/studio/media-catalog-manager-v98.css?v=1';
 
 export default{
@@ -34,7 +35,7 @@ export default{
     let response=await base.fetch(request,env,ctx);
     if(request.method==='GET'&&url.pathname==='/api/public/release'&&response.ok)response=await augmentRelease(response);
     if(request.method==='GET'&&response.ok&&isAdvancedPath(url.pathname)&&(response.headers.get('Content-Type')||'').includes('text/html')){
-      response=await inject(response,ADMIN_CSS,ADMIN_JS);
+      response=await inject(response,ADMIN_CSS,[ADMIN_JS,ADMIN_NAV_JS]);
     }
     return response;
   },
@@ -81,12 +82,12 @@ async function studioAuth(request,env,ctx){
 function callStore(studio,path,body){return studio.fetch(`https://store${path}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});}
 function secure(response){const h=new Headers(response.headers);h.set('Cache-Control','no-store');h.set('X-Content-Type-Options','nosniff');h.set('X-Neptune-Media-Catalog',MEDIA_CATALOG_RELEASE);return new Response(response.body,{status:response.status,statusText:response.statusText,headers:h});}
 function isAdvancedPath(path){return path==='/studio/advanced'||path==='/studio/advanced/'||path==='/studio/advanced.html';}
-async function inject(response,css,js){
-  let body=await response.text(),cssPath=css.split('?')[0],jsPath=js.split('?')[0];
+async function inject(response,css,scripts){
+  let body=await response.text(),cssPath=css.split('?')[0];
   body=body.replace(new RegExp(`<link\\b[^>]*href=["'][^"']*${escapeRegExp(cssPath)}[^"']*["'][^>]*>\\s*`,'giu'),'');
-  body=body.replace(new RegExp(`<script\\b[^>]*src=["'][^"']*${escapeRegExp(jsPath)}[^"']*["'][^>]*>\\s*<\\/script>\\s*`,'giu'),'');
+  for(const js of scripts){const jsPath=js.split('?')[0];body=body.replace(new RegExp(`<script\\b[^>]*src=["'][^"']*${escapeRegExp(jsPath)}[^"']*["'][^>]*>\\s*<\\/script>\\s*`,'giu'),'');}
   body=body.replace('</head>',`<link rel="stylesheet" href="${css}"></head>`);
-  body=body.replace('</body>',`<script type="module" src="${js}"></script></body>`);
+  body=body.replace('</body>',`${scripts.map(js=>`<script type="module" src="${js}"></script>`).join('')}</body>`);
   const headers=new Headers(response.headers);headers.delete('Content-Length');headers.set('Cache-Control','private, no-store, max-age=0');headers.set('X-Neptune-Media-Catalog',MEDIA_CATALOG_RELEASE);
   return new Response(body,{status:response.status,statusText:response.statusText,headers});
 }

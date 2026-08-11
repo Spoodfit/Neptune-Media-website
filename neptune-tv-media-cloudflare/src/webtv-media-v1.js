@@ -3,10 +3,9 @@ const PUBLIC_PREFIX='/media/webtv/';
 const R2_PREFIX='webtv/uploads/';
 const MAX_FILE_BYTES=20*1024*1024*1024;
 const MULTIPART_CHUNK_BYTES=10*1024*1024;
-const MULTIPART_RETRIES=3;
 const LIST_PAGE_SIZE=500;
 const MAX_LIBRARY_ITEMS=2000;
-export const WEBTV_MEDIA_RELEASE='neptune-webtv-media-20260811-v2';
+export const WEBTV_MEDIA_RELEASE='neptune-webtv-media-20260811-v3';
 
 export function isWebTvMediaRoute(pathname){
   return pathname===API_PREFIX||pathname.startsWith(`${API_PREFIX}/`)||pathname.startsWith(PUBLIC_PREFIX);
@@ -76,26 +75,21 @@ async function uploadPart(request,env,url){
   if(!key||!uploadId||!Number.isInteger(partNumber)||partNumber<1||partNumber>10000)return json({error:'invalid_upload_part'},400);
   if(!request.body)return json({error:'empty_upload_part'},400);
 
-  let bytes;
-  try{
-    bytes=await request.arrayBuffer();
-  }catch(error){
-    return json({error:'upload_part_failed',detail:clean(error?.message,240),stage:'receive'},502);
-  }
-  if(!bytes.byteLength)return json({error:'empty_upload_part'},400);
+  const contentLength=Number(request.headers.get('Content-Length')||0);
+  if(Number.isFinite(contentLength)&&contentLength>0&&contentLength>MULTIPART_CHUNK_BYTES)return json({error:'upload_part_too_large',maxBytes:MULTIPART_CHUNK_BYTES},413);
 
-  let lastError=null;
-  for(let attempt=1;attempt<=MULTIPART_RETRIES;attempt+=1){
-    try{
-      const multipart=env.MEDIA.resumeMultipartUpload(key,uploadId);
-      const part=await multipart.uploadPart(partNumber,bytes);
-      return json({ok:true,partNumber,etag:part.etag,attempt});
-    }catch(error){
-      lastError=error;
-      if(attempt<MULTIPART_RETRIES)await sleep(180*2**(attempt-1));
-    }
+  try{
+    const multipart=env.MEDIA.resumeMultipartUpload(key,uploadId);
+    // Keep the request body as a stream all the way into R2. Cloudflare's
+    // Worker multipart API is designed for this path and it avoids buffering
+    // every video part in Worker memory before R2 receives it.
+    const part=await multipart.uploadPart(partNumber,request.body);
+    return json({ok:true,partNumber,etag:part.etag});
+  }catch(error){
+    const detail=clean(error?.message||String(error||'R2 multipart upload failed'),400);
+    const providerCode=clean(error?.code||error?.name||'',120);
+    return json({error:'upload_part_failed',detail,providerCode,stage:'r2'},503);
   }
-  return json({error:'upload_part_failed',detail:clean(lastError?.message,240),stage:'r2',attempts:MULTIPART_RETRIES},502);
 }
 
 async function completeUpload(request,env){
@@ -193,5 +187,4 @@ function safeDecode(value){try{return decodeURIComponent(value);}catch{return'';
 function clean(value,max){return String(value??'').trim().slice(0,max);}
 function clampNumber(value,min,max){const n=Number(value||0);return Number.isFinite(n)?Math.min(max,Math.max(min,Math.round(n))):0;}
 function sameOrigin(request){const origin=request.headers.get('Origin');if(!origin)return true;try{return new URL(origin).origin===new URL(request.url).origin;}catch{return false;}}
-function sleep(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
 function json(payload,status=200){return new Response(JSON.stringify(payload),{status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','X-Neptune-WebTV-Media':WEBTV_MEDIA_RELEASE}});}

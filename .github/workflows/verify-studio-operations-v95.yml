@@ -8,6 +8,7 @@ on:
       - 'neptune-tv-media-cloudflare/src/entry-v33.js'
       - 'neptune-tv-media-cloudflare/src/store-v27.js'
       - 'neptune-tv-media-cloudflare/src/portal-studio-operations-v95.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-operations-compat-v95.js'
       - 'neptune-tv-media-cloudflare/public/studio/studio-operations-v95.js'
       - 'neptune-tv-media-cloudflare/public/studio/studio-operations-v95.css'
       - 'neptune-tv-media-cloudflare/public/espace-client/media-catalog-v95.js'
@@ -24,6 +25,7 @@ on:
       - 'neptune-tv-media-cloudflare/src/entry-v33.js'
       - 'neptune-tv-media-cloudflare/src/store-v27.js'
       - 'neptune-tv-media-cloudflare/src/portal-studio-operations-v95.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-operations-compat-v95.js'
       - 'neptune-tv-media-cloudflare/public/studio/studio-operations-v95.js'
       - 'neptune-tv-media-cloudflare/public/studio/studio-operations-v95.css'
       - 'neptune-tv-media-cloudflare/public/espace-client/media-catalog-v95.js'
@@ -44,6 +46,7 @@ jobs:
     timeout-minutes: 20
     env:
       STUDIO_OPERATIONS_RELEASE: neptune-studio-operations-20260811-v95
+      STUDIO_OPERATIONS_COMPAT_RELEASE: neptune-studio-operations-compat-20260811-v95
       PUBLIC_URL: https://tv.neptunebusiness.com
       WORKERS_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
     steps:
@@ -61,6 +64,7 @@ jobs:
           node --check src/entry-v33.js
           node --check src/store-v27.js
           node --check src/portal-studio-operations-v95.js
+          node --check public/studio/studio-operations-compat-v95.js
           node --check public/studio/studio-operations-v95.js
           node --check public/espace-client/media-catalog-v95.js
           node --check tests/studio-operations-v95.mjs
@@ -112,6 +116,7 @@ jobs:
               curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/api/public/release?$query" > "/tmp/neptune-v95-production/$slug-release.json" || true
               curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/clients?$query" > "/tmp/neptune-v95-production/$slug-studio.html" || true
               curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/espace-client/?$query" > "/tmp/neptune-v95-production/$slug-client.html" || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/studio-operations-compat-v95.js?$query" > "/tmp/neptune-v95-production/$slug-studio-compat-v95.js" || true
               curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/studio-operations-v95.js?$query" > "/tmp/neptune-v95-production/$slug-studio-v95.js" || true
               curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/espace-client/media-catalog-v95.js?$query" > "/tmp/neptune-v95-production/$slug-catalog-v95.js" || true
               curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/api/public/media-catalog-v95?$query" > "/tmp/neptune-v95-production/$slug-catalog.json" || true
@@ -131,10 +136,12 @@ jobs:
           if (!Array.isArray(catalog.formats) || !catalog.formats.length) process.exit(1);
           NODE
               then
-                if grep -Fq '/studio/studio-operations-v95.js?v=1' "/tmp/neptune-v95-production/$slug-studio.html" \
+                if grep -Fq '/studio/studio-operations-compat-v95.js?v=1' "/tmp/neptune-v95-production/$slug-studio.html" \
+                  && grep -Fq '/studio/studio-operations-v95.js?v=1' "/tmp/neptune-v95-production/$slug-studio.html" \
                   && grep -Fq '/studio/studio-operations-v95.css?v=1' "/tmp/neptune-v95-production/$slug-studio.html" \
                   && grep -Fq '/espace-client/media-catalog-v95.js?v=1' "/tmp/neptune-v95-production/$slug-client.html" \
                   && grep -Fq '/espace-client/media-catalog-v95.css?v=1' "/tmp/neptune-v95-production/$slug-client.html" \
+                  && grep -Fq "$STUDIO_OPERATIONS_COMPAT_RELEASE" "/tmp/neptune-v95-production/$slug-studio-compat-v95.js" \
                   && grep -Fq "$STUDIO_OPERATIONS_RELEASE" "/tmp/neptune-v95-production/$slug-studio-v95.js" \
                   && grep -Fq "$STUDIO_OPERATIONS_RELEASE" "/tmp/neptune-v95-production/$slug-catalog-v95.js"; then
                   ready=1

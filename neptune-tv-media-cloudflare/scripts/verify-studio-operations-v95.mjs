@@ -36,6 +36,7 @@ expect('supplier payment UI shows HT TVA TTC',studio.includes('Factures & vireme
 expect('configuration manages suppliers and formats',studio.includes('Fournisseurs & formats')&&studio.includes('data-v95-config-tab="formats"'));
 expect('format catalog is persisted and public-only filters active formats',backend.includes('portal_media_formats_v95')&&backend.includes("publicOnly ? 'WHERE active=1'"));
 expect('client space fetches canonical catalog',client.includes('/api/public/media-catalog-v95')&&client.includes('Choisir ce format'));
+expect('client catalog replaces the existing format grid instead of appending a duplicate section',client.includes("document.querySelector('.formats-panel')")&&client.includes("existing?.querySelector('.format-grid')")&&!client.includes('host.append(section)')&&!client.includes("className='client-media-catalog-v95'"));
 expect('client catalog has mobile one-column layout',clientCss.includes('grid-template-columns:1fr'));
 expect('Studio dialogs are mobile full-screen',css.includes('width:100vw;height:100dvh'));
 expect('release exposes all four v95 capabilities',entry.includes('studioClientAccount')&&entry.includes('studioSupplierFinance')&&entry.includes('studioMediaConfiguration')&&entry.includes('clientMediaCatalog'));

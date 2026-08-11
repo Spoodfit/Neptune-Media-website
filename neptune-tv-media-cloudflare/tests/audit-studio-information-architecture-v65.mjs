@@ -66,7 +66,7 @@ try {
       if (screen.id === 'webtv') {
         await page.waitForSelector('#save');
         await page.waitForSelector('[data-webtv-section-button="antenna"]');
-        await page.waitForSelector('#importVideo');
+        await page.waitForSelector('#importVideo', { state: 'attached' });
       }
       await page.waitForTimeout(700);
 

@@ -55,6 +55,7 @@ const viewports = [
   { id: 'mobile', width: 390, height: 844 },
 ];
 const expectedPrimary = ['Parcours clients', 'Production vidéo', 'Diffusion', 'Réglages'];
+const readinessTimeout = 30000;
 
 const browser = await chromium.launch({ headless: true });
 const reports = [];
@@ -67,15 +68,24 @@ try {
       page.on('pageerror', (error) => browserErrors.push(`pageerror:${error.message}`));
       page.on('console', (message) => { if (message.type() === 'error') browserErrors.push(`console:${message.text()}`); });
       await page.route('**/api/**', routeApi);
-      const response = await page.goto(`${baseURL}${screen.path}`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+
+      // The legacy advanced page registers several DOMContentLoaded listeners. The v104 contract is not
+      // the event itself: it is a committed top-level document whose shared navigation and business
+      // workspace actually become usable. Explicit readiness checks below fail if that does not happen.
+      const response = await page.goto(`${baseURL}${screen.path}`, { waitUntil: 'commit', timeout: readinessTimeout });
       assert(response?.ok(), `${screen.id}/${viewport.id}: page HTTP invalide ${response?.status()}`);
-      await page.waitForFunction(() => document.body.classList.contains('studio-information-architecture-v65'));
-      if (screen.id === 'programme' || screen.id === 'catalogue') await page.waitForSelector('#app:not([hidden])');
-      if (screen.id === 'production') await page.waitForSelector('.video-ai-main');
+      await page.waitForSelector('body', { timeout: readinessTimeout });
+      await page.waitForFunction(() => document.body.classList.contains('studio-information-architecture-v65'), null, { timeout: readinessTimeout });
+      if (screen.id === 'programme' || screen.id === 'catalogue') {
+        await page.waitForSelector('#app:not([hidden])', { timeout: readinessTimeout });
+        await page.waitForSelector('#content', { state: 'visible', timeout: readinessTimeout });
+      }
+      if (screen.id === 'catalogue') await page.waitForSelector('.c98-page', { timeout: readinessTimeout });
+      if (screen.id === 'production') await page.waitForSelector('.video-ai-main', { timeout: readinessTimeout });
       if (screen.id === 'webtv') {
-        await page.waitForSelector('#save');
-        await page.waitForSelector('[data-webtv-section-button="antenna"]');
-        await page.waitForSelector('#importVideo', { state: 'attached' });
+        await page.waitForSelector('#save', { timeout: readinessTimeout });
+        await page.waitForSelector('[data-webtv-section-button="antenna"]', { timeout: readinessTimeout });
+        await page.waitForSelector('#importVideo', { state: 'attached', timeout: readinessTimeout });
       }
       await page.waitForTimeout(700);
 
@@ -129,7 +139,7 @@ try {
         const toggle = page.locator('#neptuneStudioMenuToggle');
         assert(await toggle.isVisible(), `${screen.id}: bouton mobile absent`);
         await toggle.click();
-        await page.waitForFunction(() => document.body.classList.contains('studio-menu-open-v65'));
+        await page.waitForFunction(() => document.body.classList.contains('studio-menu-open-v65'), null, { timeout: readinessTimeout });
         await page.waitForTimeout(300);
         const drawer = await page.evaluate(() => {
           const rect = document.querySelector('.neptune-studio-sidebar').getBoundingClientRect();
@@ -143,7 +153,7 @@ try {
         assert(drawer.width <= 305, `${screen.id}: tiroir mobile trop large (${drawer.width}px)`);
         assert(JSON.stringify(drawer.visibleLinks) === JSON.stringify(expectedPrimary), `${screen.id}/mobile: navigation du tiroir incorrecte ${JSON.stringify(drawer.visibleLinks)}`);
         await page.keyboard.press('Escape');
-        await page.waitForFunction(() => !document.body.classList.contains('studio-menu-open-v65'));
+        await page.waitForFunction(() => !document.body.classList.contains('studio-menu-open-v65'), null, { timeout: readinessTimeout });
       }
 
       if (screen.id === 'production') assert(await page.locator('.video-ai-main').isVisible(), `production/${viewport.id}: workspace Production absent`);

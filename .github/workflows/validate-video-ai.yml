@@ -42,9 +42,10 @@ jobs:
             neptune-video-engine/runtime.py \
             neptune-video-engine/runtime_v74.py \
             neptune-video-engine/runtime_v75.py
-          ! grep -Fq '"containers"' wrangler.jsonc
           ! grep -Fq '"VIDEO_PROCESSOR"' wrangler.jsonc
           ! grep -Fq '"VIDEO_JOBS"' wrangler.jsonc
+          ! grep -Fq '"class_name": "VideoProcessor"' wrangler.jsonc
+          grep -Fq '"class_name": "WebTvEncoder"' wrangler.jsonc
           grep -Fq 'from runtime_v75 import app as app' neptune-video-engine/runtime.py
           grep -Fq 'neptune-video-engine-20260803-v75' neptune-video-engine/runtime_v75.py
           grep -Fq 'FaceDetectorYN_create' neptune-video-engine/runtime_v75.py

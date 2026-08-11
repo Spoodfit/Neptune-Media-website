@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "neptune-media-webtv",
-  "main": "src/entry-v34.js",
+  "main": "src/entry-v35.js",
   "compatibility_date": "2026-07-30",
   "workers_dev": true,
   "keep_vars": true,
@@ -57,7 +57,7 @@
     "PORTAL_INTERNAL_EMAILS": "neptunebusinessclub@gmail.com",
     "STUDIO_SUPPLIER_NAME": "REC BOX Studio",
     "STUDIO_SUPPLIER_EMAIL": "contact@recbox.fr",
-    "STUDIO_ADDRESS": "11 Allée de Longueterre, 31850 Montrabé",
+    "STUDIO_ADDRESS": "11 Allée de Longueterre, 31850 Montrabré",
     "WEBTV_WIDTH": "1280",
     "WEBTV_HEIGHT": "720",
     "WEBTV_FPS": "30",

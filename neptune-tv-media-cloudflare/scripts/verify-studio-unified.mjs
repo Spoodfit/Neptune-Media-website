@@ -15,6 +15,7 @@ const entry = read('public/studio/index.html');
 const app = read('public/studio/app.html');
 const shell = read('public/studio/studio-shell-v100.js');
 const shellCss = read('public/studio/studio-shell-v100.css');
+const embeddedCss = read('public/studio/studio-embedded-v100.css');
 const login = read('public/studio/studio-login-v48.js');
 const worker = read('src/entry-v36.js');
 const legacyWorker = read('src/entry-v9.js');
@@ -23,6 +24,7 @@ const packageJson = read('package.json');
 expect(exists('public/studio/app.html'), 'Le shell Studio canonique app.html doit exister.');
 expect(exists('public/studio/studio-shell-v100.js'), 'Le routeur du shell Studio v100 doit exister.');
 expect(exists('public/studio/studio-shell-v100.css'), 'Le style du shell Studio v100 doit exister.');
+expect(exists('public/studio/studio-embedded-v100.css'), 'Le style d’isolation des workspaces doit exister.');
 expect((app.match(/class="ns100-sidebar"/gu) || []).length === 1, 'Le shell doit posséder exactement une sidebar principale.');
 expect(app.includes('data-shell-route="clients"'), 'Le shell doit exposer Parcours clients.');
 expect(app.includes('data-shell-route="production"'), 'Le shell doit exposer Production vidéo.');
@@ -38,8 +40,10 @@ expect(shell.includes("/studio/webtv.html?${EMBED}"), 'Diffusion doit être char
 expect(shell.includes("/studio/video-ai.html?${EMBED}"), 'Production doit être chargée en mode interne isolé.');
 expect(shell.includes("fetch('/api/auth/status'"), 'Le shell doit vérifier la session avant de révéler le Studio.');
 expect(shell.includes("fetch('/api/auth/logout'"), 'Le shell doit centraliser la déconnexion.');
-expect(shell.includes('.studio-sidebar,.video-ai-sidebar,#app>.sidebar'), 'Le mode interne doit neutraliser les sidebars historiques.');
+expect(shell.includes("link.href='/studio/studio-embedded-v100.css?v=1'"), 'Le shell doit charger l’isolation via une ressource same-origin, pas via un style inline.');
 expect(shell.includes('interceptChildNavigation'), 'Le shell doit intercepter les anciens liens internes au lieu d’empiler des interfaces.');
+expect(embeddedCss.includes('.studio-sidebar,.video-ai-sidebar,#app>.sidebar'), 'Le mode interne doit neutraliser les sidebars historiques.');
+expect(embeddedCss.includes('.studio-context-nav-v65{display:none!important}'), 'Les anciennes sous-navigations ne doivent pas se superposer au menu du shell.');
 
 expect(entry.includes('/studio/studio-login-v48.js?v=2'), 'La racine Studio doit charger la passerelle de connexion mise à jour.');
 expect(!entry.includes('id="app"'), 'La page de connexion ne doit pas réintroduire un ancien dashboard.');

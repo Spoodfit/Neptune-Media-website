@@ -1,4 +1,4 @@
-import { DIRECT_R2_TRANSPORT,abortDirectMultipart,completeDirectMultipart,createDirectMultipart,decodeDirectMeta,directR2Configured,presignDirectPart } from './webtv-r2-direct-v1.js';
+import { DIRECT_R2_TRANSPORT,abortDirectMultipart,completeDirectMultipart,createDirectMultipart,decodeDirectMeta,directR2Configured,directR2Diagnostics,presignDirectPart } from './webtv-r2-direct-v1.js';
 
 const API_PREFIX='/api/admin/webtv/media';
 const PUBLIC_PREFIX='/media/webtv/';
@@ -8,7 +8,7 @@ const MULTIPART_CHUNK_BYTES=10*1024*1024;
 const LIST_PAGE_SIZE=500;
 const MAX_LIBRARY_ITEMS=2000;
 const LEGACY_TRANSPORT='worker-r2-binding-v3';
-export const WEBTV_MEDIA_RELEASE='neptune-webtv-media-20260811-v4-direct-r2';
+export const WEBTV_MEDIA_RELEASE='neptune-webtv-media-20260811-v5-r2-diagnostics';
 
 export function isWebTvMediaRoute(pathname){
   return pathname===API_PREFIX||pathname.startsWith(`${API_PREFIX}/`)||pathname.startsWith(PUBLIC_PREFIX);
@@ -40,7 +40,8 @@ async function listMedia(env){
   }while(cursor&&objects.length<MAX_LIBRARY_ITEMS);
   const items=objects.slice(0,MAX_LIBRARY_ITEMS).filter(object=>object.key&&!object.key.endsWith('/')).map(object=>objectToMedia(object));
   items.sort((a,b)=>String(b.uploadedAt||'').localeCompare(String(a.uploadedAt||'')));
-  return json({ok:true,release:WEBTV_MEDIA_RELEASE,items,truncated:Boolean(cursor),directUploadConfigured:directR2Configured(env)});
+  const directUploadDiagnostics=directR2Diagnostics(env);
+  return json({ok:true,release:WEBTV_MEDIA_RELEASE,items,truncated:Boolean(cursor),directUploadConfigured:directUploadDiagnostics.configured,directUploadDiagnostics});
 }
 
 async function initUpload(request,env,user){
@@ -53,11 +54,13 @@ async function initUpload(request,env,user){
   if(!originalName)return json({error:'filename_required'},400);
   if(!Number.isFinite(size)||size<=0||size>MAX_FILE_BYTES)return json({error:'invalid_file_size',maxBytes:MAX_FILE_BYTES},413);
   if(!isVideoType(mime,originalName))return json({error:'unsupported_video_type'},415);
-  if(!directR2Configured(env)){
+  const diagnostics=directR2Diagnostics(env);
+  if(!diagnostics.configured){
     return json({
       error:'direct_r2_not_configured',
-      message:'Le transport direct R2 doit être configuré pour les imports vidéo.',
-      required:['R2_ACCOUNT_ID','R2_ACCESS_KEY_ID','R2_SECRET_ACCESS_KEY'],
+      message:'Le transport direct R2 n’est pas disponible dans cette version du Worker.',
+      diagnostics,
+      acceptedEndpointSources:['R2_S3_ENDPOINT','R2_ACCOUNT_ID'],
     },503);
   }
 
@@ -92,7 +95,8 @@ async function initUpload(request,env,user){
 }
 
 async function directPartUrl(request,env){
-  if(!directR2Configured(env))return json({error:'direct_r2_not_configured'},503);
+  const diagnostics=directR2Diagnostics(env);
+  if(!diagnostics.configured)return json({error:'direct_r2_not_configured',diagnostics,acceptedEndpointSources:['R2_S3_ENDPOINT','R2_ACCOUNT_ID']},503);
   const body=await request.json().catch(()=>({}));
   const key=validateUploadKey(body.key);
   const uploadId=clean(body.uploadId,300);

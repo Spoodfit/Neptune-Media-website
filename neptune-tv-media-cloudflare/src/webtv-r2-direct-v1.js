@@ -5,8 +5,27 @@ export const DIRECT_R2_BUCKET='neptune-media-assets';
 const PRESIGN_TTL_SECONDS=30*60;
 const S3_RETRIES=3;
 
+export function directR2Diagnostics(env){
+  const accessKeyId=Boolean(clean(env?.R2_ACCESS_KEY_ID,200));
+  const secretAccessKey=Boolean(clean(env?.R2_SECRET_ACCESS_KEY,300));
+  const rawEndpoint=clean(env?.R2_S3_ENDPOINT,300);
+  const accountId=Boolean(clean(env?.R2_ACCOUNT_ID,80));
+  const endpointCheck=inspectEndpoint(rawEndpoint);
+  const endpointResolved=Boolean(endpoint(env));
+  return{
+    accessKeyId,
+    secretAccessKey,
+    s3EndpointPresent:Boolean(rawEndpoint),
+    s3EndpointValid:endpointCheck.valid,
+    s3EndpointReason:endpointCheck.reason,
+    accountId,
+    endpointResolved,
+    configured:Boolean(endpointResolved&&accessKeyId&&secretAccessKey),
+  };
+}
+
 export function directR2Configured(env){
-  return Boolean(endpoint(env)&&clean(env?.R2_ACCESS_KEY_ID,200)&&clean(env?.R2_SECRET_ACCESS_KEY,300));
+  return directR2Diagnostics(env).configured;
 }
 
 export async function createDirectMultipart(env,key,{contentType='application/octet-stream',cacheControl='public, max-age=3600',metadata={}}={}){
@@ -69,11 +88,22 @@ function client(env){
   });
 }
 
-function endpoint(env){
-  const explicit=clean(env?.R2_S3_ENDPOINT,300).replace(/\/+$/u,'');
-  if(explicit){
-    try{const url=new URL(explicit);if(url.protocol==='https:'&&/\.r2\.cloudflarestorage\.com$/iu.test(url.hostname))return url.origin;}catch{}
+function inspectEndpoint(value){
+  const explicit=clean(value,300).replace(/\/+$/u,'');
+  if(!explicit)return{valid:false,reason:'missing',origin:''};
+  try{
+    const url=new URL(explicit);
+    if(url.protocol!=='https:')return{valid:false,reason:'https_required',origin:''};
+    if(!/\.r2\.cloudflarestorage\.com$/iu.test(url.hostname))return{valid:false,reason:'unexpected_host',origin:''};
+    return{valid:true,reason:'ok',origin:url.origin};
+  }catch{
+    return{valid:false,reason:'invalid_url',origin:''};
   }
+}
+
+function endpoint(env){
+  const explicit=inspectEndpoint(env?.R2_S3_ENDPOINT);
+  if(explicit.valid)return explicit.origin;
   const accountId=clean(env?.R2_ACCOUNT_ID,80);
   return accountId?`https://${accountId}.r2.cloudflarestorage.com`:'';
 }

@@ -56,7 +56,9 @@ function bindShell(){
   document.querySelectorAll('[data-shell-route]').forEach(link=>link.addEventListener('click',event=>{
     event.preventDefault();openRoute(link.dataset.shellRoute);
   }));
-  window.addEventListener('hashchange',()=>openRoute(normalizeRoute(location.hash.slice(1)),{fromHash:true}));
+  const restoreRoute=()=>openRoute(normalizeRoute(location.hash.slice(1)),{fromHash:true});
+  window.addEventListener('hashchange',restoreRoute);
+  window.addEventListener('popstate',restoreRoute);
   frame.addEventListener('load',onFrameLoad);
   document.getElementById('studioShellLogout').addEventListener('click',logout);
   menu.addEventListener('click',()=>setMenu(!document.body.classList.contains('ns100-menu-open')));
@@ -140,27 +142,20 @@ function loadWorkspace(src){
 }
 
 function onFrameLoad(){
-  loading.hidden=true;
   try{
-    const doc=frame.contentDocument;if(!doc)return;
+    const childUrl=new URL(frame.contentWindow.location.href);
+    if(childUrl.origin===location.origin&&childUrl.pathname==='/studio/app.html'){
+      openRoute(normalizeRoute(childUrl.hash.slice(1)||'clients'));return;
+    }
+    const doc=frame.contentDocument;if(!doc){loading.hidden=true;return;}
     doc.documentElement.dataset.studioEmbedded=RELEASE;
-    const existing=doc.querySelector('style[data-studio-shell-embed]');existing?.remove();
-    const style=doc.createElement('style');style.dataset.studioShellEmbed=RELEASE;style.textContent=embeddedCss();doc.head.append(style);
+    doc.querySelectorAll('link[data-studio-shell-embed],style[data-studio-shell-embed]').forEach(node=>node.remove());
+    const link=doc.createElement('link');link.rel='stylesheet';link.href='/studio/studio-embedded-v100.css?v=1';link.dataset.studioShellEmbed=RELEASE;
+    let revealed=false;const reveal=()=>{if(revealed)return;revealed=true;loading.hidden=true;};link.addEventListener('load',reveal,{once:true});link.addEventListener('error',reveal,{once:true});doc.head.append(link);setTimeout(reveal,500);
     doc.addEventListener('click',interceptChildNavigation,true);
     doc.querySelectorAll('.neptune-studio-menu-toggle,#neptuneStudioMenuToggle,.studio-menu-backdrop-v65,.neptune-studio-menu-backdrop-v65').forEach(node=>node.remove());
-  }catch(error){console.warn('[Neptune Studio] workspace isolation unavailable',error);}
+  }catch(error){loading.hidden=true;console.warn('[Neptune Studio] workspace isolation unavailable',error);}
 }
-
-function embeddedCss(){return `
-html,body{min-width:0!important;max-width:none!important;background:#f4f6fa!important}
-body{overflow:auto!important}
-.studio-sidebar,.video-ai-sidebar,#app>.sidebar,.neptune-studio-sidebar{display:none!important}
-.studio-shell,.video-ai-shell,#app.shell,.neptune-studio-shell{display:block!important;grid-template-columns:1fr!important;width:100%!important;max-width:none!important;min-height:100vh!important}
-.clients-workspace,.video-ai-main,.workspace,#app>.main,.neptune-studio-main{width:100%!important;max-width:none!important;margin:0!important;padding-left:0!important;min-height:100vh!important}
-.studio-context-nav-v65{display:none!important}
-.neptune-studio-menu-toggle,#neptuneStudioMenuToggle,.studio-menu-backdrop-v65,.neptune-studio-menu-backdrop-v65{display:none!important}
-@media(max-width:860px){.clients-workspace,.video-ai-main,.workspace,#app>.main{width:100%!important;margin:0!important}.clients-topbar,.video-ai-topbar,.topbar,#app .topbar{padding-left:max(16px,env(safe-area-inset-left))!important}}
-`;}
 
 function interceptChildNavigation(event){
   const anchor=event.target.closest?.('a[href]');if(!anchor)return;

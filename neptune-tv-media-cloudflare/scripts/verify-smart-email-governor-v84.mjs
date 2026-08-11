@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
-const [entryV24, entryV25, entryV26, entryV27, entryV28, entryV29, entryV30, entryV31, entryV32, store, governor, rootWrangler, nestedWrangler] = await Promise.all([
+const [entryV24, entryV25, entryV26, entryV27, entryV28, entryV29, entryV30, entryV31, entryV32, entryV33, store, governor, rootWrangler, nestedWrangler] = await Promise.all([
   read('src/entry-v24.js'),
   read('src/entry-v25.js'),
   read('src/entry-v26.js'),
@@ -11,6 +11,7 @@ const [entryV24, entryV25, entryV26, entryV27, entryV28, entryV29, entryV30, ent
   read('src/entry-v30.js'),
   read('src/entry-v31.js'),
   read('src/entry-v32.js'),
+  read('src/entry-v33.js'),
   read('src/store-v20.js'),
   read('src/portal-notification-governor-v84.js'),
   read('../wrangler.jsonc'),
@@ -35,6 +36,7 @@ expect(entryV29, "from './entry-v28.js'", 'entry-v29 ne prolonge pas Stripe v90'
 expect(entryV30, "from './entry-v29.js'", 'entry-v30 ne prolonge pas la chaîne v90 sans casser v84');
 expect(entryV31, "from './entry-v30.js'", 'entry-v31 ne prolonge pas la chaîne v91/v90 sans casser v84');
 expect(entryV32, "from './entry-v31.js'", 'entry-v32 ne prolonge pas la chaîne v92/v91/v90 sans casser v84');
+expect(entryV33, "from './entry-v32.js'", 'entry-v33 ne prolonge pas la chaîne v94/v92 sans casser v84');
 expect(store, "url.pathname === '/portal/workflow-email-due'", 'le gouverneur n’intercepte pas la file d’envoi');
 expect(store, 'smartWorkflowEmailDue', 'le sélecteur intelligent n’est pas appelé');
 
@@ -51,12 +53,12 @@ for (const marker of [
   "status='superseded'",
 ]) expect(governor, marker, `contrat du gouverneur absent : ${marker}`);
 
-expect(rootWrangler, 'neptune-tv-media-cloudflare/src/entry-v32.js', 'le Worker racine ne cible pas entry-v32');
-expect(nestedWrangler, 'src/entry-v32.js', 'le Worker local ne cible pas entry-v32');
+expect(rootWrangler, 'neptune-tv-media-cloudflare/src/entry-v33.js', 'le Worker racine ne cible pas entry-v33');
+expect(nestedWrangler, 'src/entry-v33.js', 'le Worker local ne cible pas entry-v33');
 
 if (failures.length) {
   console.error(failures.map((failure) => `- ${failure}`).join('\n'));
   process.exit(1);
 }
 
-console.log('Smart email governor v84 préservé à travers entry-v32 : compte test protégé, cadence de 45 minutes, priorité selon état et suppression des messages obsolètes.');
+console.log('Smart email governor v84 préservé à travers entry-v33 : compte test protégé, cadence de 45 minutes, priorité selon état et suppression des messages obsolètes.');

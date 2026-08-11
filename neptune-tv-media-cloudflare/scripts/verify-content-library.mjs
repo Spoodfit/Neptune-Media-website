@@ -32,8 +32,8 @@ const files = {
 };
 
 const failures = [];
-check(files.localConfig, '"main": "src/entry-v19.js"', 'la configuration locale ne cible pas le runtime passage entry-v19');
-check(files.rootConfig, '"main": "neptune-tv-media-cloudflare/src/entry-v19.js"', 'la configuration racine ne cible pas le runtime passage entry-v19');
+check(files.localConfig, '"main": "src/entry-v19.js"', 'la configuration locale ne conserve pas le marqueur runtime passage entry-v19');
+check(files.rootConfig, '"main": "neptune-tv-media-cloudflare/src/entry-v19.js"', 'la configuration racine ne conserve pas le marqueur runtime passage entry-v19');
 check(files.passageEntry, "from './entry-v18.js'", 'entry-v19 ne prolonge pas le runtime client entry-v18');
 check(files.passageEntry, "from './store-v15.js'", 'entry-v19 ne réexporte pas le store de modification des passages');
 check(files.passageEntry, "'/api/admin/passage-update'", 'entry-v19 n’expose pas la modification complète du passage');
@@ -66,7 +66,7 @@ check(files.operationsEntry, "'/api/admin/client-manage'", 'la route de gestion 
 check(files.operationsEntry, "'/studio/content-gallery-v76.js?v=1'", 'la galerie Studio v76 n’est pas injectée');
 check(files.operationsEntry, "'/studio/studio-client-operations-v76.js?v=1'", 'le gestionnaire de comptes Studio v76 n’est pas injecté');
 check(files.videoEntry, "from './entry-v13.js'", 'entry-v16 ne prolonge pas le runtime visuel entry-v13');
-check(files.videoEntry, 'videoAiContainerRequired: false', 'entry-v16 exige encore un moteur Container');
+check(files.videoEntry, 'videoAiContainerRequired: false', 'entry-v16 exige encore un moteur Container pour le montage vidéo');
 check(files.videoEntry, "videoAiEngineMode: 'persistent-local-service-with-browser-fallback'", 'entry-v16 ne confirme pas le service vidéo permanent');
 check(files.videoEntry, 'videoAiSafeToCloseAfterUpload: true', 'entry-v16 ne confirme pas la poursuite après import');
 check(files.videoEntry, "videoAiDispatchMode: 'localhost-persistent-sqlite-queue'", 'entry-v16 ne confirme pas la file locale persistante');
@@ -75,10 +75,10 @@ check(files.activeEntry, "from './entry-v12.js'", 'entry-v13 ne prolonge pas ent
 check(files.editorialEntry, "from './entry-v11.js'", 'entry-v12 ne prolonge pas le runtime de contenu entry-v11');
 forbid(files.localConfig, '"analytics_engine_datasets"', 'la configuration locale exige encore Analytics Engine');
 forbid(files.rootConfig, '"analytics_engine_datasets"', 'la configuration racine exige encore Analytics Engine');
-forbid(files.localConfig, '"containers"', 'la configuration locale réintroduit Cloudflare Containers');
-forbid(files.rootConfig, '"containers"', 'la configuration racine réintroduit Cloudflare Containers');
 forbid(files.localConfig, '"VIDEO_JOBS"', 'la configuration locale réintroduit la Queue vidéo');
 forbid(files.rootConfig, '"VIDEO_JOBS"', 'la configuration racine réintroduit la Queue vidéo');
+forbid(files.localConfig, '"name": "VIDEO_PROCESSOR"', 'la configuration locale réintroduit le moteur vidéo Container');
+forbid(files.rootConfig, '"name": "VIDEO_PROCESSOR"', 'la configuration racine réintroduit le moteur vidéo Container');
 check(files.runtime, "from './store-v7.js'", 'le runtime final ne réexporte pas store-v7');
 check(files.runtime, "workflowStore: 'store-v7'", 'le diagnostic final ne confirme pas store-v7');
 checkAny(files.runtime, [
@@ -139,7 +139,7 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Verified active entry chain through passage editor v80, client dashboard v78, light HORS NORME preparation, compact client snapshot, safe client account management, scalable media library, three-destination navigation and preserved Drive synchronization.');
+console.log('Verified active content chain and media library; Video AI remains local while Cloudflare Containers may be used exclusively by Web TV.');
 
 async function read(path) { return readFile(new URL(`../${path}`, import.meta.url), 'utf8'); }
 async function readRoot(path) { return readFile(new URL(`../../${path}`, import.meta.url), 'utf8'); }

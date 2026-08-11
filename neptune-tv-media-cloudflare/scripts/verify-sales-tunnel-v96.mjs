@@ -8,12 +8,16 @@ const expect=(name,ok)=>checks.push({name,ok:Boolean(ok)});
 
 const rootWrangler=read('../wrangler.jsonc');
 const localWrangler=read('wrangler.jsonc');
+const activeEntry36=read('src/entry-v36.js');
 const activeEntry=read('src/entry-v35.js');
 const entry=read('src/entry-v34.js');
+const store29=read('src/store-v29.js');
 const store=read('src/store-v28.js');
 const backend=read('src/portal-sales-tunnel-v96.js');
 const options=read('src/portal-sales-tunnel-options-v96.js');
 const enhanced=read('src/portal-sales-tunnel-v97.js');
+const catalogV98=read('src/portal-sales-tunnel-v98.js');
+const visualsV98=read('src/media-catalog-visuals-v98.js');
 const stripe=read('src/stripe-journey-v90.js');
 const studio=read('public/studio/sales-configuration-v96.js');
 const client=read('public/espace-client/sales-catalog-v96.js');
@@ -22,13 +26,16 @@ const css=read('public/reserver/assets/styles-v96.css');
 const html=read('public/reserver/index.html');
 const terms=read('public/reserver/conditions/index.html');
 
-expect('root Worker targets v35',rootWrangler.includes('neptune-tv-media-cloudflare/src/entry-v35.js'));
-expect('local Worker targets v35',localWrangler.includes('src/entry-v35.js'));
+expect('root Worker legacy pointer remains v35',rootWrangler.includes('neptune-tv-media-cloudflare/src/entry-v35.js'));
+expect('local Worker targets v36',localWrangler.includes('src/entry-v36.js'));
+expect('v36 preserves v35 sales tunnel',activeEntry36.includes("from './entry-v35.js'")&&activeEntry36.includes("from './store-v29.js'"));
 expect('v35 preserves v34 sales tunnel',activeEntry.includes("from './entry-v34.js'"));
 expect('v34 preserves v33 and v28 store',entry.includes("from './entry-v33.js'")&&entry.includes("from './store-v28.js'"));
+expect('v29 store extends v28 and overlays v98',store29.includes("from './store-v28.js'")&&store29.includes("from './portal-sales-tunnel-v98.js'")&&store29.includes('publicSalesCatalogV98'));
 expect('v28 store extends v27',store.includes("from './store-v27.js'"));
 expect('v28 overlays v97 on compatible v96 routes',store.includes("from './portal-sales-tunnel-v97.js'")&&store.includes('publicSalesCatalogV97')&&store.includes('saveTunnelSelectionV97')&&store.includes('startTunnelProspectV97')&&store.includes('tunnelProspectContextV97'));
 expect('v97 still depends on v96 option guard',enhanced.includes('ensureSalesTunnelOptionsV96Schema')&&enhanced.includes('portal_reservation_configuration_v96'));
+expect('v98 visual overlay resolves catalog visuals',catalogV98.includes('formatVisualV98')&&catalogV98.includes('configurationVisualV98')&&visualsV98.includes('portal_media_format_visuals_v98'));
 expect('media DNS is not claimed as Worker custom domain',!rootWrangler.includes('"pattern": "media.neptunebusiness.com"')&&!localWrangler.includes('"pattern": "media.neptunebusiness.com"'));
 expect('canonical booking URL remains Studio domain',rootWrangler.includes('"BOOKING_URL": "https://tv.neptunebusiness.com/reserver"')&&localWrangler.includes('"BOOKING_URL": "https://tv.neptunebusiness.com/reserver"'));
 expect('reserver is served without index redirect loop',entry.includes("url.pathname==='/reserver'")&&entry.includes("assetRequest(request,'/reserver/')")&&entry.includes("assetRequest(request,'/reserver/conditions/')")&&!entry.includes("assetRequest(request,'/reserver/index.html')"));
@@ -53,8 +60,9 @@ expect('original Libre Stripe tiers remain',backend.includes('79000')&&backend.i
 expect('Stripe Payment Links redirect to Neptune confirmation',enhanced.includes('after_completion[type]')&&enhanced.includes('after_completion[redirect][url]')&&enhanced.includes('{CHECKOUT_SESSION_ID}')&&enhanced.includes('https://tv.neptunebusiness.com/reserver?payment=success'));
 expect('Stripe redirect sync is idempotent',enhanced.includes('portal_sales_runtime_v97')&&enhanced.includes('stripe_redirect_version'));
 
-expect('format cards have real poster images',enhanced.includes('/assets/posters/hors-norme-wide.webp')&&enhanced.includes('/assets/posters/concept-libre-wide.webp')&&tunnel.includes('visual-format-card')&&tunnel.includes('format-visual'));
-expect('configuration cards have visual assets',enhanced.includes('/assets/formats/exact-hn1.b64')&&enhanced.includes('/assets/formats/exact-hn2.b64')&&enhanced.includes('/assets/formats/exact-cl1.b64')&&tunnel.includes('configuration-visual')&&tunnel.includes('hydrateB64Images'));
+expect('legacy format poster fallback remains available',enhanced.includes('/assets/posters/hors-norme-wide.webp')&&enhanced.includes('/assets/posters/concept-libre-wide.webp')&&tunnel.includes('visual-format-card')&&tunnel.includes('format-visual'));
+expect('configuration fallback assets remain available',enhanced.includes('/assets/formats/exact-hn1.b64')&&enhanced.includes('/assets/formats/exact-hn2.b64')&&enhanced.includes('/assets/formats/exact-cl1.b64')&&tunnel.includes('configuration-visual')&&tunnel.includes('hydrateB64Images'));
+expect('v98 corrects HN canapé and chaise mapping',visualsV98.includes("n.includes('canap')")&&visualsV98.includes("'/assets/formats/exact-hn1.b64'")&&visualsV98.includes("n.includes('chaise')")&&visualsV98.includes("'/assets/formats/exact-hn2.b64'"));
 expect('raw date input replaced by visual calendar',tunnel.includes('calendar-shell')&&tunnel.includes('renderCalendarDays')&&tunnel.includes('data-date')&&!tunnel.includes('type="date"'));
 expect('slot selection uses morning and afternoon buttons',tunnel.includes('data-slot="morning"')&&tunnel.includes('9h – 12h')&&tunnel.includes('data-slot="afternoon"')&&tunnel.includes('14h – 17h'));
 expect('business-day guard exists client and server',enhanced.includes('isBusinessDay')&&enhanced.includes('frenchHolidays')&&tunnel.includes('isBusinessSelectable')&&tunnel.includes('frenchHolidays'));
@@ -74,4 +82,4 @@ expect('responsive tunnel shell preserved',html.includes('viewport-fit=cover')&&
 const failed=checks.filter(x=>!x.ok);
 for(const c of checks)console.log(`${c.ok?'✓':'✗'} ${c.name}`);
 if(failed.length){console.error(`Sales tunnel v97 verification failed: ${failed.length} check(s).`);process.exit(1);}
-console.log(`Sales tunnel v97 verified: ${checks.length} checks.`);
+console.log(`Sales tunnel v97 verified through active v98 catalog overlay: ${checks.length} checks.`);

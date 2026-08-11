@@ -5,10 +5,13 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/verify-studio-information-architecture-v65-20260731.yml'
-      - 'wrangler.jsonc'
-      - 'neptune-tv-media-cloudflare/src/entry-v15.js'
+      - 'neptune-tv-media-cloudflare/wrangler.jsonc'
+      - 'neptune-tv-media-cloudflare/src/entry-v36.js'
+      - 'neptune-tv-media-cloudflare/public/studio/app.html'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-app-router-v104.js'
       - 'neptune-tv-media-cloudflare/public/studio/clients.html'
       - 'neptune-tv-media-cloudflare/public/studio/video-ai.html'
+      - 'neptune-tv-media-cloudflare/public/studio/webtv.html'
       - 'neptune-tv-media-cloudflare/public/studio/advanced.html'
       - 'neptune-tv-media-cloudflare/public/studio/studio-information-architecture-v65.css'
       - 'neptune-tv-media-cloudflare/public/studio/studio-information-architecture-v65-1.js'
@@ -18,10 +21,13 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/verify-studio-information-architecture-v65-20260731.yml'
-      - 'wrangler.jsonc'
-      - 'neptune-tv-media-cloudflare/src/entry-v15.js'
+      - 'neptune-tv-media-cloudflare/wrangler.jsonc'
+      - 'neptune-tv-media-cloudflare/src/entry-v36.js'
+      - 'neptune-tv-media-cloudflare/public/studio/app.html'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-app-router-v104.js'
       - 'neptune-tv-media-cloudflare/public/studio/clients.html'
       - 'neptune-tv-media-cloudflare/public/studio/video-ai.html'
+      - 'neptune-tv-media-cloudflare/public/studio/webtv.html'
       - 'neptune-tv-media-cloudflare/public/studio/advanced.html'
       - 'neptune-tv-media-cloudflare/public/studio/studio-information-architecture-v65.css'
       - 'neptune-tv-media-cloudflare/public/studio/studio-information-architecture-v65-1.js'
@@ -52,29 +58,31 @@ jobs:
       - name: Validate architecture sources
         working-directory: neptune-tv-media-cloudflare
         run: |
-          node --check src/entry-v15.js
+          node --check src/entry-v36.js
+          node --check public/studio/studio-app-router-v104.js
           node --check public/studio/studio-information-architecture-v65-1.js
           node --check tests/audit-studio-information-architecture-v65.mjs
           node scripts/verify-studio-information-architecture-v65.mjs
+          node scripts/verify-studio-unified.mjs
 
       - name: Install Playwright
         run: |
           npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
           npx playwright install --with-deps chromium
 
-      - name: Start local Cloudflare Worker
+      - name: Start active local Cloudflare Worker
         shell: bash
         run: |
           set -euo pipefail
-          cp wrangler.jsonc /tmp/wrangler-production.jsonc
-          sed -i 's/"compatibility_date": "2026-07-30"/"compatibility_date": "2026-07-07"/' wrangler.jsonc
-          ./neptune-tv-media-cloudflare/node_modules/.bin/wrangler dev --config wrangler.jsonc --local --port 8787 > /tmp/wrangler-v65.log 2>&1 &
-          echo $! > /tmp/wrangler-v65.pid
+          sed -i 's/"compatibility_date": "2026-07-30"/"compatibility_date": "2026-07-07"/' neptune-tv-media-cloudflare/wrangler.jsonc
+          ./neptune-tv-media-cloudflare/node_modules/.bin/wrangler dev --config neptune-tv-media-cloudflare/wrangler.jsonc --local --port 8787 > /tmp/wrangler-v104.log 2>&1 &
+          echo $! > /tmp/wrangler-v104.pid
           ready=0
           for attempt in $(seq 1 60); do
-            if curl --fail --silent --show-error --location http://127.0.0.1:8787/studio/clients > /tmp/studio-v65.html; then
-              if grep -Fq '/studio/studio-information-architecture-v65.css?v=1' /tmp/studio-v65.html \
-                && grep -Fq '/studio/studio-information-architecture-v65-1.js?v=1' /tmp/studio-v65.html; then
+            if curl --fail --silent --show-error --location http://127.0.0.1:8787/studio/clients > /tmp/studio-v104.html; then
+              if grep -Fq '/studio/studio-information-architecture-v65.css?v=1' /tmp/studio-v104.html \
+                && grep -Fq '/studio/studio-information-architecture-v65-1.js?v=104' /tmp/studio-v104.html \
+                && ! grep -Fq 'studio_embed=' /tmp/studio-v104.html; then
                 ready=1
                 break
               fi
@@ -82,23 +90,23 @@ jobs:
             sleep 2
           done
           if [ "$ready" != 1 ]; then
-            cat /tmp/wrangler-v65.log
+            cat /tmp/wrangler-v104.log
             exit 1
           fi
 
-      - name: Audit Studio navigation and readability
+      - name: Audit Studio v104 navigation and readability
         env:
           STUDIO_BASE_URL: http://127.0.0.1:8787
-          OUTPUT_DIR: test-results/studio-information-architecture-v65
+          OUTPUT_DIR: test-results/studio-information-architecture-v104
         run: node neptune-tv-media-cloudflare/tests/audit-studio-information-architecture-v65.mjs
 
       - name: Upload visual evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: studio-information-architecture-v65-evidence
+          name: studio-information-architecture-v104-evidence
           path: |
-            test-results/studio-information-architecture-v65
-            /tmp/wrangler-v65.log
+            test-results/studio-information-architecture-v104
+            /tmp/wrangler-v104.log
           if-no-files-found: warn
           retention-days: 14

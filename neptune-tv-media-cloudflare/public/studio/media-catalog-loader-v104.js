@@ -28,6 +28,52 @@ async function loadCatalog(){
     document.head.append(link);
   }
   await import(CATALOG_MANAGER);
-  await import(CATALOG_UX);
+  await importUxWithoutObserverFeedbackLoop();
   document.documentElement.dataset.neptuneMediaCatalog='v104';
+}
+
+async function importUxWithoutObserverFeedbackLoop(){
+  const NativeMutationObserver=window.MutationObserver;
+  if(typeof NativeMutationObserver!=='function'){
+    await import(CATALOG_UX);
+    return;
+  }
+
+  class StableMutationObserver{
+    constructor(callback){
+      this.callback=callback;
+      this.target=null;
+      this.options=null;
+      this.connected=false;
+      this.native=new NativeMutationObserver((records)=>{
+        if(!this.connected)return;
+        this.native.disconnect();
+        this.connected=false;
+        try{this.callback(records,this);}finally{
+          queueMicrotask(()=>{
+            if(this.target&&!this.connected){
+              this.native.observe(this.target,this.options);
+              this.connected=true;
+            }
+          });
+        }
+      });
+    }
+    observe(target,options){
+      this.target=target;
+      this.options=options;
+      this.native.observe(target,options);
+      this.connected=true;
+    }
+    disconnect(){
+      this.native.disconnect();
+      this.connected=false;
+      this.target=null;
+      this.options=null;
+    }
+    takeRecords(){return this.native.takeRecords();}
+  }
+
+  window.MutationObserver=StableMutationObserver;
+  try{await import(CATALOG_UX);}finally{window.MutationObserver=NativeMutationObserver;}
 }

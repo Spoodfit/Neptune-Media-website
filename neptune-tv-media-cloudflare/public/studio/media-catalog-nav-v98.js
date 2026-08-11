@@ -47,8 +47,8 @@ function sync(){
     context.removeAttribute('data-catalog-settings-v98');
     const isSettings=Boolean(context.querySelector('[data-context-tab="finances"],[data-context-tab="users"],[data-context-tab="settings"]'));
     if(isSettings&&!context.querySelector('[data-context-tab="programs"]')){
-      const users=context.querySelector('[data-context-tab="users"]');
-      const button=catalogButton(false);users?.after(button)||context.append(button);
+      const users=context.querySelector('[data-context-tab="users"]'),button=catalogButton(false);
+      if(users)users.after(button);else context.append(button);
     }
     context.querySelectorAll('[data-context-tab="programs"]').forEach(node=>{node.textContent='Catalogue Media';});
   }finally{syncing=false;}

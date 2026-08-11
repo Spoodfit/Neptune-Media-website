@@ -22,7 +22,8 @@ export default {
       if (request.method === 'PUT') {
         if (!isSameOrigin(request)) return secureApi(json({ error: 'origin_forbidden' }, 403));
         const payload = await request.json().catch(() => ({}));
-        const state = normalizeWebTvState(payload, auth.user);
+        const previous = await readWebTvState(env);
+        const state = normalizeWebTvState(payload, auth.user, env, previous);
         await env.MEDIA.put(WEBTV_STATE_KEY, JSON.stringify(state), {
           httpMetadata: { contentType: 'application/json; charset=utf-8' },
           customMetadata: { release: RELEASE },
@@ -56,13 +57,21 @@ async function verifyStudioSession(request, env, ctx) {
 }
 
 async function readWebTvState(env) {
+  const baseState = defaultWebTvState(env);
   const object = await env.MEDIA.get(WEBTV_STATE_KEY);
-  if (!object) return defaultWebTvState();
+  if (!object) return baseState;
   const parsed = await object.json().catch(() => null);
-  return parsed && typeof parsed === 'object' ? { ...defaultWebTvState(), ...parsed, release: RELEASE } : defaultWebTvState();
+  if (!parsed || typeof parsed !== 'object') return baseState;
+  return {
+    ...baseState,
+    ...parsed,
+    output: { ...baseState.output, ...(parsed.output || {}), configured: youtubeConfigured(env) },
+    encoder: { ...baseState.encoder, ...(parsed.encoder || {}) },
+    release: RELEASE,
+  };
 }
 
-function defaultWebTvState() {
+function defaultWebTvState(env) {
   return {
     release: RELEASE,
     enabled: false,
@@ -70,7 +79,7 @@ function defaultWebTvState() {
     output: {
       provider: 'youtube',
       protocol: 'rtmps',
-      configured: false,
+      configured: youtubeConfigured(env),
     },
     playlist: [],
     fallback: {
@@ -87,7 +96,7 @@ function defaultWebTvState() {
   };
 }
 
-function normalizeWebTvState(raw, user) {
+function normalizeWebTvState(raw, user, env, previous) {
   const playlist = Array.isArray(raw.playlist) ? raw.playlist.slice(0, 250).map((item, index) => ({
     id: clean(item.id, 100) || `item-${index + 1}`,
     title: clean(item.title, 180) || `Programme ${index + 1}`,
@@ -104,7 +113,7 @@ function normalizeWebTvState(raw, user) {
     output: {
       provider: 'youtube',
       protocol: 'rtmps',
-      configured: raw.output?.configured === true,
+      configured: youtubeConfigured(env),
     },
     playlist,
     fallback: {
@@ -112,13 +121,17 @@ function normalizeWebTvState(raw, user) {
       mediaUrl: safeMediaUrl(raw.fallback?.mediaUrl),
     },
     encoder: {
-      status: clean(raw.encoder?.status, 40) || 'not_connected',
-      lastHeartbeatAt: validIso(raw.encoder?.lastHeartbeatAt),
-      lastError: clean(raw.encoder?.lastError, 500) || null,
+      status: clean(previous?.encoder?.status, 40) || 'not_connected',
+      lastHeartbeatAt: validIso(previous?.encoder?.lastHeartbeatAt),
+      lastError: clean(previous?.encoder?.lastError, 500) || null,
     },
     updatedAt: new Date().toISOString(),
     updatedBy: clean(user.fullName || user.email, 180) || 'Studio Admin',
   };
+}
+
+function youtubeConfigured(env) {
+  return Boolean(String(env.YOUTUBE_RTMPS_URL || '').trim() && String(env.YOUTUBE_STREAM_KEY || '').trim());
 }
 
 function safeMediaUrl(value) {

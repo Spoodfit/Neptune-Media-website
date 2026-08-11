@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#06183f">
   <title>Diffusion · Neptune Media Studio</title>
   <link rel="icon" href="/assets/logo-neptune.svg">
-  <link rel="stylesheet" href="/studio/webtv-v1.css?v=3">
+  <link rel="stylesheet" href="/studio/webtv-v1.css?v=4">
   <link rel="stylesheet" href="/studio/studio-information-architecture-v65.css?v=1">
   <link rel="stylesheet" href="/studio/webtv-v2.css?v=1">
   <link rel="stylesheet" href="/studio/webtv-live-monitor-v1.css?v=2">
@@ -28,12 +28,12 @@
     <section class="workspace">
       <header class="topbar">
         <div><p class="eyebrow">NEPTUNE MEDIA STUDIO</p><h1>Diffusion</h1></div>
-        <div class="top-actions"><span id="syncState" class="sync"><i></i> Synchronisation…</span><button id="refreshState" class="button" type="button">Actualiser</button><button id="save" class="button button-primary" type="button">Enregistrer</button></div>
+        <div class="top-actions"><span id="syncState" class="sync"><i></i> Synchronisation…</span><button id="refreshState" class="button" type="button">Actualiser</button><button id="save" class="button button-primary" type="button">Mettre à jour l’antenne</button></div>
       </header>
 
       <main class="main">
         <section class="hero">
-          <div><p class="eyebrow">RÉGIE WEB TV</p><h2>Programmez l’antenne.<br><span>Neptune diffuse en continu.</span></h2><p>Gérez l’ordre des émissions, les publicités, les jingles, le secours antenne et l’état du direct YouTube sans sortir du Studio.</p></div>
+          <div><p class="eyebrow">RÉGIE WEB TV</p><h2>Programmez l’antenne.<br><span>Neptune diffuse en continu.</span></h2><p>Gérez le direct, l’ordre des vidéos, le retour YouTube et la sécurité antenne depuis un seul écran.</p></div>
           <div class="live-card" id="liveCard"><div class="live-head"><span id="liveDot" class="live-dot"></span><b id="liveLabel">Hors ligne</b></div><strong id="encoderStatus">Encodeur non connecté</strong><small id="nowPlaying">Aucun programme à l’antenne</small><small id="heartbeat">Aucun signal reçu</small></div>
         </section>
 
@@ -70,8 +70,9 @@
         </section>
 
         <div class="layout">
-          <section class="panel panel-program">
-            <div class="panel-head"><div><p class="eyebrow">PROGRAMME</p><h3>Ordre de passage</h3><p>Glissez les contenus ou utilisez les flèches. Désactivez temporairement un élément sans le supprimer.</p></div><button id="addFromLibrary" class="button" type="button">+ Ajouter un contenu</button></div>
+          <section class="panel panel-program" id="programPanel">
+            <div class="panel-head"><div><p class="eyebrow">PROGRAMME DE DIFFUSION</p><h3>Ordre de passage</h3><p>La vidéo marquée <strong>EN DIRECT</strong> est celle actuellement envoyée à YouTube. Réorganisez la suite puis appliquez les changements à l’antenne.</p></div><button id="addFromLibrary" class="button" type="button">+ Ajouter un contenu</button></div>
+            <div id="programSyncNotice" class="program-sync-notice" aria-live="polite"><span></span><strong>Le programme affiché correspond à la dernière version appliquée à l’antenne.</strong></div>
             <div id="playlist" class="playlist" aria-live="polite"></div>
             <div id="emptyPlaylist" class="empty"><strong>Aucun contenu programmé.</strong><span>Ajoutez une émission, un jingle ou une publicité depuis le catalogue Neptune.</span></div>
           </section>
@@ -117,9 +118,9 @@
   </dialog>
 
   <div id="toast" class="toast" hidden></div>
-  <script type="module" src="/studio/webtv-v1.js?v=4"></script>
+  <script type="module" src="/studio/webtv-v1.js?v=5"></script>
   <script type="module" src="/studio/webtv-live-monitor-v1.js?v=2"></script>
   <script type="module" src="/studio/studio-information-architecture-v65-1.js?v=2"></script>
-  <script type="module" src="/studio/webtv-nav-compat-v1.js?v=1"></script>
+  <script type="module" src="/studio/webtv-nav-compat-v1.js?v=2"></script>
 </body>
 </html>

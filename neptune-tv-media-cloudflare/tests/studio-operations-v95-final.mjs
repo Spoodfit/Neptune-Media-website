@@ -83,7 +83,6 @@ page.on('console', (message) => {
 });
 const respond = (route, body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
 
-// Generic first, precise routes afterwards: Playwright gives the last matching handler precedence.
 await page.route('**/api/admin/**', (route) => respond(route, { ok: true }));
 await page.route('**/api/admin/studio-operations-v95/client-account', (route) => respond(route, account));
 await page.route('**/api/admin/studio-operations-v95/configuration', (route) => respond(route, configuration()));
@@ -112,7 +111,6 @@ await page.addStyleTag({ url: `${baseUrl}/studio/simple-journey-v92.css?v=3` });
 await page.addScriptTag({ url: `${baseUrl}/studio/simple-journey-v92.js?v=1`, type: 'module' });
 await page.waitForSelector('.v93-journey-rail', { timeout: 10000 });
 
-// Reproduce the active v76 account-manager anchor that the Worker normally injects before v95.
 await page.evaluate(() => {
   if (document.getElementById('manageClientAccounts')) return;
   const button = document.createElement('button');
@@ -126,7 +124,6 @@ await page.addStyleTag({ url: `${baseUrl}/studio/studio-operations-v95.css?v=1` 
 await page.addScriptTag({ url: `${baseUrl}/studio/studio-operations-v95.js?v=1`, type: 'module' });
 await page.waitForSelector('#openMediaConfigurationV95', { timeout: 10000 });
 
-// Static server does not inject all v76 dossier actions; create only the exact visible trigger v95 intercepts.
 await page.evaluate(() => {
   let button = [...document.querySelectorAll('button')].find((node) => /^gérer le compte$/iu.test(node.textContent?.trim() || ''));
   if (!button) {
@@ -138,7 +135,6 @@ await page.evaluate(() => {
   button.dataset.v95AccountTest = '1';
 });
 
-// 1. Dedicated client account.
 await page.locator('[data-v95-account-test]').click();
 await page.waitForSelector('#clientAccountV95[open]');
 await page.waitForSelector('#clientAccountV95 .v95-passage-row');
@@ -156,7 +152,6 @@ if (!report.account.hasManagerBridge) errors.push('Compte client: pont v76 absen
 if (report.account.overflow > 3) errors.push(`Compte client desktop: overflow ${report.account.overflow}px.`);
 await page.screenshot({ path: path.join(outputDir, 'client-account-desktop-1440.png') });
 
-// 2. Switching passage must not reload the page.
 const navCount = await page.evaluate(() => performance.getEntriesByType('navigation').length);
 await page.locator(`[data-v95-open-order="${orderB.id}"]`).click();
 await page.waitForTimeout(250);
@@ -168,7 +163,6 @@ report.navigation = await page.evaluate(() => ({
 if (!report.navigation.hash.includes(orderB.id) || !report.navigation.dossierOpen) errors.push('Voir dossier: le passage cible ne s’ouvre pas immédiatement.');
 if (report.navigation.navigationEntries !== navCount) errors.push('Voir dossier: un rechargement a été déclenché.');
 
-// 3. New passage uses the existing canonical form and pre-fills the current client.
 await page.evaluate(() => {
   let button = [...document.querySelectorAll('button')].find((node) => /^gérer le compte$/iu.test(node.textContent?.trim() || ''));
   if (!button) {
@@ -191,7 +185,6 @@ if (report.prefill.email !== client.email || !report.prefill.fullName.includes('
 }
 await page.evaluate(() => document.getElementById('newDialog')?.close());
 
-// 4. Supplier finance in Payment step.
 await page.locator(`[data-order-card="${orderA.id}"]`).click();
 await page.waitForTimeout(150);
 const paymentTab = page.locator('[role="tab"]').filter({ hasText: /Paiement/i }).first();
@@ -209,10 +202,10 @@ paymentText = await paymentMount.innerText();
 if (!paymentText.includes('Facture demandée') || !paymentText.includes('Facture reçue')) errors.push('Paiement fournisseur: transition facture demandée incorrecte.');
 await page.screenshot({ path: path.join(outputDir, 'supplier-payment-desktop-1440.png') });
 
-// 5. Relevant route from the open dossier to suppliers/formats configuration.
 await paymentMount.locator('[data-v95-manage-suppliers]').click();
 await page.waitForSelector('#mediaConfigurationV95[open]');
 await page.waitForSelector('[data-v95-supplier-form="recbox"]');
+await page.waitForFunction(() => document.querySelector('[data-v95-supplier-summary]')?.textContent?.includes('600'), null, { timeout: 3000 });
 const supplierConfigText = await page.locator('#mediaConfigurationV95').innerText();
 if (!supplierConfigText.includes('RECBOX') || !supplierConfigText.includes('600')) errors.push('Configuration: RECBOX ou son coût HT est absent.');
 await page.locator('[data-v95-config-tab="formats"]').click();
@@ -220,7 +213,6 @@ const formatConfigText = await page.locator('#mediaConfigurationV95').innerText(
 if (!formatConfigText.includes('Hors Norme') || !formatConfigText.includes('Libre')) errors.push('Configuration: formats actifs absents.');
 await page.screenshot({ path: path.join(outputDir, 'media-configuration-desktop-1440.png') });
 
-// 6. Studio mobile layout.
 await page.setViewportSize({ width: 390, height: 844 });
 await page.waitForTimeout(180);
 report.mobileStudio = await page.evaluate(() => {
@@ -235,7 +227,6 @@ if (report.mobileStudio.dialogWidth < report.mobileStudio.viewportWidth - 2) err
 await page.screenshot({ path: path.join(outputDir, 'media-configuration-mobile-390.png') });
 await context.close();
 
-// 7. Client-space catalog is fed by the same canonical configuration.
 const clientContext = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
 const clientPage = await clientContext.newPage();
 clientPage.on('pageerror', (error) => {

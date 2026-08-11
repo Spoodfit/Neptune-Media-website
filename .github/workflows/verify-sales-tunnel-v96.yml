@@ -1,0 +1,103 @@
+name: Verify Sales Tunnel V96
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-sales-tunnel-v96.yml'
+      - 'neptune-tv-media-cloudflare/src/entry-v34.js'
+      - 'neptune-tv-media-cloudflare/src/store-v28.js'
+      - 'neptune-tv-media-cloudflare/src/portal-sales-tunnel-v96.js'
+      - 'neptune-tv-media-cloudflare/src/portal-sales-tunnel-options-v96.js'
+      - 'neptune-tv-media-cloudflare/public/reserver/**'
+      - 'neptune-tv-media-cloudflare/public/studio/sales-configuration-v96.*'
+      - 'neptune-tv-media-cloudflare/public/espace-client/sales-catalog-v96.*'
+      - 'neptune-tv-media-cloudflare/scripts/verify-sales-tunnel-v96.mjs'
+      - 'neptune-tv-media-cloudflare/tests/sales-tunnel-v96.mjs'
+      - 'neptune-tv-media-cloudflare/wrangler.jsonc'
+      - 'wrangler.jsonc'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-sales-tunnel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SALES_TUNNEL_RELEASE: neptune-sales-tunnel-20260811-v96
+      TV_URL: https://tv.neptunebusiness.com
+      WORKERS_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
+      MEDIA_URL: https://media.neptunebusiness.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate v96 source contract
+        working-directory: neptune-tv-media-cloudflare
+        run: |
+          node --check src/entry-v34.js
+          node --check src/store-v28.js
+          node --check src/portal-sales-tunnel-v96.js
+          node --check src/portal-sales-tunnel-options-v96.js
+          node --check public/reserver/assets/app-v96.js
+          node --check public/studio/sales-configuration-v96.js
+          node --check public/espace-client/sales-catalog-v96.js
+          node scripts/verify-sales-tunnel-v96.mjs
+      - name: Install Playwright
+        run: |
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium
+      - name: Start static server
+        run: |
+          python3 -m http.server 4173 --directory neptune-tv-media-cloudflare/public >/tmp/tunnel-v96.log 2>&1 &
+          for attempt in $(seq 1 30); do curl --fail --silent http://127.0.0.1:4173/reserver/ >/dev/null && exit 0; sleep 1; done
+          cat /tmp/tunnel-v96.log; exit 1
+      - name: Audit sales tunnel desktop and mobile
+        env:
+          LOCAL_BASE_URL: http://127.0.0.1:4173
+          OUTPUT_DIR: test-results/sales-tunnel-v96
+        run: node neptune-tv-media-cloudflare/tests/sales-tunnel-v96.mjs
+      - name: Upload v96 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sales-tunnel-v96-evidence
+          path: test-results/sales-tunnel-v96
+          if-no-files-found: error
+          retention-days: 14
+      - name: Verify v96 production propagation
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          verify() {
+            local base="$1"; local ready=0
+            for attempt in $(seq 1 48); do
+              q="v96=$GITHUB_SHA&attempt=$attempt"
+              release=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/api/public/release?$q" || true)
+              catalog=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/api/reservation/catalog-v96?$q" || true)
+              if RELEASE="$release" CATALOG="$catalog" node <<'NODE'
+          const r=JSON.parse(process.env.RELEASE||'{}'),c=JSON.parse(process.env.CATALOG||'{}');
+          if(r.salesTunnel!==process.env.SALES_TUNNEL_RELEASE)process.exit(1);
+          if(c.release!==process.env.SALES_TUNNEL_RELEASE||!Array.isArray(c.cities)||!c.cities.length)process.exit(1);
+          const offers=c.cities.flatMap(city=>(city.formats||[]).flatMap(format=>format.offers||[]));
+          if(!offers.length||!offers.some(offer=>Array.isArray(offer.configurations)&&offer.configurations.length))process.exit(1);
+          NODE
+              then ready=1; echo "$base v96 ready on attempt $attempt"; break; fi
+              sleep 5
+            done
+            test "$ready" = 1
+          }
+          verify "$WORKERS_URL"
+          verify "$TV_URL"
+          for attempt in $(seq 1 48); do
+            html=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$MEDIA_URL/reserver?v96=$GITHUB_SHA&attempt=$attempt" || true)
+            if grep -Fq '/reserver/assets/app-v96.js' <<<"$html"; then echo "$MEDIA_URL tunnel ready on attempt $attempt"; exit 0; fi
+            sleep 5
+          done
+          exit 1

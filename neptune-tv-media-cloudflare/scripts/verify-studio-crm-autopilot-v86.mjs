@@ -8,6 +8,7 @@ const expect = (name, condition) => checks.push({ name, ok: Boolean(condition) }
 
 const rootWrangler = read('../wrangler.jsonc');
 const localWrangler = read('wrangler.jsonc');
+const entry33 = read('src/entry-v33.js');
 const entry32 = read('src/entry-v32.js');
 const entry31 = read('src/entry-v31.js');
 const entry30 = read('src/entry-v30.js');
@@ -22,8 +23,9 @@ const email = read('src/portal-crm-email-v86.js');
 const studio = read('public/studio/crm-autopilot-v86.js');
 const availability = read('public/disponibilites-passage/availability-v86.js');
 
-expect('root Worker targets current entry-v32', rootWrangler.includes('neptune-tv-media-cloudflare/src/entry-v32.js'));
-expect('local Worker targets current entry-v32', localWrangler.includes('src/entry-v32.js'));
+expect('root Worker targets current entry-v33', rootWrangler.includes('neptune-tv-media-cloudflare/src/entry-v33.js'));
+expect('local Worker targets current entry-v33', localWrangler.includes('src/entry-v33.js'));
+expect('entry-v33 extends v32', entry33.includes("from './entry-v32.js'"));
 expect('entry-v32 extends v31', entry32.includes("from './entry-v31.js'"));
 expect('entry-v31 extends v30', entry31.includes("from './entry-v30.js'"));
 expect('entry-v30 extends v29', entry30.includes("from './entry-v29.js'"));
@@ -54,4 +56,4 @@ if (failed.length) {
   console.error(`CRM autopilot v86 verification failed: ${failed.length} check(s).`);
   process.exit(1);
 }
-console.log(`CRM autopilot v86 verification passed through current entry-v32: ${checks.length} checks.`);
+console.log(`CRM autopilot v86 verification passed through current entry-v33: ${checks.length} checks.`);

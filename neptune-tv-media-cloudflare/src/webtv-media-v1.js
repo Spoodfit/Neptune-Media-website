@@ -2,7 +2,8 @@ const API_PREFIX='/api/admin/webtv/media';
 const PUBLIC_PREFIX='/media/webtv/';
 const R2_PREFIX='webtv/uploads/';
 const MAX_FILE_BYTES=20*1024*1024*1024;
-const MAX_LIST=500;
+const LIST_PAGE_SIZE=500;
+const MAX_LIBRARY_ITEMS=2000;
 export const WEBTV_MEDIA_RELEASE='neptune-webtv-media-20260811-v1';
 
 export function isWebTvMediaRoute(pathname){
@@ -25,10 +26,16 @@ export async function handleWebTvMediaRequest(request,env,{user=null,authenticat
 }
 
 async function listMedia(env){
-  const result=await env.MEDIA.list({prefix:R2_PREFIX,limit:MAX_LIST,include:['httpMetadata','customMetadata']});
-  const items=(result.objects||[]).filter(object=>object.key&&!object.key.endsWith('/')).map(object=>objectToMedia(object));
+  const objects=[];
+  let cursor;
+  do{
+    const page=await env.MEDIA.list({prefix:R2_PREFIX,limit:LIST_PAGE_SIZE,cursor,include:['httpMetadata','customMetadata']});
+    objects.push(...(page.objects||[]));
+    cursor=page.truncated?page.cursor:undefined;
+  }while(cursor&&objects.length<MAX_LIBRARY_ITEMS);
+  const items=objects.slice(0,MAX_LIBRARY_ITEMS).filter(object=>object.key&&!object.key.endsWith('/')).map(object=>objectToMedia(object));
   items.sort((a,b)=>String(b.uploadedAt||'').localeCompare(String(a.uploadedAt||'')));
-  return json({ok:true,release:WEBTV_MEDIA_RELEASE,items});
+  return json({ok:true,release:WEBTV_MEDIA_RELEASE,items,truncated:Boolean(cursor)});
 }
 
 async function initUpload(request,env,user){

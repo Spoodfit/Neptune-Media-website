@@ -55,7 +55,7 @@ export async function publicSalesCatalogV97(store){
       offers:[{id:r.id,name:tier.label,clientPriceCents:Number(r.clientPriceCents||0),currency:r.currency||'eur',priceSuffix:r.priceSuffix||'',pricing,configurations:(configs.get(r.id)||[]).map(label=>configurationOption(r.formatSlug,label))}]
     });
   }
-  return json({ok:true,release:BASE_RELEASE,enhancementRelease:SALES_TUNNEL_ENHANCEMENT_RELEASE,pricing:tier,cities,redirectSync});
+  return json({ok:true,release:BASE_RELEASE,enhancementRelease:SALES_TUNNEL_ENHANCEMENT_RELEASE,pricing:{...tier,tierKey:tier.key,tierLabel:tier.label},cities,redirectSync});
 }
 
 export async function tunnelProspectContextV97(store,raw={}){

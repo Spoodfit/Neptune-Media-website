@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#071633">
+  <title>Neptune Media · Studio</title>
+  <link rel="icon" href="/assets/logo-neptune.svg">
+  <link rel="stylesheet" href="/studio/studio-shell-v100.css?v=1">
+</head>
+<body>
+  <div id="studioShell" class="ns100-shell" hidden>
+    <aside id="studioShellSidebar" class="ns100-sidebar" aria-label="Navigation Neptune Media Studio">
+      <a class="ns100-brand" href="#clients" data-shell-route="clients" aria-label="Neptune Media Studio">
+        <img src="/assets/logo-neptune.svg" alt="">
+        <span><b>Neptune</b><small>Media · Studio</small></span>
+      </a>
+
+      <div class="ns100-status"><i aria-hidden="true"></i><span>Studio synchronisé</span></div>
+
+      <nav class="ns100-primary" aria-label="Navigation principale">
+        <a href="#clients" data-shell-route="clients"><span aria-hidden="true">◎</span><strong>Parcours clients</strong></a>
+        <a href="#production" data-shell-route="production"><span aria-hidden="true">✦</span><strong>Production vidéo</strong></a>
+        <a href="#diffusion" data-shell-route="diffusion"><span aria-hidden="true">▶</span><strong>Diffusion</strong></a>
+        <a href="#settings/catalogue" data-shell-route="settings/catalogue"><span aria-hidden="true">⚙</span><strong>Réglages</strong></a>
+      </nav>
+
+      <div id="studioShellContext" class="ns100-context" aria-label="Navigation de la section"></div>
+
+      <div class="ns100-account">
+        <span class="ns100-avatar">NM</span>
+        <span class="ns100-account-copy"><b id="studioShellAccount">Compte Studio</b><small id="studioShellRole">Session sécurisée</small></span>
+        <button id="studioShellLogout" type="button" title="Déconnexion" aria-label="Déconnexion">↪</button>
+      </div>
+    </aside>
+
+    <main class="ns100-main">
+      <header class="ns100-mobilebar">
+        <button id="studioShellMenu" type="button" aria-label="Ouvrir le menu" aria-controls="studioShellSidebar" aria-expanded="false"><span></span></button>
+        <div><b>Neptune Media</b><small id="studioShellMobileTitle">Studio</small></div>
+      </header>
+      <section class="ns100-workspace" aria-live="polite">
+        <div id="studioShellLoading" class="ns100-loading"><span></span><strong>Ouverture du Studio…</strong></div>
+        <iframe id="studioShellFrame" title="Espace de travail Neptune Media Studio" referrerpolicy="same-origin" allow="clipboard-read; clipboard-write; fullscreen"></iframe>
+      </section>
+    </main>
+  </div>
+
+  <div id="studioShellAuth" class="ns100-auth-state">
+    <img src="/assets/logo-neptune.svg" alt="">
+    <strong>Vérification de la session Studio…</strong>
+  </div>
+  <button id="studioShellBackdrop" class="ns100-backdrop" type="button" aria-label="Fermer le menu" hidden></button>
+  <script type="module" src="/studio/studio-shell-v100.js?v=1"></script>
+</body>
+</html>

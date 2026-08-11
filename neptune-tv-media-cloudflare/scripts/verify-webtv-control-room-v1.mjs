@@ -2,8 +2,8 @@ import { readFile } from 'node:fs/promises';
 
 const read=(path)=>readFile(new URL(`../${path}`,import.meta.url),'utf8');
 const readRoot=(path)=>readFile(new URL(`../../${path}`,import.meta.url),'utf8');
-const [activeEntry,appEntry,webtvEntry,control,media,encoder,html,ui,uploadUi,ia,navCompat,rootRaw,localRaw,rootPackageRaw,localPackageRaw]=await Promise.all([
-  read('src/entry-v35.js'),read('src/entry-v34.js'),read('src/entry-v33.js'),read('src/webtv-control-v1.js'),read('src/webtv-media-v1.js'),read('containers/webtv/encoder.mjs'),read('public/studio/webtv.html'),read('public/studio/webtv-v1.js'),read('public/studio/webtv-upload-v2.js'),read('public/studio/studio-information-architecture-v65-1.js'),read('public/studio/webtv-nav-compat-v1.js'),readRoot('wrangler.jsonc'),read('wrangler.jsonc'),readRoot('package.json'),read('package.json'),
+const [activeEntry,appEntry,webtvEntry,control,media,directR2,encoder,html,ui,uploadUi,ia,navCompat,rootRaw,localRaw,rootPackageRaw,localPackageRaw]=await Promise.all([
+  read('src/entry-v35.js'),read('src/entry-v34.js'),read('src/entry-v33.js'),read('src/webtv-control-v1.js'),read('src/webtv-media-v1.js'),read('src/webtv-r2-direct-v1.js'),read('containers/webtv/encoder.mjs'),read('public/studio/webtv.html'),read('public/studio/webtv-v1.js'),read('public/studio/webtv-upload-v3.js'),read('public/studio/studio-information-architecture-v65-1.js'),read('public/studio/webtv-nav-compat-v1.js'),readRoot('wrangler.jsonc'),read('wrangler.jsonc'),readRoot('package.json'),read('package.json'),
 ]);
 const root=JSON.parse(rootRaw),local=JSON.parse(localRaw),rootPackage=JSON.parse(rootPackageRaw),localPackage=JSON.parse(localPackageRaw),failures=[];
 const expect=(condition,message)=>{if(!condition)failures.push(message);};
@@ -26,23 +26,30 @@ for(const [name,config] of [['root',root],['local',local]]){
   expect(config.durable_objects?.bindings?.some(item=>item.name==='WEBTV_ENCODER'&&item.class_name==='WebTvEncoder'),`${name}: binding WEBTV_ENCODER absent`);
   expect(config.triggers?.crons?.includes('* * * * *'),`${name}: watchdog minute absent`);
 }
-for(const [name,pkg] of [['root',rootPackage],['local',localPackage]])expect(Boolean(pkg.dependencies?.['@cloudflare/containers']),`${name}: dépendance @cloudflare/containers absente`);
+for(const [name,pkg] of [['root',rootPackage],['local',localPackage]]){
+  expect(Boolean(pkg.dependencies?.['@cloudflare/containers']),`${name}: dépendance @cloudflare/containers absente`);
+  expect(pkg.dependencies?.aws4fetch==='1.0.20',`${name}: aws4fetch 1.0.20 requis pour signer les URLs R2 sans exposer les secrets`);
+}
 
 for(const marker of ["import { Container, getContainer } from '@cloudflare/containers'",'YOUTUBE_RTMPS_URL','YOUTUBE_STREAM_KEY','getContainer(env.WEBTV_ENCODER, ENCODER_INSTANCE_NAME)',"'/api/admin/webtv/state'","'/api/admin/webtv/encoder'","url.protocol === 'rtmps:'"])expect(control.includes(marker),`contrat Web TV absent : ${marker}`);
-for(const marker of ['createMultipartUpload','resumeMultipartUpload','uploadPart','multipart.complete','/api/admin/webtv/media','/media/webtv/','Accept-Ranges','Content-Range','MAX_FILE_BYTES'])expect(media.includes(marker),`médiathèque WebTV incomplète : ${marker}`);
+for(const marker of ["from './webtv-r2-direct-v1.js'",'directR2Configured','/part-url','DIRECT_R2_TRANSPORT','/api/admin/webtv/media','/media/webtv/','Accept-Ranges','Content-Range','MAX_FILE_BYTES'])expect(media.includes(marker),`médiathèque WebTV directe incomplète : ${marker}`);
 expect(media.includes("prefix:R2_PREFIX")&&media.includes("include:['httpMetadata','customMetadata']"),'la bibliothèque importée ne relit pas les métadonnées R2');
 expect(media.includes("sameOrigin(request)"),'les mutations de la médiathèque ne sont pas protégées par same-origin');
+for(const marker of ["import { AwsClient } from 'aws4fetch'",'direct-r2-s3-v1','R2_ACCOUNT_ID','R2_ACCESS_KEY_ID','R2_SECRET_ACCESS_KEY','signQuery:true','partNumber','uploadId','CompleteMultipartUpload'])expect(directR2.includes(marker),`transport R2 présigné incomplet : ${marker}`);
+expect(!directR2.includes('console.log'),'les URLs présignées ne doivent jamais être journalisées');
 for(const marker of ['ffmpeg','ffprobe',"'-f', 'flv'",'rtmps://[youtube]','streamTarget(cfg)'])expect(encoder.includes(marker),`moteur FFmpeg incomplet : ${marker}`);
 expect(!encoder.includes('VOTRE_CLE_YOUTUBE'),'une clé YouTube factice ou dangereuse est présente');
 
-for(const marker of ['Diffusion','Web TV active','Ordre de passage','Programme de secours','Redémarrer l’encodeur','YouTube · RTMPS','webtv-upload-v2.js','webtv-upload-v1.css'])expect(html.includes(marker),`interface Diffusion incomplète : ${marker}`);
+for(const marker of ['Diffusion','Web TV active','Ordre de passage','Programme de secours','Redémarrer l’encodeur','YouTube · RTMPS','webtv-upload-v3.js','webtv-upload-v1.css'])expect(html.includes(marker),`interface Diffusion incomplète : ${marker}`);
 expect(!html.includes('YOUTUBE_STREAM_KEY')&&!html.includes('streamKey'),'la clé de flux ne doit jamais être exposée dans le HTML Studio');
 for(const marker of ['window.NeptuneWebTvProgram','setImportedMedia','addImportedMedia','push(importedMedia','thumbnailMarkup(','markDirty()'])expect(ui.includes(marker),`pont programme/médiathèque absent : ${marker}`);
-for(const marker of ['Importer une vidéo','Importer et ajouter au programme','data-upload-drop',`${'/api/admin/webtv/media'}`,'chunkSize','apiRaw','refreshImportedLibrary','PART_GAP_MS','await delay(PART_GAP_MS'])expect(uploadUi.includes(marker),`importeur Studio incomplet : ${marker}`);
-expect(!uploadUi.includes('Math.min(3,total)'),'l’upload R2 ne doit plus lancer trois écritures concurrentes vers la même clé');
-expect(uploadUi.includes('for(let index=0;index<total;index+=1)'),'les parts R2 doivent être envoyées séquentiellement');
+for(const marker of ['Importer une vidéo','Importer et ajouter au programme','data-upload-drop',`${'/api/admin/webtv/media'}`,'chunkSize','directPartWithRetry','/part-url','credentials:\'omit\'','response.headers.get(\'ETag\')','PART_RETRY_DELAYS_MS','refreshImportedLibrary'])expect(uploadUi.includes(marker),`importeur Studio direct incomplet : ${marker}`);
+expect(!uploadUi.includes(`${API_PLACEHOLDER()}/part?`),'le navigateur ne doit plus envoyer les octets vidéo vers le Worker');
+expect(uploadUi.includes('for(let index=0;index<total;index+=1)'),'les parts R2 doivent rester ordonnées côté programme');
 expect(ia.includes("'/studio/webtv.html'"),'la navigation Diffusion ne pointe pas vers la régie Web TV');
 expect(navCompat.includes("querySelectorAll('.studio-context-nav-v65')")&&navCompat.includes('.remove()'),'les onglets Diffusion historiques ne sont pas neutralisés');
 
 if(failures.length){console.error(failures.map(failure=>`- ${failure}`).join('\n'));process.exit(1);}
-console.log('WebTV validée derrière entry-v35 : régie compacte, import vidéo multipart R2 sérialisé et temporisé, bibliothèque persistante, lecture Range, programme modifiable puis application explicite à l’antenne, Container FFmpeg et RTMPS préservés.');
+console.log('WebTV validée derrière entry-v35 : régie compacte, import vidéo direct navigateur→R2 par URLs S3 présignées, reprise par bloc, bibliothèque persistante, lecture Range, programme modifiable puis application explicite à l’antenne, Container FFmpeg et RTMPS préservés.');
+
+function API_PLACEHOLDER(){return'/api/admin/webtv/media';}

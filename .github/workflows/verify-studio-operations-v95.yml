@@ -1,0 +1,157 @@
+name: Verify Studio Operations V95
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-studio-operations-v95.yml'
+      - 'neptune-tv-media-cloudflare/src/entry-v33.js'
+      - 'neptune-tv-media-cloudflare/src/store-v27.js'
+      - 'neptune-tv-media-cloudflare/src/portal-studio-operations-v95.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-operations-compat-v95.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-operations-v95.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-operations-v95.css'
+      - 'neptune-tv-media-cloudflare/public/espace-client/media-catalog-v95.js'
+      - 'neptune-tv-media-cloudflare/public/espace-client/media-catalog-v95.css'
+      - 'neptune-tv-media-cloudflare/scripts/verify-studio-operations-v95.mjs'
+      - 'neptune-tv-media-cloudflare/tests/studio-operations-v95-final.mjs'
+      - 'neptune-tv-media-cloudflare/wrangler.jsonc'
+      - 'wrangler.jsonc'
+      - 'neptune-tv-media-cloudflare/package.json'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-studio-operations-v95.yml'
+      - 'neptune-tv-media-cloudflare/src/entry-v33.js'
+      - 'neptune-tv-media-cloudflare/src/store-v27.js'
+      - 'neptune-tv-media-cloudflare/src/portal-studio-operations-v95.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-operations-compat-v95.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-operations-v95.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-operations-v95.css'
+      - 'neptune-tv-media-cloudflare/public/espace-client/media-catalog-v95.js'
+      - 'neptune-tv-media-cloudflare/public/espace-client/media-catalog-v95.css'
+      - 'neptune-tv-media-cloudflare/scripts/verify-studio-operations-v95.mjs'
+      - 'neptune-tv-media-cloudflare/tests/studio-operations-v95-final.mjs'
+      - 'neptune-tv-media-cloudflare/wrangler.jsonc'
+      - 'wrangler.jsonc'
+      - 'neptune-tv-media-cloudflare/package.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-studio-operations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      STUDIO_OPERATIONS_RELEASE: neptune-studio-operations-20260811-v95
+      STUDIO_OPERATIONS_COMPAT_RELEASE: neptune-studio-operations-compat-20260811-v95
+      PUBLIC_URL: https://tv.neptunebusiness.com
+      WORKERS_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate v95 source contract
+        working-directory: neptune-tv-media-cloudflare
+        run: |
+          node --check src/entry-v33.js
+          node --check src/store-v27.js
+          node --check src/portal-studio-operations-v95.js
+          node --check public/studio/studio-operations-compat-v95.js
+          node --check public/studio/studio-operations-v95.js
+          node --check public/espace-client/media-catalog-v95.js
+          node --check tests/studio-operations-v95-final.mjs
+          node scripts/verify-studio-operations-v95.mjs
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium
+
+      - name: Start application static server
+        shell: bash
+        run: |
+          python3 -m http.server 4173 --directory neptune-tv-media-cloudflare/public >/tmp/studio-v95-server.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:4173/studio/clients.html >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/studio-v95-server.log
+          exit 1
+
+      - name: Audit client account supplier finance configuration and client catalog
+        env:
+          LOCAL_BASE_URL: http://127.0.0.1:4173
+          OUTPUT_DIR: test-results/studio-operations-v95
+        run: node neptune-tv-media-cloudflare/tests/studio-operations-v95-final.mjs
+
+      - name: Upload v95 visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: studio-operations-v95-evidence
+          path: test-results/studio-operations-v95
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Verify v95 on both production domains
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/neptune-v95-production
+          verify_domain() {
+            local base="$1"
+            local slug="$2"
+            local ready=0
+            for attempt in $(seq 1 36); do
+              local query="studio_ops_v95=$GITHUB_SHA&attempt=$attempt"
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/api/public/release?$query" > "/tmp/neptune-v95-production/$slug-release.json" || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/clients?$query" > "/tmp/neptune-v95-production/$slug-studio.html" || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/espace-client/?$query" > "/tmp/neptune-v95-production/$slug-client.html" || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/studio-operations-compat-v95.js?$query" > "/tmp/neptune-v95-production/$slug-studio-compat-v95.js" || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/studio-operations-v95.js?$query" > "/tmp/neptune-v95-production/$slug-studio-v95.js" || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/espace-client/media-catalog-v95.js?$query" > "/tmp/neptune-v95-production/$slug-catalog-v95.js" || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/api/public/media-catalog-v95?$query" > "/tmp/neptune-v95-production/$slug-catalog.json" || true
+              if RELEASE_FILE="/tmp/neptune-v95-production/$slug-release.json" CATALOG_FILE="/tmp/neptune-v95-production/$slug-catalog.json" node <<'NODE'
+          const fs = require('node:fs');
+          let release, catalog;
+          try {
+            release = JSON.parse(fs.readFileSync(process.env.RELEASE_FILE, 'utf8'));
+            catalog = JSON.parse(fs.readFileSync(process.env.CATALOG_FILE, 'utf8'));
+          } catch { process.exit(1); }
+          if (release.studioOperations !== process.env.STUDIO_OPERATIONS_RELEASE) process.exit(1);
+          if (release.studioClientAccount !== 'dedicated-account-passages-new-passage-v95') process.exit(1);
+          if (release.studioSupplierFinance !== 'invoice-before-transfer-multi-supplier-v95') process.exit(1);
+          if (release.studioMediaConfiguration !== 'suppliers-formats-catalog-v95') process.exit(1);
+          if (release.clientMediaCatalog !== 'studio-managed-formats-v95') process.exit(1);
+          if (catalog.release !== process.env.STUDIO_OPERATIONS_RELEASE) process.exit(1);
+          if (!Array.isArray(catalog.formats) || !catalog.formats.length) process.exit(1);
+          NODE
+              then
+                if grep -Fq '/studio/studio-operations-compat-v95.js?v=1' "/tmp/neptune-v95-production/$slug-studio.html" \
+                  && grep -Fq '/studio/studio-operations-v95.js?v=1' "/tmp/neptune-v95-production/$slug-studio.html" \
+                  && grep -Fq '/studio/studio-operations-v95.css?v=1' "/tmp/neptune-v95-production/$slug-studio.html" \
+                  && grep -Fq '/espace-client/media-catalog-v95.js?v=1' "/tmp/neptune-v95-production/$slug-client.html" \
+                  && grep -Fq '/espace-client/media-catalog-v95.css?v=1' "/tmp/neptune-v95-production/$slug-client.html" \
+                  && grep -Fq "$STUDIO_OPERATIONS_COMPAT_RELEASE" "/tmp/neptune-v95-production/$slug-studio-compat-v95.js" \
+                  && grep -Fq "$STUDIO_OPERATIONS_RELEASE" "/tmp/neptune-v95-production/$slug-studio-v95.js" \
+                  && grep -Fq "$STUDIO_OPERATIONS_RELEASE" "/tmp/neptune-v95-production/$slug-catalog-v95.js"; then
+                  ready=1
+                  echo "$base: Studio operations v95 verified on attempt $attempt."
+                  break
+                fi
+              fi
+              sleep 5
+            done
+            test "$ready" = 1
+          }
+          verify_domain "$WORKERS_URL" workers
+          verify_domain "$PUBLIC_URL" public

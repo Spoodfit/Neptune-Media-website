@@ -15,12 +15,13 @@ async function start(){
 }
 
 function installUploadUi(addButton){
-  const actions=addButton.parentElement;
-  actions?.classList.add('webtv-program-actions');
+  const actions=document.createElement('div');
+  actions.className='webtv-program-actions';
+  addButton.before(actions);
   const button=document.createElement('button');
   button.id='importVideo';button.type='button';button.className='button button-import-video';
   button.innerHTML='<span aria-hidden="true">↑</span> Importer une vidéo';
-  addButton.before(button);
+  actions.append(button,addButton);
 
   const dialog=document.createElement('dialog');
   dialog.id='webtvUploadDialog';dialog.className='webtv-upload-dialog';
@@ -56,17 +57,13 @@ function installUploadUi(addButton){
   dialog.addEventListener('cancel',e=>{e.preventDefault();closeOrCancel(dialog);});
 }
 
-function openDialog(dialog){
-  if(activeUpload)return;
-  reset(dialog);dialog.showModal();
-}
+function openDialog(dialog){if(activeUpload)return;reset(dialog);dialog.showModal();}
 
 async function selectFile(dialog,file){
   clearError(dialog);
   if(!isVideo(file)){showError(dialog,'Ce fichier n’est pas reconnu comme une vidéo compatible.');return;}
   if(file.size<=0||file.size>MAX_BYTES){showError(dialog,'La vidéo doit peser moins de 20 Go.');return;}
-  selectedFile=file;
-  selectedDuration=await videoDuration(file);
+  selectedFile=file;selectedDuration=await videoDuration(file);
   dialog.querySelector('[data-upload-selection]').hidden=false;
   dialog.querySelector('[data-upload-filename]').textContent=file.name;
   dialog.querySelector('[data-upload-filesize]').textContent=`${formatBytes(file.size)}${selectedDuration?` · ${formatDuration(selectedDuration)}`:''}`;
@@ -85,86 +82,43 @@ async function upload(dialog){
   try{
     const init=await apiJson(`${API}/init`,{method:'POST',body:{filename:file.name,size:file.size,type:file.type,title,durationSeconds:selectedDuration},signal:controller.signal});
     activeUpload.key=init.key;activeUpload.uploadId=init.uploadId;
-    const chunkSize=Number(init.chunkSize||32*1024*1024);
-    const total=Math.ceil(file.size/chunkSize);
-    const parts=new Array(total);
+    const chunkSize=Number(init.chunkSize||32*1024*1024),total=Math.ceil(file.size/chunkSize),parts=new Array(total);
     let cursor=0,completedBytes=0;
-    const worker=async()=>{
-      while(true){
-        const index=cursor++;if(index>=total)return;
-        const start=index*chunkSize,end=Math.min(file.size,start+chunkSize),blob=file.slice(start,end);
-        const query=new URLSearchParams({key:init.key,uploadId:init.uploadId,partNumber:String(index+1)});
-        const part=await apiRaw(`${API}/part?${query}`,blob,controller.signal);
-        parts[index]={partNumber:index+1,etag:part.etag};
-        completedBytes+=blob.size;
-        const percent=Math.min(99,Math.round(completedBytes/file.size*100));
-        setProgress(dialog,percent,`Import en cours · ${percent} %`,`${formatBytes(completedBytes)} sur ${formatBytes(file.size)} · bloc ${index+1}/${total}`);
-      }
-    };
+    const worker=async()=>{while(true){
+      const index=cursor++;if(index>=total)return;
+      const start=index*chunkSize,end=Math.min(file.size,start+chunkSize),blob=file.slice(start,end);
+      const query=new URLSearchParams({key:init.key,uploadId:init.uploadId,partNumber:String(index+1)});
+      const part=await apiRaw(`${API}/part?${query}`,blob,controller.signal);
+      parts[index]={partNumber:index+1,etag:part.etag};completedBytes+=blob.size;
+      const percent=Math.min(99,Math.round(completedBytes/file.size*100));
+      setProgress(dialog,percent,`Import en cours · ${percent} %`,`${formatBytes(completedBytes)} sur ${formatBytes(file.size)} · bloc ${index+1}/${total}`);
+    }};
     await Promise.all(Array.from({length:Math.min(3,total)},()=>worker()));
     setProgress(dialog,99,'Finalisation…','Assemblage de la vidéo dans Cloudflare R2');
     const completed=await apiJson(`${API}/complete`,{method:'POST',body:{key:init.key,uploadId:init.uploadId,parts},signal:controller.signal});
-    const item=completed.item;
-    if(!item?.mediaUrl)throw new Error('upload_result_invalid');
+    const item=completed.item;if(!item?.mediaUrl)throw new Error('upload_result_invalid');
     await refreshImportedLibrary();
-    const added=window.NeptuneWebTvProgram?.addImportedMedia?.(item);
-    if(!added)throw new Error('program_not_ready');
+    const added=window.NeptuneWebTvProgram?.addImportedMedia?.(item);if(!added)throw new Error('program_not_ready');
     setProgress(dialog,100,'Vidéo importée','Ajoutée au programme. Cliquez ensuite sur « Appliquer à l’antenne ».');
     window.NeptuneWebTvProgram?.toast?.('Vidéo importée et ajoutée au programme. Appliquez les changements à l’antenne.');
     setTimeout(()=>{activeUpload=null;dialog.close();location.hash='#program';},650);
   }catch(error){
-    if(error?.name==='AbortError')showError(dialog,'Import annulé.');
-    else showError(dialog,uploadError(error?.message||'upload_failed'));
-    if(activeUpload?.key&&activeUpload?.uploadId){
-      try{await apiJson(`${API}/abort`,{method:'POST',body:{key:activeUpload.key,uploadId:activeUpload.uploadId}});}catch{}
-    }
+    if(error?.name==='AbortError')showError(dialog,'Import annulé.');else showError(dialog,uploadError(error?.message||'upload_failed'));
+    if(activeUpload?.key&&activeUpload?.uploadId){try{await apiJson(`${API}/abort`,{method:'POST',body:{key:activeUpload.key,uploadId:activeUpload.uploadId}});}catch{}}
     activeUpload=null;setBusy(dialog,false);
   }
 }
 
-async function closeOrCancel(dialog){
-  if(activeUpload){
-    activeUpload.controller.abort();
-    return;
-  }
-  dialog.close();
-}
-
-async function refreshImportedLibrary(){
-  try{
-    const response=await fetch(API,{credentials:'same-origin',headers:{Accept:'application/json'}});
-    const data=await response.json().catch(()=>({}));
-    if(response.ok)window.NeptuneWebTvProgram?.setImportedMedia?.(Array.isArray(data.items)?data.items:[]);
-  }catch{}
-}
+async function closeOrCancel(dialog){if(activeUpload){activeUpload.controller.abort();return;}dialog.close();}
+async function refreshImportedLibrary(){try{const response=await fetch(API,{credentials:'same-origin',headers:{Accept:'application/json'}});const data=await response.json().catch(()=>({}));if(response.ok)window.NeptuneWebTvProgram?.setImportedMedia?.(Array.isArray(data.items)?data.items:[]);}catch{}}
 
 async function apiJson(url,{method='GET',body=null,signal}={}){
-  const headers={Accept:'application/json'};
-  if(body!==null)headers['Content-Type']='application/json';
-  const csrf=sessionStorage.getItem('neptune_csrf')||'';
-  if(method!=='GET'&&csrf)headers['X-CSRF-Token']=csrf;
-  const response=await fetch(url,{method,headers,body:body===null?undefined:JSON.stringify(body),credentials:'same-origin',signal});
-  const data=await response.json().catch(()=>({}));
-  if(!response.ok)throw new Error(data.error||`http_${response.status}`);
-  return data;
+  const headers={Accept:'application/json'};if(body!==null)headers['Content-Type']='application/json';const csrf=sessionStorage.getItem('neptune_csrf')||'';if(method!=='GET'&&csrf)headers['X-CSRF-Token']=csrf;
+  const response=await fetch(url,{method,headers,body:body===null?undefined:JSON.stringify(body),credentials:'same-origin',signal});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||`http_${response.status}`);return data;
 }
+async function apiRaw(url,blob,signal){const headers={'Content-Type':'application/octet-stream',Accept:'application/json'};const csrf=sessionStorage.getItem('neptune_csrf')||'';if(csrf)headers['X-CSRF-Token']=csrf;const response=await fetch(url,{method:'PUT',headers,body:blob,credentials:'same-origin',signal});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||`http_${response.status}`);return data;}
 
-async function apiRaw(url,blob,signal){
-  const headers={'Content-Type':'application/octet-stream',Accept:'application/json'};
-  const csrf=sessionStorage.getItem('neptune_csrf')||'';if(csrf)headers['X-CSRF-Token']=csrf;
-  const response=await fetch(url,{method:'PUT',headers,body:blob,credentials:'same-origin',signal});
-  const data=await response.json().catch(()=>({}));
-  if(!response.ok)throw new Error(data.error||`http_${response.status}`);
-  return data;
-}
-
-function setBusy(dialog,busy){
-  dialog.querySelector('[data-upload-start]').disabled=busy||!selectedFile;
-  dialog.querySelector('[data-upload-change]').disabled=busy;
-  dialog.querySelector('[data-upload-title]').disabled=busy;
-  dialog.querySelector('[data-upload-drop]').classList.toggle('is-disabled',busy);
-  dialog.querySelector('[data-upload-cancel]').textContent=busy?'Annuler l’import':'Annuler';
-}
+function setBusy(dialog,busy){dialog.querySelector('[data-upload-start]').disabled=busy||!selectedFile;dialog.querySelector('[data-upload-change]').disabled=busy;dialog.querySelector('[data-upload-title]').disabled=busy;dialog.querySelector('[data-upload-drop]').classList.toggle('is-disabled',busy);dialog.querySelector('[data-upload-cancel]').textContent=busy?'Annuler l’import':'Annuler';}
 function showProgress(dialog,visible){dialog.querySelector('[data-upload-progress]').hidden=!visible;}
 function setProgress(dialog,value,status,detail){dialog.querySelector('[data-upload-bar]').value=value;dialog.querySelector('[data-upload-percent]').textContent=`${value} %`;dialog.querySelector('[data-upload-status]').textContent=status;dialog.querySelector('[data-upload-detail]').textContent=detail||'';}
 function showError(dialog,message){const el=dialog.querySelector('[data-upload-error]');el.textContent=message;el.hidden=false;}

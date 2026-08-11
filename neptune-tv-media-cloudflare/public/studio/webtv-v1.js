@@ -3,6 +3,7 @@ const $$=(s,r=document)=>[...r.querySelectorAll(s)];
 let studioState=null;
 let control=null;
 let csrfToken=sessionStorage.getItem('neptune_csrf')||'';
+let runtimePoll=null;
 
 init();
 
@@ -17,6 +18,8 @@ async function init(){
     $('#accountRole').textContent=studio.user?.displayRole||studio.user?.role||'Admin';
     bind();render();
     $('#syncState').innerHTML='<i></i> Synchronisé';
+    runtimePoll=setInterval(refreshRuntime,15000);
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshRuntime();});
   }catch(error){
     $('#syncState').textContent='Connexion requise';
     toast(error.message==='http_401'||error.message==='http_403'?'Accès Studio requis.':'Impossible de charger la régie.',true);
@@ -70,7 +73,7 @@ function renderSummary(){
   $('#modeLabel').textContent=control.mode==='schedule'?'Planning':'Boucle';
   $('#youtubeStatus').textContent=control.output?.configured?'Configuré':'À configurer';
   $('#youtubeReady').classList.toggle('ok',control.output?.configured===true);
-  $('#youtubeReady').textContent=control.output?.configured?'YouTube RTMPS configuré':'Clé YouTube à configurer';
+  $('#youtubeReady').textContent=control.output?.configured?'YouTube RTMPS configuré':'URL RTMPS + clé de flux à configurer';
 }
 
 function renderEncoder(){
@@ -80,8 +83,22 @@ function renderEncoder(){
   $('#liveLabel').textContent=live?'EN DIRECT':control.enabled?'En attente':'Hors ligne';
   $('#encoderStatus').textContent=encoderLabel(status);
   $('#heartbeat').textContent=control.encoder?.lastHeartbeatAt?`Dernier signal ${relative(control.encoder.lastHeartbeatAt)}`:'Aucun heartbeat reçu';
-  $('#encoderReady').classList.toggle('ok',status!=='not_connected');
-  $('#encoderReady').textContent=status!=='not_connected'?'Encodeur FFmpeg connecté':'Encodeur FFmpeg à connecter';
+  $('#encoderReady').classList.toggle('ok',status!=='not_connected'&&status!=='error');
+  $('#encoderReady').textContent=status==='error'?`Encodeur : ${humanError(control.encoder?.lastError||'erreur')}`:status!=='not_connected'?'Encodeur FFmpeg connecté':'Encodeur FFmpeg à connecter';
+}
+
+async function refreshRuntime(){
+  if(!control)return;
+  try{
+    const latest=await api('/api/admin/webtv/state',{},false);
+    control={...control,...latest,playlist:control.playlist,fallback:control.fallback,mode:control.mode,enabled:control.enabled};
+    control.output=latest.output||control.output;
+    control.encoder=latest.encoder||control.encoder;
+    renderSummary();renderEncoder();
+    $('#syncState').innerHTML='<i></i> Synchronisé';
+  }catch{
+    $('#syncState').textContent='État indisponible';
+  }
 }
 
 function openLibrary(){
@@ -109,7 +126,7 @@ function mediaUrlFor(episode){
 async function save(){
   const button=$('#save');button.disabled=true;button.textContent='Enregistrement…';
   control.enabled=$('#enabled').checked;control.mode=$('#mode').value;control.fallback={title:$('#fallbackTitle').value.trim(),mediaUrl:$('#fallbackUrl').value.trim()};
-  try{control=await api('/api/admin/webtv/state',{method:'PUT',body:JSON.stringify(control)});render();toast('Programmation Web TV enregistrée.');}
+  try{control=await api('/api/admin/webtv/state',{method:'PUT',body:JSON.stringify(control)});render();toast(control.enabled?'Programmation enregistrée. Démarrage de l’antenne demandé.':'Programmation Web TV enregistrée.');setTimeout(refreshRuntime,2500);}
   catch(error){toast('Enregistrement impossible : '+humanError(error.message),true);}
   finally{button.disabled=false;button.textContent='Enregistrer';}
 }
@@ -126,8 +143,9 @@ async function api(url,options={},addCsrf=true){
 
 function duration(seconds){seconds=Math.max(0,Number(seconds||0));if(!seconds)return'Durée inconnue';const h=Math.floor(seconds/3600),m=Math.floor((seconds%3600)/60),s=Math.floor(seconds%60);if(h)return`${h} h ${String(m).padStart(2,'0')}`;return`${m}:${String(s).padStart(2,'0')}`;}
 function typeLabel(type){return({episode:'Émission',jingle:'Jingle',ad:'Pub',fallback:'Secours'})[type]||'Émission';}
-function encoderLabel(status){return({running:'Encodeur opérationnel',live:'Encodeur opérationnel',streaming:'Diffusion active',starting:'Démarrage de l’encodeur',stopped:'Encodeur arrêté',error:'Erreur encodeur',not_connected:'Encodeur non connecté'})[status]||status;}
+function encoderLabel(status){return({idle:'Encodeur prêt',running:'Encodeur opérationnel',live:'Encodeur opérationnel',streaming:'Diffusion active',starting:'Démarrage de l’encodeur',stopped:'Encodeur arrêté',error:'Erreur encodeur',not_connected:'Encodeur non connecté'})[status]||status;}
 function relative(value){const delta=Math.round((Date.now()-new Date(value).getTime())/1000);if(delta<60)return'il y a moins d’une minute';if(delta<3600)return`il y a ${Math.floor(delta/60)} min`;return`il y a ${Math.floor(delta/3600)} h`;}
-function escapeHtml(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function humanError(code){return({studio_forbidden:'accès Studio refusé',origin_forbidden:'origine refusée',http_401:'connexion requise',http_403:'accès refusé'})[code]||code;}
+function escapeHtml(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));}
+function humanError(code){return({studio_forbidden:'accès Studio refusé',origin_forbidden:'origine refusée',youtube_not_configured:'configurez l’URL RTMPS et la clé YouTube',webtv_playlist_empty:'ajoutez au moins un contenu à la playlist',webtv_disabled:'activez d’abord la Web TV',playlist_empty:'playlist vide',encoder_unreachable:'encodeur indisponible',http_401:'connexion requise',http_403:'accès refusé'})[code]||code;}
 function toast(message,error=false){const el=$('#toast');el.textContent=message;el.hidden=false;el.style.background=error?'#7d1930':'#081a40';clearTimeout(toast.timer);toast.timer=setTimeout(()=>{el.hidden=true;},4200);}
+window.addEventListener('beforeunload',()=>{if(runtimePoll)clearInterval(runtimePoll);});

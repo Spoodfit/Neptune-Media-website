@@ -2,7 +2,8 @@ import { readFile } from 'node:fs/promises';
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 const readRoot = (path) => readFile(new URL(`../../${path}`, import.meta.url), 'utf8');
-const [entry, control, encoder, html, ui, ia, rootRaw, localRaw, rootPackageRaw, localPackageRaw] = await Promise.all([
+const [activeEntry, webtvEntry, control, encoder, html, ui, ia, rootRaw, localRaw, rootPackageRaw, localPackageRaw] = await Promise.all([
+  read('src/entry-v34.js'),
   read('src/entry-v33.js'),
   read('src/webtv-control-v1.js'),
   read('containers/webtv/encoder.mjs'),
@@ -21,13 +22,16 @@ const localPackage = JSON.parse(localPackageRaw);
 const failures = [];
 const expect = (condition, message) => { if (!condition) failures.push(message); };
 
-expect(root.main === 'neptune-tv-media-cloudflare/src/entry-v33.js', 'le Worker racine doit conserver entry-v33 et Studio Operations v95');
-expect(local.main === 'src/entry-v33.js', 'le Worker local doit conserver entry-v33 et Studio Operations v95');
-expect(entry.includes("from './entry-v32.js'"), 'entry-v33 ne prolonge plus entry-v32');
-expect(entry.includes('STUDIO_OPERATIONS_RELEASE'), 'Studio Operations v95 a été perdu');
-expect(entry.includes("from './webtv-control-v1.js'"), 'la Web TV n’est pas branchée sur entry-v33');
-expect(entry.includes('WebTvEncoder') && entry.includes('maintainWebTv'), 'le moteur Web TV n’est pas exporté ou surveillé');
-expect(entry.includes("controller?.cron==='* * * * *'"), 'le watchdog Web TV minute n’est pas isolé du cron métier historique');
+expect(root.main === 'neptune-tv-media-cloudflare/src/entry-v34.js', 'le Worker racine doit cibler entry-v34 sans contourner la Web TV v33');
+expect(local.main === 'src/entry-v34.js', 'le Worker local doit cibler entry-v34 sans contourner la Web TV v33');
+expect(activeEntry.includes("from './entry-v33.js'"), 'entry-v34 ne prolonge plus entry-v33');
+expect(activeEntry.includes("export { WebTvEncoder } from './entry-v33.js'"), 'entry-v34 ne réexporte pas WebTvEncoder');
+expect(activeEntry.includes("typeof base.scheduled==='function'"), 'entry-v34 ne délègue plus les crons à entry-v33');
+expect(webtvEntry.includes("from './entry-v32.js'"), 'entry-v33 ne prolonge plus entry-v32');
+expect(webtvEntry.includes('STUDIO_OPERATIONS_RELEASE'), 'Studio Operations v95 a été perdu');
+expect(webtvEntry.includes("from './webtv-control-v1.js'"), 'la Web TV n’est pas branchée sur entry-v33');
+expect(webtvEntry.includes('WebTvEncoder') && webtvEntry.includes('maintainWebTv'), 'le moteur Web TV n’est pas exporté ou surveillé');
+expect(webtvEntry.includes("controller?.cron==='* * * * *'"), 'le watchdog Web TV minute n’est pas isolé du cron métier historique');
 
 for (const [name, config] of [['root', root], ['local', local]]) {
   const webtv = Array.isArray(config.containers) ? config.containers.filter((item) => item.class_name === 'WebTvEncoder') : [];
@@ -82,4 +86,4 @@ if (failures.length) {
   console.error(failures.map((failure) => `- ${failure}`).join('\n'));
   process.exit(1);
 }
-console.log('Web TV v1 validée : Studio Diffusion complet, authentification canonique, médias HTTPS sûrs, secrets serveur, Container FFmpeg singleton, RTMPS, watchdog minute, arrêt réel et reprise automatique.');
+console.log('Web TV v1 préservée derrière entry-v34 : Studio Diffusion complet, authentification canonique, médias HTTPS sûrs, secrets serveur, Container FFmpeg singleton, RTMPS, watchdog minute, arrêt réel et reprise automatique.');

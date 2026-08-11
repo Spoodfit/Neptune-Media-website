@@ -7,9 +7,9 @@ import { STUDIO_OPERATIONS_RELEASE } from './portal-studio-operations-v95.js';
 
 export { StudioStore };
 
-const STUDIO_JS='/studio/studio-operations-v95.js?v=1';
+const STUDIO_JS=['/studio/studio-operations-compat-v95.js?v=1','/studio/studio-operations-v95.js?v=1'];
 const STUDIO_CSS='/studio/studio-operations-v95.css?v=1';
-const CLIENT_JS='/espace-client/media-catalog-v95.js?v=1';
+const CLIENT_JS=['/espace-client/media-catalog-v95.js?v=1'];
 const CLIENT_CSS='/espace-client/media-catalog-v95.css?v=1';
 const ADMIN_PREFIX='/api/admin/studio-operations-v95/';
 const PUBLIC_CATALOG='/api/public/media-catalog-v95';
@@ -77,14 +77,16 @@ async function requestSupplierInvoice(request,env,studio,payload){
 
 function callStore(studio,path,body){return studio.fetch(`https://store${path}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});}
 
-async function injectAssets(response,css,js,headerName,release){
+async function injectAssets(response,css,scripts,headerName,release){
   let body=await response.text();
   const cssPath=css.split('?')[0].replace(/[.*+?^${}()|[\]\\]/gu,'\\$&');
-  const jsPath=js.split('?')[0].replace(/[.*+?^${}()|[\]\\]/gu,'\\$&');
   body=body.replace(new RegExp(`<link\\b[^>]*href=["'][^"']*${cssPath}[^"']*["'][^>]*>\\s*`,'giu'),'');
-  body=body.replace(new RegExp(`<script\\b[^>]*src=["'][^"']*${jsPath}[^"']*["'][^>]*>\\s*<\\/script>\\s*`,'giu'),'');
+  for(const js of scripts){
+    const jsPath=js.split('?')[0].replace(/[.*+?^${}()|[\]\\]/gu,'\\$&');
+    body=body.replace(new RegExp(`<script\\b[^>]*src=["'][^"']*${jsPath}[^"']*["'][^>]*>\\s*<\\/script>\\s*`,'giu'),'');
+  }
   body=body.replace('</head>',`<link rel="stylesheet" href="${css}"></head>`);
-  body=body.replace('</body>',`<script type="module" src="${js}"></script></body>`);
+  body=body.replace('</body>',`${scripts.map(js=>`<script type="module" src="${js}"></script>`).join('')}</body>`);
   const headers=new Headers(response.headers);headers.delete('Content-Length');headers.set('Cache-Control','private, no-store, max-age=0');headers.set(headerName,release);
   return new Response(body,{status:response.status,statusText:response.statusText,headers});
 }

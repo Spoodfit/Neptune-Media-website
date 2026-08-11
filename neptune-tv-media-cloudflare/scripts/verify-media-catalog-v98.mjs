@@ -38,6 +38,9 @@ must(!tunnel.includes('exact-hn1.b64')&&!tunnel.includes('exact-hn2.b64'),'tunne
 
 for(const label of ['Concepts & formats','Configurations','Offres & tarifs','Fournisseurs','Villes','APERÇU TUNNEL'])must(admin.includes(label),`Studio manager is missing ${label}`);
 must(nav.includes('[data-context-tab="programs"]')&&nav.includes("textContent='Catalogue Media'"),'dynamic Studio navigation must say Catalogue Media');
+must(nav.includes("['finances','Finances'],['users','Équipe'],['programs','Catalogue Media'],['audit','Journal'],['settings','Réglages']"),'Catalogue Media must live in Settings context');
+must(nav.includes('setPrimarySettings')&&nav.includes("item.dataset.studioRoute==='settings'"),'Catalogue Media must keep Settings as primary navigation');
+must(nav.includes('ensureCatalogMount')&&nav.includes("content.dataset.c98!=='ready'")&&nav.includes('media-catalog-v98-remount'),'catalog must remount after round trips');
 must(admin.includes("fetch('/api/reservation/catalog-v96'"),'preview must read actual public catalog');
 must(admin.includes('asset/upload'),'Studio image upload is missing');
 must(admin.includes('Ouvrir le tunnel réel'),'real tunnel shortcut missing');

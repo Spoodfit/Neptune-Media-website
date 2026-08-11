@@ -47,6 +47,7 @@ jobs:
     env:
       STUDIO_OPERATIONS_RELEASE: neptune-studio-operations-20260811-v95
       STUDIO_OPERATIONS_COMPAT_RELEASE: neptune-studio-operations-compat-20260811-v95
+      CLIENT_MEDIA_CATALOG_RELEASE: neptune-client-media-catalog-20260811-v95
       PUBLIC_URL: https://tv.neptunebusiness.com
       WORKERS_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
     steps:
@@ -143,7 +144,7 @@ jobs:
                   && grep -Fq '/espace-client/media-catalog-v95.css?v=1' "/tmp/neptune-v95-production/$slug-client.html" \
                   && grep -Fq "$STUDIO_OPERATIONS_COMPAT_RELEASE" "/tmp/neptune-v95-production/$slug-studio-compat-v95.js" \
                   && grep -Fq "$STUDIO_OPERATIONS_RELEASE" "/tmp/neptune-v95-production/$slug-studio-v95.js" \
-                  && grep -Fq "$STUDIO_OPERATIONS_RELEASE" "/tmp/neptune-v95-production/$slug-catalog-v95.js"; then
+                  && grep -Fq "$CLIENT_MEDIA_CATALOG_RELEASE" "/tmp/neptune-v95-production/$slug-catalog-v95.js"; then
                   ready=1
                   echo "$base: Studio operations v95 verified on attempt $attempt."
                   break

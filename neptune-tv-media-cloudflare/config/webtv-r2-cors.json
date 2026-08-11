@@ -1,0 +1,12 @@
+[
+  {
+    "AllowedOrigins": [
+      "https://tv.neptunebusiness.com",
+      "https://media.neptunebusiness.com"
+    ],
+    "AllowedMethods": ["PUT"],
+    "AllowedHeaders": ["*"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3600
+  }
+]

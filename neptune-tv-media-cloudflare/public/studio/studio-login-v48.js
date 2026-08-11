@@ -1,9 +1,12 @@
 const $ = (selector, root = document) => root.querySelector(selector);
-const CANONICAL_STUDIO_PATH = '/studio/clients';
+const CANONICAL_STUDIO_PATH = '/studio/app.html#clients';
 const ALLOWED_NEXT = new Set([
+  '/studio/app.html',
   '/studio/clients',
   '/studio/clients/',
   '/studio/clients.html',
+  '/studio/video-ai.html',
+  '/studio/webtv.html',
   '/studio/advanced.html',
 ]);
 
@@ -111,7 +114,7 @@ function resolveDestination(value) {
   try {
     const url = new URL(value, location.origin);
     if (url.origin !== location.origin) return CANONICAL_STUDIO_PATH;
-    if (ALLOWED_NEXT.has(url.pathname) || url.pathname.startsWith('/studio/advanced.html')) return `${url.pathname}${url.hash}`;
+    if (ALLOWED_NEXT.has(url.pathname)) return `${url.pathname}${url.search}${url.hash}`;
   } catch {}
   return CANONICAL_STUDIO_PATH;
 }

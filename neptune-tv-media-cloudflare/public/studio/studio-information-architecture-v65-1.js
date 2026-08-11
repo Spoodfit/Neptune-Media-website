@@ -1,5 +1,5 @@
 (() => {
-  const KEY = '__neptuneStudioInformationArchitectureV651';
+  const KEY = '__neptuneStudioInformationArchitectureV652';
   if (window[KEY]) return;
   window[KEY] = true;
 
@@ -8,9 +8,11 @@
     ? 'clients'
     : cleanPath === '/studio/video-ai' || cleanPath === '/studio/video-ai.html'
       ? 'production'
-      : cleanPath === '/studio/advanced' || cleanPath === '/studio/advanced.html'
-        ? 'advanced'
-        : '';
+      : cleanPath === '/studio/webtv' || cleanPath === '/studio/webtv.html'
+        ? 'webtv'
+        : cleanPath === '/studio/advanced' || cleanPath === '/studio/advanced.html'
+          ? 'advanced'
+          : '';
   if (!page) return;
 
   const start = () => {
@@ -31,8 +33,10 @@
     const advanced = page === 'advanced' ? prepareAdvanced(ui) : null;
     ui.nav.innerHTML = primaryNavigation();
     ui.nav.setAttribute('aria-label', 'Navigation principale du Studio');
-    setPrimaryActive(ui.nav, page === 'advanced' ? groupForTab(requestedTab()) : page);
+    const activeRoute = page === 'advanced' ? groupForTab(requestedTab()) : page === 'webtv' ? 'diffusion' : page;
+    setPrimaryActive(ui.nav, activeRoute);
     bindPrimary(ui.nav, page, advanced);
+    if (page === 'webtv') installWebTvContext(ui);
     installMobileDrawer(ui);
     normalizeAccount(ui.account, page);
     improvePageCopy(page);
@@ -67,6 +71,18 @@
         topbar: document.querySelector('.video-ai-topbar'),
       };
     }
+    if (kind === 'webtv') {
+      return {
+        shell: document.querySelector('.studio-shell'),
+        sidebar: document.querySelector('.studio-sidebar'),
+        nav: document.querySelector('.studio-nav'),
+        brand: document.querySelector('.studio-brand'),
+        status: document.querySelector('.studio-status'),
+        account: document.querySelector('.studio-account'),
+        main: document.querySelector('.workspace'),
+        topbar: document.querySelector('.topbar'),
+      };
+    }
     return {
       shell: document.querySelector('#app.shell'),
       sidebar: document.querySelector('#app .sidebar'),
@@ -95,7 +111,7 @@
       if (subtitle) subtitle.textContent = 'Media · Studio';
     }
     const status = ui.status?.querySelector('span');
-    if (status) status.textContent = kind === 'production' ? 'Production locale' : 'Studio synchronisé';
+    if (status) status.textContent = kind === 'production' ? 'Production locale' : kind === 'webtv' ? 'Régie connectée' : 'Studio synchronisé';
     const eyebrow = ui.topbar.querySelector('.eyebrow');
     if (eyebrow) eyebrow.textContent = 'NEPTUNE MEDIA STUDIO';
     if (kind === 'advanced') ui.topbar.querySelector('a[href="/studio/clients"]')?.remove();
@@ -105,7 +121,7 @@
     return [
       link('clients', '/studio/clients', '◎', 'Parcours clients'),
       link('production', '/studio/video-ai.html', '✦', 'Production vidéo'),
-      link('diffusion', '/studio/advanced.html#episodes', '▶', 'Diffusion'),
+      link('diffusion', '/studio/webtv.html', '▶', 'Diffusion'),
       link('settings', '/studio/advanced.html#settings', '⚙', 'Réglages'),
     ].join('');
   }
@@ -127,10 +143,6 @@
     nav.addEventListener('click', (event) => {
       const item = event.target.closest('[data-studio-route]');
       if (!item || kind !== 'advanced') return;
-      if (item.dataset.studioRoute === 'diffusion') {
-        event.preventDefault();
-        advanced?.activate('episodes');
-      }
       if (item.dataset.studioRoute === 'settings') {
         event.preventDefault();
         advanced?.activate('settings');
@@ -151,7 +163,7 @@
     document.body.append(holder);
 
     const groups = {
-      diffusion: [['episodes', 'Programme'], ['programs', 'Formats'], ['ads', 'Publicités'], ['insights', 'Audience']],
+      diffusion: [['webtv', 'Web TV'], ['episodes', 'Programme'], ['programs', 'Formats'], ['ads', 'Publicités'], ['insights', 'Audience']],
       settings: [['finances', 'Finances'], ['users', 'Équipe'], ['audit', 'Journal'], ['settings', 'Réglages']],
     };
     const allowed = new Set([...groups.diffusion, ...groups.settings].map(([id]) => id));
@@ -167,7 +179,7 @@
       setPrimaryActive(ui.nav, group);
       context.innerHTML = groups[group].map(([id, label]) => {
         const original = controls.get(id);
-        const unavailable = !original || original.hidden;
+        const unavailable = id !== 'webtv' && (!original || original.hidden);
         return `<button type="button" data-context-tab="${id}" class="${id === activeTab ? 'active' : ''}" ${unavailable ? 'hidden' : ''}>${label}</button>`;
       }).join('');
       for (const button of context.querySelectorAll('[data-context-tab]')) {
@@ -176,14 +188,9 @@
     };
 
     const activate = (tab) => {
-      if (tab === 'dashboard') {
-        location.href = '/studio/clients';
-        return;
-      }
-      if (tab === 'ai') {
-        location.href = '/studio/video-ai.html';
-        return;
-      }
+      if (tab === 'dashboard') { location.href = '/studio/clients'; return; }
+      if (tab === 'ai') { location.href = '/studio/video-ai.html'; return; }
+      if (tab === 'webtv') { location.href = '/studio/webtv.html'; return; }
       const resolved = normalizeRequestedTab(tab);
       const original = controls.get(resolved);
       if (!original || original.hidden || activating) return;
@@ -204,14 +211,8 @@
 
     const sync = () => {
       const requested = requestedTab();
-      if (requested === 'dashboard') {
-        location.replace('/studio/clients');
-        return;
-      }
-      if (requested === 'ai') {
-        location.replace('/studio/video-ai.html');
-        return;
-      }
+      if (requested === 'dashboard') { location.replace('/studio/clients'); return; }
+      if (requested === 'ai') { location.replace('/studio/video-ai.html'); return; }
       activeTab = normalizeRequestedTab(requested);
       render();
       if (!document.getElementById('app')?.hidden) setTimeout(() => activate(activeTab), 0);
@@ -225,18 +226,28 @@
     return { activate };
   }
 
-  function requestedTab() {
-    return decodeURIComponent(location.hash.slice(1)).trim() || 'episodes';
+  function installWebTvContext(ui) {
+    const context = document.createElement('nav');
+    context.className = 'studio-context-nav-v65';
+    context.setAttribute('aria-label', 'Navigation Diffusion');
+    const tabs = [
+      ['Web TV', '/studio/webtv.html', true],
+      ['Programme', '/studio/advanced.html#episodes', false],
+      ['Formats', '/studio/advanced.html#programs', false],
+      ['Publicités', '/studio/advanced.html#ads', false],
+      ['Audience', '/studio/advanced.html#insights', false],
+    ];
+    context.innerHTML = tabs.map(([label, href, active]) => `<button type="button" data-webtv-href="${href}" class="${active ? 'active' : ''}">${label}</button>`).join('');
+    for (const button of context.querySelectorAll('[data-webtv-href]')) button.addEventListener('click', () => { location.href = button.dataset.webtvHref; });
+    ui.topbar.after(context);
   }
 
+  function requestedTab() { return decodeURIComponent(location.hash.slice(1)).trim() || 'episodes'; }
   function normalizeRequestedTab(tab) {
     if (['episodes', 'programs', 'ads', 'insights', 'finances', 'users', 'audit', 'settings'].includes(tab)) return tab;
     return 'episodes';
   }
-
-  function groupForTab(tab) {
-    return ['finances', 'users', 'audit', 'settings'].includes(tab) ? 'settings' : 'diffusion';
-  }
+  function groupForTab(tab) { return ['finances', 'users', 'audit', 'settings'].includes(tab) ? 'settings' : 'diffusion'; }
 
   function installMobileDrawer(ui) {
     ui.sidebar.id ||= 'neptuneStudioSidebar';
@@ -273,20 +284,14 @@
 
     toggle.addEventListener('click', () => document.body.classList.contains('studio-menu-open-v65') ? close() : open());
     backdrop.addEventListener('click', () => close({ focus: true }));
-    ui.nav.addEventListener('click', () => {
-      if (matchMedia('(max-width: 860px)').matches) close();
-    });
-    document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && document.body.classList.contains('studio-menu-open-v65')) close({ focus: true });
-    });
-    matchMedia('(min-width: 861px)').addEventListener?.('change', (event) => {
-      if (event.matches) close();
-    });
+    ui.nav.addEventListener('click', () => { if (matchMedia('(max-width: 860px)').matches) close(); });
+    document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && document.body.classList.contains('studio-menu-open-v65')) close({ focus: true }); });
+    matchMedia('(min-width: 861px)').addEventListener?.('change', (event) => { if (event.matches) close(); });
   }
 
   function normalizeAccount(account, kind) {
     if (!account) return;
-    if (kind === 'clients' && account instanceof HTMLAnchorElement) {
+    if ((kind === 'clients' || kind === 'webtv') && account instanceof HTMLAnchorElement) {
       account.href = '/studio/advanced.html#settings';
       account.setAttribute('aria-label', 'Ouvrir les réglages du Studio');
     }
@@ -297,10 +302,7 @@
       const open = () => { location.href = '/studio/advanced.html#settings'; };
       account.addEventListener('click', open);
       account.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          open();
-        }
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(); }
       });
     }
   }
@@ -329,5 +331,6 @@
       const small = document.querySelector('.login-brand small');
       if (small) small.textContent = 'Studio';
     }
+    if (kind === 'webtv') document.title = 'Diffusion · Neptune Media Studio';
   }
 })();

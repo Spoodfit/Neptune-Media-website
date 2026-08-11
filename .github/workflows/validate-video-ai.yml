@@ -9,6 +9,7 @@ on:
       - 'neptune-tv-media-cloudflare/public/studio/**'
       - 'neptune-tv-media-cloudflare/local-video-engine/**'
       - 'neptune-tv-media-cloudflare/scripts/**'
+      - 'neptune-tv-media-cloudflare/containers/webtv/**'
       - 'neptune-tv-media-cloudflare/wrangler.jsonc'
       - 'wrangler.jsonc'
       - 'package.json'
@@ -42,7 +43,9 @@ jobs:
             neptune-video-engine/runtime.py \
             neptune-video-engine/runtime_v74.py \
             neptune-video-engine/runtime_v75.py
-          ! grep -Fq '"containers"' wrangler.jsonc
+          grep -Fq '"class_name": "WebTvEncoder"' wrangler.jsonc
+          ! grep -Fq '"class_name": "VideoProcessor"' wrangler.jsonc
+          ! grep -Fq '"class_name": "VideoProcessorV2"' wrangler.jsonc
           ! grep -Fq '"VIDEO_PROCESSOR"' wrangler.jsonc
           ! grep -Fq '"VIDEO_JOBS"' wrangler.jsonc
           grep -Fq 'from runtime_v75 import app as app' neptune-video-engine/runtime.py

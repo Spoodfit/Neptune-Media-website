@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#06183f">
+  <title>Diffusion · Neptune Media Studio</title>
+  <link rel="icon" href="/assets/logo-neptune.svg">
+  <link rel="stylesheet" href="/studio/webtv-v1.css?v=3">
+  <link rel="stylesheet" href="/studio/studio-information-architecture-v65.css?v=1">
+  <link rel="stylesheet" href="/studio/webtv-v2.css?v=1">
+</head>
+<body>
+  <div class="studio-shell">
+    <aside class="studio-sidebar">
+      <a class="studio-brand" href="/studio/clients" aria-label="Neptune Media Studio"><img src="/assets/logo-neptune.svg" alt=""><div><b>Neptune</b><small>Media · Studio</small></div></a>
+      <div class="studio-status"><i></i><span id="sidebarStatus">Régie connectée</span></div>
+      <nav class="studio-nav" aria-label="Navigation principale du Studio">
+        <a class="studio-nav-link" href="/studio/clients"><span>◎</span><strong>Parcours clients</strong></a>
+        <a class="studio-nav-link active" href="/studio/webtv.html" aria-current="page"><span>▶</span><strong>Diffusion</strong></a>
+        <a class="studio-nav-link" href="/studio/advanced.html#settings"><span>⚙</span><strong>Réglages</strong></a>
+      </nav>
+      <a class="studio-account" href="/studio/advanced.html#settings"><span class="studio-avatar">NM</span><span><b id="accountName">Compte Studio</b><small id="accountRole">Chargement…</small></span><i>→</i></a>
+    </aside>
+
+    <section class="workspace">
+      <header class="topbar">
+        <div><p class="eyebrow">NEPTUNE MEDIA STUDIO</p><h1>Diffusion</h1></div>
+        <div class="top-actions"><span id="syncState" class="sync"><i></i> Synchronisation…</span><button id="refreshState" class="button" type="button">Actualiser</button><button id="save" class="button button-primary" type="button">Enregistrer</button></div>
+      </header>
+
+      <main class="main">
+        <section class="hero">
+          <div><p class="eyebrow">RÉGIE WEB TV</p><h2>Programmez l’antenne.<br><span>Neptune diffuse en continu.</span></h2><p>Gérez l’ordre des émissions, les publicités, les jingles, le secours antenne et l’état du direct YouTube sans sortir du Studio.</p></div>
+          <div class="live-card" id="liveCard"><div class="live-head"><span id="liveDot" class="live-dot"></span><b id="liveLabel">Hors ligne</b></div><strong id="encoderStatus">Encodeur non connecté</strong><small id="nowPlaying">Aucun programme à l’antenne</small><small id="heartbeat">Aucun signal reçu</small></div>
+        </section>
+
+        <section class="metrics">
+          <article><b id="playlistCount">0</b><span>éléments actifs</span></article>
+          <article><b id="playlistDuration">0 h</b><span>durée avant rebouclage</span></article>
+          <article><b id="modeLabel">Boucle</b><span>mode de diffusion</span></article>
+          <article><b id="youtubeStatus">À configurer</b><span>YouTube RTMPS</span></article>
+        </section>
+
+        <div class="layout">
+          <section class="panel panel-program">
+            <div class="panel-head"><div><p class="eyebrow">PROGRAMME</p><h3>Ordre de passage</h3><p>Glissez les contenus ou utilisez les flèches. Désactivez temporairement un élément sans le supprimer.</p></div><button id="addFromLibrary" class="button" type="button">+ Ajouter un contenu</button></div>
+            <div id="playlist" class="playlist" aria-live="polite"></div>
+            <div id="emptyPlaylist" class="empty"><strong>Aucun contenu programmé.</strong><span>Ajoutez une émission, un jingle ou une publicité depuis le catalogue Neptune.</span></div>
+          </section>
+
+          <aside class="side-stack">
+            <section class="panel settings-card">
+              <p class="eyebrow">ANTENNE</p><h3>Diffusion YouTube</h3>
+              <label class="switch-row"><span><b>Web TV active</b><small>OFF arrête réellement l’encodeur. ON lance la boucle enregistrée.</small></span><input id="enabled" type="checkbox" aria-label="Activer ou arrêter la Web TV"><i></i></label>
+              <label><span>Mode</span><select id="mode" aria-label="Mode de diffusion"><option value="loop">Boucle continue</option></select></label>
+              <div class="readonly-row"><span><b>Destination</b><small>Clé masquée et conservée dans Cloudflare</small></span><strong>YouTube · RTMPS</strong></div>
+            </section>
+
+            <section class="panel settings-card">
+              <p class="eyebrow">SÉCURITÉ ANTENNE</p><h3>Programme de secours</h3><p>Ce contenu est utilisé si un programme est illisible. Sans média de secours, Neptune affiche automatiquement une mire technique.</p>
+              <label><span>Titre</span><input id="fallbackTitle" maxlength="180" aria-label="Titre du programme de secours"></label>
+              <div class="readonly-row"><span><b id="fallbackSource">Mire technique automatique</b><small id="fallbackUrlLabel">Aucun média de secours sélectionné</small></span><button id="chooseFallback" class="button" type="button">Choisir</button></div>
+              <button id="clearFallback" class="button" type="button">Utiliser uniquement la mire</button>
+            </section>
+
+            <section class="panel readiness-card">
+              <p class="eyebrow">ÉTAT TECHNIQUE</p><h3>Surveillance automatique</h3>
+              <ul>
+                <li class="ok">Régie et programmation persistantes</li>
+                <li class="ok">Watchdog Cloudflare chaque minute</li>
+                <li id="encoderReady">Encodeur FFmpeg à connecter</li>
+                <li id="youtubeReady">YouTube à configurer</li>
+              </ul>
+              <button id="restartEncoder" class="button" type="button">Redémarrer l’encodeur</button>
+              <p class="microcopy">En cas de panne, Neptune tente aussi une reprise automatique. Utilisez ce bouton uniquement si le direct semble figé.</p>
+            </section>
+          </aside>
+        </div>
+      </main>
+    </section>
+  </div>
+
+  <dialog id="libraryDialog">
+    <section class="dialog-card">
+      <header><div><p class="eyebrow">CATALOGUE NEPTUNE</p><h2 id="libraryTitle">Ajouter à l’antenne</h2><p id="libraryHint">Sélectionnez un contenu déjà disponible dans Neptune Media.</p></div><button id="closeLibrary" class="icon-button" type="button" aria-label="Fermer">×</button></header>
+      <div id="library" class="library"></div>
+    </section>
+  </dialog>
+
+  <div id="toast" class="toast" hidden></div>
+  <script type="module" src="/studio/webtv-v1.js?v=3"></script>
+  <script type="module" src="/studio/studio-information-architecture-v65-1.js?v=2"></script>
+  <script type="module" src="/studio/webtv-nav-compat-v1.js?v=1"></script>
+</body>
+</html>

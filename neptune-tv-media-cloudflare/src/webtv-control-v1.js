@@ -6,7 +6,8 @@ const WEBTV_RUNTIME_KEY = 'webtv/runtime/status-v1.json';
 const WEBTV_STATE_PATH = '/api/admin/webtv/state';
 const WEBTV_ENCODER_PATH = '/api/admin/webtv/encoder';
 const ENCODER_INSTANCE_NAME = 'neptune-webtv-primary';
-export const WEBTV_RELEASE = 'neptune-webtv-control-room-20260811-v3';
+const ALLOWED_ROLES = new Set(['admin', 'editor']);
+export const WEBTV_RELEASE = 'neptune-webtv-control-room-20260811-v4';
 
 export class WebTvEncoder extends Container {
   defaultPort = 8080;
@@ -14,14 +15,8 @@ export class WebTvEncoder extends Container {
   sleepAfter = '5m';
   enableInternet = true;
 
-  onStart() {
-    console.log('webtv_encoder_started');
-  }
-
-  onStop({ exitCode, reason }) {
-    console.log('webtv_encoder_stopped', { exitCode, reason });
-  }
-
+  onStart() { console.log('webtv_encoder_started'); }
+  onStop({ exitCode, reason }) { console.log('webtv_encoder_stopped', { exitCode, reason }); }
   onError(error) {
     console.error('webtv_encoder_error', String(error?.message || error));
     throw error;
@@ -49,32 +44,28 @@ export async function handleWebTvRequest(request, env, ctx, delegateFetch) {
 
   if (url.pathname === WEBTV_STATE_PATH) {
     if (request.method === 'GET') return secureApi(json(await readWebTvState(env)));
+    if (request.method !== 'PUT') return secureApi(json({ error: 'method_not_allowed' }, 405));
+    if (!isSameOrigin(request)) return secureApi(json({ error: 'origin_forbidden' }, 403));
 
-    if (request.method === 'PUT') {
-      if (!isSameOrigin(request)) return secureApi(json({ error: 'origin_forbidden' }, 403));
-      const payload = await request.json().catch(() => ({}));
-      const previous = await readWebTvState(env);
-      const state = normalizeWebTvState(payload, auth.user, env);
+    const payload = await request.json().catch(() => ({}));
+    const previous = await readWebTvState(env);
+    const state = normalizeWebTvState(payload, auth.user, env);
 
-      if (state.enabled && !youtubeConfigured(env)) {
-        return secureApi(json({ error: 'youtube_not_configured', requiredSecrets: ['YOUTUBE_RTMPS_URL', 'YOUTUBE_STREAM_KEY'] }, 409));
-      }
-      if (state.enabled && state.playlist.filter((item) => item.enabled !== false).length === 0) {
-        return secureApi(json({ error: 'webtv_playlist_empty' }, 409));
-      }
-
-      await env.MEDIA.put(WEBTV_STATE_KEY, JSON.stringify(stripRuntime(state)), {
-        httpMetadata: { contentType: 'application/json; charset=utf-8' },
-        customMetadata: { release: WEBTV_RELEASE },
-      });
-
-      if (state.enabled) ctx.waitUntil(maintainWebTv(env, { forceRestart: previous.updatedAt !== state.updatedAt }));
-      else if (previous.enabled) ctx.waitUntil(stopEncoder(env, 'disabled_from_studio'));
-
-      return secureApi(json(await readWebTvState(env)));
+    if (state.enabled && !youtubeConfigured(env)) {
+      return secureApi(json({ error: 'youtube_not_configured', requiredSecrets: ['YOUTUBE_RTMPS_URL', 'YOUTUBE_STREAM_KEY'] }, 409));
+    }
+    if (state.enabled && !state.playlist.some((item) => item.enabled !== false)) {
+      return secureApi(json({ error: 'webtv_playlist_empty' }, 409));
     }
 
-    return secureApi(json({ error: 'method_not_allowed' }, 405));
+    await env.MEDIA.put(WEBTV_STATE_KEY, JSON.stringify(stripRuntime(state)), {
+      httpMetadata: { contentType: 'application/json; charset=utf-8' },
+      customMetadata: { release: WEBTV_RELEASE },
+    });
+
+    if (state.enabled) ctx.waitUntil(maintainWebTv(env, { forceRestart: previous.updatedAt !== state.updatedAt }));
+    else if (previous.enabled) ctx.waitUntil(stopEncoder(env, 'disabled_from_studio'));
+    return secureApi(json(await readWebTvState(env)));
   }
 
   if (request.method !== 'POST') return secureApi(json({ error: 'method_not_allowed' }, 405));
@@ -100,45 +91,23 @@ export async function handleWebTvRequest(request, env, ctx, delegateFetch) {
 export async function maintainWebTv(env, options = {}) {
   const state = await readWebTvState(env);
   if (!state.enabled) return null;
-
-  if (!youtubeConfigured(env)) {
-    return writeRuntime(env, {
-      status: 'error',
-      lastHeartbeatAt: new Date().toISOString(),
-      lastError: 'youtube_not_configured',
-      currentItem: null,
-    });
-  }
-
-  if (!state.playlist.some((item) => item.enabled !== false)) {
-    return writeRuntime(env, {
-      status: 'error',
-      lastHeartbeatAt: new Date().toISOString(),
-      lastError: 'webtv_playlist_empty',
-      currentItem: null,
-    });
-  }
+  if (!youtubeConfigured(env)) return writeRuntime(env, runtimeError('youtube_not_configured'));
+  if (!state.playlist.some((item) => item.enabled !== false)) return writeRuntime(env, runtimeError('webtv_playlist_empty'));
 
   try {
     return await syncEncoder(env, state, options);
   } catch (error) {
     console.error('webtv_maintain_failed', String(error?.message || error));
-    return writeRuntime(env, {
-      status: 'error',
-      lastHeartbeatAt: new Date().toISOString(),
-      lastError: clean(error?.message || error, 500) || 'encoder_unreachable',
-      currentItem: null,
-    });
+    return writeRuntime(env, runtimeError(clean(error?.message || error, 500) || 'encoder_unreachable'));
   }
 }
 
 async function syncEncoder(env, state, { forceRestart = false } = {}) {
   const container = getContainer(env.WEBTV_ENCODER, ENCODER_INSTANCE_NAME);
-  const config = encoderConfiguration(env, state, forceRestart);
   const response = await container.fetch('http://encoder/control/apply', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(config),
+    body: JSON.stringify(encoderConfiguration(env, state, forceRestart)),
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(data.error || `encoder_http_${response.status}`);
@@ -148,16 +117,11 @@ async function syncEncoder(env, state, { forceRestart = false } = {}) {
 async function stopEncoder(env, reason) {
   const container = getContainer(env.WEBTV_ENCODER, ENCODER_INSTANCE_NAME);
   let runtime = {
-    status: 'stopped',
-    lastHeartbeatAt: new Date().toISOString(),
-    lastError: null,
-    currentItem: null,
+    status: 'stopped', lastHeartbeatAt: new Date().toISOString(), lastError: null, currentItem: null,
   };
   try {
     const response = await container.fetch('http://encoder/control/stop', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ reason }),
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason }),
     });
     const data = await response.json().catch(() => ({}));
     runtime = runtimeFromContainer({ ...data, status: 'stopped', lastError: null });
@@ -203,15 +167,19 @@ function encoderConfiguration(env, state, forceRestart) {
 
 async function verifyStudioSession(request, env, ctx, delegateFetch) {
   const url = new URL(request.url);
-  url.pathname = '/api/v1/media/studio/state';
+  url.pathname = '/api/auth/status';
   url.search = '';
   const probe = new Request(url.toString(), { method: 'GET', headers: request.headers });
   const response = await delegateFetch(probe, env, ctx);
-  if (!response.ok) {
-    return { ok: false, response: secureApi(json({ error: 'studio_forbidden' }, response.status === 401 ? 401 : 403)) };
-  }
+  if (!response.ok) return forbidden(response.status === 401 ? 401 : 403);
   const data = await response.json().catch(() => ({}));
-  return { ok: true, user: data.user || {} };
+  const user = data.user || {};
+  if (data.authenticated === false || !ALLOWED_ROLES.has(String(user.role || ''))) return forbidden(403);
+  return { ok: true, user };
+}
+
+function forbidden(status) {
+  return { ok: false, response: secureApi(json({ error: 'studio_forbidden' }, status)) };
 }
 
 async function readWebTvState(env) {
@@ -239,8 +207,7 @@ async function readRuntime(env) {
 
 async function writeRuntime(env, runtime) {
   const value = {
-    ...defaultRuntime(),
-    ...runtime,
+    ...defaultRuntime(), ...runtime,
     lastHeartbeatAt: validIso(runtime.lastHeartbeatAt) || new Date().toISOString(),
     lastError: clean(runtime.lastError, 500) || null,
     currentItem: runtime.currentItem && typeof runtime.currentItem === 'object' ? {
@@ -251,10 +218,13 @@ async function writeRuntime(env, runtime) {
     } : null,
   };
   await env.MEDIA.put(WEBTV_RUNTIME_KEY, JSON.stringify(value), {
-    httpMetadata: { contentType: 'application/json; charset=utf-8' },
-    customMetadata: { release: WEBTV_RELEASE },
+    httpMetadata: { contentType: 'application/json; charset=utf-8' }, customMetadata: { release: WEBTV_RELEASE },
   });
   return value;
+}
+
+function runtimeError(lastError) {
+  return { status: 'error', lastHeartbeatAt: new Date().toISOString(), lastError, currentItem: null };
 }
 
 function runtimeFromContainer(data) {
@@ -284,15 +254,7 @@ function defaultWebTvState(env) {
 }
 
 function defaultRuntime() {
-  return {
-    status: 'not_connected',
-    lastHeartbeatAt: null,
-    lastError: null,
-    currentItem: null,
-    revision: null,
-    ffmpegPid: null,
-    uptimeSeconds: 0,
-  };
+  return { status: 'not_connected', lastHeartbeatAt: null, lastError: null, currentItem: null, revision: null, ffmpegPid: null, uptimeSeconds: 0 };
 }
 
 function normalizeWebTvState(raw, user, env) {
@@ -346,15 +308,29 @@ function safeMediaUrl(value, env) {
   try {
     const base = new URL(origin);
     const url = new URL(raw, base);
-    if (url.protocol !== 'https:' || url.hostname !== base.hostname) return '';
-    return `${url.pathname}${url.search}`;
+    if (url.protocol !== 'https:' || isPrivateHost(url.hostname)) return '';
+    if (url.origin === base.origin) return `${url.pathname}${url.search}`;
+    return url.toString();
   } catch { return ''; }
 }
 
 function absoluteMediaUrl(value, env) {
-  const relative = safeMediaUrl(value, env);
-  if (!relative) return '';
-  return `${String(env.PUBLIC_ORIGIN || 'https://tv.neptunebusiness.com').replace(/\/$/u, '')}${relative}`;
+  const safe = safeMediaUrl(value, env);
+  if (!safe) return '';
+  if (safe.startsWith('https://')) return safe;
+  return `${String(env.PUBLIC_ORIGIN || 'https://tv.neptunebusiness.com').replace(/\/$/u, '')}${safe}`;
+}
+
+function isPrivateHost(hostname) {
+  const host = String(hostname || '').toLowerCase().replace(/^\[|\]$/gu, '');
+  if (!host || host === 'localhost' || host.endsWith('.local') || host.endsWith('.internal')) return true;
+  if (host === '::1' || host.startsWith('fc') || host.startsWith('fd') || host.startsWith('fe80:')) return true;
+  const match = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/u);
+  if (!match) return false;
+  const octets = match.slice(1).map(Number);
+  if (octets.some((n) => n < 0 || n > 255)) return true;
+  const [a, b] = octets;
+  return a === 0 || a === 10 || a === 127 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
 }
 
 function intEnv(value, fallback, min, max) {

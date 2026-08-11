@@ -115,6 +115,7 @@ try {
         assert(await toggle.isVisible(), `${screen.id}: bouton mobile absent`);
         await toggle.click();
         await page.waitForFunction(() => document.body.classList.contains('studio-menu-open-v65'));
+        await page.waitForTimeout(300);
         const drawer = await page.evaluate(() => {
           const rect = document.querySelector('.neptune-studio-sidebar').getBoundingClientRect();
           const visibleLinks = [...document.querySelectorAll('.neptune-studio-nav-link')].filter((element) => {

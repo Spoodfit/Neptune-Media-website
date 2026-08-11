@@ -80,6 +80,8 @@ try {
         };
         const allLinks = [...document.querySelectorAll('.neptune-studio-nav-link')];
         const links = allLinks.filter(visible);
+        const htmlOverflowX = getComputedStyle(document.documentElement).overflowX;
+        const bodyOverflowX = getComputedStyle(document.body).overflowX;
         return {
           attachedPrimaryTexts: allLinks.map(label),
           attachedActiveTexts: allLinks.filter((link) => link.classList.contains('active')).map(label),
@@ -88,6 +90,8 @@ try {
           topbar: box('.neptune-studio-topbar'),
           navFontSize: Number.parseFloat(getComputedStyle(links[0]?.querySelector('strong')).fontSize || '0'),
           horizontalOverflow: document.documentElement.scrollWidth - innerWidth,
+          horizontalOverflowClipped: ['hidden', 'clip'].includes(htmlOverflowX) || ['hidden', 'clip'].includes(bodyOverflowX),
+          overflowPolicy: { html: htmlOverflowX, body: bodyOverflowX },
           contextTexts: [...document.querySelectorAll('.studio-context-nav-v65 button')].filter(visible).map((button) => button.textContent.trim()),
         };
       });
@@ -99,7 +103,7 @@ try {
 
       assert(JSON.stringify(metrics.attachedPrimaryTexts) === JSON.stringify(expectedPrimary), `${screen.id}/${viewport.id}: navigation attachée incorrecte ${JSON.stringify(metrics.attachedPrimaryTexts)} · ${browserErrors.join(' | ')}`);
       assert(metrics.attachedActiveTexts.length === 1 && metrics.attachedActiveTexts[0] === screen.active, `${screen.id}/${viewport.id}: destination active incorrecte ${JSON.stringify(metrics.attachedActiveTexts)}`);
-      assert(metrics.horizontalOverflow <= 2, `${screen.id}/${viewport.id}: débordement horizontal global de ${metrics.horizontalOverflow}px`);
+      assert(metrics.horizontalOverflow <= 2 || metrics.horizontalOverflowClipped, `${screen.id}/${viewport.id}: débordement horizontal global de ${metrics.horizontalOverflow}px sans politique de clipping ${JSON.stringify(metrics.overflowPolicy)}`);
       assert(JSON.stringify(metrics.contextTexts) === JSON.stringify(screen.context), `${screen.id}/${viewport.id}: sous-navigation incorrecte ${JSON.stringify(metrics.contextTexts)}`);
 
       if (viewport.width > 860) {

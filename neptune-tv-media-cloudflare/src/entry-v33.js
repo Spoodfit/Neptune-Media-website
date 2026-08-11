@@ -4,8 +4,9 @@ import { sendEmail } from './email-service.js';
 import { adminAuth } from './portal-http-utils.js';
 import { isSameOrigin, json } from './security.js';
 import { STUDIO_OPERATIONS_RELEASE } from './portal-studio-operations-v95.js';
+import { WebTvEncoder, WEBTV_RELEASE, handleWebTvRequest, maintainWebTv } from './webtv-control-v1.js';
 
-export { StudioStore };
+export { StudioStore, WebTvEncoder };
 
 const STUDIO_JS=['/studio/studio-operations-compat-v95.js?v=1','/studio/studio-operations-v95.js?v=1'];
 const STUDIO_CSS='/studio/studio-operations-v95.css?v=1';
@@ -25,6 +26,8 @@ const ROUTES=new Map([
 export default {
   async fetch(request,env,ctx){
     const url=new URL(request.url);
+    const webtv=await handleWebTvRequest(request,env,ctx,(probe)=>base.fetch(probe,env,ctx));
+    if(webtv)return webtv;
     const studio=env.STUDIO.get(env.STUDIO.idFromName('neptune-media-main'));
     if(request.method==='POST'&&url.pathname.startsWith(ADMIN_PREFIX)){
       if(!isSameOrigin(request))return secureApi(json({error:'origin_forbidden'},403));
@@ -49,7 +52,10 @@ export default {
     }
     return response;
   },
-  async scheduled(controller,env,ctx){if(typeof base.scheduled==='function')return base.scheduled(controller,env,ctx);},
+  async scheduled(controller,env,ctx){
+    if(controller?.cron==='* * * * *')return maintainWebTv(env);
+    if(typeof base.scheduled==='function')return base.scheduled(controller,env,ctx);
+  },
 };
 
 async function requestSupplierInvoice(request,env,studio,payload){
@@ -93,7 +99,7 @@ async function injectAssets(response,css,scripts,headerName,release){
 
 async function augmentRelease(response){
   const current=await response.json().catch(()=>({}));
-  return new Response(JSON.stringify({...current,studioOperations:STUDIO_OPERATIONS_RELEASE,studioClientAccount:'dedicated-account-passages-new-passage-v95',studioSupplierFinance:'invoice-before-transfer-multi-supplier-v95',studioMediaConfiguration:'suppliers-formats-catalog-v95',clientMediaCatalog:'studio-managed-formats-v95'}),{status:response.status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
+  return new Response(JSON.stringify({...current,studioOperations:STUDIO_OPERATIONS_RELEASE,studioClientAccount:'dedicated-account-passages-new-passage-v95',studioSupplierFinance:'invoice-before-transfer-multi-supplier-v95',studioMediaConfiguration:'suppliers-formats-catalog-v95',clientMediaCatalog:'studio-managed-formats-v95',webTvControlRoom:WEBTV_RELEASE,webTvBroadcastEngine:'cloudflare-container-ffmpeg-youtube-rtmps'}),{status:response.status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
 }
 
 function secureApi(response){const headers=new Headers(response.headers);headers.set('Cache-Control','no-store');headers.set('X-Content-Type-Options','nosniff');headers.set('X-Neptune-Studio-Operations',STUDIO_OPERATIONS_RELEASE);return new Response(response.body,{status:response.status,statusText:response.statusText,headers});}

@@ -20,6 +20,8 @@ function loadForRoute(){
 }
 
 async function loadCatalog(){
+  await waitForAdvancedInitialRender();
+  if(currentTab()!==CATALOG_HASH)return;
   if(!document.querySelector('link[data-neptune-media-catalog-v104]')){
     const link=document.createElement('link');
     link.rel='stylesheet';
@@ -30,6 +32,24 @@ async function loadCatalog(){
   await import(CATALOG_MANAGER);
   await importUxWithoutObserverFeedbackLoop();
   document.documentElement.dataset.neptuneMediaCatalog='v104';
+}
+
+async function waitForAdvancedInitialRender(){
+  const app=document.getElementById('app');
+  const content=document.getElementById('content');
+  if(!app||!content)return;
+  if(app.hidden){
+    await new Promise(resolve=>{
+      const observer=new MutationObserver(()=>{
+        if(app.hidden)return;
+        observer.disconnect();
+        resolve();
+      });
+      observer.observe(app,{attributes:true,attributeFilter:['hidden']});
+      setTimeout(()=>{observer.disconnect();resolve();},12000);
+    });
+  }
+  await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
 }
 
 async function importUxWithoutObserverFeedbackLoop(){

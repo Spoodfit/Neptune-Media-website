@@ -163,7 +163,7 @@
     document.body.append(holder);
 
     const groups = {
-      diffusion: [['webtv', 'Antenne'], ['episodes', 'Programme'], ['ads', 'Publicités'], ['insights', 'Audience']],
+      diffusion: [['webtv', 'Web TV'], ['episodes', 'Programme'], ['ads', 'Publicités'], ['insights', 'Audience']],
       settings: [['programs', 'Catalogue Media'], ['finances', 'Finances'], ['users', 'Équipe'], ['audit', 'Journal'], ['settings', 'Général']],
     };
     const allowed = new Set([...groups.diffusion, ...groups.settings].map(([id]) => id));

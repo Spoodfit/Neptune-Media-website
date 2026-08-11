@@ -74,7 +74,7 @@ try {
       // workspace actually become usable. Explicit readiness checks below fail if that does not happen.
       const response = await page.goto(`${baseURL}${screen.path}`, { waitUntil: 'commit', timeout: readinessTimeout });
       assert(response?.ok(), `${screen.id}/${viewport.id}: page HTTP invalide ${response?.status()}`);
-      await page.waitForSelector('body', { timeout: readinessTimeout });
+      await page.waitForSelector('body', { state: 'attached', timeout: readinessTimeout });
       await page.waitForFunction(() => document.body.classList.contains('studio-information-architecture-v65'), null, { timeout: readinessTimeout });
       if (screen.id === 'programme' || screen.id === 'catalogue') {
         await page.waitForSelector('#app:not([hidden])', { timeout: readinessTimeout });

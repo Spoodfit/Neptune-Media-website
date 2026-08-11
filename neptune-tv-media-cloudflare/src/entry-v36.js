@@ -118,13 +118,19 @@ function setCspDirective(value,name,sources){
   for(let index=0;index<directives.length;index+=1){if(directives[index]===name||directives[index].startsWith(prefix)){directives[index]=next;replaced=true;break;}}
   if(!replaced)directives.push(next);return directives.join('; ');
 }
+function rewrittenHeaders(response){
+  const headers=new Headers(response.headers);
+  for(const name of ['Content-Length','Content-Encoding','ETag','Last-Modified','Content-Range','Accept-Ranges'])headers.delete(name);
+  headers.set('Cache-Control','private, no-store, max-age=0');
+  return headers;
+}
 async function neutralizeLegacyStudioClientOperations(response){
   if(!response.ok)return response;
   const contentType=response.headers.get('Content-Type')||'';
   if(!contentType.includes('javascript')&&!contentType.includes('text/plain'))return response;
   let body=await response.text();
   body=body.replaceAll('cleanObsoleteVideoWorkspace();','void 0;');
-  const headers=new Headers(response.headers);headers.delete('Content-Length');headers.set('Cache-Control','private, no-store, max-age=0');headers.set('X-Neptune-Studio-Legacy-Navigation','neutralized-v104');
+  const headers=rewrittenHeaders(response);headers.set('X-Neptune-Studio-Legacy-Navigation','neutralized-v104');
   return new Response(body,{status:response.status,statusText:response.statusText,headers});
 }
 async function injectStudioNavigation(response){
@@ -132,7 +138,7 @@ async function injectStudioNavigation(response){
   body=body.replace(/<script\b[^>]*src=["'][^"']*studio-information-architecture-v65(?:-1)?\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu,'');
   body=body.replace(/<script\b[^>]*src=["'][^"']*webtv-nav-compat-v1\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu,'');
   body=body.replace('</body>',`<script type="module" src="${STUDIO_NAV_JS}"></script></body>`);
-  const headers=new Headers(response.headers);headers.delete('Content-Length');headers.set('Cache-Control','private, no-store, max-age=0');
+  const headers=rewrittenHeaders(response);
   return new Response(body,{status:response.status,statusText:response.statusText,headers});
 }
 async function inject(response,css,scripts){
@@ -141,7 +147,7 @@ async function inject(response,css,scripts){
   for(const js of scripts){const jsPath=js.split('?')[0];body=body.replace(new RegExp(`<script\\b[^>]*src=["'][^"']*${escapeRegExp(jsPath)}[^"']*["'][^>]*>\\s*<\\/script>\\s*`,'giu'),'');}
   body=body.replace('</head>',`<link rel="stylesheet" href="${css}"></head>`);
   body=body.replace('</body>',`${scripts.map(js=>`<script type="module" src="${js}"></script>`).join('')}</body>`);
-  const headers=new Headers(response.headers);headers.delete('Content-Length');headers.set('Cache-Control','private, no-store, max-age=0');headers.set('X-Neptune-Media-Catalog',MEDIA_CATALOG_RELEASE);
+  const headers=rewrittenHeaders(response);headers.set('X-Neptune-Media-Catalog',MEDIA_CATALOG_RELEASE);
   return new Response(body,{status:response.status,statusText:response.statusText,headers});
 }
 function escapeRegExp(value){return String(value).replace(/[.*+?^${}()|[\]\\]/gu,'\\$&');}

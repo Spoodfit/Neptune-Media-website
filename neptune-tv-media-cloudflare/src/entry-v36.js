@@ -119,9 +119,8 @@ function allowSameOriginFrame(response,marker='X-Neptune-Studio-Embed'){
 }
 async function prepareStudioEmbeddedDocument(response){
   let body=await response.text();
-  const critical='<style data-neptune-studio-embed-critical>.studio-sidebar,.video-ai-sidebar,#app>.sidebar,.neptune-studio-sidebar,.studio-context-nav-v65,.neptune-studio-menu-toggle,#neptuneStudioMenuToggle,.studio-menu-backdrop-v65,.neptune-studio-menu-backdrop-v65{display:none!important}</style>';
   if(!/data-neptune-studio-embedded=/u.test(body))body=body.replace(/<html\b/u,'<html data-neptune-studio-embedded="v103"');
-  if(!body.includes('data-neptune-studio-embed-critical'))body=body.replace('</head>',`${critical}<link rel="stylesheet" href="${STUDIO_EMBED_CSS}" data-neptune-studio-shell-embed="v103"></head>`);
+  if(!body.includes('data-neptune-studio-shell-embed="v103"'))body=body.replace('</head>',`<link rel="stylesheet" href="${STUDIO_EMBED_CSS}" data-neptune-studio-shell-embed="v103"></head>`);
   const framed=allowSameOriginFrame(new Response(body,{status:response.status,statusText:response.statusText,headers:response.headers}));
   const headers=new Headers(framed.headers);headers.set('X-Neptune-Studio-Embed',STUDIO_SHELL_RELEASE);headers.set('X-Neptune-Studio-Embed-Mode','content-only-v103');
   return new Response(framed.body,{status:framed.status,statusText:framed.statusText,headers});

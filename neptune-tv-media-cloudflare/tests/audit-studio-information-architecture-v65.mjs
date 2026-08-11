@@ -63,11 +63,15 @@ try {
   for (const viewport of viewports) {
     for (const screen of screens) {
       const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height } });
+      await context.route('**/*', async (route) => {
+        const url = new URL(route.request().url());
+        if (url.pathname.startsWith('/api/')) return routeApi(route);
+        return route.continue();
+      });
       const page = await context.newPage();
       const browserErrors = [];
       page.on('pageerror', (error) => browserErrors.push(`pageerror:${error.message}`));
       page.on('console', (message) => { if (message.type() === 'error') browserErrors.push(`console:${message.text()}`); });
-      await page.route('**/api/**', routeApi);
 
       // The legacy advanced page registers several DOMContentLoaded listeners. The v104 contract is not
       // the event itself: it is a committed top-level document whose shared navigation and business

@@ -23,6 +23,17 @@
     </section>
   </main>
 </div>
+<script>
+(() => {
+  const stage = document.querySelector('.stage');
+  const content = document.getElementById('app-content');
+  if (!stage || !content) return;
+  new MutationObserver(() => {
+    stage.scrollTop = 0;
+    stage.scrollLeft = 0;
+  }).observe(content, { childList: true });
+})();
+</script>
 <script type="module" src="/reserver/assets/app-v96.js"></script>
 </body>
 </html>

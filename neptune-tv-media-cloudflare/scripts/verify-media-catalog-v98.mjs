@@ -12,15 +12,16 @@ const visuals=read('src/media-catalog-visuals-v98.js');
 const tunnel=read('src/portal-sales-tunnel-v98.js');
 const admin=read('public/studio/media-catalog-manager-v98.js');
 const ux=read('public/studio/media-catalog-ux-v99.js');
-const shell=read('public/studio/studio-shell-v100.js');
+const ia=read('public/studio/studio-information-architecture-v65-1.js');
 const app=read('public/studio/app.html');
+const router=read('public/studio/studio-app-router-v104.js');
 const css=read('public/studio/media-catalog-manager-v98.css');
 
 must(wrangler.includes('"main": "src/entry-v36.js"'),'wrangler must use entry-v36.js');
 must(entry.includes("'/api/admin/media-catalog-v98/'"),'admin catalog API missing');
 must(entry.includes("'/media/catalog-v98/'"),'catalog R2 media route missing');
 must(entry.includes('media-catalog-manager-v98.js')&&entry.includes('media-catalog-ux-v99.js'),'Studio catalog engine/UX injection missing');
-must(!entry.includes('media-catalog-nav-v98.js'),'legacy v98 navigation must not be injected beside the unified Studio shell');
+must(!entry.includes('media-catalog-nav-v98.js'),'legacy v98 navigation must not be injected beside the shared Studio navigation');
 must(entry.includes('inject(response,ADMIN_CSS,[ADMIN_JS,ADMIN_UX_JS])'),'advanced catalog must inject content only, without a second navigation owner');
 must(entry.includes('image/jpeg')&&entry.includes('image/png')&&entry.includes('image/webp'),'image upload allow-list missing');
 must(entry.includes('5*1024*1024'),'5 MB image upload cap missing');
@@ -48,15 +49,19 @@ must(ux.includes("new URLSearchParams({catalog_preview:'studio'})")&&ux.includes
 must(ux.includes('iframe title="Aperçu réel du tunnel Neptune Media"')&&ux.includes('src="${esc(src)}"'),'v99 UX must render the real tunnel URL in its preview iframe');
 must(ux.includes('Formats & configurations')&&ux.includes('Tarifs & offres'),'catalog UX labels are not normalized');
 
-must(app.includes('data-shell-route="settings/catalogue"'),'Settings primary route must expose Catalogue Media through the unified shell');
-must(shell.includes("'settings/catalogue':{group:'settings'"),'Catalogue Media must be a native Settings route');
-must(shell.includes("['settings/catalogue','Catalogue Media']"),'Catalogue Media must live in the Settings context');
-must(shell.includes("/studio/advanced.html?${EMBED}#programs"),'Catalogue Media must mount the existing catalog engine as an isolated workspace');
-must(shell.includes('renderContext(def.group,next)'),'the unified shell must own contextual navigation');
+must(!app.includes('<iframe'),'Studio compatibility entry must not reintroduce a business iframe');
+must(app.includes('/studio/studio-app-router-v104.js?v=1'),'Studio compatibility entry must use the v104 top-level router');
+must(router.includes("'settings/catalogue':'/studio/advanced.html#programs'"),'Settings compatibility route must open Catalogue Media top-level');
+must(ia.includes("link('settings', '/studio/advanced.html#programs'"),'Settings primary route must open Catalogue Media');
+must(ia.includes("settings: [['programs', 'Catalogue Media']"),'Catalogue Media must live first in the Settings context');
+must(ia.includes("groupForTab(tab) { return ['programs', 'finances', 'users', 'audit', 'settings'].includes(tab) ? 'settings' : 'diffusion'; }"),'Catalogue Media must activate Settings rather than Diffusion');
+must(entry.includes("const STUDIO_NAV_JS='/studio/studio-information-architecture-v65-1.js?v=104'"),'Studio pages must receive one cache-busted shared navigation runtime');
+must(entry.includes('secureStudioDocument(await injectStudioNavigation(response))'),'advanced Studio content must remain a top-level secured page with shared navigation');
+must(entry.includes("allowSameOriginFrame(response,'X-Neptune-Studio-Preview')"),'real sales-tunnel preview must remain the only Studio same-origin iframe exception');
 must(css.includes('.c98-layout')&&css.includes('@media(max-width:980px)')&&css.includes('@media(max-width:720px)'),'responsive catalog layout missing');
 
 for(const asset of ['public/assets/catalog-v98/hors-norme.svg','public/assets/catalog-v98/connexio.svg']){
   const content=read(asset);
   must(content.includes('<image')&&content.includes('data:image/webp;base64,'),`${asset} must embed supplied image data`);
 }
-console.log('Media catalog v98 contract: OK — catalog engine preserved, navigation owned exclusively by Studio shell v100.');
+console.log('Media catalog v98/v99 contract: OK — catalog engine preserved in top-level Settings, shared Studio navigation v104, real tunnel preview isolated.');

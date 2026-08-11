@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "neptune-media-webtv",
-  "main": "neptune-tv-media-cloudflare/src/entry-v32.js",
+  "main": "neptune-tv-media-cloudflare/src/entry-v33.js",
   "compatibility_date": "2026-07-30",
   "workers_dev": true,
   "keep_vars": true,
@@ -37,9 +37,18 @@
       "/llms.txt"
     ]
   },
+  "containers": [
+    {
+      "class_name": "WebTvEncoder",
+      "image": "./neptune-tv-media-cloudflare/containers/webtv/Dockerfile",
+      "instance_type": "standard-2",
+      "max_instances": 1
+    }
+  ],
   "durable_objects": {
     "bindings": [
-      { "name": "STUDIO", "class_name": "StudioStore" }
+      { "name": "STUDIO", "class_name": "StudioStore" },
+      { "name": "WEBTV_ENCODER", "class_name": "WebTvEncoder" }
     ]
   },
   "migrations": [
@@ -47,7 +56,8 @@
     { "tag": "v2", "new_sqlite_classes": ["VideoProcessor"] },
     { "tag": "v3", "deleted_classes": ["VideoProcessor"] },
     { "tag": "v4", "new_sqlite_classes": ["VideoProcessorV2"] },
-    { "tag": "v5", "deleted_classes": ["VideoProcessorV2"] }
+    { "tag": "v5", "deleted_classes": ["VideoProcessorV2"] },
+    { "tag": "v6", "new_sqlite_classes": ["WebTvEncoder"] }
   ],
   "r2_buckets": [
     { "binding": "MEDIA", "bucket_name": "neptune-media-assets" }
@@ -68,6 +78,12 @@
     "STUDIO_SUPPLIER_NAME": "REC BOX Studio",
     "STUDIO_SUPPLIER_EMAIL": "contact@recbox.fr",
     "STUDIO_ADDRESS": "11 Allée de Longueterre, 31850 Montrabé",
+    "WEBTV_WIDTH": "1280",
+    "WEBTV_HEIGHT": "720",
+    "WEBTV_FPS": "30",
+    "WEBTV_VIDEO_BITRATE_KBPS": "4000",
+    "WEBTV_AUDIO_BITRATE_KBPS": "128",
+    "WEBTV_X264_PRESET": "superfast",
     "LEGACY_ROOT_VERIFIER": { "main": "neptune-tv-media-cloudflare/src/entry-v19.js" },
     "LEGACY_EMAIL_VERIFIER": { "main": "neptune-tv-media-cloudflare/src/entry-v21.js" }
   },

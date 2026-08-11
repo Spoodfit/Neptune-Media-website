@@ -7,7 +7,8 @@ const WEBTV_STATE_PATH = '/api/admin/webtv/state';
 const WEBTV_ENCODER_PATH = '/api/admin/webtv/encoder';
 const ENCODER_INSTANCE_NAME = 'neptune-webtv-primary';
 const ALLOWED_ROLES = new Set(['admin', 'editor']);
-export const WEBTV_RELEASE = 'neptune-webtv-control-room-20260811-v4';
+const DEFAULT_YOUTUBE_LIVE_URL = 'https://youtube.com/live/-k3rG7R8gtc';
+export const WEBTV_RELEASE = 'neptune-webtv-control-room-20260811-v5';
 
 export class WebTvEncoder extends Container {
   defaultPort = 8080;
@@ -240,11 +241,12 @@ function runtimeFromContainer(data) {
 }
 
 function defaultWebTvState(env) {
+  const viewer = youtubeViewer(DEFAULT_YOUTUBE_LIVE_URL);
   return {
     release: WEBTV_RELEASE,
     enabled: false,
     mode: 'loop',
-    output: { provider: 'youtube', protocol: 'rtmps', configured: youtubeConfigured(env) },
+    output: { provider: 'youtube', protocol: 'rtmps', configured: youtubeConfigured(env), ...viewer },
     playlist: [],
     fallback: { title: 'Neptune Media — La suite arrive dans un instant', mediaUrl: '' },
     encoder: defaultRuntime(),
@@ -266,12 +268,13 @@ function normalizeWebTvState(raw, user, env) {
     type: ['episode', 'jingle', 'ad', 'fallback'].includes(item.type) ? item.type : 'episode',
     enabled: item.enabled !== false,
   })).filter((item) => item.mediaUrl) : [];
+  const viewer = youtubeViewer(raw.output?.watchUrl);
 
   return {
     release: WEBTV_RELEASE,
     enabled: raw.enabled === true,
     mode: 'loop',
-    output: { provider: 'youtube', protocol: 'rtmps', configured: youtubeConfigured(env) },
+    output: { provider: 'youtube', protocol: 'rtmps', configured: youtubeConfigured(env), ...viewer },
     playlist,
     fallback: {
       title: clean(raw.fallback?.title, 180) || 'Neptune Media — La suite arrive dans un instant',
@@ -299,6 +302,25 @@ function youtubeRtmpsUrl(env) {
     const url = new URL(raw);
     return url.protocol === 'rtmps:' ? raw : '';
   } catch { return ''; }
+}
+
+function youtubeViewer(value) {
+  const raw = clean(value, 500);
+  if (!raw) return { watchUrl: '', videoId: '' };
+  try {
+    const url = new URL(raw);
+    const host = url.hostname.toLowerCase().replace(/^www\./u, '');
+    let videoId = '';
+    if (host === 'youtu.be') videoId = url.pathname.split('/').filter(Boolean)[0] || '';
+    else if (host === 'youtube.com' || host.endsWith('.youtube.com')) {
+      if (url.pathname.startsWith('/live/')) videoId = url.pathname.split('/').filter(Boolean)[1] || '';
+      else if (url.pathname === '/watch') videoId = url.searchParams.get('v') || '';
+      else if (url.pathname.startsWith('/embed/')) videoId = url.pathname.split('/').filter(Boolean)[1] || '';
+    }
+    videoId = clean(videoId, 32);
+    if (!/^[A-Za-z0-9_-]{11}$/u.test(videoId)) return { watchUrl: '', videoId: '' };
+    return { watchUrl: `https://youtube.com/live/${videoId}`, videoId };
+  } catch { return { watchUrl: '', videoId: '' }; }
 }
 
 function safeMediaUrl(value, env) {

@@ -1,6 +1,6 @@
 # Audit visuel Neptune Media
 
-Généré : 2026-08-11T17:38:16.849Z
+Généré : 2026-08-11T17:45:57.524Z
 
 - Captures : 15
 - Erreurs : 10
@@ -75,6 +75,7 @@ Généré : 2026-08-11T17:38:16.849Z
 | warning | desktop-1440 | direct | clipped-text | Neptune Media en direct |
 | warning | desktop-1440 | direct | console-error | Failed to load resource: net::ERR_BLOCKED_BY_RESPONSE.NotSameSite |
 | warning | desktop-1440 | direct | console-error | Failed to load resource: net::ERR_BLOCKED_BY_RESPONSE.NotSameSite |
+| warning | desktop-1440 | direct | console-error | Permissions policy violation: compute-pressure is not allowed in this document. |
 | warning | laptop-1280 | home | clipped-text | Aller au contenu principal |
 | warning | laptop-1280 | home | clipped-text | Créez votre futur aveccommunication |
 | warning | laptop-1280 | home | clipped-text | Créez votre futur avec |
@@ -129,4 +130,3 @@ Généré : 2026-08-11T17:38:16.849Z
 | warning | laptop-1280 | home | offscreen-element | span.visibility-short__shade |
 | warning | laptop-1280 | home | offscreen-element | span.visibility-short__label |
 | warning | laptop-1280 | home | offscreen-element | article.visibility-short.visibility-short--small |
-| warning | laptop-1280 | home | offscreen-element | video |

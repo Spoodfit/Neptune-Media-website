@@ -2,10 +2,10 @@ import { readFile } from 'node:fs/promises';
 
 const read=(path)=>readFile(new URL(`../${path}`,import.meta.url),'utf8');
 const readRoot=(path)=>readFile(new URL(`../../${path}`,import.meta.url),'utf8');
-const [activeEntry36,activeEntry,appEntry,webtvEntry,control,media,directR2,encoder,html,ui,uploadUi,ia,navCompat,rootRaw,localRaw,rootPackageRaw,localPackageRaw]=await Promise.all([
-  read('src/entry-v36.js'),read('src/entry-v35.js'),read('src/entry-v34.js'),read('src/entry-v33.js'),read('src/webtv-control-v1.js'),read('src/webtv-media-v1.js'),read('src/webtv-r2-direct-v1.js'),read('containers/webtv/encoder.mjs'),read('public/studio/webtv.html'),read('public/studio/webtv-v1.js'),read('public/studio/webtv-upload-v3.js'),read('public/studio/studio-information-architecture-v65-1.js'),read('public/studio/webtv-nav-compat-v1.js'),readRoot('wrangler.jsonc'),read('wrangler.jsonc'),readRoot('package.json'),read('package.json'),
+const [activeEntry36,activeEntry,appEntry,webtvEntry,control,media,directR2,encoder,html,ui,uploadUi,ia,navCompat,security,corsRaw,corsWorkflow,rootRaw,localRaw,rootPackageRaw,localPackageRaw]=await Promise.all([
+  read('src/entry-v36.js'),read('src/entry-v35.js'),read('src/entry-v34.js'),read('src/entry-v33.js'),read('src/webtv-control-v1.js'),read('src/webtv-media-v1.js'),read('src/webtv-r2-direct-v1.js'),read('containers/webtv/encoder.mjs'),read('public/studio/webtv.html'),read('public/studio/webtv-v1.js'),read('public/studio/webtv-upload-v3.js'),read('public/studio/studio-information-architecture-v65-1.js'),read('public/studio/webtv-nav-compat-v1.js'),read('src/security.js'),read('config/webtv-r2-cors-wrangler.json'),readRoot('.github/workflows/configure-webtv-r2-cors.yml'),readRoot('wrangler.jsonc'),read('wrangler.jsonc'),readRoot('package.json'),read('package.json'),
 ]);
-const root=JSON.parse(rootRaw),local=JSON.parse(localRaw),rootPackage=JSON.parse(rootPackageRaw),localPackage=JSON.parse(localPackageRaw),failures=[];
+const root=JSON.parse(rootRaw),local=JSON.parse(localRaw),cors=JSON.parse(corsRaw),rootPackage=JSON.parse(rootPackageRaw),localPackage=JSON.parse(localPackageRaw),failures=[];
 const expect=(condition,message)=>{if(!condition)failures.push(message);};
 
 expect(root.main==='neptune-tv-media-cloudflare/src/entry-v35.js','le pointeur Worker racine historique doit rester entry-v35');
@@ -51,7 +51,17 @@ expect(uploadUi.includes('for(let index=0;index<total;index+=1)'),'les parts R2 
 expect(ia.includes("'/studio/webtv.html'"),'la navigation Diffusion ne pointe pas vers la régie Web TV');
 expect(navCompat.includes("querySelectorAll('.studio-context-nav-v65')")&&navCompat.includes('.remove()'),'les onglets Diffusion historiques ne sont pas neutralisés');
 
+expect(security.includes("https://*.r2.cloudflarestorage.com"),'la CSP bloque encore les PUT directs du navigateur vers R2');
+const corsRule=Array.isArray(cors.rules)?cors.rules[0]:null;
+expect(corsRule?.allowed?.origins?.includes('https://tv.neptunebusiness.com'),'CORS R2 : origine tv.neptunebusiness.com absente');
+expect(corsRule?.allowed?.origins?.includes('https://media.neptunebusiness.com'),'CORS R2 : origine media.neptunebusiness.com absente');
+expect(corsRule?.allowed?.methods?.includes('PUT'),'CORS R2 : méthode PUT absente');
+expect(corsRule?.allowed?.headers?.includes('*'),'CORS R2 : en-têtes navigateur non autorisés');
+expect(corsRule?.exposeHeaders?.includes('ETag'),'CORS R2 : ETag non exposé au navigateur');
+expect(corsWorkflow.includes('wrangler r2 bucket cors set neptune-media-assets'),'le workflow ne pousse pas la politique CORS dans R2');
+expect(corsWorkflow.includes('wrangler r2 bucket cors list neptune-media-assets'),'le workflow ne vérifie pas la politique CORS R2 appliquée');
+
 if(failures.length){console.error(failures.map(failure=>`- ${failure}`).join('\n'));process.exit(1);}
-console.log('WebTV validée derrière entry-v36 → entry-v35 : régie compacte, import vidéo direct navigateur→R2 par URLs S3 présignées, reprise par bloc, bibliothèque persistante, lecture Range, programme modifiable puis application explicite à l’antenne, Container FFmpeg et RTMPS préservés.');
+console.log('WebTV validée derrière entry-v36 → entry-v35 : CSP autorise R2, CORS navigateur est versionné et appliqué automatiquement, import vidéo direct navigateur→R2 par URLs S3 présignées, bibliothèque persistante, programme modifiable, Container FFmpeg et RTMPS préservés.');
 
 function API_PLACEHOLDER(){return'/api/admin/webtv/media';}

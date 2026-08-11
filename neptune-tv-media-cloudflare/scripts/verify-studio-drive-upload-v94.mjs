@@ -4,6 +4,7 @@ import path from 'node:path';
 const root = path.resolve(import.meta.dirname, '..');
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
 const entry = read('src/entry-v32.js');
+const currentEntry = read('src/entry-v33.js');
 const store = read('src/store-v26.js');
 const target = read('src/portal-drive-upload-v94.js');
 const ui = read('public/studio/drive-upload-v94.js');
@@ -13,8 +14,8 @@ const wrangler = read('wrangler.jsonc');
 const checks = [];
 const expect = (name, condition) => checks.push({ name, ok: Boolean(condition) });
 
-expect('Worker v32 is the active Cloudflare entry', wrangler.includes('"main": "src/entry-v32.js"'));
-expect('v94 inherits the existing v92/v93 Worker rather than replacing the workflow', entry.includes("import base from './entry-v31.js'") && entry.includes("import { StudioStore } from './store-v26.js'"));
+expect('Worker v33 is the active Cloudflare entry and preserves v32', wrangler.includes('"main": "src/entry-v33.js"') && currentEntry.includes("import base, { StudioStore } from './entry-v32.js'"));
+expect('v94 remains implemented in v32 and inherits the existing v92/v93 Worker', entry.includes("import base from './entry-v31.js'") && entry.includes("import { StudioStore } from './store-v26.js'"));
 expect('upload target is protected by the existing Studio operator session', target.includes('requireOperator') && target.includes('driveUploadTargetV94'));
 expect('Drive mapping is isolated by exact orderId and ready passage folders', target.includes('WHERE dp.order_id=? LIMIT 1') && target.includes("mapping.syncStatus === 'ready'") && target.includes('longFolderId') && target.includes('shortsFolderId'));
 expect('backend creates a Google Drive resumable session', entry.includes("uploadType', 'resumable'") && entry.includes('X-Upload-Content-Length') && entry.includes('X-Upload-Content-Type'));

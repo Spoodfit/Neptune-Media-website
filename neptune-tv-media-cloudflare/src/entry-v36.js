@@ -18,6 +18,7 @@ const ROUTES=new Map([
 ]);
 const ADMIN_JS='/studio/media-catalog-manager-v98.js?v=1';
 const ADMIN_NAV_JS='/studio/media-catalog-nav-v98.js?v=1';
+const ADMIN_UX_JS='/studio/media-catalog-ux-v99.js?v=1';
 const ADMIN_CSS='/studio/media-catalog-manager-v98.css?v=1';
 
 export default{
@@ -35,7 +36,7 @@ export default{
     let response=await base.fetch(request,env,ctx);
     if(request.method==='GET'&&url.pathname==='/api/public/release'&&response.ok)response=await augmentRelease(response);
     if(request.method==='GET'&&response.ok&&isAdvancedPath(url.pathname)&&(response.headers.get('Content-Type')||'').includes('text/html')){
-      response=await inject(response,ADMIN_CSS,[ADMIN_JS,ADMIN_NAV_JS]);
+      response=await inject(response,ADMIN_CSS,[ADMIN_JS,ADMIN_NAV_JS,ADMIN_UX_JS]);
     }
     return response;
   },
@@ -94,5 +95,6 @@ async function inject(response,css,scripts){
 function escapeRegExp(value){return String(value).replace(/[.*+?^${}()|[\]\\]/gu,'\\$&');}
 async function augmentRelease(response){
   const current=await response.json().catch(()=>({}));
-  return new Response(JSON.stringify({...current,mediaCatalogManager:MEDIA_CATALOG_RELEASE,salesCatalog:SALES_CATALOG_RELEASE}),{status:response.status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
+  return new Response(JSON.stringify({...current,mediaCatalogManager:MEDIA_CATALOG_RELEASE,salesCatalog:SALES_CATALOG_RELEASE,mediaCatalogUx:RELEASE_TAG}),{status:response.status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
 }
+const RELEASE_TAG='neptune-media-catalog-ux-20260811-v99';

@@ -127,6 +127,9 @@ try {
         assert(drawer.left >= -1, `${screen.id}: tiroir mobile fermé après clic`);
         assert(drawer.width <= 305, `${screen.id}: tiroir mobile trop large (${drawer.width}px)`);
         assert(JSON.stringify(drawer.visibleLinks) === JSON.stringify(expectedPrimary), `${screen.id}/mobile: navigation du tiroir incorrecte ${JSON.stringify(drawer.visibleLinks)}`);
+        await page.keyboard.press('Escape');
+        await page.waitForFunction(() => !document.body.classList.contains('studio-menu-open-v65'));
+        await page.waitForTimeout(300);
       }
 
       if (screen.id === 'webtv') {

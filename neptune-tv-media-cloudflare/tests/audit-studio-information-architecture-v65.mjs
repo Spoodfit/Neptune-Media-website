@@ -42,6 +42,7 @@ const catalogContext = {
   ok: true,
   formats: [], suppliers: [], cities: [], families: [], configurationVisuals: [], offers: [],
 };
+const publishedCatalog = { ok: true, formats: [], cities: [], offers: [], suppliers: [], pricing: {} };
 
 const screens = [
   { id: 'clients', path: '/studio/clients', active: 'Parcours clients', context: [] },
@@ -63,6 +64,22 @@ try {
   for (const viewport of viewports) {
     for (const screen of screens) {
       const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, serviceWorkers: 'block' });
+      await context.addInitScript(({ catalog, published, adminUser }) => {
+        const nativeFetch = window.fetch.bind(window);
+        const jsonResponse = (body) => Promise.resolve(new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
+        }));
+        window.fetch = (input, init = {}) => {
+          const raw = typeof input === 'string' || input instanceof URL ? String(input) : input?.url;
+          let url;
+          try { url = new URL(raw, location.href); } catch { return nativeFetch(input, init); }
+          if (url.pathname === '/api/admin/media-catalog-v98/context') return jsonResponse(catalog);
+          if (url.pathname === '/api/reservation/catalog-v96') return jsonResponse(published);
+          if (url.pathname === '/api/auth/status') return jsonResponse({ authenticated: true, csrfToken: 'test-csrf', user: adminUser });
+          return nativeFetch(input, init);
+        };
+      }, { catalog: catalogContext, published: publishedCatalog, adminUser: adminState.user });
       await context.route('**/*', async (route) => {
         const url = new URL(route.request().url());
         if (url.pathname.startsWith('/api/')) return routeApi(route);
@@ -186,7 +203,7 @@ async function routeApi(route) {
   else if (url.pathname === '/api/admin/clients') body = portal;
   else if (url.pathname === '/api/admin/control-room') body = { actions: [], summary: {} };
   else if (url.pathname === '/api/admin/media-catalog-v98/context') body = catalogContext;
-  else if (url.pathname === '/api/reservation/catalog-v96') body = { ok: true, formats: [], cities: [], offers: [], suppliers: [] };
+  else if (url.pathname === '/api/reservation/catalog-v96') body = publishedCatalog;
   else if (url.pathname.startsWith('/api/admin/client-feedback')) body = { feedback: [] };
   else if (url.pathname.includes('video-ai')) body = { ok: true, jobs: [], clips: [], orders: portal.orders, clients: portal.clients, runtime: { mode: 'local' } };
   await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });

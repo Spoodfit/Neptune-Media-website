@@ -30,8 +30,10 @@ expect(app.includes('data-shell-route="clients"'), 'Le shell doit exposer Parcou
 expect(app.includes('data-shell-route="production"'), 'Le shell doit exposer Production vidéo.');
 expect(app.includes('data-shell-route="diffusion"'), 'Le shell doit exposer Diffusion.');
 expect(app.includes('data-shell-route="settings/catalogue"'), 'Réglages doit ouvrir le Catalogue Media dans le shell.');
+expect(app.includes('/studio/studio-shell-v100.css?v=2'), 'app.html doit charger la correction CSS du shell sans servir l’ancienne version en cache.');
 expect(app.includes('/studio/studio-shell-v100.js?v=1'), 'app.html doit charger le moteur du shell v100.');
 expect(shellCss.includes('grid-template-columns:236px minmax(0,1fr)'), 'Le shell doit réserver une colonne persistante unique au menu Studio.');
+expect(shellCss.includes('.ns100-shell[hidden],.ns100-auth-state[hidden],.ns100-backdrop[hidden],.ns100-loading[hidden]{display:none!important}'), 'Les états hidden du shell, de l’authentification et des loaders doivent rester réellement invisibles malgré leurs règles display.');
 
 expect(shell.includes("'settings/catalogue':{group:'settings'"), 'Catalogue Media doit être une route native de Réglages.');
 expect(shell.includes("/studio/advanced.html?${EMBED}#programs"), 'Catalogue Media doit réutiliser le moteur catalogue dans un workspace isolé.');
@@ -67,4 +69,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Studio unifié v100 validé : shell persistant unique, workspaces isolés, Catalogue Media dans Réglages et anciennes routes neutralisées.');
+console.log('Studio unifié v100 validé : shell persistant unique, workspaces isolés, états hidden fiables, Catalogue Media dans Réglages et anciennes routes neutralisées.');

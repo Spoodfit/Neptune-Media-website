@@ -19,6 +19,7 @@ const ROUTES=new Map([
 const ADMIN_JS='/studio/media-catalog-manager-v98.js?v=1';
 const ADMIN_UX_JS='/studio/media-catalog-ux-v99.js?v=1';
 const ADMIN_CSS='/studio/media-catalog-manager-v98.css?v=1';
+const STUDIO_NAV_JS='/studio/studio-information-architecture-v65-1.js?v=104';
 const RELEASE_TAG='neptune-media-catalog-ux-20260811-v99';
 const STUDIO_UI_RELEASE='neptune-studio-ui-20260811-v104-no-iframe';
 
@@ -46,7 +47,8 @@ export default{
     }
     if(request.method==='GET'&&response.ok&&(response.headers.get('Content-Type')||'').includes('text/html')){
       if(isCatalogPreviewRequest(url))response=allowSameOriginFrame(response,'X-Neptune-Studio-Preview');
-      else if(isStudioTopLevelPath(url.pathname))response=secureStudioDocument(response);
+      else if(isLegacyStudioPath(url.pathname))response=secureStudioDocument(await injectStudioNavigation(response));
+      else if(isStudioAppPath(url.pathname))response=secureStudioDocument(response);
     }
     return response;
   },
@@ -95,7 +97,6 @@ function secure(response){const h=new Headers(response.headers);h.set('Cache-Con
 function isAdvancedPath(path){return path==='/studio/advanced'||path==='/studio/advanced/'||path==='/studio/advanced.html';}
 function isStudioAppPath(path){return path==='/studio/app'||path==='/studio/app/'||path==='/studio/app.html';}
 function isLegacyStudioPath(path){return path==='/studio/clients'||path==='/studio/clients/'||path==='/studio/clients.html'||path==='/studio/video-ai'||path==='/studio/video-ai/'||path==='/studio/video-ai.html'||path==='/studio/webtv'||path==='/studio/webtv/'||path==='/studio/webtv.html'||isAdvancedPath(path);}
-function isStudioTopLevelPath(path){return isStudioAppPath(path)||isLegacyStudioPath(path);}
 function isCatalogPreviewRequest(url){return (url.pathname==='/reserver'||url.pathname==='/reserver/')&&url.searchParams.get('catalog_preview')==='studio';}
 function secureStudioDocument(response){
   const headers=new Headers(response.headers);headers.delete('Content-Length');headers.set('Cache-Control','private, no-store, max-age=0');headers.set('X-Content-Type-Options','nosniff');headers.set('X-Frame-Options','DENY');headers.set('Referrer-Policy','same-origin');headers.set('Content-Security-Policy',studioTopLevelCsp(headers.get('Content-Security-Policy')||''));headers.set('X-Neptune-Studio-UI',STUDIO_UI_RELEASE);
@@ -112,6 +113,13 @@ function setCspDirective(value,name,sources){
   const next=`${name} ${sources.join(' ')}`;let replaced=false;
   for(let index=0;index<directives.length;index+=1){if(directives[index]===name||directives[index].startsWith(prefix)){directives[index]=next;replaced=true;break;}}
   if(!replaced)directives.push(next);return directives.join('; ');
+}
+async function injectStudioNavigation(response){
+  let body=await response.text();
+  body=body.replace(/<script\b[^>]*src=["'][^"']*studio-information-architecture-v65(?:-1)?\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu,'');
+  body=body.replace('</body>',`<script type="module" src="${STUDIO_NAV_JS}"></script></body>`);
+  const headers=new Headers(response.headers);headers.delete('Content-Length');headers.set('Cache-Control','private, no-store, max-age=0');
+  return new Response(body,{status:response.status,statusText:response.statusText,headers});
 }
 async function inject(response,css,scripts){
   let body=await response.text(),cssPath=css.split('?')[0];

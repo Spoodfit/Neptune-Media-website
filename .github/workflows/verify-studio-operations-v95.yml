@@ -14,7 +14,7 @@ on:
       - 'neptune-tv-media-cloudflare/public/espace-client/media-catalog-v95.js'
       - 'neptune-tv-media-cloudflare/public/espace-client/media-catalog-v95.css'
       - 'neptune-tv-media-cloudflare/scripts/verify-studio-operations-v95.mjs'
-      - 'neptune-tv-media-cloudflare/tests/studio-operations-v95.mjs'
+      - 'neptune-tv-media-cloudflare/tests/studio-operations-v95-final.mjs'
       - 'neptune-tv-media-cloudflare/wrangler.jsonc'
       - 'wrangler.jsonc'
       - 'neptune-tv-media-cloudflare/package.json'
@@ -31,7 +31,7 @@ on:
       - 'neptune-tv-media-cloudflare/public/espace-client/media-catalog-v95.js'
       - 'neptune-tv-media-cloudflare/public/espace-client/media-catalog-v95.css'
       - 'neptune-tv-media-cloudflare/scripts/verify-studio-operations-v95.mjs'
-      - 'neptune-tv-media-cloudflare/tests/studio-operations-v95.mjs'
+      - 'neptune-tv-media-cloudflare/tests/studio-operations-v95-final.mjs'
       - 'neptune-tv-media-cloudflare/wrangler.jsonc'
       - 'wrangler.jsonc'
       - 'neptune-tv-media-cloudflare/package.json'
@@ -67,7 +67,7 @@ jobs:
           node --check public/studio/studio-operations-compat-v95.js
           node --check public/studio/studio-operations-v95.js
           node --check public/espace-client/media-catalog-v95.js
-          node --check tests/studio-operations-v95.mjs
+          node --check tests/studio-operations-v95-final.mjs
           node scripts/verify-studio-operations-v95.mjs
 
       - name: Install Playwright
@@ -90,7 +90,7 @@ jobs:
         env:
           LOCAL_BASE_URL: http://127.0.0.1:4173
           OUTPUT_DIR: test-results/studio-operations-v95
-        run: node neptune-tv-media-cloudflare/tests/studio-operations-v95.mjs
+        run: node neptune-tv-media-cloudflare/tests/studio-operations-v95-final.mjs
 
       - name: Upload v95 visual evidence
         if: always()

@@ -11,12 +11,13 @@ const store=read('src/store-v29.js');
 const visuals=read('src/media-catalog-visuals-v98.js');
 const tunnel=read('src/portal-sales-tunnel-v98.js');
 const admin=read('public/studio/media-catalog-manager-v98.js');
+const nav=read('public/studio/media-catalog-nav-v98.js');
 const css=read('public/studio/media-catalog-manager-v98.css');
 
 must(wrangler.includes('"main": "src/entry-v36.js"'),'wrangler must use entry-v36.js');
 must(entry.includes("'/api/admin/media-catalog-v98/'"),'admin catalog API missing');
 must(entry.includes("'/media/catalog-v98/'"),'catalog R2 media route missing');
-must(entry.includes('media-catalog-manager-v98.js'),'Studio manager injection missing');
+must(entry.includes('media-catalog-manager-v98.js')&&entry.includes('media-catalog-nav-v98.js'),'Studio catalog scripts injection missing');
 must(entry.includes('image/jpeg')&&entry.includes('image/png')&&entry.includes('image/webp'),'image upload allow-list missing');
 must(entry.includes('5*1024*1024'),'5 MB image upload cap missing');
 
@@ -36,6 +37,7 @@ must(tunnel.includes('formatVisualV98')&&tunnel.includes('configurationVisualV98
 must(!tunnel.includes('exact-hn1.b64')&&!tunnel.includes('exact-hn2.b64'),'tunnel wrapper must not hardcode configuration assets');
 
 for(const label of ['Concepts & formats','Configurations','Offres & tarifs','Fournisseurs','Villes','APERÇU TUNNEL'])must(admin.includes(label),`Studio manager is missing ${label}`);
+must(nav.includes('[data-context-tab="programs"]')&&nav.includes("textContent='Catalogue Media'"),'dynamic Studio navigation must say Catalogue Media');
 must(admin.includes("fetch('/api/reservation/catalog-v96'"),'preview must read actual public catalog');
 must(admin.includes('asset/upload'),'Studio image upload is missing');
 must(admin.includes('Ouvrir le tunnel réel'),'real tunnel shortcut missing');

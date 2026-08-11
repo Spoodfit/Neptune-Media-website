@@ -20,7 +20,8 @@ const ADMIN_JS='/studio/media-catalog-manager-v98.js?v=1';
 const ADMIN_UX_JS='/studio/media-catalog-ux-v99.js?v=1';
 const ADMIN_CSS='/studio/media-catalog-manager-v98.css?v=1';
 const RELEASE_TAG='neptune-media-catalog-ux-20260811-v99';
-const STUDIO_SHELL_RELEASE='neptune-studio-shell-20260811-v102';
+const STUDIO_SHELL_RELEASE='neptune-studio-shell-20260811-v103';
+const STUDIO_EMBED_CSS='/studio/studio-embedded-v103.css?v=1';
 
 export default{
   async fetch(request,env,ctx){
@@ -44,7 +45,8 @@ export default{
       response=await inject(response,ADMIN_CSS,[ADMIN_JS,ADMIN_UX_JS]);
     }
     if(request.method==='GET'&&response.ok&&(response.headers.get('Content-Type')||'').includes('text/html')){
-      if(isEmbeddedStudioRequest(url)||isCatalogPreviewRequest(url))response=allowStudioEmbeddedDocument(response);
+      if(isEmbeddedStudioRequest(url))response=await prepareStudioEmbeddedDocument(response);
+      else if(isCatalogPreviewRequest(url))response=allowSameOriginFrame(response,'X-Neptune-Studio-Preview');
       else if(isStudioShellPath(url.pathname))response=secureStudioDocument(response);
     }
     return response;
@@ -111,9 +113,17 @@ function secureStudioDocument(response){
   const headers=new Headers(response.headers);headers.delete('Content-Length');headers.set('Cache-Control','private, no-store, max-age=0');headers.set('X-Content-Type-Options','nosniff');headers.set('X-Frame-Options','DENY');headers.set('Referrer-Policy','same-origin');headers.set('Content-Security-Policy',studioShellCsp(headers.get('Content-Security-Policy')||''));headers.set('X-Neptune-Studio-Shell',STUDIO_SHELL_RELEASE);
   return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
 }
-function allowStudioEmbeddedDocument(response){
-  const headers=new Headers(response.headers);headers.delete('Content-Length');headers.set('Cache-Control','private, no-store, max-age=0');headers.set('X-Content-Type-Options','nosniff');headers.set('X-Frame-Options','SAMEORIGIN');headers.set('Referrer-Policy','same-origin');headers.set('Content-Security-Policy',studioEmbeddedCsp(headers.get('Content-Security-Policy')||''));headers.set('X-Neptune-Studio-Embed',STUDIO_SHELL_RELEASE);
+function allowSameOriginFrame(response,marker='X-Neptune-Studio-Embed'){
+  const headers=new Headers(response.headers);headers.delete('Content-Length');headers.set('Cache-Control','private, no-store, max-age=0');headers.set('X-Content-Type-Options','nosniff');headers.set('X-Frame-Options','SAMEORIGIN');headers.set('Referrer-Policy','same-origin');headers.set('Content-Security-Policy',studioEmbeddedCsp(headers.get('Content-Security-Policy')||''));headers.set(marker,STUDIO_SHELL_RELEASE);
   return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
+}
+async function prepareStudioEmbeddedDocument(response){
+  let body=await response.text();
+  if(!/data-neptune-studio-embedded=/u.test(body))body=body.replace(/<html\b/u,'<html data-neptune-studio-embedded="v103"');
+  if(!body.includes('data-neptune-studio-shell-embed="v103"'))body=body.replace('</head>',`<link rel="stylesheet" href="${STUDIO_EMBED_CSS}" data-neptune-studio-shell-embed="v103"></head>`);
+  const framed=allowSameOriginFrame(new Response(body,{status:response.status,statusText:response.statusText,headers:response.headers}));
+  const headers=new Headers(framed.headers);headers.set('X-Neptune-Studio-Embed',STUDIO_SHELL_RELEASE);headers.set('X-Neptune-Studio-Embed-Mode','content-only-v103');
+  return new Response(framed.body,{status:framed.status,statusText:framed.statusText,headers});
 }
 function studioShellCsp(value){return addCspSource(setCspDirective(value,'frame-ancestors',["'none'"]),'frame-src',"'self'");}
 function studioEmbeddedCsp(value){return addCspSource(setCspDirective(value,'frame-ancestors',["'self'"]),'frame-src',"'self'");}

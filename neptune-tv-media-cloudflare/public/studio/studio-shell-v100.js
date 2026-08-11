@@ -1,4 +1,4 @@
-const RELEASE='neptune-studio-shell-20260811-v100';
+const RELEASE='neptune-studio-shell-20260811-v103';
 const EMBED='studio_embed=v100';
 const frame=document.getElementById('studioShellFrame');
 const shell=document.getElementById('studioShell');
@@ -101,6 +101,7 @@ function openRoute(route,options={}){
   if(!options.fromHash&&location.hash!==expected){
     if(options.replace)history.replaceState(null,'',expected);else history.pushState(null,'',expected);
   }else if(options.replace&&location.hash!==expected)history.replaceState(null,'',expected);
+  frame.dataset.expectedRoute=next;
   setPrimary(def.group);
   renderContext(def.group,next);
   document.getElementById('studioShellMobileTitle').textContent=def.label;
@@ -133,12 +134,17 @@ function loadWorkspace(src){
   const target=new URL(src,location.origin);
   try{
     const current=new URL(frame.contentWindow?.location?.href||'about:blank');
-    if(current.origin===location.origin&&current.pathname===target.pathname&&current.search===target.search){
-      if(target.hash&&current.hash!==target.hash){loading.hidden=false;frame.contentWindow.location.hash=target.hash;setTimeout(()=>{loading.hidden=true;},180);}
+    if(current.origin===location.origin&&sameWorkspace(current,target)){
+      if(target.hash&&current.hash!==target.hash){loading.hidden=false;frame.contentWindow.location.hash=target.hash;}
+      else loading.hidden=true;
       return;
     }
   }catch{}
   loading.hidden=false;frame.src=src;
+}
+
+function sameWorkspace(current,target){
+  return current.pathname===target.pathname&&current.search===target.search&&(!target.hash||current.hash===target.hash);
 }
 
 function onFrameLoad(){
@@ -147,14 +153,40 @@ function onFrameLoad(){
     if(childUrl.origin===location.origin&&childUrl.pathname==='/studio/app.html'){
       openRoute(normalizeRoute(childUrl.hash.slice(1)||'clients'));return;
     }
+    const expectedRoute=normalizeRoute(frame.dataset.expectedRoute||location.hash.slice(1));
+    const expectedDef=ROUTES[expectedRoute];
+    if(expectedDef){
+      const expectedUrl=new URL(expectedDef.src,location.origin);
+      if(childUrl.origin===location.origin&&!sameWorkspace(childUrl,expectedUrl)){
+        loading.hidden=false;frame.src=expectedDef.src;return;
+      }
+    }
     const doc=frame.contentDocument;if(!doc){loading.hidden=true;return;}
+    doc.documentElement.dataset.neptuneStudioEmbedded='v103';
     doc.documentElement.dataset.studioEmbedded=RELEASE;
-    doc.querySelectorAll('link[data-studio-shell-embed],style[data-studio-shell-embed]').forEach(node=>node.remove());
-    const link=doc.createElement('link');link.rel='stylesheet';link.href='/studio/studio-embedded-v100.css?v=1';link.dataset.studioShellEmbed=RELEASE;
-    let revealed=false;const reveal=()=>{if(revealed)return;revealed=true;loading.hidden=true;};link.addEventListener('load',reveal,{once:true});link.addEventListener('error',reveal,{once:true});doc.head.append(link);setTimeout(reveal,500);
+    isolateLegacyChrome(doc);
     doc.addEventListener('click',interceptChildNavigation,true);
-    doc.querySelectorAll('.neptune-studio-menu-toggle,#neptuneStudioMenuToggle,.studio-menu-backdrop-v65,.neptune-studio-menu-backdrop-v65').forEach(node=>node.remove());
+    loading.hidden=true;
   }catch(error){loading.hidden=true;console.warn('[Neptune Studio] workspace isolation unavailable',error);}
+}
+
+function isolateLegacyChrome(doc){
+  const chrome='.studio-sidebar,.video-ai-sidebar,#app>.sidebar,.neptune-studio-sidebar,.studio-context-nav-v65,.neptune-studio-menu-toggle,#neptuneStudioMenuToggle,.studio-menu-backdrop-v65,.neptune-studio-menu-backdrop-v65';
+  for(const node of doc.querySelectorAll(chrome)){
+    node.hidden=true;
+    node.setAttribute('aria-hidden','true');
+    node.style.setProperty('display','none','important');
+  }
+  for(const node of doc.querySelectorAll('.studio-shell,.video-ai-shell,#app.shell,.neptune-studio-shell')){
+    node.style.setProperty('grid-template-columns','minmax(0,1fr)','important');
+    node.style.setProperty('width','100%','important');
+  }
+  for(const node of doc.querySelectorAll('.clients-workspace,.video-ai-main,.workspace,#app>.main,.neptune-studio-main')){
+    node.style.setProperty('width','100%','important');
+    node.style.setProperty('max-width','none','important');
+    node.style.setProperty('margin','0','important');
+    node.style.setProperty('padding-left','0','important');
+  }
 }
 
 function interceptChildNavigation(event){

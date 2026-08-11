@@ -53,14 +53,14 @@
           <aside class="side-stack">
             <section class="panel settings-card">
               <p class="eyebrow">ANTENNE</p><h3>Diffusion YouTube</h3>
-              <label class="switch-row"><span><b>Web TV active</b><small>OFF arrête réellement l’encodeur. ON lance la boucle enregistrée.</small></span><input id="enabled" type="checkbox"><i></i></label>
-              <label><span>Mode</span><select id="mode"><option value="loop">Boucle continue</option></select></label>
+              <label class="switch-row"><span><b>Web TV active</b><small>OFF arrête réellement l’encodeur. ON lance la boucle enregistrée.</small></span><input id="enabled" type="checkbox" aria-label="Activer ou arrêter la Web TV"><i></i></label>
+              <label><span>Mode</span><select id="mode" aria-label="Mode de diffusion"><option value="loop">Boucle continue</option></select></label>
               <div class="readonly-row"><span><b>Destination</b><small>Clé masquée et conservée dans Cloudflare</small></span><strong>YouTube · RTMPS</strong></div>
             </section>
 
             <section class="panel settings-card">
               <p class="eyebrow">SÉCURITÉ ANTENNE</p><h3>Programme de secours</h3><p>Ce contenu est utilisé si un programme est illisible. Sans média de secours, Neptune affiche automatiquement une mire technique.</p>
-              <label><span>Titre</span><input id="fallbackTitle" maxlength="180"></label>
+              <label><span>Titre</span><input id="fallbackTitle" maxlength="180" aria-label="Titre du programme de secours"></label>
               <div class="readonly-row"><span><b id="fallbackSource">Mire technique automatique</b><small id="fallbackUrlLabel">Aucun média de secours sélectionné</small></span><button id="chooseFallback" class="button" type="button">Choisir</button></div>
               <button id="clearFallback" class="button" type="button">Utiliser uniquement la mire</button>
             </section>

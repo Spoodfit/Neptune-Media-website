@@ -44,7 +44,8 @@ for(const label of ['Concepts & formats','Configurations','Offres & tarifs','Fou
 must(admin.includes("fetch('/api/reservation/catalog-v96'"),'catalog manager must read actual public catalog');
 must(admin.includes('asset/upload'),'Studio image upload is missing');
 must(admin.includes('Ouvrir le tunnel réel'),'real tunnel shortcut missing');
-must(ux.includes("src='/reserver?catalog_preview=studio" )||ux.includes('/reserver?catalog_preview=studio'),'v99 UX must preview the real sales tunnel');
+must(ux.includes("new URLSearchParams({catalog_preview:'studio'})")&&ux.includes('return `/reserver?${params}`'),'v99 UX must build the real /reserver preview URL in Studio mode');
+must(ux.includes('iframe title="Aperçu réel du tunnel Neptune Media"')&&ux.includes('src="${esc(src)}"'),'v99 UX must render the real tunnel URL in its preview iframe');
 must(ux.includes('Formats & configurations')&&ux.includes('Tarifs & offres'),'catalog UX labels are not normalized');
 
 must(app.includes('data-shell-route="settings/catalogue"'),'Settings primary route must expose Catalogue Media through the unified shell');

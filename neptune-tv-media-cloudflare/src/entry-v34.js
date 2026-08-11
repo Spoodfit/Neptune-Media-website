@@ -27,8 +27,8 @@ export default {
 
     if(request.method==='GET'&&isMediaHost(url.hostname)&&url.pathname==='/')return Response.redirect(`${url.origin}/reserver`,302);
     if(request.method==='GET'&&isMediaHost(url.hostname)&&url.pathname==='/conditions')return Response.redirect(`${url.origin}/reserver/conditions`,302);
-    if(request.method==='GET'&&(url.pathname==='/reserver'||url.pathname==='/reserver/'))return env.ASSETS.fetch(assetRequest(request,'/reserver/index.html'));
-    if(request.method==='GET'&&(url.pathname==='/reserver/conditions'||url.pathname==='/reserver/conditions/'))return env.ASSETS.fetch(assetRequest(request,'/reserver/conditions/index.html'));
+    if(request.method==='GET'&&(url.pathname==='/reserver'||url.pathname==='/reserver/'))return env.ASSETS.fetch(assetRequest(request,'/reserver/'));
+    if(request.method==='GET'&&(url.pathname==='/reserver/conditions'||url.pathname==='/reserver/conditions/'))return env.ASSETS.fetch(assetRequest(request,'/reserver/conditions/'));
 
     if(request.method==='GET'&&url.pathname==='/api/reservation/catalog-v96')return publicJson(await studio.fetch('https://store/portal/sales-tunnel-v96/catalog',{method:'GET'}),env);
     if(request.method==='POST'&&url.pathname==='/api/reservation/prospect/start')return publicJson(await callStore(studio,'/portal/sales-tunnel-v96/prospect-start',await request.json().catch(()=>({}))),env);

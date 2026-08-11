@@ -1,6 +1,7 @@
 const API='/api/admin/webtv/media';
 const MAX_BYTES=20*1024*1024*1024;
 const PART_GAP_MS=1150;
+const PART_RETRY_DELAYS_MS=[0,1500,3500,7000,12000,20000];
 let selectedFile=null;
 let selectedDuration=0;
 let activeUpload=null;
@@ -90,7 +91,10 @@ async function upload(dialog){
     for(let index=0;index<total;index+=1){
       const start=index*chunkSize,end=Math.min(file.size,start+chunkSize),blob=file.slice(start,end);
       const query=new URLSearchParams({key:init.key,uploadId:init.uploadId,partNumber:String(index+1)});
-      const part=await apiRaw(`${API}/part?${query}`,blob,controller.signal);
+      const basePercent=Math.min(99,Math.round(completedBytes/file.size*100));
+      const part=await apiRawWithRetry(`${API}/part?${query}`,blob,controller.signal,({attempt,max,waitMs})=>{
+        setProgress(dialog,basePercent,`Cloudflare temporise · bloc ${index+1}/${total}`,`Nouvelle tentative ${attempt}/${max} dans ${Math.max(1,Math.round(waitMs/1000))} s · la vidéo déjà envoyée est conservée`);
+      });
       parts[index]={partNumber:index+1,etag:part.etag};
       completedBytes+=blob.size;
       const percent=Math.min(99,Math.round(completedBytes/file.size*100));
@@ -121,12 +125,34 @@ async function apiJson(url,{method='GET',body=null,signal}={}){
   const headers={Accept:'application/json'};if(body!==null)headers['Content-Type']='application/json';const csrf=sessionStorage.getItem('neptune_csrf')||'';if(method!=='GET'&&csrf)headers['X-CSRF-Token']=csrf;
   const response=await fetch(url,{method,headers,body:body===null?undefined:JSON.stringify(body),credentials:'same-origin',signal});const data=await response.json().catch(()=>({}));if(!response.ok)throw appError(data.error||`http_${response.status}`,data,response.status);return data;
 }
-async function apiRaw(url,blob,signal){
+async function apiRawWithRetry(url,blob,signal,onRetry){
+  let lastError=null;
+  const max=PART_RETRY_DELAYS_MS.length;
+  for(let attempt=1;attempt<=max;attempt+=1){
+    if(attempt>1){
+      const waitMs=jitter(PART_RETRY_DELAYS_MS[attempt-1]);
+      onRetry?.({attempt,max,waitMs});
+      await delay(waitMs,signal);
+    }
+    try{return await apiRawOnce(url,blob,signal);}catch(error){
+      if(error?.name==='AbortError')throw error;
+      lastError=error;
+      if(!isRetryablePartError(error)||attempt===max)throw error;
+    }
+  }
+  throw lastError||appError('upload_part_failed');
+}
+async function apiRawOnce(url,blob,signal){
   const headers={'Content-Type':'application/octet-stream',Accept:'application/json'};const csrf=sessionStorage.getItem('neptune_csrf')||'';if(csrf)headers['X-CSRF-Token']=csrf;
-  const response=await fetch(url,{method:'PUT',headers,body:blob,credentials:'same-origin',signal});const data=await response.json().catch(()=>({}));if(!response.ok)throw appError(data.error||`http_${response.status}`,data,response.status);return data;
+  let response;
+  try{response=await fetch(url,{method:'PUT',headers,body:blob,credentials:'same-origin',signal});}
+  catch(error){if(error?.name==='AbortError')throw error;throw appError('upload_part_network',{stage:'network',detail:String(error?.message||'Network request failed')},0);}
+  const data=await response.json().catch(()=>({}));if(!response.ok)throw appError(data.error||`http_${response.status}`,data,response.status);return data;
 }
 
 function appError(code,data={},status=0){const error=new Error(code);error.code=code;error.data=data||{};error.status=status;return error;}
+function isRetryablePartError(error){const status=Number(error?.status||0),code=String(error?.code||'');return code==='upload_part_network'||code==='upload_part_failed'||status===429||status===500||status===502||status===503||status===504;}
+function jitter(ms){if(!ms)return 0;return Math.max(250,Math.round(ms*(0.85+Math.random()*0.3)));}
 function setBusy(dialog,busy){dialog.querySelector('[data-upload-start]').disabled=busy||!selectedFile;dialog.querySelector('[data-upload-change]').disabled=busy;dialog.querySelector('[data-upload-title]').disabled=busy;dialog.querySelector('[data-upload-drop]').classList.toggle('is-disabled',busy);dialog.querySelector('[data-upload-cancel]').textContent=busy?'Annuler l’import':'Annuler';}
 function showProgress(dialog,visible){dialog.querySelector('[data-upload-progress]').hidden=!visible;}
 function setProgress(dialog,value,status,detail){dialog.querySelector('[data-upload-bar]').value=value;dialog.querySelector('[data-upload-percent]').textContent=`${value} %`;dialog.querySelector('[data-upload-status]').textContent=status;dialog.querySelector('[data-upload-detail]').textContent=detail||'';}
@@ -142,9 +168,11 @@ function uploadError(error){
   const code=error?.code||error?.message||'upload_failed';
   const stage=error?.data?.stage||'';
   const status=Number(error?.status||0);
-  if(code==='upload_part_failed'&&stage==='r2')return`Cloudflare R2 a refusé un bloc malgré les tentatives automatiques${status?` (HTTP ${status})`:''}. Relancez l’import ; si cela recommence, le diagnostic serveur permet maintenant d’identifier précisément la cause.`;
+  const detail=String(error?.data?.detail||'').trim().slice(0,220);
+  if(code==='upload_part_failed'&&stage==='r2')return`Cloudflare R2 refuse toujours ce bloc après ${PART_RETRY_DELAYS_MS.length} tentatives${status?` (HTTP ${status})`:''}.${detail?` Détail technique : ${detail}`:''}`;
+  if((code==='upload_part_network'||code==='upload_part_failed')&&stage==='network')return`Le navigateur n’arrive pas à transmettre durablement ce bloc malgré les reprises automatiques.${detail?` Détail : ${detail}`:''}`;
   if(code==='upload_part_failed'&&stage==='receive')return'Le navigateur n’a pas pu transmettre complètement un bloc au serveur. Relancez l’import.';
-  return({invalid_file_size:'Fichier trop volumineux.',unsupported_video_type:'Format vidéo non pris en charge.',upload_part_failed:'Une partie de la vidéo n’a pas pu être envoyée. Relancez l’import.',upload_complete_failed:'Cloudflare n’a pas pu finaliser la vidéo.',studio_forbidden:'Votre session Studio a expiré.',origin_forbidden:'Import refusé pour des raisons de sécurité.',program_not_ready:'La vidéo est importée, mais le programme n’est pas prêt. Rechargez la page : elle restera dans la médiathèque.',upload_result_invalid:'La vidéo a été envoyée mais son adresse n’a pas pu être récupérée.'})[code]||`Import impossible (${code}).`;
+  return({invalid_file_size:'Fichier trop volumineux.',unsupported_video_type:'Format vidéo non pris en charge.',upload_part_too_large:'Bloc vidéo trop volumineux pour le serveur.',upload_part_failed:'Une partie de la vidéo n’a pas pu être envoyée. Relancez l’import.',upload_complete_failed:'Cloudflare n’a pas pu finaliser la vidéo.',studio_forbidden:'Votre session Studio a expiré.',origin_forbidden:'Import refusé pour des raisons de sécurité.',program_not_ready:'La vidéo est importée, mais le programme n’est pas prêt. Rechargez la page : elle restera dans la médiathèque.',upload_result_invalid:'La vidéo a été envoyée mais son adresse n’a pas pu être récupérée.'})[code]||`Import impossible (${code}).`;
 }
 function delay(ms,signal){return new Promise((resolve,reject)=>{const timer=setTimeout(resolve,ms);if(signal)signal.addEventListener('abort',()=>{clearTimeout(timer);reject(new DOMException('Aborted','AbortError'));},{once:true});});}
 function waitFor(predicate,timeout){return new Promise(resolve=>{const start=Date.now();const tick=()=>{if(predicate())return resolve(true);if(Date.now()-start>timeout)return resolve(false);setTimeout(tick,50);};tick();});}

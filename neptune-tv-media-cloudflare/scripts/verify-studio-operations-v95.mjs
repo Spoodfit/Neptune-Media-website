@@ -9,6 +9,8 @@ const entry=read('src/entry-v33.js');
 const store=read('src/store-v27.js');
 const backend=read('src/portal-studio-operations-v95.js');
 const studio=read('public/studio/studio-operations-v95.js');
+const compat=read('public/studio/studio-operations-compat-v95.js');
+const legacyClientOps=read('public/studio/studio-client-operations-v76.js');
 const css=read('public/studio/studio-operations-v95.css');
 const client=read('public/espace-client/media-catalog-v95.js');
 const clientCss=read('public/espace-client/media-catalog-v95.css');
@@ -22,6 +24,8 @@ expect('client account lists all portal orders',backend.includes('WHERE o.client
 expect('new passage is prefilled from client account',studio.includes('newPassageForClient')&&studio.includes("setField(form,'email',client.email)"));
 expect('dossier navigation is same-page and does not reload',studio.includes('openOrderImmediate')&&studio.includes('history.replaceState')&&!studio.includes('location.reload'));
 expect('legacy manager dossier click is intercepted',studio.includes("label==='dossier'||label==='voir dossier'"));
+expect('active v76 account button is compatible with v95',legacyClientOps.includes("button.id = 'manageClientAccounts'")&&legacyClientOps.includes("button.textContent = 'Gérer le compte'")&&compat.includes("getElementById('manageClientAccounts')")&&compat.includes("alias.id='openClientManager'"));
+expect('v76 compatibility bridge loads before main v95 runtime',entry.indexOf('/studio/studio-operations-compat-v95.js?v=1')>=0&&entry.indexOf('/studio/studio-operations-compat-v95.js?v=1')<entry.indexOf('/studio/studio-operations-v95.js?v=1'));
 expect('supplier catalog supports several suppliers',backend.includes('portal_media_suppliers_v95')&&backend.includes('UNIQUE(order_id,supplier_id)'));
 expect('RECBOX defaults to 600 HT and 720 TTC',backend.includes("'recbox','RECBOX','contact@recbox.fr'")&&backend.includes('60000,2000,72000'));
 expect('supplier lifecycle requires invoice before payment',backend.includes("status !== 'received'")&&backend.includes('supplier_invoice_required_before_payment'));

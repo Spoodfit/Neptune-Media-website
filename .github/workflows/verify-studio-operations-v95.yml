@@ -1,0 +1,94 @@
+name: Verify Studio Operations V95
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-studio-operations-v95.yml'
+      - 'neptune-tv-media-cloudflare/src/entry-v33.js'
+      - 'neptune-tv-media-cloudflare/src/store-v27.js'
+      - 'neptune-tv-media-cloudflare/src/portal-studio-operations-v95.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-operations-v95.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-operations-v95.css'
+      - 'neptune-tv-media-cloudflare/public/espace-client/media-catalog-v95.js'
+      - 'neptune-tv-media-cloudflare/public/espace-client/media-catalog-v95.css'
+      - 'neptune-tv-media-cloudflare/scripts/verify-studio-operations-v95.mjs'
+      - 'neptune-tv-media-cloudflare/tests/studio-operations-v95.mjs'
+      - 'neptune-tv-media-cloudflare/wrangler.jsonc'
+      - 'wrangler.jsonc'
+      - 'neptune-tv-media-cloudflare/package.json'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-studio-operations-v95.yml'
+      - 'neptune-tv-media-cloudflare/src/entry-v33.js'
+      - 'neptune-tv-media-cloudflare/src/store-v27.js'
+      - 'neptune-tv-media-cloudflare/src/portal-studio-operations-v95.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-operations-v95.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-operations-v95.css'
+      - 'neptune-tv-media-cloudflare/public/espace-client/media-catalog-v95.js'
+      - 'neptune-tv-media-cloudflare/public/espace-client/media-catalog-v95.css'
+      - 'neptune-tv-media-cloudflare/scripts/verify-studio-operations-v95.mjs'
+      - 'neptune-tv-media-cloudflare/tests/studio-operations-v95.mjs'
+      - 'neptune-tv-media-cloudflare/wrangler.jsonc'
+      - 'wrangler.jsonc'
+      - 'neptune-tv-media-cloudflare/package.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-studio-operations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate v95 source contract
+        working-directory: neptune-tv-media-cloudflare
+        run: |
+          node --check src/entry-v33.js
+          node --check src/store-v27.js
+          node --check src/portal-studio-operations-v95.js
+          node --check public/studio/studio-operations-v95.js
+          node --check public/espace-client/media-catalog-v95.js
+          node --check tests/studio-operations-v95.mjs
+          node scripts/verify-studio-operations-v95.mjs
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium
+
+      - name: Start application static server
+        shell: bash
+        run: |
+          python3 -m http.server 4173 --directory neptune-tv-media-cloudflare/public >/tmp/studio-v95-server.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:4173/studio/clients.html >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/studio-v95-server.log
+          exit 1
+
+      - name: Audit client account supplier finance configuration and client catalog
+        env:
+          LOCAL_BASE_URL: http://127.0.0.1:4173
+          OUTPUT_DIR: test-results/studio-operations-v95
+        run: node neptune-tv-media-cloudflare/tests/studio-operations-v95.mjs
+
+      - name: Upload v95 visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: studio-operations-v95-evidence
+          path: test-results/studio-operations-v95
+          if-no-files-found: error
+          retention-days: 14

@@ -106,7 +106,7 @@ export function securityHeaders(headers = {}) {
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https:",
       "media-src 'self' https: blob:",
-      "connect-src 'self' https://cloudflareinsights.com https://huggingface.co https://cdn-lfs.huggingface.co https://*.hf.co",
+      "connect-src 'self' https://cloudflareinsights.com https://huggingface.co https://cdn-lfs.huggingface.co https://*.hf.co https://*.r2.cloudflarestorage.com",
       "font-src 'self' data:",
       "object-src 'none'",
       "frame-src https://www.youtube.com https://www.youtube-nocookie.com https://drive.google.com",

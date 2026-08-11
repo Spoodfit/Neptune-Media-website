@@ -53,10 +53,15 @@ expect(login.includes("const CANONICAL_STUDIO_PATH = '/studio/app.html#clients'"
 expect(login.includes("'/studio/app.html'"), 'La passerelle doit autoriser le shell comme destination sécurisée.');
 expect(login.includes('location.replace(destination)'), 'Une session valide doit remplacer la passerelle par le shell canonique.');
 
-expect(worker.includes("const STUDIO_SHELL_RELEASE='neptune-studio-shell-20260811-v100'"), 'Le Worker doit déclarer la release du shell v100.');
+expect(worker.includes("const STUDIO_SHELL_RELEASE='neptune-studio-shell-20260811-v102'"), 'Le Worker doit déclarer la release du shell v102.');
 expect(worker.includes("url.searchParams.get('studio_embed')!=='v100'"), 'Les anciennes pages ne doivent être accessibles directement qu’en mode interne explicite.');
 expect(worker.includes('legacyStudioRedirect(url)'), 'Les anciennes routes Studio doivent être normalisées vers le shell.');
-expect(worker.includes("headers.set('X-Frame-Options','DENY')"), 'Le shell principal doit être protégé contre l’intégration externe.');
+expect(worker.includes("headers.set('X-Frame-Options','DENY')"), 'Le shell principal doit rester protégé contre l’intégration externe.');
+expect(worker.includes("headers.set('X-Frame-Options','SAMEORIGIN')"), 'Les workspaces internes doivent être intégrables uniquement par le même origin Neptune.');
+expect(worker.includes("setCspDirective(value,'frame-ancestors',[\"'self'\"])"), 'Les workspaces internes doivent utiliser frame-ancestors self et non none.');
+expect(worker.includes("setCspDirective(value,'frame-ancestors',[\"'none'\"])"), 'Le shell principal doit conserver frame-ancestors none.');
+expect(worker.includes("'frame-src',\"'self'\""), 'Le shell et les workspaces doivent pouvoir charger leurs iframes same-origin.');
+expect(worker.includes("url.searchParams.get('catalog_preview')==='studio'"), 'La prévisualisation réelle du tunnel doit être autorisée uniquement dans son mode Studio explicite.');
 expect(!worker.includes('media-catalog-nav-v98.js'), 'L’ancienne surcouche de navigation Catalogue Media ne doit plus être injectée.');
 expect(worker.includes('inject(response,ADMIN_CSS,[ADMIN_JS,ADMIN_UX_JS])'), 'Le catalogue doit conserver uniquement son moteur métier et son UX, sans deuxième navigation.');
 expect(worker.includes('studioShell:STUDIO_SHELL_RELEASE'), 'Le diagnostic public doit exposer la release du shell Studio.');
@@ -69,4 +74,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Studio unifié v100 validé : shell persistant unique, workspaces isolés, états hidden fiables, Catalogue Media dans Réglages et anciennes routes neutralisées.');
+console.log('Studio unifié v102 validé : shell persistant unique, workspaces same-origin intégrables sans ouverture externe, états hidden fiables et Catalogue Media sécurisé.');

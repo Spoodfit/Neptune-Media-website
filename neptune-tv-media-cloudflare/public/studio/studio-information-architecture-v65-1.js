@@ -1,5 +1,5 @@
 (() => {
-  const KEY = '__neptuneStudioInformationArchitectureV652';
+  const KEY = '__neptuneStudioInformationArchitectureV104';
   if (window[KEY]) return;
   window[KEY] = true;
 
@@ -122,7 +122,7 @@
       link('clients', '/studio/clients', '◎', 'Parcours clients'),
       link('production', '/studio/video-ai.html', '✦', 'Production vidéo'),
       link('diffusion', '/studio/webtv.html', '▶', 'Diffusion'),
-      link('settings', '/studio/advanced.html#settings', '⚙', 'Réglages'),
+      link('settings', '/studio/advanced.html#programs', '⚙', 'Réglages'),
     ].join('');
   }
 
@@ -145,7 +145,7 @@
       if (!item || kind !== 'advanced') return;
       if (item.dataset.studioRoute === 'settings') {
         event.preventDefault();
-        advanced?.activate('settings');
+        advanced?.activate('programs');
       }
     });
   }
@@ -163,8 +163,8 @@
     document.body.append(holder);
 
     const groups = {
-      diffusion: [['webtv', 'Web TV'], ['episodes', 'Programme'], ['programs', 'Formats'], ['ads', 'Publicités'], ['insights', 'Audience']],
-      settings: [['finances', 'Finances'], ['users', 'Équipe'], ['audit', 'Journal'], ['settings', 'Réglages']],
+      diffusion: [['webtv', 'Antenne'], ['episodes', 'Programme'], ['ads', 'Publicités'], ['insights', 'Audience']],
+      settings: [['programs', 'Catalogue Media'], ['finances', 'Finances'], ['users', 'Équipe'], ['audit', 'Journal'], ['settings', 'Général']],
     };
     const allowed = new Set([...groups.diffusion, ...groups.settings].map(([id]) => id));
     const context = document.createElement('nav');
@@ -231,9 +231,8 @@
     context.className = 'studio-context-nav-v65';
     context.setAttribute('aria-label', 'Navigation Diffusion');
     const tabs = [
-      ['Web TV', '/studio/webtv.html', true],
+      ['Antenne', '/studio/webtv.html', true],
       ['Programme', '/studio/advanced.html#episodes', false],
-      ['Formats', '/studio/advanced.html#programs', false],
       ['Publicités', '/studio/advanced.html#ads', false],
       ['Audience', '/studio/advanced.html#insights', false],
     ];
@@ -247,7 +246,7 @@
     if (['episodes', 'programs', 'ads', 'insights', 'finances', 'users', 'audit', 'settings'].includes(tab)) return tab;
     return 'episodes';
   }
-  function groupForTab(tab) { return ['finances', 'users', 'audit', 'settings'].includes(tab) ? 'settings' : 'diffusion'; }
+  function groupForTab(tab) { return ['programs', 'finances', 'users', 'audit', 'settings'].includes(tab) ? 'settings' : 'diffusion'; }
 
   function installMobileDrawer(ui) {
     ui.sidebar.id ||= 'neptuneStudioSidebar';
@@ -292,14 +291,14 @@
   function normalizeAccount(account, kind) {
     if (!account) return;
     if ((kind === 'clients' || kind === 'webtv') && account instanceof HTMLAnchorElement) {
-      account.href = '/studio/advanced.html#settings';
+      account.href = '/studio/advanced.html#programs';
       account.setAttribute('aria-label', 'Ouvrir les réglages du Studio');
     }
     if (kind === 'production') {
       account.tabIndex = 0;
       account.setAttribute('role', 'link');
       account.setAttribute('aria-label', 'Ouvrir les réglages du Studio');
-      const open = () => { location.href = '/studio/advanced.html#settings'; };
+      const open = () => { location.href = '/studio/advanced.html#programs'; };
       account.addEventListener('click', open);
       account.addEventListener('keydown', (event) => {
         if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); open(); }

@@ -20,6 +20,7 @@ const STUDIO_NAV_JS='/studio/studio-information-architecture-v65-1.js?v=104';
 const RELEASE_TAG='neptune-media-catalog-ux-20260811-v99';
 const STUDIO_UI_RELEASE='neptune-studio-ui-20260811-v104-no-iframe';
 const LEGACY_CLIENT_OPERATIONS='/studio/studio-client-operations-v76.js';
+const MEDIA_CATALOG_MANAGER='/studio/media-catalog-manager-v98.js';
 
 export default{
   async fetch(request,env,ctx){
@@ -31,6 +32,9 @@ export default{
     }
     if(request.method==='GET'&&url.pathname===LEGACY_CLIENT_OPERATIONS){
       return neutralizeLegacyStudioClientOperations(await base.fetch(request,env,ctx));
+    }
+    if(request.method==='GET'&&url.pathname===MEDIA_CATALOG_MANAGER){
+      return stabilizeMediaCatalogManager(await base.fetch(request,env,ctx));
     }
     if(request.method==='GET'&&url.pathname.startsWith('/media/catalog-v98/'))return catalogAsset(request,env);
     if(request.method==='POST'&&url.pathname.startsWith(ADMIN_PREFIX)){
@@ -125,6 +129,15 @@ async function neutralizeLegacyStudioClientOperations(response){
   let body=await response.text();
   body=body.replaceAll('cleanObsoleteVideoWorkspace();','void 0;');
   const headers=rewrittenHeaders(response);headers.set('X-Neptune-Studio-Legacy-Navigation','neutralized-v104');
+  return new Response(body,{status:response.status,statusText:response.statusText,headers});
+}
+async function stabilizeMediaCatalogManager(response){
+  if(!response.ok)return response;
+  const contentType=response.headers.get('Content-Type')||'';
+  if(!contentType.includes('javascript')&&!contentType.includes('text/plain'))return response;
+  let body=await response.text();
+  body=body.replace("function rename(){document.querySelectorAll('[data-tab=\"programs\"] strong,[data-go=\"programs\"] strong').forEach(x=>x.textContent='Catalogue Media')}","function rename(){document.querySelectorAll('[data-tab=\"programs\"] strong,[data-go=\"programs\"] strong').forEach(x=>{if(x.textContent!=='Catalogue Media')x.textContent='Catalogue Media'})}");
+  const headers=rewrittenHeaders(response);headers.set('X-Neptune-Media-Catalog-Manager','stabilized-v104');
   return new Response(body,{status:response.status,statusText:response.statusText,headers});
 }
 async function injectStudioNavigation(response){

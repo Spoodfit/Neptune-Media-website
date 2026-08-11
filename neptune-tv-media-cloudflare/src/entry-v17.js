@@ -5,7 +5,7 @@ import { isSameOrigin, json, securityHeaders } from './security.js';
 
 export { StudioStore };
 
-const RELEASE = 'neptune-studio-client-journey-20260805-v77';
+const RELEASE = 'neptune-studio-client-journey-20260811-v77.1';
 const OPERATIONS_CSS = '/studio/studio-client-operations-v76.css?v=1';
 const OPERATIONS_JS = '/studio/studio-client-operations-v76.js?v=1';
 const GALLERY_CSS = '/studio/content-gallery-v76.css?v=1';
@@ -22,15 +22,6 @@ export default {
 
     if (request.method === 'POST' && url.pathname === '/api/admin/client-manage') {
       return withHeaders(secure(await manageClient(request, env, studio)), url.pathname);
-    }
-
-    if (['GET', 'HEAD'].includes(request.method) && isRetiredVideoWorkspace(url.pathname)) {
-      const target = new URL('/studio/clients', url.origin);
-      target.search = url.search;
-      return withHeaders(new Response(null, {
-        status: 302,
-        headers: { Location: target.toString(), 'Cache-Control': 'no-store' },
-      }), url.pathname);
     }
 
     let response = await base.fetch(request, env, ctx);
@@ -88,9 +79,13 @@ async function augmentRelease(response) {
   return new Response(JSON.stringify({
     ...current,
     studioClientOperations: RELEASE,
-    studioInformationArchitecture: 'three-primary-destinations-v77',
-    studioPrimaryNavigation: ['Parcours clients', 'Diffusion', 'Réglages'],
-    studioVideoProductionWorkspace: 'removed-external-editing-drive-sync-only',
+    studioInformationArchitecture: 'four-primary-destinations-video-restored-v77.1',
+    studioPrimaryNavigation: ['Parcours clients', 'Production vidéo', 'Diffusion', 'Réglages'],
+    studioVideoProductionWorkspace: 'active-local-engine-workspace-v77.1',
+    studioLegacyV77Contract: {
+      studioPrimaryNavigation: ['Parcours clients', 'Diffusion', 'Réglages'],
+      studioVideoProductionWorkspace: 'removed-external-editing-drive-sync-only',
+    },
     studioClientManagement: 'edit-archive-reactivate-confirmed-delete',
     studioClientDeletionPolicy: 'database-and-r2-deleted-google-drive-preserved',
     studioContentLibrary: 'equal-height-cards-compact-plus-upload-paginated-24-v77',
@@ -98,7 +93,7 @@ async function augmentRelease(response) {
     studioPreparationJourney: 'calendar-synced-link-or-one-click-booking-v77',
     supplierDateConfirmation: 'two-preselected-safe-email-actions-v77',
     clientHorsNormePreparation: 'ten-presenter-inspired-interactive-cards-v77',
-    studioCanonicalVideoPath: null,
+    studioCanonicalVideoPath: '/studio/video-ai.html',
   }), {
     status: response.status,
     headers: {
@@ -169,12 +164,6 @@ function isClientPreparationPath(pathname) {
   return pathname === '/espace-client'
     || pathname === '/espace-client/'
     || pathname === '/espace-client/index.html';
-}
-
-function isRetiredVideoWorkspace(pathname) {
-  return pathname === '/studio/video-ai'
-    || pathname === '/studio/video-ai/'
-    || pathname === '/studio/video-ai.html';
 }
 
 function secure(response) {

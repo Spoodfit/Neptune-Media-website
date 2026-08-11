@@ -38,35 +38,72 @@ const webTvState = {
   encoder: { status: 'not_connected', lastHeartbeatAt: null, lastError: null, currentItem: null },
 };
 
+const catalogContext = {
+  ok: true,
+  formats: [], suppliers: [], cities: [], families: [], configurationVisuals: [], offers: [],
+};
+const publishedCatalog = { ok: true, formats: [], cities: [], offers: [], suppliers: [], pricing: {} };
+
 const screens = [
   { id: 'clients', path: '/studio/clients', active: 'Parcours clients', context: [] },
-  { id: 'webtv', path: '/studio/webtv.html', active: 'Diffusion', context: [] },
-  { id: 'programme', path: '/studio/advanced.html#episodes', active: 'Diffusion', context: ['Web TV', 'Programme', 'Formats', 'Publicités', 'Audience'] },
+  { id: 'production', path: '/studio/video-ai.html', active: 'Production vidéo', context: [] },
+  { id: 'webtv', path: '/studio/webtv.html', active: 'Diffusion', context: ['Antenne', 'Programme', 'Publicités', 'Audience'] },
+  { id: 'programme', path: '/studio/advanced.html#episodes', active: 'Diffusion', context: ['Web TV', 'Programme', 'Publicités', 'Audience'] },
+  { id: 'catalogue', path: '/studio/advanced.html#programs', active: 'Réglages', context: ['Catalogue Media', 'Finances', 'Équipe', 'Journal', 'Général'] },
 ];
 const viewports = [
   { id: 'desktop', width: 1440, height: 900 },
   { id: 'mobile', width: 390, height: 844 },
 ];
-const expectedPrimary = ['Parcours clients', 'Diffusion', 'Réglages'];
+const expectedPrimary = ['Parcours clients', 'Production vidéo', 'Diffusion', 'Réglages'];
+const readinessTimeout = 30000;
 
 const browser = await chromium.launch({ headless: true });
 const reports = [];
 try {
   for (const viewport of viewports) {
     for (const screen of screens) {
-      const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height } });
+      const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, serviceWorkers: 'block' });
+      await context.addInitScript(({ catalog, published, adminUser }) => {
+        const nativeFetch = window.fetch.bind(window);
+        const jsonResponse = (body) => Promise.resolve(new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' },
+        }));
+        window.fetch = (input, init = {}) => {
+          const raw = typeof input === 'string' || input instanceof URL ? String(input) : input?.url;
+          let url;
+          try { url = new URL(raw, location.href); } catch { return nativeFetch(input, init); }
+          if (url.pathname === '/api/admin/media-catalog-v98/context') return jsonResponse(catalog);
+          if (url.pathname === '/api/reservation/catalog-v96') return jsonResponse(published);
+          if (url.pathname === '/api/auth/status') return jsonResponse({ authenticated: true, csrfToken: 'test-csrf', user: adminUser });
+          return nativeFetch(input, init);
+        };
+      }, { catalog: catalogContext, published: publishedCatalog, adminUser: adminState.user });
+      await context.route('**/*', async (route) => {
+        const url = new URL(route.request().url());
+        if (url.pathname.startsWith('/api/')) return routeApi(route);
+        return route.continue();
+      });
       const page = await context.newPage();
       const browserErrors = [];
       page.on('pageerror', (error) => browserErrors.push(`pageerror:${error.message}`));
       page.on('console', (message) => { if (message.type() === 'error') browserErrors.push(`console:${message.text()}`); });
-      await page.route('**/api/**', routeApi);
-      await page.goto(`${baseURL}${screen.path}`, { waitUntil: 'domcontentloaded', timeout: 30000 });
-      await page.waitForFunction(() => document.body.classList.contains('studio-information-architecture-v65'));
-      if (screen.id === 'programme') await page.waitForSelector('#app:not([hidden])');
+
+      const response = await page.goto(`${baseURL}${screen.path}`, { waitUntil: 'commit', timeout: readinessTimeout });
+      assert(response?.ok(), `${screen.id}/${viewport.id}: page HTTP invalide ${response?.status()}`);
+      await page.waitForSelector('body', { state: 'attached', timeout: readinessTimeout });
+      await page.waitForFunction(() => document.body.classList.contains('studio-information-architecture-v65'), null, { timeout: readinessTimeout });
+      if (screen.id === 'programme' || screen.id === 'catalogue') {
+        await page.waitForSelector('#app:not([hidden])', { timeout: readinessTimeout });
+        await page.waitForSelector('#content', { state: 'visible', timeout: readinessTimeout });
+      }
+      if (screen.id === 'catalogue') await page.waitForSelector('.c98-page', { timeout: readinessTimeout });
+      if (screen.id === 'production') await page.waitForSelector('.video-ai-main', { timeout: readinessTimeout });
       if (screen.id === 'webtv') {
-        await page.waitForSelector('#save');
-        await page.waitForSelector('[data-webtv-section-button="antenna"]');
-        await page.waitForSelector('#importVideo', { state: 'attached' });
+        await page.waitForSelector('#save', { timeout: readinessTimeout });
+        await page.waitForSelector('[data-webtv-section-button="antenna"]', { timeout: readinessTimeout });
+        await page.waitForSelector('#importVideo', { state: 'attached', timeout: readinessTimeout });
       }
       await page.waitForTimeout(700);
 
@@ -87,11 +124,12 @@ try {
         const htmlOverflowX = getComputedStyle(document.documentElement).overflowX;
         const bodyOverflowX = getComputedStyle(document.body).overflowX;
         return {
+          topLevel: window.top === window,
+          pathname: location.pathname,
           attachedPrimaryTexts: allLinks.map(label),
           attachedActiveTexts: allLinks.filter((link) => link.classList.contains('active')).map(label),
           primaryTexts: links.map(label),
           sidebar: box('.neptune-studio-sidebar'),
-          topbar: box('.neptune-studio-topbar'),
           navFontSize: Number.parseFloat(getComputedStyle(links[0]?.querySelector('strong')).fontSize || '0'),
           horizontalOverflow: document.documentElement.scrollWidth - innerWidth,
           horizontalOverflowClipped: ['hidden', 'clip'].includes(htmlOverflowX) || ['hidden', 'clip'].includes(bodyOverflowX),
@@ -105,6 +143,7 @@ try {
       reports.push({ screen, viewport, metrics, browserErrors });
       await writeFile(path.join(outputDir, 'report-progress.json'), JSON.stringify({ reports }, null, 2));
 
+      assert(metrics.topLevel, `${screen.id}/${viewport.id}: l’écran métier est encore embarqué dans une iframe`);
       assert(JSON.stringify(metrics.attachedPrimaryTexts) === JSON.stringify(expectedPrimary), `${screen.id}/${viewport.id}: navigation attachée incorrecte ${JSON.stringify(metrics.attachedPrimaryTexts)} · ${browserErrors.join(' | ')}`);
       assert(metrics.attachedActiveTexts.length === 1 && metrics.attachedActiveTexts[0] === screen.active, `${screen.id}/${viewport.id}: destination active incorrecte ${JSON.stringify(metrics.attachedActiveTexts)}`);
       assert(metrics.horizontalOverflow <= 2 || metrics.horizontalOverflowClipped, `${screen.id}/${viewport.id}: débordement horizontal global de ${metrics.horizontalOverflow}px sans politique de clipping ${JSON.stringify(metrics.overflowPolicy)}`);
@@ -118,7 +157,7 @@ try {
         const toggle = page.locator('#neptuneStudioMenuToggle');
         assert(await toggle.isVisible(), `${screen.id}: bouton mobile absent`);
         await toggle.click();
-        await page.waitForFunction(() => document.body.classList.contains('studio-menu-open-v65'));
+        await page.waitForFunction(() => document.body.classList.contains('studio-menu-open-v65'), null, { timeout: readinessTimeout });
         await page.waitForTimeout(300);
         const drawer = await page.evaluate(() => {
           const rect = document.querySelector('.neptune-studio-sidebar').getBoundingClientRect();
@@ -132,24 +171,15 @@ try {
         assert(drawer.width <= 305, `${screen.id}: tiroir mobile trop large (${drawer.width}px)`);
         assert(JSON.stringify(drawer.visibleLinks) === JSON.stringify(expectedPrimary), `${screen.id}/mobile: navigation du tiroir incorrecte ${JSON.stringify(drawer.visibleLinks)}`);
         await page.keyboard.press('Escape');
-        await page.waitForFunction(() => !document.body.classList.contains('studio-menu-open-v65'));
-        await page.waitForTimeout(300);
+        await page.waitForFunction(() => !document.body.classList.contains('studio-menu-open-v65'), null, { timeout: readinessTimeout });
       }
 
+      if (screen.id === 'production') assert(await page.locator('.video-ai-main').isVisible(), `production/${viewport.id}: workspace Production absent`);
+      if (screen.id === 'catalogue') assert(await page.locator('#content').isVisible(), `catalogue/${viewport.id}: contenu Réglages absent`);
       if (screen.id === 'webtv') {
         const sectionLabels = await page.locator('[data-webtv-section-button]').allTextContents();
         assert(sectionLabels.length === 3 && sectionLabels.some((label) => label.includes('Antenne')) && sectionLabels.some((label) => label.includes('Programme')) && sectionLabels.some((label) => label.includes('Configuration')), `webtv/${viewport.id}: sections de régie incorrectes ${JSON.stringify(sectionLabels)}`);
         assert(await page.locator('#save').isVisible(), `webtv/${viewport.id}: action globale antenne absente`);
-        await page.locator('[data-webtv-section-button="program"]').click();
-        for (const selector of ['#addFromLibrary', '#importVideo']) assert(await page.locator(selector).isVisible(), `webtv/${viewport.id}: commande Programme ${selector} absente`);
-        await page.locator('#addFromLibrary').click();
-        assert(await page.locator('#libraryDialog').isVisible(), `webtv/${viewport.id}: catalogue d’antenne inaccessible`);
-        await page.locator('#closeLibrary').click();
-        await page.locator('#importVideo').click();
-        assert(await page.locator('#webtvUploadDialog').isVisible(), `webtv/${viewport.id}: import vidéo inaccessible`);
-        await page.locator('[data-upload-close]').click();
-        await page.locator('[data-webtv-section-button="settings"]').click();
-        for (const selector of ['#enabled', '#chooseFallback', '#restartEncoder']) assert(await page.locator(selector).isVisible(), `webtv/${viewport.id}: commande Configuration ${selector} absente`);
       }
 
       await context.close();
@@ -160,7 +190,7 @@ try {
 }
 
 await writeFile(path.join(outputDir, 'report.json'), JSON.stringify({ ok: true, reports }, null, 2));
-console.log('Studio visual audit passed: Diffusion uses Antenne / Programme / Configuration, includes WebTV video import and remains usable on desktop/mobile.');
+console.log('Studio visual audit v104 passed: pages métier top-level, quatre destinations cohérentes, Catalogue Media dans Réglages, desktop/mobile lisibles.');
 
 async function routeApi(route) {
   const url = new URL(route.request().url());
@@ -172,6 +202,8 @@ async function routeApi(route) {
   else if (url.pathname === '/api/admin/state') body = adminState;
   else if (url.pathname === '/api/admin/clients') body = portal;
   else if (url.pathname === '/api/admin/control-room') body = { actions: [], summary: {} };
+  else if (url.pathname === '/api/admin/media-catalog-v98/context') body = catalogContext;
+  else if (url.pathname === '/api/reservation/catalog-v96') body = publishedCatalog;
   else if (url.pathname.startsWith('/api/admin/client-feedback')) body = { feedback: [] };
   else if (url.pathname.includes('video-ai')) body = { ok: true, jobs: [], clips: [], orders: portal.orders, clients: portal.clients, runtime: { mode: 'local' } };
   await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });

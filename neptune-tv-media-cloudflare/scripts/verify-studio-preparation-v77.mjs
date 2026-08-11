@@ -11,7 +11,7 @@ const requireText = (relative, values) => {
 };
 
 requireText('src/entry-v17.js', [
-  'neptune-studio-client-journey-20260805-v77',
+  'neptune-studio-client-journey-20260811-v77.1',
   '/studio/studio-journey-v77.css',
   '/espace-client/client-preparation-v77.js',
   'ten-presenter-inspired-interactive-cards-v77',
@@ -57,4 +57,4 @@ requireText('src/store-v5.js', [
   'conferenceData?.entryPoints',
 ]);
 
-console.log('Studio/client preparation v77 verified: compact upload, equal-height cards, calendar meeting links, safe supplier decisions and 10 lightweight HORS NORME cards.');
+console.log('Studio/client preparation v77.1 verified: compact upload, equal-height cards, calendar meeting links, safe supplier decisions and 10 lightweight HORS NORME cards.');

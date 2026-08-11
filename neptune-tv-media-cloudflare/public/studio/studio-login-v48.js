@@ -1,5 +1,5 @@
 const $ = (selector, root = document) => root.querySelector(selector);
-const CANONICAL_STUDIO_PATH = '/studio/app.html#clients';
+const CANONICAL_STUDIO_PATH = '/studio/clients';
 const ALLOWED_NEXT = new Set([
   '/studio/app.html',
   '/studio/clients',

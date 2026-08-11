@@ -80,8 +80,8 @@ async function augmentRelease(response) {
     ...current,
     studioClientOperations: RELEASE,
     studioInformationArchitecture: 'four-primary-destinations-video-restored-v77.1',
-    studioPrimaryNavigationCurrent: ['Parcours clients', 'Production vidéo', 'Diffusion', 'Réglages'],
-    studioVideoProductionWorkspaceCurrent: 'active-local-engine-workspace-v77.1',
+    studioPrimaryNavigation: ['Parcours clients', 'Production vidéo', 'Diffusion', 'Réglages'],
+    studioVideoProductionWorkspace: 'active-local-engine-workspace-v77.1',
     studioLegacyV77Contract: {
       studioPrimaryNavigation: ['Parcours clients', 'Diffusion', 'Réglages'],
       studioVideoProductionWorkspace: 'removed-external-editing-drive-sync-only',

@@ -10,20 +10,25 @@ init();
 
 async function init(){
   try{
+    const auth=await api('/api/auth/status',{},false);
+    if(auth.authenticated===false||!['admin','editor'].includes(String(auth.user?.role||'')))throw new Error('http_403');
+    csrfToken=auth.csrfToken||csrfToken;
+    if(csrfToken)sessionStorage.setItem('neptune_csrf',csrfToken);
     const [studio,webtv]=await Promise.all([
-      api('/api/v1/media/studio/state',{},false),
+      api('/api/admin/state',{},false),
       api('/api/admin/webtv/state',{},false),
     ]);
     studioState=studio;control=webtv;
-    $('#accountName').textContent=studio.user?.fullName||studio.user?.email||'Compte Studio';
-    $('#accountRole').textContent=studio.user?.displayRole||studio.user?.role||'Admin';
+    const user=studio.user||auth.user||{};
+    $('#accountName').textContent=user.fullName||user.email||'Compte Studio';
+    $('#accountRole').textContent=user.displayRole||user.role||'Admin';
     bind();render();
     $('#syncState').innerHTML='<i></i> Synchronisé';
     runtimePoll=setInterval(refreshRuntime,15000);
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshRuntime();});
   }catch(error){
     $('#syncState').textContent='Connexion requise';
-    toast(error.message==='http_401'||error.message==='http_403'?'Accès Studio requis.':'Impossible de charger la régie.',true);
+    toast(error.message==='http_401'||error.message==='http_403'||error.message==='studio_forbidden'?'Accès Studio requis.':'Impossible de charger la régie.',true);
   }
 }
 
@@ -127,7 +132,7 @@ function openLibrary(mode='playlist'){
   const usable=libraryItems();
   $('#libraryTitle').textContent=mode==='fallback'?'Choisir le secours antenne':'Ajouter à l’antenne';
   $('#libraryHint').textContent=mode==='fallback'?'Choisissez le média à afficher si un programme échoue.':'Sélectionnez une émission, une publicité ou un autre contenu disponible.';
-  $('#library').innerHTML=usable.length?usable.map((item,index)=>`<article class="library-item"><div><b>${escapeHtml(item.title)} <span class="type-tag">${escapeHtml(typeLabel(item.type))}</span></b><small>${duration(item.durationSeconds)} · ${escapeHtml(item.mediaUrl)}</small></div><button class="button" type="button" data-add="${index}">${mode==='fallback'?'Choisir':'Ajouter'}</button></article>`).join(''):'<div class="empty"><strong>Aucun média exploitable trouvé.</strong><span>Le contenu doit disposer d’une URL de lecture Neptune accessible depuis la Web TV.</span></div>';
+  $('#library').innerHTML=usable.length?usable.map((item,index)=>`<article class="library-item"><div><b>${escapeHtml(item.title)} <span class="type-tag">${escapeHtml(typeLabel(item.type))}</span></b><small>${duration(item.durationSeconds)} · ${escapeHtml(item.mediaUrl)}</small></div><button class="button" type="button" data-add="${index}">${mode==='fallback'?'Choisir':'Ajouter'}</button></article>`).join(''):'<div class="empty"><strong>Aucun média exploitable trouvé.</strong><span>Ajoutez une URL vidéo HTTPS à une émission ou à une publicité dans Diffusion.</span></div>';
   $$('[data-add]').forEach(button=>button.addEventListener('click',()=>{
     const item=usable[Number(button.dataset.add)];if(!item)return;
     if(libraryMode==='fallback'){
@@ -165,7 +170,11 @@ function mediaUrlFor(item){
   const candidates=[item.mediaUrl,item.videoUrl,item.playbackUrl,item.assetUrl,item.fileUrl,item.publicUrl,item.url,item.video?.url,item.media?.url];
   const raw=String(candidates.find(Boolean)||'').trim();
   if(!raw)return'';
-  try{const url=new URL(raw,location.origin);return url.origin===location.origin?`${url.pathname}${url.search}`:'';}catch{return'';}
+  try{
+    const url=new URL(raw,location.origin);
+    if(url.protocol!=='https:')return'';
+    return url.origin===location.origin?`${url.pathname}${url.search}`:url.toString();
+  }catch{return'';}
 }
 
 async function save(){

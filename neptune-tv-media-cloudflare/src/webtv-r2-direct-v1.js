@@ -1,8 +1,9 @@
 import { AwsClient } from 'aws4fetch';
 
+export const DIRECT_PUT_TRANSPORT='direct-r2-put-v1';
 export const DIRECT_R2_TRANSPORT='direct-r2-s3-v1';
 export const DIRECT_R2_BUCKET='neptune-media-assets';
-const PRESIGN_TTL_SECONDS=30*60;
+const PRESIGN_TTL_SECONDS=2*60*60;
 const S3_RETRIES=3;
 
 export function directR2Diagnostics(env){
@@ -28,6 +29,22 @@ export function directR2Configured(env){
   return directR2Diagnostics(env).configured;
 }
 
+export async function presignDirectPut(env,key,contentType='application/octet-stream'){
+  requireConfig(env);
+  const url=new URL(objectUrl(env,key));
+  url.searchParams.set('X-Amz-Expires',String(PRESIGN_TTL_SECONDS));
+  const request=new Request(url.toString(),{method:'PUT',headers:{'Content-Type':contentType}});
+  const signed=await client(env).sign(request,{aws:{signQuery:true}});
+  return{
+    url:signed.url.toString(),
+    expiresIn:PRESIGN_TTL_SECONDS,
+    contentType,
+    transport:DIRECT_PUT_TRANSPORT,
+  };
+}
+
+// Legacy multipart helpers are kept temporarily so old browser tabs can finish
+// or abort an upload safely. New Studio uploads do not use multipart state.
 export async function createDirectMultipart(env,key,{contentType='application/octet-stream',cacheControl='public, max-age=3600',metadata={}}={}){
   requireConfig(env);
   const headers=new Headers({'Content-Type':contentType,'Cache-Control':cacheControl});
@@ -50,8 +67,8 @@ export async function presignDirectPart(env,key,uploadId,partNumber){
   url.searchParams.set('partNumber',String(partNumber));
   url.searchParams.set('uploadId',String(uploadId));
   url.searchParams.set('X-Amz-Expires',String(PRESIGN_TTL_SECONDS));
-  const signed=await client(env).sign(url.toString(),{method:'PUT',aws:{signQuery:true}});
-  return{url:signed.url,expiresIn:PRESIGN_TTL_SECONDS,transport:DIRECT_R2_TRANSPORT};
+  const signed=await client(env).sign(new Request(url.toString(),{method:'PUT'}),{aws:{signQuery:true}});
+  return{url:signed.url.toString(),expiresIn:PRESIGN_TTL_SECONDS,transport:DIRECT_R2_TRANSPORT};
 }
 
 export async function completeDirectMultipart(env,key,uploadId,parts){

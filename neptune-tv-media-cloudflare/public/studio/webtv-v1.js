@@ -42,12 +42,14 @@ function bind(){
   $('#closeLibrary').addEventListener('click',()=>$('#libraryDialog').close());
   $('#enabled').addEventListener('change',()=>{control.enabled=$('#enabled').checked;renderSummary();renderEncoder();});
   $('#fallbackTitle').addEventListener('input',()=>{control.fallback.title=$('#fallbackTitle').value;});
+  $('#youtubeLiveUrl').addEventListener('input',()=>{control.output={...(control.output||{}),watchUrl:$('#youtubeLiveUrl').value.trim()};});
 }
 
 function render(){
   $('#enabled').checked=control.enabled===true;
   $('#mode').value='loop';
   $('#fallbackTitle').value=control.fallback?.title||'';
+  $('#youtubeLiveUrl').value=control.output?.watchUrl||'';
   renderPlaylist();renderFallback();renderSummary();renderEncoder();
 }
 
@@ -181,6 +183,7 @@ async function save(){
   const button=$('#save');button.disabled=true;button.textContent='Enregistrement…';
   control.enabled=$('#enabled').checked;
   control.mode='loop';
+  control.output={...(control.output||{}),watchUrl:$('#youtubeLiveUrl').value.trim()};
   control.fallback={title:$('#fallbackTitle').value.trim(),mediaUrl:control.fallback?.mediaUrl||''};
   try{
     control=await api('/api/admin/webtv/state',{method:'PUT',body:JSON.stringify(control)});

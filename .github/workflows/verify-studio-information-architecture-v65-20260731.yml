@@ -9,6 +9,7 @@ on:
       - 'neptune-tv-media-cloudflare/src/entry-v36.js'
       - 'neptune-tv-media-cloudflare/public/studio/app.html'
       - 'neptune-tv-media-cloudflare/public/studio/studio-app-router-v104.js'
+      - 'neptune-tv-media-cloudflare/public/studio/media-catalog-loader-v104.js'
       - 'neptune-tv-media-cloudflare/public/studio/clients.html'
       - 'neptune-tv-media-cloudflare/public/studio/video-ai.html'
       - 'neptune-tv-media-cloudflare/public/studio/webtv.html'
@@ -16,6 +17,8 @@ on:
       - 'neptune-tv-media-cloudflare/public/studio/studio-information-architecture-v65.css'
       - 'neptune-tv-media-cloudflare/public/studio/studio-information-architecture-v65-1.js'
       - 'neptune-tv-media-cloudflare/scripts/verify-studio-information-architecture-v65.mjs'
+      - 'neptune-tv-media-cloudflare/scripts/verify-studio-unified.mjs'
+      - 'neptune-tv-media-cloudflare/scripts/verify-media-catalog-v98.mjs'
       - 'neptune-tv-media-cloudflare/tests/audit-studio-information-architecture-v65.mjs'
   push:
     branches: [main]
@@ -25,6 +28,7 @@ on:
       - 'neptune-tv-media-cloudflare/src/entry-v36.js'
       - 'neptune-tv-media-cloudflare/public/studio/app.html'
       - 'neptune-tv-media-cloudflare/public/studio/studio-app-router-v104.js'
+      - 'neptune-tv-media-cloudflare/public/studio/media-catalog-loader-v104.js'
       - 'neptune-tv-media-cloudflare/public/studio/clients.html'
       - 'neptune-tv-media-cloudflare/public/studio/video-ai.html'
       - 'neptune-tv-media-cloudflare/public/studio/webtv.html'
@@ -32,6 +36,8 @@ on:
       - 'neptune-tv-media-cloudflare/public/studio/studio-information-architecture-v65.css'
       - 'neptune-tv-media-cloudflare/public/studio/studio-information-architecture-v65-1.js'
       - 'neptune-tv-media-cloudflare/scripts/verify-studio-information-architecture-v65.mjs'
+      - 'neptune-tv-media-cloudflare/scripts/verify-studio-unified.mjs'
+      - 'neptune-tv-media-cloudflare/scripts/verify-media-catalog-v98.mjs'
       - 'neptune-tv-media-cloudflare/tests/audit-studio-information-architecture-v65.mjs'
   workflow_dispatch:
 
@@ -60,10 +66,12 @@ jobs:
         run: |
           node --check src/entry-v36.js
           node --check public/studio/studio-app-router-v104.js
+          node --check public/studio/media-catalog-loader-v104.js
           node --check public/studio/studio-information-architecture-v65-1.js
           node --check tests/audit-studio-information-architecture-v65.mjs
           node scripts/verify-studio-information-architecture-v65.mjs
           node scripts/verify-studio-unified.mjs
+          node scripts/verify-media-catalog-v98.mjs
 
       - name: Install Playwright
         run: |

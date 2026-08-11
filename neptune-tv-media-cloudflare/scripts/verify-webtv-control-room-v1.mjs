@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 const readRoot = (path) => readFile(new URL(`../../${path}`, import.meta.url), 'utf8');
-const [activeEntry, webtvEntry, control, encoder, html, ui, ia, rootRaw, localRaw, rootPackageRaw, localPackageRaw] = await Promise.all([
+const [activeEntry, webtvEntry, control, encoder, html, ui, ia, navCompat, rootRaw, localRaw, rootPackageRaw, localPackageRaw] = await Promise.all([
   read('src/entry-v34.js'),
   read('src/entry-v33.js'),
   read('src/webtv-control-v1.js'),
@@ -10,6 +10,7 @@ const [activeEntry, webtvEntry, control, encoder, html, ui, ia, rootRaw, localRa
   read('public/studio/webtv.html'),
   read('public/studio/webtv-v1.js'),
   read('public/studio/studio-information-architecture-v65-1.js'),
+  read('public/studio/webtv-nav-compat-v1.js'),
   readRoot('wrangler.jsonc'),
   read('wrangler.jsonc'),
   readRoot('package.json'),
@@ -50,13 +51,13 @@ for (const [name, pkg] of [['root', rootPackage], ['local', localPackage]]) {
 
 for (const marker of [
   "import { Container, getContainer } from '@cloudflare/containers'",
-  "YOUTUBE_RTMPS_URL",
-  "YOUTUBE_STREAM_KEY",
-  "getContainer(env.WEBTV_ENCODER, ENCODER_INSTANCE_NAME)",
+  'YOUTUBE_RTMPS_URL',
+  'YOUTUBE_STREAM_KEY',
+  'getContainer(env.WEBTV_ENCODER, ENCODER_INSTANCE_NAME)',
   "sleepAfter = '5m'",
   'async onActivityExpired()',
   'this.renewActivityTimeout()',
-  "await container.stop()",
+  'await container.stop()',
   "'/api/admin/webtv/state'",
   "'/api/admin/webtv/encoder'",
   "url.pathname = '/api/auth/status'",
@@ -71,19 +72,19 @@ for (const marker of ['ffmpeg', 'ffprobe', "'-f', 'flv'", 'rtmps://[youtube]', '
 }
 expect(!encoder.includes('VOTRE_CLE_YOUTUBE'), 'une clé YouTube factice ou dangereuse est présente dans le moteur');
 
-for (const marker of ['Diffusion', 'Web TV active', 'Ordre de passage', 'Programme de secours', 'Redémarrer l’encodeur', 'YouTube · RTMPS']) {
+for (const marker of ['Diffusion', 'Web TV active', 'Ordre de passage', 'Programme de secours', 'Redémarrer l’encodeur', 'YouTube · RTMPS', 'Mettre à jour l’antenne', 'programSyncNotice']) {
   expect(html.includes(marker), `interface Diffusion incomplète : ${marker}`);
 }
 expect(!html.includes('YOUTUBE_STREAM_KEY') && !html.includes('streamKey'), 'la clé de flux ne doit jamais être saisie ou exposée dans le HTML Studio');
-for (const marker of ['/api/auth/status', '/api/admin/state', '/api/admin/webtv/state', '/api/admin/webtv/encoder', "openLibrary('fallback')", 'data-enabled=', 'data-type=', "url.protocol!=='https:'"]) {
+for (const marker of ['/api/auth/status', '/api/admin/state', '/api/admin/webtv/state', '/api/admin/webtv/encoder', "openLibrary('fallback')", 'data-enabled=', 'data-type=', 'thumbnailMarkup(', 'data-on-air-badge', 'markDirty()', 'Appliquer à l’antenne', "url.protocol!=='https:'"]) {
   expect(ui.includes(marker), `commande Studio Web TV absente : ${marker}`);
 }
 expect(ia.includes("'/studio/webtv.html'"), 'la navigation Diffusion ne pointe pas vers la régie Web TV');
-expect(ia.includes("['webtv', 'Web TV']"), 'le sous-menu Diffusion ne contient pas Web TV');
 expect(ia.includes("cleanPath === '/studio/webtv'"), 'la régie n’utilise pas le shell Studio canonique');
+expect(navCompat.includes("querySelectorAll('.studio-context-nav-v65')") && navCompat.includes('.remove()'), 'les onglets Diffusion historiques ne sont pas neutralisés sur la régie Web TV');
 
 if (failures.length) {
   console.error(failures.map((failure) => `- ${failure}`).join('\n'));
   process.exit(1);
 }
-console.log('Web TV v1 préservée derrière entry-v34 : Studio Diffusion complet, authentification canonique, médias HTTPS sûrs, secrets serveur, Container FFmpeg singleton, RTMPS, watchdog minute, arrêt réel et reprise automatique.');
+console.log('Web TV v1 préservée derrière entry-v34 : régie unifiée, miniatures, programme en cours identifiable, application dédiée à l’antenne, authentification canonique, secrets serveur, Container FFmpeg singleton, RTMPS et watchdog minute.');

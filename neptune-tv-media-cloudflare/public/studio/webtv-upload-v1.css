@@ -1,0 +1,32 @@
+/* Neptune WebTV uploader v1 */
+.webtv-program-actions{display:flex;gap:9px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.button-import-video{border-color:#cdd8ff;background:#f5f7ff;color:#17346f}
+.button-import-video span{font-size:16px;margin-right:4px}
+.webtv-upload-dialog{width:min(720px,calc(100vw - 28px));border:0;border-radius:22px;padding:0;box-shadow:0 28px 90px rgba(4,19,51,.28)}
+.webtv-upload-dialog::backdrop{background:rgba(3,13,35,.58);backdrop-filter:blur(6px)}
+.webtv-upload-card{padding:24px}
+.webtv-upload-card>header{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}
+.webtv-upload-card h2{margin:3px 0 5px;font-size:23px;color:#111b34}
+.webtv-upload-card header p:last-child{margin:0;max-width:560px;color:#66728a;font-size:12px;line-height:1.5}
+.webtv-upload-drop{margin-top:20px;min-height:190px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:26px;border:1.5px dashed #b9c7df;border-radius:18px;background:#f8faff;color:#162746;cursor:pointer;transition:.18s ease}
+.webtv-upload-drop:hover,.webtv-upload-drop.is-dragover{border-color:#5e69e8;background:#f1f2ff;box-shadow:inset 0 0 0 1px rgba(94,105,232,.08)}
+.webtv-upload-drop.is-disabled{opacity:.5;pointer-events:none}
+.webtv-upload-icon{width:52px;height:52px;display:grid;place-items:center;margin-bottom:12px;border-radius:16px;background:linear-gradient(135deg,#173b82,#6656eb);color:#fff;font-size:24px;font-weight:800;box-shadow:0 10px 24px rgba(58,73,178,.18)}
+.webtv-upload-drop strong{font-size:16px}
+.webtv-upload-drop small{margin-top:5px;color:#748198;line-height:1.4}
+.webtv-upload-selection{margin-top:15px;padding:14px;border:1px solid #e0e6f0;border-radius:15px;background:#fff}
+.webtv-upload-fileline{display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:11px;align-items:center}
+.webtv-upload-fileicon{width:42px;height:42px;display:grid;place-items:center;border-radius:12px;background:#07183e;color:#fff;font-size:13px}
+.webtv-upload-fileline strong,.webtv-upload-fileline small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.webtv-upload-fileline small{margin-top:3px;color:#748198;font-size:11px}
+.webtv-upload-selection label{display:grid;gap:6px;margin-top:13px}
+.webtv-upload-selection label>span{font-size:11px;font-weight:800;color:#5f6c83}
+.webtv-upload-selection input{width:100%;padding:10px 11px;border:1px solid #dce4f1;border-radius:11px;background:#fff;color:#15233f}
+.webtv-upload-progress{margin-top:15px;padding:14px;border:1px solid #dfe7f3;border-radius:15px;background:#f8fafc}
+.webtv-upload-progress>div{display:flex;align-items:center;justify-content:space-between;gap:14px;font-size:12px}
+.webtv-upload-progress>div strong{color:#15233f}.webtv-upload-progress>div span{font-weight:850;color:#4359c3}
+.webtv-upload-progress progress{width:100%;height:9px;margin:10px 0 5px;overflow:hidden;border:0;border-radius:999px;accent-color:#5865e8}
+.webtv-upload-progress small{color:#748198;font-size:11px}
+.webtv-upload-error{margin-top:14px;padding:11px 13px;border:1px solid #fac3cc;border-radius:12px;background:#fff3f5;color:#a32640;font-size:12px;font-weight:700}
+.webtv-upload-card>footer{display:flex;justify-content:flex-end;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid #edf1f6}
+@media(max-width:650px){.webtv-program-actions{width:100%;justify-content:stretch}.webtv-program-actions .button{flex:1}.webtv-upload-card{padding:18px}.webtv-upload-drop{min-height:150px;padding:20px}.webtv-upload-fileline{grid-template-columns:38px minmax(0,1fr)}.webtv-upload-fileline>.button{grid-column:1/-1}.webtv-upload-card>footer{display:grid;grid-template-columns:1fr}.webtv-upload-card>footer .button-primary{grid-row:1}.webtv-upload-card>footer .button{width:100%}}

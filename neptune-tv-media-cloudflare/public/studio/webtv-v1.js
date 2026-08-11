@@ -6,6 +6,18 @@ let csrfToken=sessionStorage.getItem('neptune_csrf')||'';
 let runtimePoll=null;
 let libraryMode='playlist';
 let dirty=false;
+let importedMedia=[];
+
+window.NeptuneWebTvProgram={
+  setImportedMedia(items){importedMedia=Array.isArray(items)?items.filter(item=>item&&item.mediaUrl):[];},
+  addImportedMedia(item){
+    if(!item?.mediaUrl||!control)return false;
+    importedMedia=[item,...importedMedia.filter(existing=>existing.mediaUrl!==item.mediaUrl)];
+    control.playlist.push({...item,id:playlistInstanceId(item.id),type:item.type||'episode',enabled:true});
+    markDirty();renderPlaylist();renderSummary();return true;
+  },
+  toast(message,error=false){toast(message,error);},
+};
 
 init();
 
@@ -164,7 +176,7 @@ function openLibrary(mode='playlist'){
     ${thumbnailMarkup(item,'library')}
     <div class="library-copy"><b>${escapeHtml(item.title)} <span class="type-tag">${escapeHtml(typeLabel(item.type))}</span></b><small>${duration(item.durationSeconds)} · ${escapeHtml(item.mediaUrl)}</small></div>
     <button class="button" type="button" data-add="${index}">${mode==='fallback'?'Choisir':'Ajouter'}</button>
-  </article>`).join(''):'<div class="empty"><strong>Aucun média exploitable trouvé.</strong><span>Ajoutez une URL vidéo HTTPS à une émission ou à une publicité dans Diffusion.</span></div>';
+  </article>`).join(''):'<div class="empty"><strong>Aucun média exploitable trouvé.</strong><span>Importez une vidéo ou ajoutez une émission depuis Neptune Media.</span></div>';
   hydrateThumbnails($('#library'));
   $$('[data-add]').forEach(button=>button.addEventListener('click',()=>{
     const item=usable[Number(button.dataset.add)];if(!item)return;
@@ -196,6 +208,7 @@ function libraryItems(){
   };
   push(studioState?.episodes,'episode');
   push(studioState?.ads,'ad');
+  push(importedMedia,'episode');
   const seen=new Set();
   return items.filter(item=>{const key=`${item.id}|${item.mediaUrl}`;if(seen.has(key))return false;seen.add(key);return true;});
 }
@@ -218,7 +231,7 @@ function thumbnailUrlForEntry(entry){
 
 function thumbnailFor(item){
   if(item?.thumbnailUrl)return safePreviewUrl(item.thumbnailUrl);
-  const entries=[...(studioState?.episodes||[]),...(studioState?.ads||[])];
+  const entries=[...(studioState?.episodes||[]),...(studioState?.ads||[]),...importedMedia];
   const itemUrl=safePreviewUrl(item?.mediaUrl);
   const source=entries.find(entry=>String(entry?.id||'')===String(item?.id||'')||(itemUrl&&safePreviewUrl(mediaUrlFor(entry))===itemUrl));
   return thumbnailUrlForEntry(source);

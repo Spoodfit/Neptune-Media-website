@@ -7,6 +7,7 @@ const files = {
   clients: await read('public/studio/clients.html'),
   production: await read('public/studio/video-ai.html'),
   advanced: await read('public/studio/advanced.html'),
+  webtv: await read('public/studio/webtv.html'),
 };
 
 const failures = [];
@@ -18,8 +19,11 @@ check(files.entry, 'injectStudioInformationArchitecture', 'la dernière couche S
 check(files.entry, 'retiredSidebarCssPattern', 'la feuille de menu v64 n’est pas retirée du HTML final');
 check(files.entry, 'retiredSidebarJsPattern', 'le runtime de menu v64 n’est pas retiré du HTML final');
 check(files.runtime, 'primaryNavigation', 'la navigation principale canonique n’est pas construite');
+check(files.runtime, "link('diffusion', '/studio/webtv.html'", 'Diffusion ne mène pas à la régie Web TV');
+check(files.runtime, "['webtv', 'Web TV']", 'le sous-menu Diffusion ne contient pas Web TV');
 check(files.runtime, "['episodes', 'Programme']", 'le sous-menu Diffusion ne contient pas Programme');
 check(files.runtime, "['finances', 'Finances']", 'le sous-menu Réglages ne contient pas Finances');
+check(files.runtime, "cleanPath === '/studio/webtv'", 'la page Web TV n’utilise pas le shell Studio canonique');
 check(files.runtime, "location.replace('/studio/clients')", 'l’ancien tableau de bord avancé n’est pas renvoyé vers Parcours clients');
 check(files.runtime, "location.replace('/studio/video-ai.html')", 'l’ancien Copilot autonome n’est pas renvoyé vers Production vidéo');
 forbid(files.runtime, 'observeLegacyInterference', 'l’ancien observateur récursif instable subsiste dans le runtime actif');
@@ -27,6 +31,8 @@ check(files.styles, '--studio-v65-sidebar: 236px', 'la largeur commune du shell 
 check(files.styles, '.studio-context-nav-v65', 'les onglets contextuels Diffusion/Réglages ne sont pas stylés');
 check(files.styles, '.workflow-stage-tabs', 'la lisibilité du parcours client n’est pas renforcée');
 check(files.styles, '.video-ai-grid', 'la lisibilité de la production vidéo n’est pas renforcée');
+check(files.webtv, '<h1>Diffusion</h1>', 'la page Web TV n’est pas présentée comme l’onglet Diffusion');
+check(files.webtv, 'Web TV active', 'la commande d’activation antenne est absente');
 
 for (const label of requiredLabels) {
   check(files.clients, label, `la navigation clients ne contient pas « ${label} »`);
@@ -47,14 +53,8 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Studio information architecture v65.1 verified through cloud entry v16: four primary destinations, retired v64 shell removed, contextual tabs and shared readability layer.');
+console.log('Studio IA v65.2 validée : quatre destinations, Diffusion ouvre la régie Web TV et conserve Programme, Formats, Publicités et Audience en contexte.');
 
-async function read(path) {
-  return readFile(new URL(`../${path}`, import.meta.url), 'utf8');
-}
-function check(content, needle, message) {
-  if (!content.includes(needle)) failures.push(message);
-}
-function forbid(content, needle, message) {
-  if (content.includes(needle)) failures.push(message);
-}
+async function read(path) { return readFile(new URL(`../${path}`, import.meta.url), 'utf8'); }
+function check(content, needle, message) { if (!content.includes(needle)) failures.push(message); }
+function forbid(content, needle, message) { if (content.includes(needle)) failures.push(message); }

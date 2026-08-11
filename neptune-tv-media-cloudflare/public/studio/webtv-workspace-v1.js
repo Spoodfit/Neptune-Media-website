@@ -24,7 +24,7 @@
     tabs.innerHTML=[
       ['antenna','Antenne','Direct et état'],
       ['program','Programme','Grille de diffusion'],
-      ['settings','Réglages','YouTube et sécurité'],
+      ['settings','Configuration','YouTube et sécurité'],
     ].map(([id,label,desc])=>`<button type="button" role="tab" data-webtv-section-button="${id}"><span>${label}</span><small>${desc}</small></button>`).join('');
     topbar.after(tabs);
 
@@ -45,7 +45,7 @@
     const programSection=makeSection('program','Programme','Préparez la suite, repérez le contenu actuellement diffusé puis appliquez les changements à l’antenne.');
     programSection.body.append(program);
 
-    const settings=makeSection('settings','Réglages','Les réglages sensibles sont séparés du programme pour éviter les erreurs pendant un direct.');
+    const settings=makeSection('settings','Configuration','Les paramètres sensibles sont séparés du programme pour éviter les erreurs pendant un direct.');
     sideStack.classList.add('webtv-settings-grid');
     settings.body.append(sideStack);
 
@@ -83,6 +83,21 @@
         activate(next.dataset.webtvSectionButton,{focus:true});
       });
     });
+
+    const syncTabStates=()=>{
+      const antennaButton=tabs.querySelector('[data-webtv-section-button="antenna"]');
+      const programButton=tabs.querySelector('[data-webtv-section-button="program"]');
+      const liveText=String(document.getElementById('liveLabel')?.textContent||'').toUpperCase();
+      const syncText=String(document.getElementById('syncState')?.textContent||'').toLowerCase();
+      antennaButton?.classList.toggle('has-live',liveText.includes('DIRECT'));
+      programButton?.classList.toggle('needs-apply',syncText.includes('non appliqu'));
+    };
+    syncTabStates();
+    const observer=new MutationObserver(syncTabStates);
+    const liveLabel=document.getElementById('liveLabel');
+    const syncState=document.getElementById('syncState');
+    if(liveLabel)observer.observe(liveLabel,{childList:true,subtree:true,characterData:true});
+    if(syncState)observer.observe(syncState,{childList:true,subtree:true,characterData:true});
 
     let initial=location.hash.replace('#','').trim();
     if(!['antenna','program','settings'].includes(initial)){

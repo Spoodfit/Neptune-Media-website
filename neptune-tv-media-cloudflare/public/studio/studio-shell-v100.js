@@ -8,7 +8,6 @@ const context=document.getElementById('studioShellContext');
 const menu=document.getElementById('studioShellMenu');
 const backdrop=document.getElementById('studioShellBackdrop');
 let auth=null;
-let currentRoute='';
 
 document.body.dataset.studioShell=RELEASE;
 
@@ -77,7 +76,6 @@ function normalizeRoute(raw){
   if(ROUTES[value])return allowed(value)?value:fallbackFor(ROUTES[value].group);
   if(LEGACY_HASH[value]){const mapped=LEGACY_HASH[value];return allowed(mapped)?mapped:fallbackFor(ROUTES[mapped].group);}
   if(value==='settings')return allowed('settings/catalogue')?'settings/catalogue':'settings/general';
-  if(value==='diffusion')return'diffusion';
   return'clients';
 }
 
@@ -101,7 +99,6 @@ function openRoute(route,options={}){
   if(!options.fromHash&&location.hash!==expected){
     if(options.replace)history.replaceState(null,'',expected);else history.pushState(null,'',expected);
   }else if(options.replace&&location.hash!==expected)history.replaceState(null,'',expected);
-  currentRoute=next;
   setPrimary(def.group);
   renderContext(def.group,next);
   document.getElementById('studioShellMobileTitle').textContent=def.label;
@@ -112,7 +109,7 @@ function openRoute(route,options={}){
 
 function setPrimary(group){
   document.querySelectorAll('.ns100-primary [data-shell-route]').forEach(link=>{
-    const active=link.dataset.shellRoute===group;
+    const active=link.dataset.shellRoute.split('/')[0]===group;
     link.classList.toggle('active',active);
     if(active)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current');
   });
@@ -147,10 +144,10 @@ function onFrameLoad(){
   try{
     const doc=frame.contentDocument;if(!doc)return;
     doc.documentElement.dataset.studioEmbedded=RELEASE;
+    const existing=doc.querySelector('style[data-studio-shell-embed]');existing?.remove();
     const style=doc.createElement('style');style.dataset.studioShellEmbed=RELEASE;style.textContent=embeddedCss();doc.head.append(style);
     doc.addEventListener('click',interceptChildNavigation,true);
-    const nested=doc.querySelector('.neptune-studio-menu-toggle,#neptuneStudioMenuToggle,.studio-menu-backdrop-v65');
-    nested?.remove();
+    doc.querySelectorAll('.neptune-studio-menu-toggle,#neptuneStudioMenuToggle,.studio-menu-backdrop-v65,.neptune-studio-menu-backdrop-v65').forEach(node=>node.remove());
   }catch(error){console.warn('[Neptune Studio] workspace isolation unavailable',error);}
 }
 

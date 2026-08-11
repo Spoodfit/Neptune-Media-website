@@ -117,6 +117,7 @@ function setCspDirective(value,name,sources){
 async function injectStudioNavigation(response){
   let body=await response.text();
   body=body.replace(/<script\b[^>]*src=["'][^"']*studio-information-architecture-v65(?:-1)?\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu,'');
+  body=body.replace(/<script\b[^>]*src=["'][^"']*webtv-nav-compat-v1\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu,'');
   body=body.replace('</body>',`<script type="module" src="${STUDIO_NAV_JS}"></script></body>`);
   const headers=new Headers(response.headers);headers.delete('Content-Length');headers.set('Cache-Control','private, no-store, max-age=0');
   return new Response(body,{status:response.status,statusText:response.statusText,headers});

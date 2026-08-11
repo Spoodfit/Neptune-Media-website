@@ -47,7 +47,7 @@ const viewports = [
   { id: 'desktop', width: 1440, height: 900 },
   { id: 'mobile', width: 390, height: 844 },
 ];
-const expectedPrimary = ['Parcours clients', 'Production vidéo', 'Diffusion', 'Réglages'];
+const expectedPrimary = ['Parcours clients', 'Diffusion', 'Réglages'];
 
 const browser = await chromium.launch({ headless: true });
 const reports = [];

@@ -31,7 +31,7 @@
 
       <main class="main">
         <section class="hero">
-          <div><p class="eyebrow">RÉGIE WEB TV</p><h2>Programmez l’antenne.<br><span>Le moteur diffuse en continu.</span></h2><p>Ordre des émissions, jingles, publicités, mode boucle et état de l’encodeur YouTube depuis un seul écran.</p></div>
+          <div><p class="eyebrow">RÉGIE WEB TV</p><h2>Programmez l’antenne.<br><span>Le moteur diffuse en continu.</span></h2><p>Ordre des émissions, jingles, publicités, boucle continue et état de l’encodeur YouTube depuis un seul écran.</p></div>
           <div class="live-card" id="liveCard"><div class="live-head"><span id="liveDot" class="live-dot"></span><b id="liveLabel">Hors ligne</b></div><strong id="encoderStatus">Encodeur non connecté</strong><small id="heartbeat">Aucun heartbeat reçu</small></div>
         </section>
 
@@ -53,7 +53,7 @@
             <section class="panel settings-card">
               <p class="eyebrow">DIFFUSION</p><h3>Comportement antenne</h3>
               <label class="switch-row"><span><b>Web TV active</b><small>Le moteur diffuse tant que cette option reste active.</small></span><input id="enabled" type="checkbox"><i></i></label>
-              <label><span>Mode</span><select id="mode"><option value="loop">Boucle continue</option><option value="schedule">Planning horaire</option></select></label>
+              <label><span>Mode</span><select id="mode"><option value="loop">Boucle continue</option></select></label>
               <div class="readonly-row"><span><b>Destination</b><small>YouTube Live</small></span><strong>RTMPS</strong></div>
             </section>
 
@@ -86,6 +86,6 @@
   </dialog>
 
   <div id="toast" class="toast" hidden></div>
-  <script type="module" src="/studio/webtv-v1.js?v=1"></script>
+  <script type="module" src="/studio/webtv-v1.js?v=2"></script>
 </body>
 </html>

@@ -205,9 +205,16 @@ await page.screenshot({ path: path.join(outputDir, 'supplier-payment-desktop-144
 await paymentMount.locator('[data-v95-manage-suppliers]').click();
 await page.waitForSelector('#mediaConfigurationV95[open]');
 await page.waitForSelector('[data-v95-supplier-form="recbox"]');
-await page.waitForFunction(() => document.querySelector('[data-v95-supplier-summary]')?.textContent?.includes('600'), null, { timeout: 3000 });
-const supplierConfigText = await page.locator('#mediaConfigurationV95').innerText();
-if (!supplierConfigText.includes('RECBOX') || !supplierConfigText.includes('600')) errors.push('Configuration: RECBOX ou son coût HT est absent.');
+const supplierConfiguration = await page.locator('[data-v95-supplier-form="recbox"]').evaluate((form) => ({
+  text: form.innerText,
+  net: form.querySelector('[name="netEuros"]')?.value || '',
+  vat: form.querySelector('[name="vatRate"]')?.value || '',
+  gross: [...form.querySelectorAll('input')].find((input) => input.readOnly)?.value || '',
+}));
+report.supplierConfiguration = supplierConfiguration;
+if (!supplierConfiguration.text.includes('RECBOX') || Number(supplierConfiguration.net) !== 600 || Number(supplierConfiguration.vat) !== 20 || !supplierConfiguration.gross.includes('720')) {
+  errors.push(`Configuration: valeurs RECBOX incorrectes ${JSON.stringify(supplierConfiguration)}.`);
+}
 await page.locator('[data-v95-config-tab="formats"]').click();
 const formatConfigText = await page.locator('#mediaConfigurationV95').innerText();
 if (!formatConfigText.includes('Hors Norme') || !formatConfigText.includes('Libre')) errors.push('Configuration: formats actifs absents.');

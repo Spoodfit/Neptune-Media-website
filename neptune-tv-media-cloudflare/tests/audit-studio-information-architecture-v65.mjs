@@ -40,7 +40,7 @@ const webTvState = {
 
 const screens = [
   { id: 'clients', path: '/studio/clients', active: 'Parcours clients', context: [] },
-  { id: 'webtv', path: '/studio/webtv.html', active: 'Diffusion', context: ['Web TV', 'Programme', 'Formats', 'Publicités', 'Audience'] },
+  { id: 'webtv', path: '/studio/webtv.html', active: 'Diffusion', context: [] },
   { id: 'programme', path: '/studio/advanced.html#episodes', active: 'Diffusion', context: ['Web TV', 'Programme', 'Formats', 'Publicités', 'Audience'] },
 ];
 const viewports = [
@@ -63,7 +63,11 @@ try {
       await page.goto(`${baseURL}${screen.path}`, { waitUntil: 'domcontentloaded', timeout: 30000 });
       await page.waitForFunction(() => document.body.classList.contains('studio-information-architecture-v65'));
       if (screen.id === 'programme') await page.waitForSelector('#app:not([hidden])');
-      if (screen.id === 'webtv') await page.waitForSelector('#save');
+      if (screen.id === 'webtv') {
+        await page.waitForSelector('#save');
+        await page.waitForSelector('[data-webtv-section-button="antenna"]');
+        await page.waitForSelector('#importVideo');
+      }
       await page.waitForTimeout(700);
 
       const metrics = await page.evaluate(() => {
@@ -133,12 +137,19 @@ try {
       }
 
       if (screen.id === 'webtv') {
-        for (const selector of ['#enabled', '#addFromLibrary', '#chooseFallback', '#restartEncoder', '#save']) {
-          assert(await page.locator(selector).isVisible(), `webtv/${viewport.id}: commande ${selector} absente`);
-        }
+        const sectionLabels = await page.locator('[data-webtv-section-button]').allTextContents();
+        assert(sectionLabels.length === 3 && sectionLabels.some((label) => label.includes('Antenne')) && sectionLabels.some((label) => label.includes('Programme')) && sectionLabels.some((label) => label.includes('Configuration')), `webtv/${viewport.id}: sections de régie incorrectes ${JSON.stringify(sectionLabels)}`);
+        assert(await page.locator('#save').isVisible(), `webtv/${viewport.id}: action globale antenne absente`);
+        await page.locator('[data-webtv-section-button="program"]').click();
+        for (const selector of ['#addFromLibrary', '#importVideo']) assert(await page.locator(selector).isVisible(), `webtv/${viewport.id}: commande Programme ${selector} absente`);
         await page.locator('#addFromLibrary').click();
         assert(await page.locator('#libraryDialog').isVisible(), `webtv/${viewport.id}: catalogue d’antenne inaccessible`);
         await page.locator('#closeLibrary').click();
+        await page.locator('#importVideo').click();
+        assert(await page.locator('#webtvUploadDialog').isVisible(), `webtv/${viewport.id}: import vidéo inaccessible`);
+        await page.locator('[data-upload-close]').click();
+        await page.locator('[data-webtv-section-button="settings"]').click();
+        for (const selector of ['#enabled', '#chooseFallback', '#restartEncoder']) assert(await page.locator(selector).isVisible(), `webtv/${viewport.id}: commande Configuration ${selector} absente`);
       }
 
       await context.close();
@@ -149,7 +160,7 @@ try {
 }
 
 await writeFile(path.join(outputDir, 'report.json'), JSON.stringify({ ok: true, reports }, null, 2));
-console.log('Studio visual audit passed: Diffusion opens Web TV, control room is usable on desktop/mobile and contextual tabs remain available.');
+console.log('Studio visual audit passed: Diffusion uses Antenne / Programme / Configuration, includes WebTV video import and remains usable on desktop/mobile.');
 
 async function routeApi(route) {
   const url = new URL(route.request().url());
@@ -157,6 +168,7 @@ async function routeApi(route) {
   if (url.pathname === '/api/auth/status') body = { authenticated: true, csrfToken: 'test-csrf', user: adminState.user };
   else if (url.pathname === '/api/v1/media/studio/state') body = adminState;
   else if (url.pathname === '/api/admin/webtv/state') body = webTvState;
+  else if (url.pathname === '/api/admin/webtv/media') body = { ok: true, items: [] };
   else if (url.pathname === '/api/admin/state') body = adminState;
   else if (url.pathname === '/api/admin/clients') body = portal;
   else if (url.pathname === '/api/admin/control-room') body = { actions: [], summary: {} };

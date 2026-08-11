@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 const read=(path)=>readFile(new URL(`../${path}`,import.meta.url),'utf8');
 const readRoot=(path)=>readFile(new URL(`../../${path}`,import.meta.url),'utf8');
 const [activeEntry,appEntry,webtvEntry,control,media,encoder,html,ui,uploadUi,ia,navCompat,rootRaw,localRaw,rootPackageRaw,localPackageRaw]=await Promise.all([
-  read('src/entry-v35.js'),read('src/entry-v34.js'),read('src/entry-v33.js'),read('src/webtv-control-v1.js'),read('src/webtv-media-v1.js'),read('containers/webtv/encoder.mjs'),read('public/studio/webtv.html'),read('public/studio/webtv-v1.js'),read('public/studio/webtv-upload-v1.js'),read('public/studio/studio-information-architecture-v65-1.js'),read('public/studio/webtv-nav-compat-v1.js'),readRoot('wrangler.jsonc'),read('wrangler.jsonc'),readRoot('package.json'),read('package.json'),
+  read('src/entry-v35.js'),read('src/entry-v34.js'),read('src/entry-v33.js'),read('src/webtv-control-v1.js'),read('src/webtv-media-v1.js'),read('containers/webtv/encoder.mjs'),read('public/studio/webtv.html'),read('public/studio/webtv-v1.js'),read('public/studio/webtv-upload-v2.js'),read('public/studio/studio-information-architecture-v65-1.js'),read('public/studio/webtv-nav-compat-v1.js'),readRoot('wrangler.jsonc'),read('wrangler.jsonc'),readRoot('package.json'),read('package.json'),
 ]);
 const root=JSON.parse(rootRaw),local=JSON.parse(localRaw),rootPackage=JSON.parse(rootPackageRaw),localPackage=JSON.parse(localPackageRaw),failures=[];
 const expect=(condition,message)=>{if(!condition)failures.push(message);};
@@ -35,13 +35,14 @@ expect(media.includes("sameOrigin(request)"),'les mutations de la médiathèque 
 for(const marker of ['ffmpeg','ffprobe',"'-f', 'flv'",'rtmps://[youtube]','streamTarget(cfg)'])expect(encoder.includes(marker),`moteur FFmpeg incomplet : ${marker}`);
 expect(!encoder.includes('VOTRE_CLE_YOUTUBE'),'une clé YouTube factice ou dangereuse est présente');
 
-for(const marker of ['Diffusion','Web TV active','Ordre de passage','Programme de secours','Redémarrer l’encodeur','YouTube · RTMPS','webtv-upload-v1.js','webtv-upload-v1.css'])expect(html.includes(marker),`interface Diffusion incomplète : ${marker}`);
+for(const marker of ['Diffusion','Web TV active','Ordre de passage','Programme de secours','Redémarrer l’encodeur','YouTube · RTMPS','webtv-upload-v2.js','webtv-upload-v1.css'])expect(html.includes(marker),`interface Diffusion incomplète : ${marker}`);
 expect(!html.includes('YOUTUBE_STREAM_KEY')&&!html.includes('streamKey'),'la clé de flux ne doit jamais être exposée dans le HTML Studio');
 for(const marker of ['window.NeptuneWebTvProgram','setImportedMedia','addImportedMedia','push(importedMedia','thumbnailMarkup(','markDirty()'])expect(ui.includes(marker),`pont programme/médiathèque absent : ${marker}`);
-for(const marker of ['Importer une vidéo','Importer et ajouter au programme','data-upload-drop',`${'/api/admin/webtv/media'}`,'chunkSize','Promise.all','apiRaw','refreshImportedLibrary'])expect(uploadUi.includes(marker),`importeur Studio incomplet : ${marker}`);
-expect(uploadUi.includes('Math.min(3,total)'),'l’upload multipart doit rester borné à trois blocs concurrents');
+for(const marker of ['Importer une vidéo','Importer et ajouter au programme','data-upload-drop',`${'/api/admin/webtv/media'}`,'chunkSize','apiRaw','refreshImportedLibrary','PART_GAP_MS','await delay(PART_GAP_MS'])expect(uploadUi.includes(marker),`importeur Studio incomplet : ${marker}`);
+expect(!uploadUi.includes('Math.min(3,total)'),'l’upload R2 ne doit plus lancer trois écritures concurrentes vers la même clé');
+expect(uploadUi.includes('for(let index=0;index<total;index+=1)'),'les parts R2 doivent être envoyées séquentiellement');
 expect(ia.includes("'/studio/webtv.html'"),'la navigation Diffusion ne pointe pas vers la régie Web TV');
 expect(navCompat.includes("querySelectorAll('.studio-context-nav-v65')")&&navCompat.includes('.remove()'),'les onglets Diffusion historiques ne sont pas neutralisés');
 
 if(failures.length){console.error(failures.map(failure=>`- ${failure}`).join('\n'));process.exit(1);}
-console.log('WebTV validée derrière entry-v35 : régie compacte, import vidéo multipart vers R2, bibliothèque persistante, lecture Range, programme modifiable puis application explicite à l’antenne, Container FFmpeg et RTMPS préservés.');
+console.log('WebTV validée derrière entry-v35 : régie compacte, import vidéo multipart R2 sérialisé et temporisé, bibliothèque persistante, lecture Range, programme modifiable puis application explicite à l’antenne, Container FFmpeg et RTMPS préservés.');

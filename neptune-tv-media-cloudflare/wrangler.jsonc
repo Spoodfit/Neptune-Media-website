@@ -1,40 +1,23 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "neptune-media-webtv",
-  "main": "src/entry-v33.js",
+  "main": "src/entry-v34.js",
   "compatibility_date": "2026-07-30",
   "workers_dev": true,
   "keep_vars": true,
   "routes": [
-    {
-      "pattern": "tv.neptunebusiness.com",
-      "custom_domain": true
-    }
+    { "pattern": "tv.neptunebusiness.com", "custom_domain": true },
+    { "pattern": "media.neptunebusiness.com", "custom_domain": true }
   ],
-  "triggers": {
-    "crons": ["*/5 * * * *", "* * * * *"]
-  },
+  "triggers": { "crons": ["*/5 * * * *", "* * * * *"] },
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
     "run_worker_first": [
-      "/",
-      "/studio/*",
-      "/espace-client/*",
-      "/confirmation-studio/*",
-      "/api/*",
-      "/media/*",
-      "/direct/*",
-      "/emissions/*",
-      "/programmes/*",
-      "/mentions-legales/*",
-      "/confidentialite/*",
-      "/contact/*",
-      "/robots.txt",
-      "/sitemap.xml",
-      "/video-sitemap.xml",
-      "/llms.txt"
+      "/", "/reserver", "/reserver/*", "/studio/*", "/espace-client/*", "/confirmation-studio/*", "/api/*",
+      "/media/*", "/direct/*", "/emissions/*", "/programmes/*", "/mentions-legales/*", "/confidentialite/*", "/contact/*",
+      "/robots.txt", "/sitemap.xml", "/video-sitemap.xml", "/llms.txt"
     ]
   },
   "containers": [
@@ -59,12 +42,10 @@
     { "tag": "v5", "deleted_classes": ["VideoProcessorV2"] },
     { "tag": "v6", "new_sqlite_classes": ["WebTvEncoder"] }
   ],
-  "r2_buckets": [
-    { "binding": "MEDIA", "bucket_name": "neptune-media-assets" }
-  ],
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "neptune-media-assets" }],
   "ai": { "binding": "AI" },
   "vars": {
-    "BOOKING_URL": "https://media.neptunebusiness.com",
+    "BOOKING_URL": "https://media.neptunebusiness.com/reserver",
     "PREPARATION_BOOKING_URL": "https://calendar.app.google/X9q1T5JT9ngMfZY67",
     "PUBLIC_ORIGIN": "https://tv.neptunebusiness.com",
     "AI_MODEL": "@cf/openai/gpt-oss-120b",

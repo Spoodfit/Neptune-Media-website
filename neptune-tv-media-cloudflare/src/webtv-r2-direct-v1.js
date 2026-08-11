@@ -6,7 +6,7 @@ const PRESIGN_TTL_SECONDS=30*60;
 const S3_RETRIES=3;
 
 export function directR2Configured(env){
-  return Boolean(clean(env?.R2_ACCOUNT_ID,80)&&clean(env?.R2_ACCESS_KEY_ID,200)&&clean(env?.R2_SECRET_ACCESS_KEY,300));
+  return Boolean(endpoint(env)&&clean(env?.R2_ACCESS_KEY_ID,200)&&clean(env?.R2_SECRET_ACCESS_KEY,300));
 }
 
 export async function createDirectMultipart(env,key,{contentType='application/octet-stream',cacheControl='public, max-age=3600',metadata={}}={}){
@@ -69,13 +69,21 @@ function client(env){
   });
 }
 
-function objectUrl(env,key){
-  const accountId=clean(env.R2_ACCOUNT_ID,80);
-  const encodedKey=String(key||'').split('/').map(segment=>encodeURIComponent(segment)).join('/');
-  return`https://${accountId}.r2.cloudflarestorage.com/${DIRECT_R2_BUCKET}/${encodedKey}`;
+function endpoint(env){
+  const explicit=clean(env?.R2_S3_ENDPOINT,300).replace(/\/+$/u,'');
+  if(explicit){
+    try{const url=new URL(explicit);if(url.protocol==='https:'&&/\.r2\.cloudflarestorage\.com$/iu.test(url.hostname))return url.origin;}catch{}
+  }
+  const accountId=clean(env?.R2_ACCOUNT_ID,80);
+  return accountId?`https://${accountId}.r2.cloudflarestorage.com`:'';
 }
 
-function requireConfig(env){if(!directR2Configured(env))throw providerError('direct_r2_not_configured',503,'R2 direct credentials missing');}
+function objectUrl(env,key){
+  const encodedKey=String(key||'').split('/').map(segment=>encodeURIComponent(segment)).join('/');
+  return`${endpoint(env)}/${DIRECT_R2_BUCKET}/${encodedKey}`;
+}
+
+function requireConfig(env){if(!directR2Configured(env))throw providerError('direct_r2_not_configured',503,'R2 direct endpoint or credentials missing');}
 function xmlTag(xml,name){const match=String(xml||'').match(new RegExp(`<${name}>([\\s\\S]*?)<\\/${name}>`,'iu'));return match?decodeXml(match[1]).trim():'';}
 function encodeMeta(value){return encodeURIComponent(String(value??'').slice(0,900));}
 export function decodeDirectMeta(value){try{return decodeURIComponent(String(value??''));}catch{return String(value??'');}}

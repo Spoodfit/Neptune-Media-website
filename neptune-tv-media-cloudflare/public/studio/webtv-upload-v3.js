@@ -170,11 +170,19 @@ function titleFromFilename(name){return String(name||'Vidéo').replace(/\.[^.]+$
 function formatBytes(bytes){const units=['o','Ko','Mo','Go','To'];let n=Number(bytes||0),i=0;while(n>=1024&&i<units.length-1){n/=1024;i++;}return`${n>=10||i===0?n.toFixed(0):n.toFixed(1)} ${units[i]}`;}
 function formatDuration(seconds){const s=Math.round(Number(seconds||0));const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),r=s%60;return h?`${h} h ${String(m).padStart(2,'0')}:${String(r).padStart(2,'0')}`:`${m}:${String(r).padStart(2,'0')}`;}
 function videoDuration(file){return new Promise(resolve=>{const video=document.createElement('video');const url=URL.createObjectURL(file);let done=false;const finish=value=>{if(done)return;done=true;URL.revokeObjectURL(url);resolve(Number.isFinite(value)?Math.round(value):0);};video.preload='metadata';video.onloadedmetadata=()=>finish(video.duration);video.onerror=()=>finish(0);video.src=url;setTimeout(()=>finish(0),6000);});}
+function configDiagnostics(data){
+  const d=data?.diagnostics||{};
+  const state=value=>value?'détecté':'manquant';
+  const endpointReason={ok:'valide',missing:'absent',invalid_url:'URL invalide',https_required:'HTTPS requis',unexpected_host:'hôte R2 inattendu'}[d.s3EndpointReason]||'non vérifié';
+  const endpoint=d.s3EndpointPresent?`R2_S3_ENDPOINT : détecté${d.s3EndpointValid?' et valide':` mais refusé (${endpointReason})`}`:'R2_S3_ENDPOINT : manquant';
+  return`Configuration R2 vue par le Worker — R2_ACCESS_KEY_ID : ${state(d.accessKeyId)} · R2_SECRET_ACCESS_KEY : ${state(d.secretAccessKey)} · ${endpoint} · R2_ACCOUNT_ID : ${state(d.accountId)} · endpoint résolu : ${d.endpointResolved?'oui':'non'}.`;
+}
 function uploadError(error){
   const code=error?.code||error?.message||'upload_failed';
   const status=Number(error?.status||0);
   const detail=String(error?.data?.detail||'').trim().slice(0,260);
-  if(code==='direct_r2_not_configured'||code==='direct_r2_transport_unavailable')return'L’import direct R2 n’est pas encore configuré côté Cloudflare. Ajoutez les identifiants R2 dédiés puis rechargez le Studio.';
+  if(code==='direct_r2_not_configured')return configDiagnostics(error?.data);
+  if(code==='direct_r2_transport_unavailable')return'Le Worker répond, mais le transport direct R2 attendu n’est pas actif. Rechargez le Studio après le déploiement.';
   if(code==='direct_r2_etag_missing')return'Cloudflare a reçu la vidéo, mais la règle CORS R2 n’expose pas encore l’en-tête ETag. La politique CORS du bucket doit autoriser PUT et exposer ETag.';
   if(code==='direct_r2_network')return`La connexion directe navigateur → R2 a été interrompue malgré les reprises automatiques.${detail?` Détail : ${detail}`:''}`;
   if(code==='direct_r2_http')return`Cloudflare R2 refuse toujours ce bloc après ${PART_RETRY_DELAYS_MS.length} tentatives${status?` (HTTP ${status})`:''}.${detail?` Détail : ${detail}`:''}`;

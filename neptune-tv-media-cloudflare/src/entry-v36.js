@@ -16,9 +16,6 @@ const ROUTES=new Map([
   ['family/save','/portal/media-catalog-v98/family-save'],
   ['configuration-visual/save','/portal/media-catalog-v98/configuration-visual-save'],
 ]);
-const ADMIN_JS='/studio/media-catalog-manager-v98.js?v=1';
-const ADMIN_UX_JS='/studio/media-catalog-ux-v99.js?v=1';
-const ADMIN_CSS='/studio/media-catalog-manager-v98.css?v=1';
 const STUDIO_NAV_JS='/studio/studio-information-architecture-v65-1.js?v=104';
 const RELEASE_TAG='neptune-media-catalog-ux-20260811-v99';
 const STUDIO_UI_RELEASE='neptune-studio-ui-20260811-v104-no-iframe';
@@ -46,9 +43,6 @@ export default{
     }
     let response=await base.fetch(request,env,ctx);
     if(request.method==='GET'&&url.pathname==='/api/public/release'&&response.ok)response=await augmentRelease(response);
-    if(request.method==='GET'&&response.ok&&isAdvancedPath(url.pathname)&&(response.headers.get('Content-Type')||'').includes('text/html')){
-      response=await inject(response,ADMIN_CSS,[ADMIN_JS,ADMIN_UX_JS]);
-    }
     if(request.method==='GET'&&response.ok&&(response.headers.get('Content-Type')||'').includes('text/html')){
       if(isCatalogPreviewRequest(url))response=allowSameOriginFrame(response,'X-Neptune-Studio-Preview');
       else if(isLegacyStudioPath(url.pathname))response=secureStudioDocument(await injectStudioNavigation(response));
@@ -141,16 +135,6 @@ async function injectStudioNavigation(response){
   const headers=rewrittenHeaders(response);
   return new Response(body,{status:response.status,statusText:response.statusText,headers});
 }
-async function inject(response,css,scripts){
-  let body=await response.text(),cssPath=css.split('?')[0];
-  body=body.replace(new RegExp(`<link\\b[^>]*href=["'][^"']*${escapeRegExp(cssPath)}[^"']*["'][^>]*>\\s*`,'giu'),'');
-  for(const js of scripts){const jsPath=js.split('?')[0];body=body.replace(new RegExp(`<script\\b[^>]*src=["'][^"']*${escapeRegExp(jsPath)}[^"']*["'][^>]*>\\s*<\\/script>\\s*`,'giu'),'');}
-  body=body.replace('</head>',`<link rel="stylesheet" href="${css}"></head>`);
-  body=body.replace('</body>',`${scripts.map(js=>`<script type="module" src="${js}"></script>`).join('')}</body>`);
-  const headers=rewrittenHeaders(response);headers.set('X-Neptune-Media-Catalog',MEDIA_CATALOG_RELEASE);
-  return new Response(body,{status:response.status,statusText:response.statusText,headers});
-}
-function escapeRegExp(value){return String(value).replace(/[.*+?^${}()|[\]\\]/gu,'\\$&');}
 async function augmentRelease(response){
   const current=await response.json().catch(()=>({}));
   return new Response(JSON.stringify({...current,mediaCatalogManager:MEDIA_CATALOG_RELEASE,salesCatalog:SALES_CATALOG_RELEASE,mediaCatalogUx:RELEASE_TAG,studioUi:STUDIO_UI_RELEASE,studioShell:STUDIO_UI_RELEASE}),{status:response.status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});

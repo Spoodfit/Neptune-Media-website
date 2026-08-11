@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="/studio/webtv-v1.css?v=3">
   <link rel="stylesheet" href="/studio/studio-information-architecture-v65.css?v=1">
   <link rel="stylesheet" href="/studio/webtv-v2.css?v=1">
-  <link rel="stylesheet" href="/studio/webtv-live-monitor-v1.css?v=1">
+  <link rel="stylesheet" href="/studio/webtv-live-monitor-v1.css?v=2">
 </head>
 <body>
   <div class="studio-shell">
@@ -39,15 +39,16 @@
 
         <section class="panel antenna-monitor" aria-labelledby="monitorTitle">
           <div class="antenna-monitor-head">
-            <div><p class="eyebrow">MONITEUR ANTENNE</p><h3 id="monitorTitle">Visualisation du direct</h3><p>Retour du programme actuellement envoyé par Neptune vers YouTube.</p></div>
+            <div><p class="eyebrow">MONITEUR ANTENNE</p><h3 id="monitorTitle">Retour YouTube en direct</h3><p>Visualisez dans le Studio le direct tel qu’il est reçu par YouTube. Si le lecteur YouTube n’est pas disponible, Neptune affiche automatiquement le retour source.</p></div>
             <div class="antenna-monitor-actions"><span id="monitorBadge" class="monitor-badge">HORS LIGNE</span><button id="monitorResync" class="button" type="button">Resynchroniser</button></div>
           </div>
           <div class="antenna-screen" id="antennaScreen">
-            <video id="antennaPreview" playsinline muted controls preload="metadata" aria-label="Prévisualisation du programme actuellement diffusé"></video>
+            <iframe id="youtubeLivePreview" title="Retour du direct YouTube Neptune Media" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+            <video id="antennaPreview" playsinline muted controls preload="metadata" aria-label="Prévisualisation de secours du programme actuellement diffusé"></video>
             <div id="antennaPlaceholder" class="antenna-placeholder">
               <span class="antenna-placeholder-icon">▶</span>
               <strong id="antennaPlaceholderTitle">Aucun signal à prévisualiser</strong>
-              <small id="antennaPlaceholderText">Le moniteur s’active automatiquement lorsque l’encodeur diffuse un programme.</small>
+              <small id="antennaPlaceholderText">Le moniteur s’active automatiquement lorsque le lien du live YouTube est renseigné ou lorsque l’encodeur diffuse un programme.</small>
             </div>
             <div class="antenna-overlay">
               <span class="antenna-live-dot"></span>
@@ -56,8 +57,8 @@
           </div>
           <div class="antenna-monitor-foot">
             <div><span>À l’antenne</span><strong id="monitorProgram">Aucun programme</strong></div>
-            <div><span>Synchronisation</span><strong id="monitorSync">En attente du signal</strong></div>
-            <p>Ce moniteur suit la source réellement envoyée à l’encodeur. Le retour visible dans YouTube peut avoir quelques secondes de latence supplémentaires.</p>
+            <div><span>Retour</span><strong id="monitorSync">En attente du signal</strong></div>
+            <p>Le retour YouTube inclut sa latence réelle. Le retour source Neptune reste disponible automatiquement si l’intégration YouTube ne peut pas être utilisée.</p>
           </div>
         </section>
 
@@ -80,6 +81,7 @@
               <p class="eyebrow">ANTENNE</p><h3>Diffusion YouTube</h3>
               <label class="switch-row"><span><b>Web TV active</b><small>OFF arrête réellement l’encodeur. ON lance la boucle enregistrée.</small></span><input id="enabled" type="checkbox" aria-label="Activer ou arrêter la Web TV"><i></i></label>
               <label><span>Mode</span><select id="mode" aria-label="Mode de diffusion"><option value="loop">Boucle continue</option></select></label>
+              <label><span>Lien du live YouTube</span><input id="youtubeLiveUrl" type="url" inputmode="url" autocomplete="off" placeholder="https://youtube.com/live/…" aria-label="Lien public, non répertorié ou privé du live YouTube"><small class="field-help">Utilisé uniquement pour le moniteur du Studio. La clé de flux reste secrète dans Cloudflare.</small></label>
               <div class="readonly-row"><span><b>Destination</b><small>Clé masquée et conservée dans Cloudflare</small></span><strong>YouTube · RTMPS</strong></div>
             </section>
 
@@ -115,8 +117,8 @@
   </dialog>
 
   <div id="toast" class="toast" hidden></div>
-  <script type="module" src="/studio/webtv-v1.js?v=3"></script>
-  <script type="module" src="/studio/webtv-live-monitor-v1.js?v=1"></script>
+  <script type="module" src="/studio/webtv-v1.js?v=4"></script>
+  <script type="module" src="/studio/webtv-live-monitor-v1.js?v=2"></script>
   <script type="module" src="/studio/studio-information-architecture-v65-1.js?v=2"></script>
   <script type="module" src="/studio/webtv-nav-compat-v1.js?v=1"></script>
 </body>

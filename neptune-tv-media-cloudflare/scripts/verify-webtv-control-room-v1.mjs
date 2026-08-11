@@ -55,9 +55,11 @@ for (const marker of [
   "await container.stop()",
   "'/api/admin/webtv/state'",
   "'/api/admin/webtv/encoder'",
+  "url.pathname = '/api/auth/status'",
   "url.protocol === 'rtmps:'",
-  "url.hostname !== base.hostname",
+  'isPrivateHost(url.hostname)',
 ]) expect(control.includes(marker), `contrat Web TV absent : ${marker}`);
+expect(!control.includes('/api/v1/media/studio/state'), 'la Web TV dépend d’une ancienne route Studio inexistante');
 expect(!control.includes('.getByName('), 'la Web TV utilise une ancienne API Container getByName au lieu de getContainer');
 
 for (const marker of ['ffmpeg', 'ffprobe', "'-f', 'flv'", 'rtmps://[youtube]', 'youtube_output_invalid', 'streamTarget(cfg)']) {
@@ -69,7 +71,7 @@ for (const marker of ['Diffusion', 'Web TV active', 'Ordre de passage', 'Program
   expect(html.includes(marker), `interface Diffusion incomplète : ${marker}`);
 }
 expect(!html.includes('YOUTUBE_STREAM_KEY') && !html.includes('streamKey'), 'la clé de flux ne doit jamais être saisie ou exposée dans le HTML Studio');
-for (const marker of ['/api/admin/webtv/state', '/api/admin/webtv/encoder', "openLibrary('fallback')", 'data-enabled=', 'data-type=']) {
+for (const marker of ['/api/auth/status', '/api/admin/state', '/api/admin/webtv/state', '/api/admin/webtv/encoder', "openLibrary('fallback')", 'data-enabled=', 'data-type=', "url.protocol!=='https:'"]) {
   expect(ui.includes(marker), `commande Studio Web TV absente : ${marker}`);
 }
 expect(ia.includes("'/studio/webtv.html'"), 'la navigation Diffusion ne pointe pas vers la régie Web TV');
@@ -80,4 +82,4 @@ if (failures.length) {
   console.error(failures.map((failure) => `- ${failure}`).join('\n'));
   process.exit(1);
 }
-console.log('Web TV v1 validée : Studio Diffusion complet, secrets serveur, Container FFmpeg singleton, RTMPS, watchdog minute, arrêt réel et reprise automatique.');
+console.log('Web TV v1 validée : Studio Diffusion complet, authentification canonique, médias HTTPS sûrs, secrets serveur, Container FFmpeg singleton, RTMPS, watchdog minute, arrêt réel et reprise automatique.');

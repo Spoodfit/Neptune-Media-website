@@ -5,6 +5,7 @@ let control=null;
 let csrfToken=sessionStorage.getItem('neptune_csrf')||'';
 let runtimePoll=null;
 let libraryMode='playlist';
+let dirty=false;
 
 init();
 
@@ -22,8 +23,7 @@ async function init(){
     const user=studio.user||auth.user||{};
     $('#accountName').textContent=user.fullName||user.email||'Compte Studio';
     $('#accountRole').textContent=user.displayRole||user.role||'Admin';
-    bind();render();
-    $('#syncState').innerHTML='<i></i> Synchronisé';
+    bind();render();setDirty(false);
     runtimePoll=setInterval(refreshRuntime,15000);
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshRuntime();});
   }catch(error){
@@ -38,11 +38,11 @@ function bind(){
   $('#restartEncoder').addEventListener('click',restartEncoder);
   $('#addFromLibrary').addEventListener('click',()=>openLibrary('playlist'));
   $('#chooseFallback').addEventListener('click',()=>openLibrary('fallback'));
-  $('#clearFallback').addEventListener('click',()=>{control.fallback.mediaUrl='';renderFallback();});
+  $('#clearFallback').addEventListener('click',()=>{control.fallback.mediaUrl='';markDirty();renderFallback();});
   $('#closeLibrary').addEventListener('click',()=>$('#libraryDialog').close());
-  $('#enabled').addEventListener('change',()=>{control.enabled=$('#enabled').checked;renderSummary();renderEncoder();});
-  $('#fallbackTitle').addEventListener('input',()=>{control.fallback.title=$('#fallbackTitle').value;});
-  $('#youtubeLiveUrl').addEventListener('input',()=>{control.output={...(control.output||{}),watchUrl:$('#youtubeLiveUrl').value.trim()};});
+  $('#enabled').addEventListener('change',()=>{control.enabled=$('#enabled').checked;markDirty();renderSummary();renderEncoder();});
+  $('#fallbackTitle').addEventListener('input',()=>{control.fallback.title=$('#fallbackTitle').value;markDirty();});
+  $('#youtubeLiveUrl').addEventListener('input',()=>{control.output={...(control.output||{}),watchUrl:$('#youtubeLiveUrl').value.trim()};markDirty();});
 }
 
 function render(){
@@ -50,27 +50,37 @@ function render(){
   $('#mode').value='loop';
   $('#fallbackTitle').value=control.fallback?.title||'';
   $('#youtubeLiveUrl').value=control.output?.watchUrl||'';
-  renderPlaylist();renderFallback();renderSummary();renderEncoder();
+  renderPlaylist();renderFallback();renderSummary();renderEncoder();updateApplyState();
 }
 
 function renderPlaylist(){
   const list=control.playlist||[];
   $('#emptyPlaylist').hidden=list.length>0;
-  $('#playlist').innerHTML=list.map((item,index)=>`<article class="playlist-item" draggable="true" data-index="${index}">
-    <div class="drag" title="Déplacer">⋮⋮</div>
-    <div class="playlist-copy"><b>${escapeHtml(item.title)}</b><small>${duration(item.durationSeconds)} · ${escapeHtml(item.mediaUrl)}</small><div class="playlist-meta"><label><span>Type</span><select data-type="${index}">${typeOptions(item.type)}</select></label><label class="mini-switch"><input type="checkbox" data-enabled="${index}" ${item.enabled!==false?'checked':''}><span>Actif</span></label></div></div>
-    <div class="playlist-actions"><button class="icon-button" type="button" data-up="${index}" aria-label="Monter">↑</button><button class="icon-button" type="button" data-down="${index}" aria-label="Descendre">↓</button><button class="icon-button" type="button" data-remove="${index}" aria-label="Retirer">×</button></div>
-  </article>`).join('');
-  $$('[data-remove]').forEach(b=>b.addEventListener('click',()=>{control.playlist.splice(Number(b.dataset.remove),1);render();}));
+  $('#playlist').innerHTML=list.map((item,index)=>{
+    const onAir=isOnAir(item);
+    return `<article class="playlist-item ${onAir?'is-on-air':''}" draggable="true" data-index="${index}">
+      <div class="drag" title="Déplacer" aria-hidden="true">⋮⋮</div>
+      ${thumbnailMarkup(item,'playlist')}
+      <div class="playlist-copy">
+        <div class="playlist-title-row"><b>${escapeHtml(item.title)}</b><span class="on-air-tag" data-on-air-badge ${onAir?'':'hidden'}><i></i> EN DIRECT</span></div>
+        <small>${duration(item.durationSeconds)} · ${escapeHtml(item.mediaUrl)}</small>
+        <div class="playlist-meta"><label><span>Type</span><select data-type="${index}">${typeOptions(item.type)}</select></label><label class="mini-switch"><input type="checkbox" data-enabled="${index}" ${item.enabled!==false?'checked':''}><span>Actif</span></label></div>
+      </div>
+      <div class="playlist-actions"><button class="icon-button" type="button" data-up="${index}" aria-label="Monter">↑</button><button class="icon-button" type="button" data-down="${index}" aria-label="Descendre">↓</button><button class="icon-button" type="button" data-remove="${index}" aria-label="Retirer">×</button></div>
+    </article>`;
+  }).join('');
+  hydrateThumbnails($('#playlist'));
+  $$('[data-remove]').forEach(b=>b.addEventListener('click',()=>{control.playlist.splice(Number(b.dataset.remove),1);markDirty();renderPlaylist();renderSummary();}));
   $$('[data-up]').forEach(b=>b.addEventListener('click',()=>move(Number(b.dataset.up),-1)));
   $$('[data-down]').forEach(b=>b.addEventListener('click',()=>move(Number(b.dataset.down),1)));
-  $$('[data-type]').forEach(select=>select.addEventListener('change',()=>{const item=control.playlist[Number(select.dataset.type)];if(item)item.type=select.value;renderSummary();}));
-  $$('[data-enabled]').forEach(input=>input.addEventListener('change',()=>{const item=control.playlist[Number(input.dataset.enabled)];if(item)item.enabled=input.checked;renderSummary();}));
+  $$('[data-type]').forEach(select=>select.addEventListener('change',()=>{const item=control.playlist[Number(select.dataset.type)];if(item){item.type=select.value;markDirty();renderSummary();}}));
+  $$('[data-enabled]').forEach(input=>input.addEventListener('change',()=>{const item=control.playlist[Number(input.dataset.enabled)];if(item){item.enabled=input.checked;markDirty();renderSummary();}}));
   let dragged=null;
   $$('.playlist-item').forEach(el=>{
-    el.addEventListener('dragstart',()=>{dragged=Number(el.dataset.index);});
+    el.addEventListener('dragstart',()=>{dragged=Number(el.dataset.index);el.classList.add('is-dragging');});
+    el.addEventListener('dragend',()=>el.classList.remove('is-dragging'));
     el.addEventListener('dragover',e=>e.preventDefault());
-    el.addEventListener('drop',e=>{e.preventDefault();const target=Number(el.dataset.index);if(Number.isInteger(dragged)&&dragged!==target){const [item]=control.playlist.splice(dragged,1);control.playlist.splice(target,0,item);render();}});
+    el.addEventListener('drop',e=>{e.preventDefault();const target=Number(el.dataset.index);if(Number.isInteger(dragged)&&dragged!==target){const [item]=control.playlist.splice(dragged,1);control.playlist.splice(target,0,item);markDirty();renderPlaylist();}});
   });
 }
 
@@ -78,7 +88,7 @@ function move(index,delta){
   const next=index+delta;
   if(next<0||next>=control.playlist.length)return;
   [control.playlist[index],control.playlist[next]]=[control.playlist[next],control.playlist[index]];
-  render();
+  markDirty();renderPlaylist();
 }
 
 function renderFallback(){
@@ -98,6 +108,7 @@ function renderSummary(){
   $('#youtubeReady').classList.toggle('ok',control.output?.configured===true);
   $('#youtubeReady').textContent=control.output?.configured?'YouTube RTMPS configuré':'URL RTMPS + clé de flux à configurer';
   $('#restartEncoder').disabled=!control.enabled||!control.output?.configured||list.length===0;
+  updateApplyState();
 }
 
 function renderEncoder(){
@@ -111,7 +122,23 @@ function renderEncoder(){
   $('#heartbeat').textContent=control.encoder?.lastHeartbeatAt?`Dernier signal ${relative(control.encoder.lastHeartbeatAt)}`:'Aucun signal reçu';
   $('#encoderReady').classList.toggle('ok',status!=='not_connected'&&status!=='error');
   $('#encoderReady').textContent=status==='error'?`Encodeur : ${humanError(control.encoder?.lastError||'erreur')}`:status!=='not_connected'?'Encodeur FFmpeg connecté':'Encodeur FFmpeg à connecter';
+  updateOnAirState();
+  updateProgramNotice();
+  if(!dirty)$('#syncState').innerHTML=live?'<i></i> Antenne synchronisée':'<i></i> Synchronisé';
 }
+
+function updateOnAirState(){
+  const currentId=String(control.encoder?.currentItem?.id||'');
+  $$('.playlist-item').forEach(card=>{
+    const item=control.playlist?.[Number(card.dataset.index)];
+    const onAir=Boolean(currentId&&item&&String(item.id||'')===currentId);
+    card.classList.toggle('is-on-air',onAir);
+    const badge=card.querySelector('[data-on-air-badge]');
+    if(badge)badge.hidden=!onAir;
+  });
+}
+
+function isOnAir(item){return Boolean(control.encoder?.currentItem?.id&&String(control.encoder.currentItem.id)===String(item?.id||''));}
 
 async function refreshRuntime(){
   if(!control)return;
@@ -121,9 +148,8 @@ async function refreshRuntime(){
     const latest=await api('/api/admin/webtv/state',{},false);
     control={...control,output:latest.output||control.output,encoder:latest.encoder||control.encoder};
     renderSummary();renderEncoder();
-    $('#syncState').innerHTML='<i></i> Synchronisé';
   }catch{
-    $('#syncState').textContent='État indisponible';
+    if(!dirty)$('#syncState').textContent='État indisponible';
   }finally{
     if(button){button.disabled=false;button.textContent='Actualiser';}
   }
@@ -133,16 +159,21 @@ function openLibrary(mode='playlist'){
   libraryMode=mode;
   const usable=libraryItems();
   $('#libraryTitle').textContent=mode==='fallback'?'Choisir le secours antenne':'Ajouter à l’antenne';
-  $('#libraryHint').textContent=mode==='fallback'?'Choisissez le média à afficher si un programme échoue.':'Sélectionnez une émission, une publicité ou un autre contenu disponible.';
-  $('#library').innerHTML=usable.length?usable.map((item,index)=>`<article class="library-item"><div><b>${escapeHtml(item.title)} <span class="type-tag">${escapeHtml(typeLabel(item.type))}</span></b><small>${duration(item.durationSeconds)} · ${escapeHtml(item.mediaUrl)}</small></div><button class="button" type="button" data-add="${index}">${mode==='fallback'?'Choisir':'Ajouter'}</button></article>`).join(''):'<div class="empty"><strong>Aucun média exploitable trouvé.</strong><span>Ajoutez une URL vidéo HTTPS à une émission ou à une publicité dans Diffusion.</span></div>';
+  $('#libraryHint').textContent=mode==='fallback'?'Choisissez le média à afficher si un programme échoue.':'Ajoutez une vidéo au programme. Elle peut être réutilisée plusieurs fois dans la grille.';
+  $('#library').innerHTML=usable.length?usable.map((item,index)=>`<article class="library-item">
+    ${thumbnailMarkup(item,'library')}
+    <div class="library-copy"><b>${escapeHtml(item.title)} <span class="type-tag">${escapeHtml(typeLabel(item.type))}</span></b><small>${duration(item.durationSeconds)} · ${escapeHtml(item.mediaUrl)}</small></div>
+    <button class="button" type="button" data-add="${index}">${mode==='fallback'?'Choisir':'Ajouter'}</button>
+  </article>`).join(''):'<div class="empty"><strong>Aucun média exploitable trouvé.</strong><span>Ajoutez une URL vidéo HTTPS à une émission ou à une publicité dans Diffusion.</span></div>';
+  hydrateThumbnails($('#library'));
   $$('[data-add]').forEach(button=>button.addEventListener('click',()=>{
     const item=usable[Number(button.dataset.add)];if(!item)return;
     if(libraryMode==='fallback'){
       control.fallback.mediaUrl=item.mediaUrl;
       if(!control.fallback.title)control.fallback.title='Neptune Media — La suite arrive dans un instant';
-      renderFallback();$('#libraryDialog').close();return;
+      markDirty();renderFallback();$('#libraryDialog').close();return;
     }
-    control.playlist.push({...item});render();button.textContent='Ajouté';button.disabled=true;
+    control.playlist.push({...item,id:playlistInstanceId(item.id)});markDirty();renderPlaylist();renderSummary();button.textContent='Ajouté';
   }));
   $('#libraryDialog').showModal();
 }
@@ -156,6 +187,7 @@ function libraryItems(){
         id:String(entry.id||`${type}-${index+1}`),
         title:String(entry.title||entry.name||(type==='ad'?'Publicité Neptune Media':'Émission Neptune Media')),
         mediaUrl,
+        thumbnailUrl:thumbnailUrlForEntry(entry),
         durationSeconds:Number(entry.durationSeconds||entry.duration||entry.lengthSeconds||0),
         type,
         enabled:true,
@@ -179,19 +211,89 @@ function mediaUrlFor(item){
   }catch{return'';}
 }
 
+function thumbnailUrlForEntry(entry){
+  const candidates=[entry?.thumbnailUrl,entry?.posterUrl,entry?.coverUrl,entry?.imageUrl,entry?.previewImageUrl,entry?.thumbnail?.url,entry?.poster?.url,entry?.image?.url];
+  return safePreviewUrl(candidates.find(Boolean)||'');
+}
+
+function thumbnailFor(item){
+  if(item?.thumbnailUrl)return safePreviewUrl(item.thumbnailUrl);
+  const entries=[...(studioState?.episodes||[]),...(studioState?.ads||[])];
+  const itemUrl=safePreviewUrl(item?.mediaUrl);
+  const source=entries.find(entry=>String(entry?.id||'')===String(item?.id||'')||(itemUrl&&safePreviewUrl(mediaUrlFor(entry))===itemUrl));
+  return thumbnailUrlForEntry(source);
+}
+
+function thumbnailMarkup(item,scope){
+  const image=thumbnailFor(item);
+  const media=safePreviewUrl(item?.mediaUrl);
+  const label=escapeAttr(item?.title||'Vidéo');
+  return `<div class="media-thumbnail ${scope==='library'?'media-thumbnail-library':''}"><span class="media-thumbnail-fallback" aria-hidden="true">▶</span>${image?`<img data-thumb-image src="${escapeAttr(image)}" alt="Miniature de ${label}">`:media?`<video data-thumb-video src="${escapeAttr(media)}" muted playsinline preload="metadata" aria-label="Miniature vidéo de ${label}"></video>`:''}</div>`;
+}
+
+function hydrateThumbnails(root=document){
+  $$('[data-thumb-image]',root).forEach(img=>img.addEventListener('error',()=>img.remove(),{once:true}));
+  $$('[data-thumb-video]',root).forEach(video=>{
+    const seek=()=>{
+      if(video.dataset.thumbReady)return;
+      video.dataset.thumbReady='1';
+      const length=Number(video.duration);
+      const target=Number.isFinite(length)&&length>1?Math.min(1,Math.max(.15,length*.03)):.15;
+      try{video.currentTime=target;}catch{}
+    };
+    if(video.readyState>=1)seek();else video.addEventListener('loadedmetadata',seek,{once:true});
+  });
+}
+
+function safePreviewUrl(value){
+  const raw=String(value||'').trim();if(!raw)return'';
+  try{const url=new URL(raw,location.origin);return url.protocol==='https:'?url.toString():'';}catch{return'';}
+}
+
+function playlistInstanceId(base){return`${String(base||'media').replace(/[^a-z0-9_-]+/giu,'-').slice(0,60)}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,6)}`;}
+
+function markDirty(){setDirty(true);}
+function setDirty(value){dirty=Boolean(value);updateApplyState();updateProgramNotice();}
+function updateApplyState(){
+  const button=$('#save');if(!button||!control)return;
+  const activeItems=(control.playlist||[]).filter(item=>item.enabled!==false).length;
+  if(dirty){
+    button.disabled=false;
+    button.textContent=control.enabled?'Appliquer à l’antenne':'Enregistrer le programme';
+    $('#syncState').textContent='Modifications non appliquées';
+  }else{
+    button.disabled=true;
+    button.textContent=control.enabled?'Antenne à jour':'Programme enregistré';
+  }
+  if(control.enabled&&(!control.output?.configured||activeItems===0))button.disabled=false;
+}
+
+function updateProgramNotice(){
+  const notice=$('#programSyncNotice');if(!notice||!control)return;
+  const status=String(control.encoder?.status||'not_connected');
+  const live=control.enabled&&['running','live','streaming'].includes(status);
+  notice.classList.toggle('is-dirty',dirty);
+  notice.classList.toggle('is-live',!dirty&&live);
+  const text=notice.querySelector('strong');
+  if(dirty)text.textContent=control.enabled?'Modifications prêtes : cliquez sur « Appliquer à l’antenne » pour mettre à jour le direct et resynchroniser l’encodeur.':'Modifications non enregistrées : cliquez sur « Enregistrer le programme ».';
+  else if(live)text.textContent='Programme synchronisé avec l’antenne en cours.';
+  else text.textContent='Le programme affiché correspond à la dernière version enregistrée.';
+}
+
 async function save(){
-  const button=$('#save');button.disabled=true;button.textContent='Enregistrement…';
+  const button=$('#save');button.disabled=true;button.textContent=control.enabled?'Mise à jour de l’antenne…':'Enregistrement…';
   control.enabled=$('#enabled').checked;
   control.mode='loop';
   control.output={...(control.output||{}),watchUrl:$('#youtubeLiveUrl').value.trim()};
   control.fallback={title:$('#fallbackTitle').value.trim(),mediaUrl:control.fallback?.mediaUrl||''};
   try{
     control=await api('/api/admin/webtv/state',{method:'PUT',body:JSON.stringify(control)});
-    render();
-    toast(control.enabled?'Programmation enregistrée. Démarrage de l’antenne demandé.':'Programmation enregistrée. Encodeur arrêté.');
-    setTimeout(refreshRuntime,2500);
-  }catch(error){toast('Enregistrement impossible : '+humanError(error.message),true);}
-  finally{button.disabled=false;button.textContent='Enregistrer';}
+    setDirty(false);render();
+    $('#syncState').textContent=control.enabled?'Synchronisation de l’antenne…':'Programme enregistré';
+    toast(control.enabled?'Programme appliqué. Neptune resynchronise automatiquement le direct.':'Programme enregistré. Encodeur arrêté.');
+    setTimeout(refreshRuntime,1200);setTimeout(refreshRuntime,3500);
+  }catch(error){markDirty();toast('Mise à jour impossible : '+humanError(error.message),true);}
+  finally{updateApplyState();}
 }
 
 async function restartEncoder(){
@@ -220,6 +322,7 @@ function typeOptions(selected){return[['episode','Émission'],['jingle','Jingle'
 function encoderLabel(status){return({idle:'Encodeur prêt',running:'Encodeur opérationnel',live:'Encodeur opérationnel',streaming:'Diffusion active',starting:'Démarrage de l’encodeur',stopped:'Encodeur arrêté',error:'Erreur encodeur',not_connected:'Encodeur non connecté'})[status]||status;}
 function relative(value){const delta=Math.max(0,Math.round((Date.now()-new Date(value).getTime())/1000));if(delta<60)return'il y a moins d’une minute';if(delta<3600)return`il y a ${Math.floor(delta/60)} min`;return`il y a ${Math.floor(delta/3600)} h`;}
 function escapeHtml(value){return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function escapeAttr(value){return escapeHtml(value).replace(/`/g,'&#96;');}
 function humanError(code){return({studio_forbidden:'accès Studio refusé',origin_forbidden:'origine refusée',youtube_not_configured:'configurez l’URL RTMPS et la clé YouTube',webtv_playlist_empty:'ajoutez au moins un contenu actif à la playlist',webtv_disabled:'activez d’abord la Web TV',playlist_empty:'playlist vide',encoder_unreachable:'encodeur indisponible',invalid_encoder_action:'action encodeur invalide',http_401:'connexion requise',http_403:'accès refusé'})[code]||code;}
 function toast(message,error=false){const el=$('#toast');el.textContent=message;el.hidden=false;el.style.background=error?'#7d1930':'#081a40';clearTimeout(toast.timer);toast.timer=setTimeout(()=>{el.hidden=true;},4200);}
 window.addEventListener('beforeunload',()=>{if(runtimePoll)clearInterval(runtimePoll);});

@@ -62,7 +62,7 @@ const reports = [];
 try {
   for (const viewport of viewports) {
     for (const screen of screens) {
-      const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height } });
+      const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, serviceWorkers: 'block' });
       await context.route('**/*', async (route) => {
         const url = new URL(route.request().url());
         if (url.pathname.startsWith('/api/')) return routeApi(route);
@@ -73,9 +73,6 @@ try {
       page.on('pageerror', (error) => browserErrors.push(`pageerror:${error.message}`));
       page.on('console', (message) => { if (message.type() === 'error') browserErrors.push(`console:${message.text()}`); });
 
-      // The legacy advanced page registers several DOMContentLoaded listeners. The v104 contract is not
-      // the event itself: it is a committed top-level document whose shared navigation and business
-      // workspace actually become usable. Explicit readiness checks below fail if that does not happen.
       const response = await page.goto(`${baseURL}${screen.path}`, { waitUntil: 'commit', timeout: readinessTimeout });
       assert(response?.ok(), `${screen.id}/${viewport.id}: page HTTP invalide ${response?.status()}`);
       await page.waitForSelector('body', { state: 'attached', timeout: readinessTimeout });

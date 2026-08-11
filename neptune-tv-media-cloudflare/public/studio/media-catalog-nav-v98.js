@@ -1,6 +1,6 @@
 const RELEASE='neptune-media-catalog-nav-20260811-v98';
 document.body.dataset.mediaCatalogNav=RELEASE;
-let syncing=false;
+let syncing=false,remountQueued=false;
 
 function currentTab(){return decodeURIComponent(location.hash.slice(1)).trim()||'episodes';}
 function legacy(tab){return document.querySelector(`#studioLegacyTabControlsV65 [data-tab="${CSS.escape(tab)}"], [data-tab="${CSS.escape(tab)}"]`);}
@@ -11,6 +11,17 @@ function setPrimarySettings(){
     item.classList.toggle('active',active);
     if(active)item.setAttribute('aria-current','page');else item.removeAttribute('aria-current');
   }
+}
+function ensureCatalogMount(){
+  if(remountQueued)return;remountQueued=true;
+  queueMicrotask(()=>{
+    remountQueued=false;
+    if(currentTab()!=='programs')return;
+    const content=document.getElementById('content');
+    if(!content||content.querySelector('.c98-page')||content.dataset.c98!=='ready')return;
+    delete content.dataset.c98;
+    const signal=document.createComment('media-catalog-v98-remount');content.append(signal);signal.remove();
+  });
 }
 function catalogButton(active=false){
   const b=document.createElement('button');b.type='button';b.dataset.contextTab='programs';b.dataset.catalogV98='1';b.textContent='Catalogue Media';b.classList.toggle('active',active);
@@ -42,6 +53,7 @@ function sync(){
       if(context.dataset.catalogSettingsV98!=='1'||!context.querySelector('[data-context-tab="programs"]')){
         settingsContext(context,'programs');context.dataset.catalogSettingsV98='1';
       }
+      ensureCatalogMount();
       return;
     }
     context.removeAttribute('data-catalog-settings-v98');

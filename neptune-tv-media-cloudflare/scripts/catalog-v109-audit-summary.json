@@ -1,0 +1,5 @@
+{
+  "release": "neptune-media-catalog-audit-20260813-v109",
+  "scope": ["catalog-loading", "tab-remount", "visual-mapping", "real-tunnel-preview", "configuration-order", "stripe-admin-auth", "production-verifiers"],
+  "browserRegressionTest": "tests/audit-media-catalog-v109.mjs"
+}

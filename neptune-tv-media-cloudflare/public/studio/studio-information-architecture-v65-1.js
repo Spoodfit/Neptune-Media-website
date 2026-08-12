@@ -24,7 +24,7 @@
     ui.main?.classList.add('neptune-studio-main');
     ui.topbar.classList.add('neptune-studio-topbar');
 
-    const legacyAdvanced = page === 'advanced' ? extractAdvancedControls(ui.nav) : null;
+    const legacyAdvanced = page === 'advanced' ? extractAdvancedControls(ui.nav, ui.sidebar) : null;
     const activeRoute = primaryRoute(page);
     const canonical = installCanonicalSidebar(ui.sidebar, activeRoute);
     ui = { ...ui, ...canonical };
@@ -88,7 +88,7 @@
     return '';
   }
 
-  function extractAdvancedControls(nav) {
+  function extractAdvancedControls(nav, sidebar) {
     if (!nav) return null;
     const holder = document.createElement('div');
     holder.id = 'studioLegacyTabControlsV105';
@@ -98,6 +98,10 @@
     for (const button of nav.querySelectorAll('[data-tab]')) {
       controls.set(button.dataset.tab, button);
       holder.append(button);
+    }
+    for (const selector of ['#accountName', '#accountRole', '#logout']) {
+      const node = sidebar?.querySelector(selector);
+      if (node) holder.append(node);
     }
     document.body.append(holder);
     return { controls, holder };

@@ -74,6 +74,7 @@ function ensurePreview(){
 
   frame=document.createElement('iframe');
   frame.dataset.catalogPreviewV109='1';
+  frame.dataset.c99LivePreview='v109';
   frame.title='Aperçu réel du tunnel Neptune Media';
   frame.loading='eager';
   frame.referrerPolicy='same-origin';

@@ -30,10 +30,17 @@ jobs:
           tmp="$(mktemp -d)"
           q="verify_v105=${GITHUB_SHA}-${RANDOM}"
           curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$BASE/api/public/release?$q" > "$tmp/release.json"
-          curl --fail --silent --show-error -D "$tmp/clients.headers" -H 'Cache-Control: no-cache, no-store' "$BASE/studio/clients?$q" > "$tmp/clients.html"
-          curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$BASE/studio/video-ai.html?$q" > "$tmp/video.html"
-          curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$BASE/studio/webtv.html?$q" > "$tmp/webtv.html"
-          curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$BASE/studio/advanced.html?$q" > "$tmp/advanced.html"
+          for page in clients video webtv advanced; do
+            case "$page" in
+              clients) path='/studio/clients' ;;
+              video) path='/studio/video-ai.html' ;;
+              webtv) path='/studio/webtv.html' ;;
+              advanced) path='/studio/advanced.html' ;;
+            esac
+            curl --fail --silent --show-error --location --max-redirs 5 -D "$tmp/$page.headers" -H 'Cache-Control: no-cache, no-store' "$BASE$path?$q" > "$tmp/$page.html"
+            echo "--- $page response chain ---"
+            grep -Eai '^(HTTP/|location:|content-type:|x-neptune-studio-ui:)' "$tmp/$page.headers" || true
+          done
           curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$BASE/studio/studio-information-architecture-v65-1.js?v=105&$q" > "$tmp/shell.js"
           curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$BASE/studio/studio-shell-v105.css?v=1&$q" > "$tmp/shell.css"
 
@@ -58,8 +65,9 @@ jobs:
           check 'release declares exact 3-tab v105 contract' test $? -eq 0
 
           for page in clients video webtv advanced; do
-            check "$page injects v105 CSS" grep -Fq '/studio/studio-shell-v105.css?v=1' "$tmp/$page.html"
-            check "$page injects v105 JS" grep -Fq '/studio/studio-information-architecture-v65-1.js?v=105' "$tmp/$page.html"
+            check "$page final document injects v105 CSS" grep -Fq '/studio/studio-shell-v105.css?v=1' "$tmp/$page.html"
+            check "$page final document injects v105 JS" grep -Fq '/studio/studio-information-architecture-v65-1.js?v=105' "$tmp/$page.html"
+            check "$page final response identifies v105 Studio UI" grep -Fqi 'X-Neptune-Studio-UI: neptune-studio-ui-20260812-v105-three-tab-canonical-shell' "$tmp/$page.headers"
           done
 
           check 'shell route: Parcours clients' grep -Fq "link('clients', '/studio/clients'" "$tmp/shell.js"
@@ -68,7 +76,6 @@ jobs:
           if grep -Fq "link('production'" "$tmp/shell.js"; then echo '✗ Production vidéo still exists in primary shell'; failures=$((failures+1)); else echo '✓ Production vidéo absent from primary shell'; fi
           check 'single canonical logout component exists in shell source' grep -Fq 'id="neptuneStudioLogout"' "$tmp/shell.js"
           check 'canonical account block CSS exists' grep -Fq 'body.studio-shell-v105 .neptune-studio-account' "$tmp/shell.css"
-          check 'production response identifies v105 Studio UI' grep -Fqi 'X-Neptune-Studio-UI: neptune-studio-ui-20260812-v105-three-tab-canonical-shell' "$tmp/clients.headers"
 
           echo "Failures: $failures"
           test "$failures" -eq 0

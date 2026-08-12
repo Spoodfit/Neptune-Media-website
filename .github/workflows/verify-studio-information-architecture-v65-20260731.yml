@@ -20,6 +20,7 @@ on:
       - 'neptune-tv-media-cloudflare/scripts/verify-studio-information-architecture-v65.mjs'
       - 'neptune-tv-media-cloudflare/scripts/verify-studio-unified.mjs'
       - 'neptune-tv-media-cloudflare/scripts/verify-media-catalog-v98.mjs'
+      - 'neptune-tv-media-cloudflare/scripts/verify-studio-shell-v105-entry.mjs'
       - 'neptune-tv-media-cloudflare/tests/audit-studio-information-architecture-v65.mjs'
   push:
     branches:
@@ -42,6 +43,7 @@ on:
       - 'neptune-tv-media-cloudflare/scripts/verify-studio-information-architecture-v65.mjs'
       - 'neptune-tv-media-cloudflare/scripts/verify-studio-unified.mjs'
       - 'neptune-tv-media-cloudflare/scripts/verify-media-catalog-v98.mjs'
+      - 'neptune-tv-media-cloudflare/scripts/verify-studio-shell-v105-entry.mjs'
       - 'neptune-tv-media-cloudflare/tests/audit-studio-information-architecture-v65.mjs'
   workflow_dispatch:
 
@@ -76,6 +78,7 @@ jobs:
           node scripts/verify-studio-information-architecture-v65.mjs
           node scripts/verify-studio-unified.mjs
           node scripts/verify-media-catalog-v98.mjs
+          node scripts/verify-studio-shell-v105-entry.mjs
 
       - name: Install Playwright
         run: |
@@ -93,8 +96,9 @@ jobs:
           for attempt in $(seq 1 60); do
             if curl --fail --silent --show-error --location http://127.0.0.1:8787/studio/clients > /tmp/studio-v105.html; then
               if grep -Fq '/studio/studio-information-architecture-v65.css?v=1' /tmp/studio-v105.html \
-                && grep -Fq '/studio/studio-shell-v105.css?v=1' /tmp/studio-v105.html \
-                && grep -Fq '/studio/studio-information-architecture-v65-1.js?v=105' /tmp/studio-v105.html \
+                && grep -Fq '/studio/studio-shell-v105.css?v=2' /tmp/studio-v105.html \
+                && grep -Fq '/studio/studio-information-architecture-v65-1.js?v=106' /tmp/studio-v105.html \
+                && grep -Fq 'data-neptune-studio-shell-boot="v105"' /tmp/studio-v105.html \
                 && ! grep -Fq 'studio_embed=' /tmp/studio-v105.html; then
                 ready=1
                 break

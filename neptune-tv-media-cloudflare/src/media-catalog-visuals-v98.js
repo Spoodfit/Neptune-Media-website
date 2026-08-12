@@ -1,6 +1,6 @@
 import { ensureSalesTunnelOptionsV96Schema } from './portal-sales-tunnel-options-v96.js';
 
-export const MEDIA_CATALOG_VISUALS_RELEASE='neptune-media-catalog-visuals-20260811-v98';
+export const MEDIA_CATALOG_VISUALS_RELEASE='neptune-media-catalog-visuals-20260813-v109';
 
 export function ensureMediaCatalogVisualsV98Schema(store){
   ensureSalesTunnelOptionsV96Schema(store);
@@ -26,7 +26,7 @@ export function ensureMediaCatalogVisualsV98Schema(store){
 export function formatVisualV98(store,formatId,slug){
   ensureMediaCatalogVisualsV98Schema(store);
   const row=store.sql.exec('SELECT image_url AS imageUrl FROM portal_media_format_visuals_v98 WHERE format_id=? LIMIT 1',formatId).toArray()[0]||{};
-  return {image:String(row.imageUrl||defaultFormatImage(slug))};
+  return {image:String(row.imageUrl||defaultFormatImage(slug)),imageSource:row.imageUrl?'custom':'fallback'};
 }
 
 export function configurationVisualV98(store,formatId,formatSlug,label){
@@ -38,6 +38,7 @@ export function configurationVisualV98(store,formatId,formatSlug,label){
     image:String(row.imageUrl||fallback.image||''),
     imageBase64:row.imageUrl?'':String(fallback.imageBase64||''),
     description:String(row.description||fallback.description||''),
+    imageSource:row.imageUrl?'custom':String(fallback.imageBase64||fallback.image||'')?'fallback':'missing',
   };
 }
 
@@ -83,10 +84,10 @@ export function defaultConfigurationVisual(formatSlug,label){
   const n=normal(label),format=normal(formatSlug),hn=format.includes('hors');
   if(hn&&n.includes('canap'))return {imageBase64:'/assets/formats/exact-hn1.b64',description:'Échange posé, chaleureux et conversationnel.'};
   if(hn&&n.includes('chaise'))return {imageBase64:'/assets/formats/exact-hn2.b64',description:'Interview dynamique, directe et éditoriale.'};
-  if(n.includes('plateau'))return {imageBase64:'/assets/formats/exact-cl1.b64',description:'Mise en scène structurée pour un format incarné.'};
-  if(n.includes('bar'))return {imageBase64:'/assets/formats/exact-cl2.b64',description:'Univers clair, vivant et plus informel.'};
-  if(n.includes('chaise'))return {imageBase64:'/assets/formats/exact-cl3.b64',description:'Interview dynamique, directe et éditoriale.'};
-  if(n.includes('canap'))return {image:'/assets/posters/concept-libre-wide.webp',description:'Échange posé, chaleureux et conversationnel.'};
+  if(n.includes('bar'))return {imageBase64:'/assets/formats/exact-cl1.b64',description:'Univers clair, vivant et plus informel.'};
+  if(n.includes('canap'))return {imageBase64:'/assets/formats/exact-cl2.b64',description:'Échange posé, chaleureux et conversationnel.'};
+  if(n.includes('plateau'))return {imageBase64:'/assets/formats/exact-cl3.b64',description:'Mise en scène structurée pour un format incarné.'};
+  if(n.includes('chaise'))return {image:'/assets/posters/studio-wide.webp',description:'Interview dynamique, directe et éditoriale.'};
   return {image:'/assets/posters/studio-wide.webp',description:'Une configuration adaptée à votre concept.'};
 }
 

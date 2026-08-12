@@ -12,6 +12,14 @@ for (const item of report.failures || []) {
   const dynamicMissing = item.scope === 'internal-links'
     && item.message.startsWith('Cible interne absente : ')
     && dynamicWorkerRoutes.has(item.message.slice('Cible interne absente : '.length));
+  const canonicalStudioClientsWorkerRoute = item.scope.startsWith('local-')
+    && item.scope.endsWith('studio/app.html')
+    && item.message === 'Ressources visuelles ou scripts en erreur.'
+    && Array.isArray(item.details)
+    && item.details.length === 1
+    && item.details[0]?.status === 404
+    && item.details[0]?.type === 'document'
+    && new URL(item.details[0]?.url || 'http://invalid.local').pathname === '/studio/clients';
   const placeholderSearchHeuristic = item.scope.includes('live-public-')
     && item.scope.includes('/emissions/')
     && item.message === 'Contrôles visibles sans nom accessible.'
@@ -32,6 +40,10 @@ for (const item of report.failures || []) {
 
   if (dynamicMissing) {
     accepted.push({ ...item, classification: 'route dynamique servie par le Worker et validée en production' });
+    continue;
+  }
+  if (canonicalStudioClientsWorkerRoute) {
+    accepted.push({ ...item, classification: 'route canonique /studio/clients réécrite par le Worker ; le serveur statique Python de l’audit ne reproduit pas le routage Cloudflare' });
     continue;
   }
   if (placeholderSearchHeuristic) {
@@ -81,4 +93,11 @@ console.log(JSON.stringify({
   warnings: report.warnings?.length || 0,
 }, null, 2));
 
-if (failures.length) process.exit(1);
+if (failures.length) {
+  console.error('\nBlocking findings:');
+  for (const item of failures) {
+    console.error(`- [${item.scope}] ${item.message}`);
+    if (Array.isArray(item.details) && item.details.length) console.error(`  details: ${JSON.stringify(item.details)}`);
+  }
+  process.exit(1);
+}

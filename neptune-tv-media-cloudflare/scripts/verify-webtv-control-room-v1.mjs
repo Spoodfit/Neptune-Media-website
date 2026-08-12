@@ -8,7 +8,7 @@ const [activeEntry36,activeEntry,appEntry,webtvEntry,control,media,directR2,enco
 const root=JSON.parse(rootRaw),local=JSON.parse(localRaw),cors=JSON.parse(corsRaw),rootPackage=JSON.parse(rootPackageRaw),localPackage=JSON.parse(localPackageRaw),failures=[];
 const expect=(condition,message)=>{if(!condition)failures.push(message);};
 
-expect(root.main==='neptune-tv-media-cloudflare/src/entry-v35.js','le pointeur Worker racine historique doit rester entry-v35');
+expect(root.main==='neptune-tv-media-cloudflare/src/entry-v36.js','le Worker racine doit cibler entry-v36');
 expect(local.main==='src/entry-v36.js','le Worker local doit cibler entry-v36');
 expect(activeEntry36.includes("from './entry-v35.js'"),'entry-v36 ne prolonge plus entry-v35');
 expect(activeEntry36.includes('WebTvEncoder'),'entry-v36 ne réexporte plus WebTvEncoder');

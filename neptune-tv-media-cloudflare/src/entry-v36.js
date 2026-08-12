@@ -18,6 +18,7 @@ const ROUTES=new Map([
 ]);
 const STUDIO_NAV_JS='/studio/studio-information-architecture-v65-1.js?v=105';
 const STUDIO_SHELL_CSS='/studio/studio-shell-v105.css?v=1';
+const STUDIO_PRIMARY_NAVIGATION=['Parcours clients','Diffusion','Réglages'];
 const RELEASE_TAG='neptune-media-catalog-ux-20260811-v99';
 const STUDIO_UI_RELEASE='neptune-studio-ui-20260812-v105-three-tab-canonical-shell';
 const LEGACY_CLIENT_OPERATIONS='/studio/studio-client-operations-v76.js';
@@ -154,5 +155,5 @@ async function injectStudioNavigation(response){
 }
 async function augmentRelease(response){
   const current=await response.json().catch(()=>({}));
-  return new Response(JSON.stringify({...current,mediaCatalogManager:MEDIA_CATALOG_RELEASE,salesCatalog:SALES_CATALOG_RELEASE,mediaCatalogUx:RELEASE_TAG,studioUi:STUDIO_UI_RELEASE,studioShell:STUDIO_UI_RELEASE}),{status:response.status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
+  return new Response(JSON.stringify({...current,mediaCatalogManager:MEDIA_CATALOG_RELEASE,salesCatalog:SALES_CATALOG_RELEASE,mediaCatalogUx:RELEASE_TAG,studioUi:STUDIO_UI_RELEASE,studioShell:STUDIO_UI_RELEASE,studioPrimaryNavigation:STUDIO_PRIMARY_NAVIGATION}),{status:response.status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
 }

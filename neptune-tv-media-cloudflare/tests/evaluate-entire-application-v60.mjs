@@ -81,4 +81,11 @@ console.log(JSON.stringify({
   warnings: report.warnings?.length || 0,
 }, null, 2));
 
-if (failures.length) process.exit(1);
+if (failures.length) {
+  console.error('\nBlocking findings:');
+  for (const item of failures) {
+    console.error(`- [${item.scope}] ${item.message}`);
+    if (Array.isArray(item.details) && item.details.length) console.error(`  details: ${JSON.stringify(item.details)}`);
+  }
+  process.exit(1);
+}

@@ -13,7 +13,7 @@ const checks = [
   ['Studio clients body opts into v63 content runtime', html.includes('clients-app studio-clients-v63')],
   ['legacy sidebar keeps the stable mount id used by v105', html.includes('id="studioSidebar"')],
   ['canonical shell replaces legacy account action with a single logout block', canonical.includes('id="neptuneStudioLogout"') && canonical.includes('<small>Se déconnecter</small>')],
-  ['canonical shell exposes exactly the three primary destinations', canonical.includes("link('clients', '/studio/clients'") && canonical.includes("link('diffusion', '/studio/webtv.html'") && canonical.includes("link('settings', '/studio/advanced.html#programs'") && !canonical.includes("link('production'"))],
+  ['canonical shell exposes exactly the three primary destinations', canonical.includes("link('clients', '/studio/clients'") && canonical.includes("link('diffusion', '/studio/webtv.html'") && canonical.includes("link('settings', '/studio/advanced.html#programs'") && !canonical.includes("link('production'")],
   ['summary labels match their actual counters', ['clients', 'parcours actifs', 'urgences'].every((label) => html.includes(`<span>${label}</span>`))],
   ['desktop legacy account participates in flex layout before v105 replacement', css.includes('.studio-account {') && css.includes('position: static;')],
   ['legacy sidebar navigation owns its vertical scroll before v105 replacement', css.includes('.studio-nav {') && css.includes('overflow-y: auto;')],

@@ -13,5 +13,6 @@ must(sync.includes('if(current.pathname===target.pathname&&current.search===targ
 must(sync.includes("preview.dataset.catalogPreviewOwner='v109'"),'v109 does not explicitly own the preview lifecycle');
 must(sync.includes('preview.replaceChildren()'),'legacy preview iframe is not replaced by the v109 owner');
 must(sync.includes("frame.dataset.catalogPreviewV109='1'"),'stable v109 iframe marker missing');
-must(sync.includes("preview.dataset.c99='1'"),'v99 preview renderer is not disabled after v109 takes ownership');
-console.log('Catalogue preview sync v109 contract: OK — single owner, stable iframe and synchronized family/screen.');
+must(sync.includes("frame.dataset.c99LivePreview='v109'"),'v99 does not recognize the stable v109 iframe as an existing live preview');
+must(sync.includes("preview.dataset.c99='1'"),'v109 ownership marker missing');
+console.log('Catalogue preview sync v109 contract: OK — single owner, v99-compatible stable iframe and synchronized family/screen.');

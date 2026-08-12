@@ -125,7 +125,10 @@ function allowSameOriginFrame(response,marker='X-Neptune-Studio-Preview'){
   const headers=new Headers(response.headers);headers.delete('Content-Length');headers.set('Cache-Control','private, no-store, max-age=0');headers.set('X-Content-Type-Options','nosniff');headers.set('X-Frame-Options','SAMEORIGIN');headers.set('Referrer-Policy','same-origin');headers.set('Content-Security-Policy',salesTunnelCsp(headers.get('Content-Security-Policy')||'',true));headers.set(marker,STUDIO_UI_RELEASE);headers.set('X-Neptune-Sales-Tunnel-CSP','v109');
   return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
 }
-function studioTopLevelCsp(value){return setCspDirective(value,'frame-ancestors',["'none'"]);}
+function studioTopLevelCsp(value){
+  let csp=setCspDirective(value,'frame-src',["'self'",'https://www.youtube.com','https://www.youtube-nocookie.com','https://drive.google.com']);
+  return setCspDirective(csp,'frame-ancestors',["'none'"]);
+}
 function salesTunnelCsp(value,preview){
   let csp=String(value||"default-src 'self'");
   csp=setCspDirective(csp,'script-src',["'self'","'unsafe-inline'"]);

@@ -22,7 +22,9 @@ on:
       - 'neptune-tv-media-cloudflare/scripts/verify-media-catalog-v98.mjs'
       - 'neptune-tv-media-cloudflare/tests/audit-studio-information-architecture-v65.mjs'
   push:
-    branches: [main]
+    branches:
+      - main
+      - 'fix/studio-*'
     paths:
       - '.github/workflows/verify-studio-information-architecture-v65-20260731.yml'
       - 'neptune-tv-media-cloudflare/wrangler.jsonc'

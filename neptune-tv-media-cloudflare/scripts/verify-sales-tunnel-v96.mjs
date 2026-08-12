@@ -26,7 +26,7 @@ const css=read('public/reserver/assets/styles-v96.css');
 const html=read('public/reserver/index.html');
 const terms=read('public/reserver/conditions/index.html');
 
-expect('root Worker legacy pointer remains v35',rootWrangler.includes('neptune-tv-media-cloudflare/src/entry-v35.js'));
+expect('root Worker targets active v36',rootWrangler.includes('neptune-tv-media-cloudflare/src/entry-v36.js'));
 expect('local Worker targets v36',localWrangler.includes('src/entry-v36.js'));
 expect('v36 preserves v35 sales tunnel',activeEntry36.includes("from './entry-v35.js'")&&activeEntry36.includes("from './store-v29.js'"));
 expect('v35 preserves v34 sales tunnel',activeEntry.includes("from './entry-v34.js'"));

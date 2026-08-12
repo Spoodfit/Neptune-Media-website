@@ -88,17 +88,20 @@ try{
   const src=await iframe.getAttribute('src');
   assert(src.includes(`catalog_family=${encodeURIComponent(familyKey)}`),`Aperçu non ciblé sur la famille: ${src}`);
 
+  // FrameLocator waits for the iframe navigation itself; page.frames() alone can be one event-loop behind src changes.
+  const tunnel=page.frameLocator('#c98Preview iframe');
+  await tunnel.locator('.configuration-grid').waitFor({state:'visible',timeout});
+  assert(await tunnel.getByText('Quel univers souhaitez-vous ?').isVisible(),'Aperçu réel non ouvert sur l’écran Configuration');
+  assert(await tunnel.getByText('DESCRIPTION CLIENT CANAPÉ PERSONNALISÉE').isVisible(),'Description configurée dans Studio ignorée par le tunnel');
+
   const frame=page.frames().find(candidate=>candidate.url().includes('catalog_preview=studio'));
-  assert(frame,'Iframe du tunnel réel absente');
-  await frame.waitForSelector('.configuration-grid',{timeout});
-  assert(await frame.getByText('Quel univers souhaitez-vous ?').isVisible(),'Aperçu réel non ouvert sur l’écran Configuration');
-  assert(await frame.getByText('DESCRIPTION CLIENT CANAPÉ PERSONNALISÉE').isVisible(),'Description configurée dans Studio ignorée par le tunnel');
+  assert(frame,'Iframe du tunnel réel non enregistrée après navigation');
   const before=await frame.evaluate(()=>localStorage.getItem('neptune_media_reservation_v96'));
-  await frame.locator('[data-configuration="Canapé"]').click();
-  await frame.waitForSelector('.configuration-grid',{timeout});
+  await tunnel.locator('[data-configuration="Canapé"]').click();
+  await tunnel.locator('.configuration-grid').waitFor({state:'visible',timeout});
   const after=await frame.evaluate(()=>localStorage.getItem('neptune_media_reservation_v96'));
   assert(before===after,'Aperçu Studio a modifié le localStorage d’une réservation client');
-  assert(await frame.getByText('Quel univers souhaitez-vous ?').isVisible(),'Cliquer dans l’aperçu Studio fait avancer vers un vrai paiement/créneau');
+  assert(await tunnel.getByText('Quel univers souhaitez-vous ?').isVisible(),'Cliquer dans l’aperçu Studio fait avancer vers un vrai paiement/créneau');
 
   assert(errors.length===0,`Erreurs navigateur: ${errors.join(' | ')}`);
   console.log('Catalogue Media v109 browser audit: OK — retour onglet, ordre, aperçu réel ciblé, description client et isolation localStorage.');

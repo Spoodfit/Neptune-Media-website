@@ -60,6 +60,7 @@ export default{
     if(request.method==='GET'&&url.pathname==='/api/public/release'&&response.ok)response=await augmentRelease(response);
     if(request.method==='GET'&&response.ok&&(response.headers.get('Content-Type')||'').includes('text/html')){
       if(isCatalogPreviewRequest(url))response=allowSameOriginFrame(response,'X-Neptune-Studio-Preview');
+      else if(isSalesTunnelDocument(url.pathname))response=secureSalesTunnelDocument(response);
       else if(isLegacyStudioPath(url.pathname))response=secureStudioDocument(await injectStudioNavigation(response));
       else if(isStudioAppPath(url.pathname))response=secureStudioDocument(response);
     }
@@ -109,18 +110,32 @@ function callStore(studio,path,body){return studio.fetch(`https://store${path}`,
 function secure(response){const h=new Headers(response.headers);h.set('Cache-Control','no-store');h.set('X-Content-Type-Options','nosniff');h.set('X-Neptune-Media-Catalog',MEDIA_CATALOG_RELEASE);return new Response(response.body,{status:response.status,statusText:response.statusText,headers:h});}
 function isAdvancedPath(path){return path==='/studio/advanced'||path==='/studio/advanced/'||path==='/studio/advanced.html';}
 function isStudioAppPath(path){return path==='/studio/app'||path==='/studio/app/'||path==='/studio/app.html';}
+function isSalesTunnelDocument(path){return path==='/reserver'||path==='/reserver/';}
 function isLegacyStudioPath(path){return path==='/studio/clients'||path==='/studio/clients/'||path==='/studio/clients.html'||path==='/studio/video-ai'||path==='/studio/video-ai/'||path==='/studio/video-ai.html'||path==='/studio/webtv'||path==='/studio/webtv/'||path==='/studio/webtv.html'||isAdvancedPath(path);}
-function isCatalogPreviewRequest(url){return (url.pathname==='/reserver'||url.pathname==='/reserver/')&&url.searchParams.get('catalog_preview')==='studio';}
+function isCatalogPreviewRequest(url){return isSalesTunnelDocument(url.pathname)&&url.searchParams.get('catalog_preview')==='studio';}
 function secureStudioDocument(response){
   const headers=new Headers(response.headers);headers.delete('Content-Length');headers.set('Cache-Control','private, no-store, max-age=0');headers.set('X-Content-Type-Options','nosniff');headers.set('X-Frame-Options','DENY');headers.set('Referrer-Policy','same-origin');headers.set('Content-Security-Policy',studioTopLevelCsp(headers.get('Content-Security-Policy')||''));headers.set('X-Neptune-Studio-UI',STUDIO_UI_RELEASE);
   return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
 }
+function secureSalesTunnelDocument(response){
+  const headers=new Headers(response.headers);headers.delete('Content-Length');headers.set('X-Content-Type-Options','nosniff');headers.set('X-Frame-Options','DENY');headers.set('Referrer-Policy','same-origin');headers.set('Content-Security-Policy',salesTunnelCsp(headers.get('Content-Security-Policy')||'',false));headers.set('X-Neptune-Sales-Tunnel-CSP','v109');
+  return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
+}
 function allowSameOriginFrame(response,marker='X-Neptune-Studio-Preview'){
-  const headers=new Headers(response.headers);headers.delete('Content-Length');headers.set('Cache-Control','private, no-store, max-age=0');headers.set('X-Content-Type-Options','nosniff');headers.set('X-Frame-Options','SAMEORIGIN');headers.set('Referrer-Policy','same-origin');headers.set('Content-Security-Policy',studioPreviewCsp(headers.get('Content-Security-Policy')||''));headers.set(marker,STUDIO_UI_RELEASE);
+  const headers=new Headers(response.headers);headers.delete('Content-Length');headers.set('Cache-Control','private, no-store, max-age=0');headers.set('X-Content-Type-Options','nosniff');headers.set('X-Frame-Options','SAMEORIGIN');headers.set('Referrer-Policy','same-origin');headers.set('Content-Security-Policy',salesTunnelCsp(headers.get('Content-Security-Policy')||'',true));headers.set(marker,STUDIO_UI_RELEASE);headers.set('X-Neptune-Sales-Tunnel-CSP','v109');
   return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
 }
 function studioTopLevelCsp(value){return setCspDirective(value,'frame-ancestors',["'none'"]);}
-function studioPreviewCsp(value){return setCspDirective(value,'frame-ancestors',["'self'"]);}
+function salesTunnelCsp(value,preview){
+  let csp=String(value||"default-src 'self'");
+  csp=setCspDirective(csp,'script-src',["'self'","'unsafe-inline'"]);
+  csp=setCspDirective(csp,'style-src',["'self'","'unsafe-inline'"]);
+  csp=setCspDirective(csp,'img-src',["'self'",'data:']);
+  csp=setCspDirective(csp,'connect-src',["'self'"]);
+  csp=setCspDirective(csp,'frame-src',["'self'",'https://calendar.google.com']);
+  csp=setCspDirective(csp,'frame-ancestors',[preview?"'self'":"'none'"]);
+  return csp;
+}
 function setCspDirective(value,name,sources){
   const directives=String(value||"default-src 'self'").split(';').map(item=>item.trim()).filter(Boolean),prefix=`${name} `;
   const next=`${name} ${sources.join(' ')}`;let replaced=false;

@@ -15,29 +15,40 @@
           : '';
   if (!page) return;
 
+  const revealLegacyFallback = () => {
+    document.documentElement.removeAttribute('data-neptune-studio-shell-boot');
+  };
+
   const start = () => {
-    let ui = findUi(page);
-    if (!ui.sidebar || !ui.topbar) return;
+    try {
+      let ui = findUi(page);
+      if (!ui.sidebar || !ui.topbar) {
+        revealLegacyFallback();
+        return;
+      }
 
-    document.body.classList.add('studio-information-architecture-v65', 'studio-shell-v105', `studio-page-${page}`);
-    ui.shell?.classList.add('neptune-studio-shell');
-    ui.main?.classList.add('neptune-studio-main');
-    ui.topbar.classList.add('neptune-studio-topbar');
+      document.body.classList.add('studio-information-architecture-v65', 'studio-shell-v105', `studio-page-${page}`);
+      ui.shell?.classList.add('neptune-studio-shell');
+      ui.main?.classList.add('neptune-studio-main');
+      ui.topbar.classList.add('neptune-studio-topbar');
 
-    const legacyAdvanced = page === 'advanced' ? extractAdvancedControls(ui.nav, ui.sidebar) : null;
-    const activeRoute = primaryRoute(page);
-    const canonical = installCanonicalSidebar(ui.sidebar, activeRoute);
-    ui = { ...ui, ...canonical };
+      const legacyAdvanced = page === 'advanced' ? extractAdvancedControls(ui.nav, ui.sidebar) : null;
+      const activeRoute = primaryRoute(page);
+      const canonical = installCanonicalSidebar(ui.sidebar, activeRoute);
+      ui = { ...ui, ...canonical };
 
-    normalizeTopbar(ui, page);
-    const advanced = page === 'advanced' ? prepareAdvanced(ui, legacyAdvanced) : null;
-    if (page === 'webtv') installWebTvContext(ui);
-    bindPrimary(ui.nav, page, advanced);
-    installMobileDrawer(ui);
-    bindLogout(ui.account);
-    improvePageCopy(page);
+      normalizeTopbar(ui, page);
+      const advanced = page === 'advanced' ? prepareAdvanced(ui, legacyAdvanced) : null;
+      bindPrimary(ui.nav, page, advanced);
+      installMobileDrawer(ui);
+      bindLogout(ui.account);
+      improvePageCopy(page);
 
-    document.documentElement.dataset.neptuneStudioShellReady = 'v105';
+      document.documentElement.dataset.neptuneStudioShellReady = 'v105';
+    } catch (error) {
+      revealLegacyFallback();
+      console.error('[Neptune Studio] canonical shell boot failed', error);
+    }
   };
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
@@ -236,25 +247,6 @@
     render();
     sync();
     return { activate };
-  }
-
-  function installWebTvContext(ui) {
-    const existing = document.querySelector('.studio-context-nav-v65');
-    existing?.remove();
-    const context = document.createElement('nav');
-    context.className = 'studio-context-nav-v65';
-    context.setAttribute('aria-label', 'Navigation Diffusion');
-    const tabs = [
-      ['Antenne', '/studio/webtv.html', true],
-      ['Programme', '/studio/advanced.html#episodes', false],
-      ['Publicités', '/studio/advanced.html#ads', false],
-      ['Audience', '/studio/advanced.html#insights', false],
-    ];
-    context.innerHTML = tabs.map(([label, href, active]) => `<button type="button" data-webtv-href="${href}" class="${active ? 'active' : ''}">${label}</button>`).join('');
-    for (const button of context.querySelectorAll('[data-webtv-href]')) {
-      button.addEventListener('click', () => { location.href = button.dataset.webtvHref; });
-    }
-    ui.topbar.after(context);
   }
 
   function requestedTab() { return decodeURIComponent(location.hash.slice(1)).trim() || 'episodes'; }

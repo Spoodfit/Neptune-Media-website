@@ -16,8 +16,8 @@ const ROUTES=new Map([
   ['family/save','/portal/media-catalog-v98/family-save'],
   ['configuration-visual/save','/portal/media-catalog-v98/configuration-visual-save'],
 ]);
-const STUDIO_NAV_JS='/studio/studio-information-architecture-v65-1.js?v=105';
-const STUDIO_SHELL_CSS='/studio/studio-shell-v105.css?v=1';
+const STUDIO_NAV_JS='/studio/studio-information-architecture-v65-1.js?v=106';
+const STUDIO_SHELL_CSS='/studio/studio-shell-v105.css?v=2';
 const STUDIO_PRIMARY_NAVIGATION=['Parcours clients','Diffusion','Réglages'];
 const RELEASE_TAG='neptune-media-catalog-ux-20260811-v99';
 const STUDIO_UI_RELEASE='neptune-studio-ui-20260812-v105-three-tab-canonical-shell';
@@ -144,6 +144,7 @@ async function stabilizeMediaCatalogManager(response){
 }
 async function injectStudioNavigation(response){
   let body=await response.text();
+  if(!body.includes('data-neptune-studio-shell-boot='))body=body.replace(/<html\b/iu,'<html data-neptune-studio-shell-boot="v105"');
   body=body.replace(/<script\b[^>]*src=["'][^"']*studio-information-architecture-v65(?:-1)?\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu,'');
   body=body.replace(/<script\b[^>]*src=["'][^"']*webtv-nav-compat-v1\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu,'');
   body=body.replace(/<script\b[^>]*src=["'][^"']*studio-hash-advanced-v36\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu,'');

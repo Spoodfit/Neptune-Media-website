@@ -63,8 +63,9 @@ must(router.includes("'settings/catalogue':'/studio/advanced.html#programs'"),'S
 must(ia.includes("link('settings', '/studio/advanced.html#programs'"),'Settings primary route must open Catalogue Media');
 must(ia.includes("settings: [['programs', 'Catalogue Media']"),'Catalogue Media must live first in the Settings context');
 must(ia.includes("groupForTab(tab) { return ['programs', 'finances', 'users', 'audit', 'settings'].includes(tab) ? 'settings' : 'diffusion'; }"),'Catalogue Media must activate Settings rather than Diffusion');
-must(entry.includes("const STUDIO_NAV_JS='/studio/studio-information-architecture-v65-1.js?v=105'"),'Studio pages must receive the canonical v105 navigation runtime');
-must(entry.includes("const STUDIO_SHELL_CSS='/studio/studio-shell-v105.css?v=1'"),'Studio pages must receive the canonical v105 shell stylesheet');
+must(entry.includes("const STUDIO_NAV_JS='/studio/studio-information-architecture-v65-1.js?v=106'"),'Studio pages must receive the canonical navigation runtime with current cache-bust');
+must(entry.includes("const STUDIO_SHELL_CSS='/studio/studio-shell-v105.css?v=2'"),'Studio pages must receive the canonical shell stylesheet with current cache-bust');
+must(entry.includes('data-neptune-studio-shell-boot="v105"'),'Studio pages must be marked before first paint to prevent legacy shell flash');
 must(entry.includes('secureStudioDocument(await injectStudioNavigation(response))'),'advanced Studio content must remain a top-level secured page with shared navigation');
 must(entry.includes("allowSameOriginFrame(response,'X-Neptune-Studio-Preview')"),'real sales-tunnel preview must remain the only Studio same-origin iframe exception');
 must(css.includes('.c98-layout')&&css.includes('@media(max-width:980px)')&&css.includes('@media(max-width:720px)'),'responsive catalog layout missing');
@@ -73,4 +74,4 @@ for(const asset of ['public/assets/catalog-v98/hors-norme.svg','public/assets/ca
   const content=read(asset);
   must(content.includes('<image')&&content.includes('data:image/webp;base64,'),`${asset} must embed supplied image data`);
 }
-console.log('Media catalog v98/v99 contract: OK — route-aware loader, top-level Settings, canonical Studio v105 shell, real tunnel preview isolated.');
+console.log('Media catalog v98/v99 contract: OK — route-aware loader, top-level Settings, canonical Studio shell, real tunnel preview isolated.');

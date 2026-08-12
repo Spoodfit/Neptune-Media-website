@@ -16,8 +16,9 @@ const failures = [];
 const requiredLabels = ['Parcours clients', 'Diffusion', 'Réglages'];
 
 check(files.entry, "const STUDIO_UI_RELEASE='neptune-studio-ui-20260812-v105-three-tab-canonical-shell'", 'la release Studio v105 n’est pas active');
-check(files.entry, "const STUDIO_NAV_JS='/studio/studio-information-architecture-v65-1.js?v=105'", 'le runtime canonique v105 n’est pas injecté avec cache-busting');
-check(files.entry, "const STUDIO_SHELL_CSS='/studio/studio-shell-v105.css?v=1'", 'le CSS canonique v105 n’est pas injecté');
+check(files.entry, "const STUDIO_NAV_JS='/studio/studio-information-architecture-v65-1.js?v=106'", 'le runtime canonique n’est pas injecté avec le cache-busting anti-flash');
+check(files.entry, "const STUDIO_SHELL_CSS='/studio/studio-shell-v105.css?v=2'", 'le CSS canonique anti-flash n’est pas injecté');
+check(files.entry, 'data-neptune-studio-shell-boot="v105"', 'le Worker ne marque pas le document Studio avant le premier paint');
 check(files.entry, 'secureStudioDocument(await injectStudioNavigation(response))', 'les pages métier ne reçoivent pas le shell partagé top-level');
 check(files.entry, "target.searchParams.delete('studio_embed')", 'les anciennes URLs iframe ne sont pas nettoyées');
 forbid(files.entry, 'prepareStudioEmbeddedDocument', 'le Worker prépare encore des pages Studio embarquées');
@@ -35,15 +36,21 @@ check(files.runtime, "link('settings', '/studio/advanced.html#programs'", 'Régl
 forbid(files.runtime, "link('production'", 'Production vidéo reste une destination principale');
 check(files.runtime, 'id="neptuneStudioLogout"', 'le bloc unique de déconnexion n’est pas présent dans le composant canonique');
 check(files.runtime, "fetch('/api/auth/logout'", 'le bloc de compte ne déclenche pas la déconnexion');
-check(files.runtime, "['webtv', 'Web TV']", 'le sous-menu Diffusion ne contient pas Web TV');
-check(files.runtime, "['episodes', 'Programme']", 'le sous-menu Diffusion ne contient pas Programme');
+check(files.runtime, "['webtv', 'Web TV']", 'le sous-menu Diffusion des réglages ne contient pas Web TV');
+check(files.runtime, "['episodes', 'Programme']", 'le sous-menu Diffusion des réglages ne contient pas Programme');
 check(files.runtime, "settings: [['programs', 'Catalogue Media']", 'Catalogue Media n’est pas la première sous-section de Réglages');
 check(files.runtime, "['finances', 'Finances']", 'le sous-menu Réglages ne contient pas Finances');
 check(files.runtime, "cleanPath === '/studio/webtv'", 'la page Web TV n’utilise pas le shell Studio commun');
+check(files.runtime, 'document.documentElement.dataset.neptuneStudioShellReady = \'v105\'', 'le runtime ne signale pas la fin du boot canonique');
+check(files.runtime, 'revealLegacyFallback', 'le fallback de sécurité du boot canonique est absent');
+forbid(files.runtime, 'installWebTvContext', 'Diffusion réinjecte encore la rangée Antenne / Programme / Publicités / Audience');
+forbid(files.runtime, "['Antenne', '/studio/webtv.html'", 'la rangée de navigation Diffusion redondante est encore construite');
 forbid(files.runtime, 'observeLegacyInterference', 'un ancien observateur récursif instable subsiste dans le runtime actif');
 
 check(files.shellStyles, 'body.studio-shell-v105 .neptune-studio-account', 'le bloc compte/déconnexion n’a pas de style canonique');
 check(files.shellStyles, '[data-studio-route="production"]', 'le garde-fou CSS contre Production vidéo est absent');
+check(files.shellStyles, 'data-neptune-studio-shell-boot="v105"', 'le CSS ne masque pas le shell historique pendant le boot');
+check(files.shellStyles, 'data-neptune-studio-shell-ready="v105"', 'le CSS ne révèle pas explicitement le shell canonique prêt');
 check(files.webtv, '<h1>Diffusion</h1>', 'la page Web TV n’est pas présentée comme l’onglet Diffusion');
 check(files.webtv, 'Web TV active', 'la commande d’activation antenne est absente');
 
@@ -61,7 +68,7 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Studio IA v105 validée : une sidebar canonique, trois destinations, un seul bloc de déconnexion, aucune iframe métier.');
+console.log('Studio IA v105 validée : shell pré-paint sans flash legacy, trois destinations, Diffusion sans navigation redondante.');
 
 async function read(path) { return readFile(new URL(`../${path}`, import.meta.url), 'utf8'); }
 function check(content, needle, message) { if (!content.includes(needle)) failures.push(message); }

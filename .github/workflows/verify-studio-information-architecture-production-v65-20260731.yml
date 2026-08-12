@@ -2,18 +2,22 @@ name: Verify Studio Information Architecture Production V65
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - 'fix/studio-*'
     paths:
       - '.github/workflows/verify-studio-information-architecture-production-v65-20260731.yml'
       - 'wrangler.jsonc'
       - 'neptune-tv-media-cloudflare/wrangler.jsonc'
-      - 'neptune-tv-media-cloudflare/src/entry-v15.js'
+      - 'neptune-tv-media-cloudflare/src/entry-v36.js'
       - 'neptune-tv-media-cloudflare/public/studio/clients.html'
       - 'neptune-tv-media-cloudflare/public/studio/video-ai.html'
+      - 'neptune-tv-media-cloudflare/public/studio/webtv.html'
       - 'neptune-tv-media-cloudflare/public/studio/advanced.html'
       - 'neptune-tv-media-cloudflare/public/studio/studio-information-architecture-v65.css'
-      - 'neptune-tv-media-cloudflare/public/studio/studio-information-architecture-v65.js'
       - 'neptune-tv-media-cloudflare/public/studio/studio-information-architecture-v65-1.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-shell-v105.css'
+      - 'neptune-tv-media-cloudflare/public/studio/webtv-workspace-v1.js'
       - 'neptune-tv-media-cloudflare/scripts/verify-studio-information-architecture-production-v65.mjs'
   workflow_dispatch:
 
@@ -21,7 +25,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: verify-studio-information-architecture-production-v65
+  group: verify-studio-information-architecture-production-v65-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -42,7 +46,7 @@ jobs:
       - name: Check verifier syntax
         run: node --check neptune-tv-media-cloudflare/scripts/verify-studio-information-architecture-production-v65.mjs
 
-      - name: Verify Studio v65 on production domains
+      - name: Verify Studio v105 on production domains
         id: verify
         env:
           STUDIO_PRODUCTION_BASE_URLS: https://neptune-media-webtv.neptunebusinessclub.workers.dev,https://tv.neptunebusiness.com
@@ -54,7 +58,7 @@ jobs:
           node neptune-tv-media-cloudflare/scripts/verify-studio-information-architecture-production-v65.mjs 2>&1 | tee /tmp/studio-v65-production.log
 
       - name: Record production verification result
-        if: always()
+        if: always() && github.ref == 'refs/heads/main'
         env:
           VERIFY_OUTCOME: ${{ steps.verify.outcome }}
           WORKFLOW_RUN_ID: ${{ github.run_id }}
@@ -82,7 +86,7 @@ jobs:
           outcome = os.environ.get('VERIFY_OUTCOME', 'unknown')
           report = {
               'status': 'success' if outcome == 'success' else 'failed',
-              'verifier': 'studio-production-verifier-v65.1',
+              'verifier': 'studio-production-verifier-v105',
               'source_sha': os.environ.get('SOURCE_SHA', ''),
               'workflow_run_id': os.environ.get('WORKFLOW_RUN_ID', ''),
               'checked_at': datetime.now(timezone.utc).isoformat(),
@@ -90,7 +94,12 @@ jobs:
                   'https://neptune-media-webtv.neptunebusinessclub.workers.dev',
                   'https://tv.neptunebusiness.com',
               ],
-              'expected_navigation': ['Parcours clients', 'Production vidéo', 'Diffusion', 'Réglages'],
+              'expected_navigation': ['Parcours clients', 'Diffusion', 'Réglages'],
+              'expected_studio_release': 'neptune-studio-ui-20260812-v105-three-tab-canonical-shell',
+              'expected_shell_assets': {
+                  'runtime': '/studio/studio-information-architecture-v65-1.js?v=106',
+                  'stylesheet': '/studio/studio-shell-v105.css?v=2',
+              },
               'outcome': outcome,
               'log_tail': log[-8000:],
           }
@@ -101,10 +110,10 @@ jobs:
 
             git add studio-v65-production-status.json
             if git diff --cached --quiet; then
-              echo 'Studio v65 production status is already current.'
+              echo 'Studio v105 production status is already current.'
               exit 0
             fi
-            git commit -m 'chore: record Studio v65 production verification [skip ci]'
+            git commit -m 'chore: record Studio v105 production verification [skip ci]'
             if git push origin HEAD:main; then
               exit 0
             fi
@@ -112,5 +121,5 @@ jobs:
             sleep $((push_attempt * 5))
           done
 
-          echo 'Unable to record Studio v65 production verification.' >&2
+          echo 'Unable to record Studio v105 production verification.' >&2
           exit 1

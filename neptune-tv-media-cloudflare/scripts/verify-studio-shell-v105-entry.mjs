@@ -47,11 +47,20 @@ if (!css.includes('#auth.login')) throw new Error('The legacy login screen is no
 
 const advanced = fs.readFileSync(path.join(root, `${prefix}public/studio/advanced.html`), 'utf8');
 if (!advanced.includes('<main id="auth" class="login" hidden>')) throw new Error('advanced.html must keep the login screen hidden until auth actually fails');
-if (!advanced.includes('/studio/media-catalog-loader-v104.js?v=2')) throw new Error('Réglages must load the hardened catalogue bootstrap');
+if (!advanced.includes('/studio/media-catalog-loader-v104.js?v=3')) throw new Error('Réglages must load the Catalogue v108 bootstrap');
 
 const catalogueLoader = fs.readFileSync(path.join(root, `${prefix}public/studio/media-catalog-loader-v104.js`), 'utf8');
-for (const marker of ['ADMIN_TIMEOUT_MS=10000', 'PUBLIC_PREVIEW_TIMEOUT_MS=3500', 'MANAGER_SETTLE_TIMEOUT_MS=12000', 'waitForManagerState()', 'installCatalogFetchGuard()']) {
+for (const marker of [
+  'ADMIN_TIMEOUT_MS=10000',
+  'PUBLIC_PREVIEW_TIMEOUT_MS=3500',
+  'MANAGER_SETTLE_TIMEOUT_MS=12000',
+  'waitForManagerState()',
+  'installCatalogFetchGuard()',
+  "headers.set('X-CSRF-Token',csrf)",
+  'refreshStudioCsrf',
+  "document.documentElement.dataset.neptuneMediaCatalog='v108'",
+]) {
   if (!catalogueLoader.includes(marker)) throw new Error(`Catalogue bootstrap safety is missing: ${marker}`);
 }
 
-console.log('Studio v105 active entry verified: 3-tab canonical shell + Réglages auth gate + bounded catalogue bootstrap.');
+console.log('Studio v105 active entry verified: 3-tab canonical shell + Réglages auth gate + Catalogue v108 CSRF-safe bootstrap.');

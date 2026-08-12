@@ -1,11 +1,13 @@
 const CATALOG_HASH='programs';
 const CATALOG_CSS='/studio/media-catalog-manager-v98.css?v=1';
-const CATALOG_MANAGER='/studio/media-catalog-manager-v98.js?v=1';
+const CATALOG_MANAGER='/studio/media-catalog-manager-v98.js?v=2';
 const CATALOG_UX='/studio/media-catalog-ux-v99.js?v=1';
 const ADMIN_TIMEOUT_MS=10000;
+const AUTH_TIMEOUT_MS=5000;
 const PUBLIC_PREVIEW_TIMEOUT_MS=3500;
 const MANAGER_SETTLE_TIMEOUT_MS=12000;
 let loading=null;
+let catalogFetchGuardInstalled=false;
 
 loadForRoute();
 window.addEventListener('hashchange',loadForRoute);
@@ -34,16 +36,12 @@ async function loadCatalog(){
     document.head.append(link);
   }
 
-  const restoreFetch=installCatalogFetchGuard();
-  try{
-    await import(CATALOG_MANAGER);
-    const state=await waitForManagerState();
-    if(state!=='ready')return;
-    await importUxWithoutObserverFeedbackLoop();
-    document.documentElement.dataset.neptuneMediaCatalog='v104';
-  }finally{
-    restoreFetch();
-  }
+  installCatalogFetchGuard();
+  await import(CATALOG_MANAGER);
+  const state=await waitForManagerState();
+  if(state!=='ready')return;
+  await importUxWithoutObserverFeedbackLoop();
+  document.documentElement.dataset.neptuneMediaCatalog='v108';
 }
 
 async function waitForAdvancedInitialRender(){
@@ -88,10 +86,14 @@ async function waitForProgramsActivation(){
 }
 
 function installCatalogFetchGuard(){
-  const nativeFetch=window.fetch;
+  if(catalogFetchGuardInstalled)return;
+  catalogFetchGuardInstalled=true;
+  const nativeFetch=window.fetch.bind(window);
+
   window.fetch=async(input,init={})=>{
     const raw=typeof input==='string'||input instanceof URL?String(input):String(input?.url||'');
     const url=new URL(raw||location.href,location.href);
+
     if(url.pathname==='/api/reservation/catalog-v96'){
       try{
         return await timedFetch(nativeFetch,input,init,PUBLIC_PREVIEW_TIMEOUT_MS);
@@ -103,12 +105,46 @@ function installCatalogFetchGuard(){
         });
       }
     }
+
     if(url.pathname.startsWith('/api/admin/media-catalog-v98/')){
-      return timedFetch(nativeFetch,input,{...init,credentials:'same-origin'},ADMIN_TIMEOUT_MS);
+      return catalogAdminFetch(nativeFetch,input,init);
     }
-    return nativeFetch.call(window,input,init);
+
+    return nativeFetch(input,init);
   };
-  return()=>{window.fetch=nativeFetch;};
+}
+
+async function catalogAdminFetch(nativeFetch,input,init={}){
+  const first=await timedFetch(nativeFetch,input,withCsrf(init),ADMIN_TIMEOUT_MS);
+  if(first.status!==403)return first;
+
+  const payload=await first.clone().json().catch(()=>({}));
+  if(payload?.error!=='csrf_failed')return first;
+
+  const csrf=await refreshStudioCsrf(nativeFetch);
+  if(!csrf)return first;
+  return timedFetch(nativeFetch,input,withCsrf(init,csrf),ADMIN_TIMEOUT_MS);
+}
+
+function withCsrf(init={},forcedToken=''){
+  const headers=new Headers(init.headers||{});
+  const csrf=forcedToken||sessionStorage.getItem('neptune_csrf')||'';
+  if(csrf)headers.set('X-CSRF-Token',csrf);
+  return {...init,headers,credentials:'same-origin'};
+}
+
+async function refreshStudioCsrf(nativeFetch){
+  try{
+    const response=await timedFetch(nativeFetch,'/api/auth/status',{method:'GET',credentials:'same-origin'},AUTH_TIMEOUT_MS);
+    if(!response.ok)return '';
+    const data=await response.json().catch(()=>({}));
+    const csrf=String(data?.csrfToken||'');
+    if(csrf)sessionStorage.setItem('neptune_csrf',csrf);
+    return csrf;
+  }catch(error){
+    console.warn('[Neptune Studio] Impossible de renouveler le jeton Catalogue Media',error);
+    return '';
+  }
 }
 
 async function timedFetch(nativeFetch,input,init,timeoutMs){
@@ -121,7 +157,7 @@ async function timedFetch(nativeFetch,input,init,timeoutMs){
   }
   const timeout=setTimeout(()=>controller.abort('catalog_timeout'),timeoutMs);
   try{
-    return await nativeFetch.call(window,input,{...init,signal:controller.signal,credentials:init?.credentials||'same-origin'});
+    return await nativeFetch(input,{...init,signal:controller.signal,credentials:init?.credentials||'same-origin'});
   }catch(error){
     if(controller.signal.aborted&&!upstream?.aborted)throw new Error('Le catalogue met trop de temps à répondre. Réessayez.');
     throw error;

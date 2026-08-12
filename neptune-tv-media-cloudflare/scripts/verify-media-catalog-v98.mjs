@@ -52,7 +52,7 @@ must(ux.includes('Formats & configurations')&&ux.includes('Tarifs & offres'),'ca
 
 must(loader.includes("const CATALOG_HASH='programs'"),'catalog loader must target only #programs');
 must(loader.includes("const CATALOG_CSS='/studio/media-catalog-manager-v98.css?v=1'"),'catalog loader must load catalog CSS');
-must(loader.includes("const CATALOG_MANAGER='/studio/media-catalog-manager-v98.js?v=1'"),'catalog loader must load the manager');
+must(loader.includes("const CATALOG_MANAGER='/studio/media-catalog-manager-v98.js?v=2'"),'catalog loader must load the v108 manager cache key');
 must(loader.includes("const CATALOG_UX='/studio/media-catalog-ux-v99.js?v=1'"),'catalog loader must load the UX layer');
 must(loader.includes('await import(CATALOG_MANAGER)')&&loader.includes('await import(CATALOG_UX)'),'catalog loader must import manager then UX');
 must(loader.includes('ADMIN_TIMEOUT_MS=10000'),'catalog admin request timeout missing');
@@ -60,7 +60,10 @@ must(loader.includes('PUBLIC_PREVIEW_TIMEOUT_MS=3500'),'public preview fallback 
 must(loader.includes('MANAGER_SETTLE_TIMEOUT_MS=12000'),'catalog manager settle timeout missing');
 must(loader.includes('waitForManagerState()'),'catalog loader must wait for a deterministic manager state before mounting UX');
 must(loader.includes('installCatalogFetchGuard()'),'catalog loader network guard missing');
-must(advanced.includes('/studio/media-catalog-loader-v104.js?v=2'),'advanced Studio must load the hardened route-aware catalog loader');
+must(loader.includes("headers.set('X-CSRF-Token',csrf)"),'catalog loader must attach Studio CSRF to admin requests');
+must(loader.includes('refreshStudioCsrf'),'catalog loader must recover from csrf_failed with auth status refresh');
+must(loader.includes("document.documentElement.dataset.neptuneMediaCatalog='v108'"),'catalog loader must expose the v108 ready marker');
+must(advanced.includes('/studio/media-catalog-loader-v104.js?v=3'),'advanced Studio must load the v108 route-aware catalog loader');
 must(advanced.includes('<main id="auth" class="login" hidden>'),'advanced Studio must not paint the legacy login screen before session resolution');
 
 must(!app.includes('<iframe'),'Studio compatibility entry must not reintroduce a business iframe');
@@ -81,4 +84,4 @@ for(const asset of ['public/assets/catalog-v98/hors-norme.svg','public/assets/ca
   const content=read(asset);
   must(content.includes('<image')&&content.includes('data:image/webp;base64,'),`${asset} must embed supplied image data`);
 }
-console.log('Media catalog v98/v99 contract: OK — bounded loader, auth-gated Settings, canonical Studio shell, real tunnel preview isolated.');
+console.log('Media catalog v98/v99/v108 contract: OK — CSRF-safe bounded loader, auth-gated Settings, canonical Studio shell, real tunnel preview isolated.');

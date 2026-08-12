@@ -54,11 +54,14 @@ expect(shellCss.includes('data-neptune-studio-shell-ready="v105"'), 'Le CSS doit
 expect(shellCss.includes('#auth.login'), 'Le CSS doit empêcher le flash du formulaire de connexion historique.');
 
 expect(advanced.includes('<main id="auth" class="login" hidden>'), 'advanced.html doit masquer la connexion avant le résultat de session.');
-expect(advanced.includes('/studio/media-catalog-loader-v104.js?v=2'), 'advanced.html doit charger le loader Catalogue borné.');
+expect(advanced.includes('/studio/media-catalog-loader-v104.js?v=3'), 'advanced.html doit charger le loader Catalogue v108.');
 expect(catalogLoader.includes("const CATALOG_HASH='programs'"), 'Le loader Catalogue ne doit s’activer que sur #programs.');
 expect(catalogLoader.includes('await import(CATALOG_MANAGER)') && catalogLoader.includes('await import(CATALOG_UX)'), 'Le loader doit charger le moteur et l’UX du catalogue.');
 expect(catalogLoader.includes('installCatalogFetchGuard()'), 'Le loader Catalogue doit borner les appels réseau.');
 expect(catalogLoader.includes('waitForManagerState()'), 'Le loader Catalogue doit attendre un état manager déterministe.');
+expect(catalogLoader.includes("headers.set('X-CSRF-Token',csrf)"), 'Le Catalogue doit transmettre le CSRF Studio aux endpoints admin.');
+expect(catalogLoader.includes('refreshStudioCsrf'), 'Le Catalogue doit pouvoir renouveler le CSRF après expiration.');
+expect(catalogLoader.includes("document.documentElement.dataset.neptuneMediaCatalog='v108'"), 'Le bootstrap Catalogue v108 doit signaler son état prêt.');
 
 expect(entry.includes('/studio/studio-login-v48.js?v=2'), 'La racine Studio doit conserver la passerelle de connexion.');
 expect(login.includes("const CANONICAL_STUDIO_PATH = '/studio/clients'"), 'La connexion doit ouvrir directement Parcours clients.');
@@ -86,4 +89,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Studio v105 validé : shell sans flash connexion, trois onglets principaux, Catalogue borné et aucune iframe métier.');
+console.log('Studio v105 validé : shell sans flash connexion, trois onglets principaux, Catalogue v108 CSRF-safe et aucune iframe métier.');

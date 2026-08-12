@@ -55,7 +55,13 @@ must(loader.includes("const CATALOG_CSS='/studio/media-catalog-manager-v98.css?v
 must(loader.includes("const CATALOG_MANAGER='/studio/media-catalog-manager-v98.js?v=1'"),'catalog loader must load the manager');
 must(loader.includes("const CATALOG_UX='/studio/media-catalog-ux-v99.js?v=1'"),'catalog loader must load the UX layer');
 must(loader.includes('await import(CATALOG_MANAGER)')&&loader.includes('await import(CATALOG_UX)'),'catalog loader must import manager then UX');
-must(advanced.includes('/studio/media-catalog-loader-v104.js?v=1'),'advanced Studio must load the route-aware catalog loader');
+must(loader.includes('ADMIN_TIMEOUT_MS=10000'),'catalog admin request timeout missing');
+must(loader.includes('PUBLIC_PREVIEW_TIMEOUT_MS=3500'),'public preview fallback timeout missing');
+must(loader.includes('MANAGER_SETTLE_TIMEOUT_MS=12000'),'catalog manager settle timeout missing');
+must(loader.includes('waitForManagerState()'),'catalog loader must wait for a deterministic manager state before mounting UX');
+must(loader.includes('installCatalogFetchGuard()'),'catalog loader network guard missing');
+must(advanced.includes('/studio/media-catalog-loader-v104.js?v=2'),'advanced Studio must load the hardened route-aware catalog loader');
+must(advanced.includes('<main id="auth" class="login" hidden>'),'advanced Studio must not paint the legacy login screen before session resolution');
 
 must(!app.includes('<iframe'),'Studio compatibility entry must not reintroduce a business iframe');
 must(app.includes('/studio/studio-app-router-v104.js?v=1'),'Studio compatibility entry must use the top-level compatibility router');
@@ -63,8 +69,9 @@ must(router.includes("'settings/catalogue':'/studio/advanced.html#programs'"),'S
 must(ia.includes("link('settings', '/studio/advanced.html#programs'"),'Settings primary route must open Catalogue Media');
 must(ia.includes("settings: [['programs', 'Catalogue Media']"),'Catalogue Media must live first in the Settings context');
 must(ia.includes("groupForTab(tab) { return ['programs', 'finances', 'users', 'audit', 'settings'].includes(tab) ? 'settings' : 'diffusion'; }"),'Catalogue Media must activate Settings rather than Diffusion');
-must(entry.includes("const STUDIO_NAV_JS='/studio/studio-information-architecture-v65-1.js?v=106'"),'Studio pages must receive the canonical navigation runtime with current cache-bust');
-must(entry.includes("const STUDIO_SHELL_CSS='/studio/studio-shell-v105.css?v=2'"),'Studio pages must receive the canonical shell stylesheet with current cache-bust');
+must(ia.includes('settleAdvancedSession(markReady)'),'Settings must not reveal before auth resolution');
+must(entry.includes("const STUDIO_NAV_JS='/studio/studio-information-architecture-v65-1.js?v=107'"),'Studio pages must receive the canonical navigation runtime with current cache-bust');
+must(entry.includes("const STUDIO_SHELL_CSS='/studio/studio-shell-v105.css?v=3'"),'Studio pages must receive the canonical shell stylesheet with current cache-bust');
 must(entry.includes('data-neptune-studio-shell-boot="v105"'),'Studio pages must be marked before first paint to prevent legacy shell flash');
 must(entry.includes('secureStudioDocument(await injectStudioNavigation(response))'),'advanced Studio content must remain a top-level secured page with shared navigation');
 must(entry.includes("allowSameOriginFrame(response,'X-Neptune-Studio-Preview')"),'real sales-tunnel preview must remain the only Studio same-origin iframe exception');
@@ -74,4 +81,4 @@ for(const asset of ['public/assets/catalog-v98/hors-norme.svg','public/assets/ca
   const content=read(asset);
   must(content.includes('<image')&&content.includes('data:image/webp;base64,'),`${asset} must embed supplied image data`);
 }
-console.log('Media catalog v98/v99 contract: OK — route-aware loader, top-level Settings, canonical Studio shell, real tunnel preview isolated.');
+console.log('Media catalog v98/v99 contract: OK — bounded loader, auth-gated Settings, canonical Studio shell, real tunnel preview isolated.');

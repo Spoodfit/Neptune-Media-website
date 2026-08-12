@@ -79,21 +79,25 @@ try{
   const cardLabels=await page.locator('.c99-config-card h4').allTextContents();
   assert(JSON.stringify(cardLabels)===JSON.stringify(['Canapé','Chaise']),`Ordre des configurations altéré: ${JSON.stringify(cardLabels)}`);
 
+  await page.waitForFunction(()=>document.getElementById('c98Preview')?.dataset.catalogPreviewOwner==='v109',null,{timeout});
+  assert(await page.locator('#c98Preview iframe').count()===1,'Plusieurs iframes de prévisualisation coexistent');
+  const iframe=page.locator('#c98Preview iframe[data-catalog-preview-v109]');
+  await iframe.waitFor({state:'attached',timeout});
   await page.waitForFunction(()=>{
-    const frame=document.querySelector('#c98Preview iframe');
+    const frame=document.querySelector('#c98Preview iframe[data-catalog-preview-v109]');
     return frame&&frame.src.includes('catalog_view=configuration')&&frame.src.includes('catalog_family=');
   },null,{timeout});
-  const iframe=page.locator('#c98Preview iframe');
   const src=await iframe.getAttribute('src');
   assert(src.includes(`catalog_family=${encodeURIComponent(familyKey)}`),`Aperçu non ciblé sur la famille: ${src}`);
 
-  const tunnel=page.frameLocator('#c98Preview iframe');
+  const tunnel=page.frameLocator('#c98Preview iframe[data-catalog-preview-v109]');
   await tunnel.locator('.configuration-grid').waitFor({state:'visible',timeout});
   assert(await tunnel.getByText('Quel univers souhaitez-vous ?').isVisible(),'Aperçu réel non ouvert sur l’écran Configuration');
   assert(await tunnel.getByText('DESCRIPTION CLIENT CANAPÉ PERSONNALISÉE').isVisible(),'Description configurée dans Studio ignorée par le tunnel');
 
-  const frame=page.frames().find(candidate=>candidate.url().includes('catalog_preview=studio'));
-  assert(frame,'Iframe du tunnel réel non enregistrée après navigation');
+  const iframeHandle=await iframe.elementHandle();
+  const frame=await iframeHandle?.contentFrame();
+  assert(frame&&frame.url().includes('catalog_preview=studio'),'Iframe stable non naviguée vers le tunnel Studio');
   const before=await frame.evaluate(()=>localStorage.getItem('neptune_media_reservation_v96'));
   await tunnel.locator('[data-configuration="Canapé"]').click();
   await tunnel.locator('.configuration-grid').waitFor({state:'visible',timeout});
@@ -102,7 +106,7 @@ try{
   assert(await tunnel.getByText('Quel univers souhaitez-vous ?').isVisible(),'Cliquer dans l’aperçu Studio fait avancer vers un vrai paiement/créneau');
 
   assert(errors.length===0,`Erreurs navigateur: ${errors.join(' | ')}`);
-  console.log('Catalogue Media v109 browser audit: OK — retour onglet, ordre, aperçu réel ciblé, description client et isolation localStorage.');
+  console.log('Catalogue Media v109 browser audit: OK — retour onglet, ordre, iframe unique, aperçu ciblé, description client et isolation localStorage.');
   await context.close();
 } finally {
   await browser.close();

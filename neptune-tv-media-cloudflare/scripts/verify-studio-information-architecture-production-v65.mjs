@@ -63,9 +63,9 @@ async function verifyBase(base, attempt) {
   assert(!runtime.body.includes("['Antenne', '/studio/webtv.html'"), 'obsolete Diffusion context row is still constructed');
 
   const webTvRuntime = await fetchText(`${base}/studio/webtv-workspace-v1.js?studio_v105=${nonce}`);
-  assert(webTvRuntime.body.includes("['antenna','Antenne']"), 'Web TV Antenne section missing');
-  assert(webTvRuntime.body.includes("['program','Programme']"), 'Web TV Programme section missing');
-  assert(webTvRuntime.body.includes("['settings','Configuration']"), 'Web TV Configuration section missing');
+  assert(webTvRuntime.body.includes("['antenna','Antenne','Direct et état']"), 'Web TV Antenne section missing');
+  assert(webTvRuntime.body.includes("['program','Programme','Grille de diffusion']"), 'Web TV Programme section missing');
+  assert(webTvRuntime.body.includes("['settings','Configuration','YouTube et sécurité']"), 'Web TV Configuration section missing');
 
   const app = await fetchText(`${base}/studio/app.html?studio_v105=${nonce}`);
   assert(!app.body.includes('<iframe'), 'compatibility Studio entry still contains an iframe');

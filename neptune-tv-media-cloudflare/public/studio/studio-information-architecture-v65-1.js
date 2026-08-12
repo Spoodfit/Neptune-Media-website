@@ -44,7 +44,14 @@
       bindLogout(ui.account);
       improvePageCopy(page);
 
-      document.documentElement.dataset.neptuneStudioShellReady = 'v105';
+      let ready = false;
+      const markReady = () => {
+        if (ready) return;
+        ready = true;
+        document.documentElement.dataset.neptuneStudioShellReady = 'v105';
+      };
+      if (page === 'advanced') settleAdvancedSession(markReady);
+      else markReady();
     } catch (error) {
       revealLegacyFallback();
       console.error('[Neptune Studio] canonical shell boot failed', error);
@@ -53,6 +60,54 @@
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, { once: true });
   else start();
+
+  async function settleAdvancedSession(markReady) {
+    const app = document.getElementById('app');
+    const auth = document.getElementById('auth');
+    if (!app || !auth) { markReady(); return; }
+
+    let authenticated = false;
+    try {
+      const response = await fetch('/api/auth/status', {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+        credentials: 'same-origin',
+        cache: 'no-store',
+      });
+      const payload = await response.json().catch(() => ({}));
+      authenticated = response.ok && payload.authenticated !== false && Boolean(payload.user);
+    } catch {}
+
+    if (!authenticated) {
+      markReady();
+      return;
+    }
+
+    if (!app.hidden) {
+      auth.hidden = true;
+      markReady();
+      return;
+    }
+
+    let settled = false;
+    let timeout = 0;
+    const finish = () => {
+      if (settled || app.hidden) return false;
+      settled = true;
+      auth.hidden = true;
+      observer.disconnect();
+      clearTimeout(timeout);
+      markReady();
+      return true;
+    };
+    const observer = new MutationObserver(finish);
+    observer.observe(app, { attributes: true, attributeFilter: ['hidden'] });
+    timeout = window.setTimeout(() => {
+      if (finish()) return;
+      observer.disconnect();
+      markReady();
+    }, 15000);
+  }
 
   function findUi(kind) {
     if (kind === 'clients') {

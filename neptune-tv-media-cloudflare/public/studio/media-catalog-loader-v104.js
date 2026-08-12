@@ -2,6 +2,9 @@ const CATALOG_HASH='programs';
 const CATALOG_CSS='/studio/media-catalog-manager-v98.css?v=1';
 const CATALOG_MANAGER='/studio/media-catalog-manager-v98.js?v=1';
 const CATALOG_UX='/studio/media-catalog-ux-v99.js?v=1';
+const ADMIN_TIMEOUT_MS=10000;
+const PUBLIC_PREVIEW_TIMEOUT_MS=3500;
+const MANAGER_SETTLE_TIMEOUT_MS=12000;
 let loading=null;
 
 loadForRoute();
@@ -15,6 +18,7 @@ function loadForRoute(){
   if(currentTab()!==CATALOG_HASH)return;
   loading??=loadCatalog().catch(error=>{
     loading=null;
+    showBootstrapError(error);
     console.error('[Neptune Studio] Catalogue Media non chargé',error);
   });
 }
@@ -29,9 +33,17 @@ async function loadCatalog(){
     link.dataset.neptuneMediaCatalogV104='1';
     document.head.append(link);
   }
-  await import(CATALOG_MANAGER);
-  await importUxWithoutObserverFeedbackLoop();
-  document.documentElement.dataset.neptuneMediaCatalog='v104';
+
+  const restoreFetch=installCatalogFetchGuard();
+  try{
+    await import(CATALOG_MANAGER);
+    const state=await waitForManagerState();
+    if(state!=='ready')return;
+    await importUxWithoutObserverFeedbackLoop();
+    document.documentElement.dataset.neptuneMediaCatalog='v104';
+  }finally{
+    restoreFetch();
+  }
 }
 
 async function waitForAdvancedInitialRender(){
@@ -43,10 +55,11 @@ async function waitForAdvancedInitialRender(){
       const observer=new MutationObserver(()=>{
         if(app.hidden)return;
         observer.disconnect();
+        clearTimeout(timeout);
         resolve();
       });
       observer.observe(app,{attributes:true,attributeFilter:['hidden']});
-      setTimeout(()=>{observer.disconnect();resolve();},12000);
+      const timeout=setTimeout(()=>{observer.disconnect();resolve();},15000);
     });
   }
   if(currentTab()===CATALOG_HASH)await waitForProgramsActivation();
@@ -70,8 +83,94 @@ async function waitForProgramsActivation(){
     const timeout=setTimeout(()=>{
       observer.disconnect();
       resolve();
-    },4000);
+    },5000);
   });
+}
+
+function installCatalogFetchGuard(){
+  const nativeFetch=window.fetch;
+  window.fetch=async(input,init={})=>{
+    const raw=typeof input==='string'||input instanceof URL?String(input):String(input?.url||'');
+    const url=new URL(raw||location.href,location.href);
+    if(url.pathname==='/api/reservation/catalog-v96'){
+      try{
+        return await timedFetch(nativeFetch,input,init,PUBLIC_PREVIEW_TIMEOUT_MS);
+      }catch(error){
+        console.warn('[Neptune Studio] Aperçu public indisponible, catalogue admin conservé',error);
+        return new Response(JSON.stringify({ok:false,cities:[],pricing:{},previewUnavailable:true}),{
+          status:200,
+          headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'},
+        });
+      }
+    }
+    if(url.pathname.startsWith('/api/admin/media-catalog-v98/')){
+      return timedFetch(nativeFetch,input,{...init,credentials:'same-origin'},ADMIN_TIMEOUT_MS);
+    }
+    return nativeFetch.call(window,input,init);
+  };
+  return()=>{window.fetch=nativeFetch;};
+}
+
+async function timedFetch(nativeFetch,input,init,timeoutMs){
+  const controller=new AbortController();
+  const upstream=init?.signal;
+  const relay=()=>controller.abort(upstream?.reason);
+  if(upstream){
+    if(upstream.aborted)relay();
+    else upstream.addEventListener('abort',relay,{once:true});
+  }
+  const timeout=setTimeout(()=>controller.abort('catalog_timeout'),timeoutMs);
+  try{
+    return await nativeFetch.call(window,input,{...init,signal:controller.signal,credentials:init?.credentials||'same-origin'});
+  }catch(error){
+    if(controller.signal.aborted&&!upstream?.aborted)throw new Error('Le catalogue met trop de temps à répondre. Réessayez.');
+    throw error;
+  }finally{
+    clearTimeout(timeout);
+    upstream?.removeEventListener?.('abort',relay);
+  }
+}
+
+function waitForManagerState(){
+  const content=document.getElementById('content');
+  if(!content)return Promise.resolve('missing');
+  const state=()=>content.dataset.c98==='ready'?'ready':content.querySelector('.c98-error')?'error':'';
+  const immediate=state();
+  if(immediate)return Promise.resolve(immediate);
+  return new Promise(resolve=>{
+    let settled=false;
+    const finish=value=>{
+      if(settled)return;
+      settled=true;
+      observer.disconnect();
+      clearTimeout(timeout);
+      resolve(value);
+    };
+    const observer=new MutationObserver(()=>{
+      const value=state();
+      if(value)finish(value);
+    });
+    observer.observe(content,{subtree:true,childList:true,attributes:true,attributeFilter:['data-c98']});
+    const timeout=setTimeout(()=>{
+      if(state())return finish(state());
+      content.dataset.c98='';
+      content.innerHTML='<div class="c98-error"><strong>Le catalogue ne répond pas.</strong><p>Le chargement a été interrompu pour éviter de laisser Réglages bloqué.</p><button class="c98-button" id="catalogBootstrapRetry" type="button">Réessayer</button></div>';
+      content.querySelector('#catalogBootstrapRetry')?.addEventListener('click',()=>location.reload());
+      finish('timeout');
+    },MANAGER_SETTLE_TIMEOUT_MS);
+  });
+}
+
+function showBootstrapError(error){
+  const content=document.getElementById('content');
+  if(!content||content.querySelector('.c98-error'))return;
+  const message=String(error?.message||'Une erreur est survenue.');
+  content.innerHTML=`<div class="c98-error"><strong>Le catalogue ne peut pas être chargé.</strong><p>${escapeHtml(message)}</p><button class="c98-button" id="catalogBootstrapRetry" type="button">Réessayer</button></div>`;
+  content.querySelector('#catalogBootstrapRetry')?.addEventListener('click',()=>location.reload());
+}
+
+function escapeHtml(value){
+  return String(value??'').replace(/[&<>"']/gu,character=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[character]));
 }
 
 async function importUxWithoutObserverFeedbackLoop(){

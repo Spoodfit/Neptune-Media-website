@@ -4,7 +4,7 @@ import path from 'node:path';
 const root = process.cwd();
 const packageRoot = fs.existsSync(path.join(root, 'src/entry-v36.js')) && fs.existsSync(path.join(root, 'public/studio/studio-information-architecture-v65-1.js'));
 const prefix = packageRoot ? '' : 'neptune-tv-media-cloudflare/';
-const wranglerPath = path.join(root, `${prefix}wrangler.jsonc`);
+const wranglerPath = path.join(root, 'wrangler.jsonc');
 const wrangler = fs.readFileSync(wranglerPath, 'utf8');
 const mainMatch = wrangler.match(/"main"\s*:\s*"([^"]+)"/u);
 if (!mainMatch) throw new Error('wrangler.jsonc: main entry is missing');

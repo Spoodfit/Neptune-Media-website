@@ -156,8 +156,10 @@ async function neutralizeLegacyStudioClientOperations(response){
   const contentType=response.headers.get('Content-Type')||'';
   if(!contentType.includes('javascript')&&!contentType.includes('text/plain'))return response;
   let body=await response.text();
+  body=body.replace('const $ = (selector, root = document) => root.querySelector(selector);','const $ = (selector, root = document) => root?.querySelector?.(selector) ?? null;');
+  body=body.replace('const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];','const $$ = (selector, root = document) => root?.querySelectorAll ? [...root.querySelectorAll(selector)] : [];');
   body=body.replaceAll('cleanObsoleteVideoWorkspace();','void 0;');
-  const headers=rewrittenHeaders(response);headers.set('X-Neptune-Studio-Legacy-Navigation','neutralized-v105');
+  const headers=rewrittenHeaders(response);headers.set('X-Neptune-Studio-Legacy-Navigation','neutralized-v109');
   return new Response(body,{status:response.status,statusText:response.statusText,headers});
 }
 async function stabilizeMediaCatalogManager(response){

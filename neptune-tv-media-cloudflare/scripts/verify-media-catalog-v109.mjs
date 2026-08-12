@@ -9,6 +9,8 @@ const entry=read('src/entry-v36.js');
 const salesEntry=read('src/entry-v34.js');
 const backend=read('src/portal-media-catalog-v98.js');
 const visuals=read('src/media-catalog-visuals-v98.js');
+const tunnelV98=read('src/portal-sales-tunnel-v98.js');
+const dataGuard=read('src/portal-sales-tunnel-v109-guard.js');
 const store=read('src/store-v29.js');
 const loader=read('public/studio/media-catalog-loader-v104.js');
 const advanced=read('public/studio/advanced.html');
@@ -28,6 +30,13 @@ must(visuals.includes("if(n.includes('chaise'))return {image:'/assets/posters/st
 must(visuals.includes("imageSource:row.imageUrl?'custom'"),'visual provenance must be exposed');
 
 must(!backend.includes('family.configurationOptions.sort('),'configuration public order must not be silently alphabetized');
+
+must(tunnelV98.includes('publicSalesCatalogGuardedV109'),'public catalog must pass through inactive-tier guard');
+must(tunnelV98.includes('saveTunnelSelectionGuardedV109'),'reservation selection must pass through inactive-tier guard before v97 side effects');
+must(dataGuard.includes("if(!seed||!seed.active||seed.cityId!==cityId||seed.formatId!==formatId)return json({error:'offer_not_available'},409)"),'inactive seed offer must be rejected');
+must(dataGuard.includes("Boolean(row.active)&&tierKey(row)===current"),'effective current-tier offer must be active');
+must(dataGuard.includes("reason:'current_tier_inactive'"),'missing active current tier must fail closed');
+must(dataGuard.includes("format.offers=(format.offers||[]).filter(offer=>offerIsActive(store,offer?.id))"),'inactive offer must not be published by public catalog');
 
 must(loader.includes('installCatalogFetchGuard()'),'catalog loader fetch guard missing');
 must(loader.includes("headers.set('X-CSRF-Token',csrf)"),'catalog admin requests must include CSRF');
@@ -58,4 +67,4 @@ must(router.includes("'settings/catalogue':'/studio/advanced.html#programs'"),'c
 must(entry.includes("const STUDIO_NAV_JS='/studio/studio-information-architecture-v65-1.js?v=107'"),'current Studio JS cache key mismatch');
 must(entry.includes("const STUDIO_SHELL_CSS='/studio/studio-shell-v105.css?v=3'"),'current Studio CSS cache key mismatch');
 
-console.log('Media catalog v109 source contract: OK — exact supplied visuals, stable remounts, CSRF, isolated real preview, ordered configurations and authenticated Stripe discovery.');
+console.log('Media catalog v109 source contract: OK — exact visuals, stable remounts, CSRF, isolated real preview, ordered configurations, inactive-tier guard and authenticated Stripe discovery.');

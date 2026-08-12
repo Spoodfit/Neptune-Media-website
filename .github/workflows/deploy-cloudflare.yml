@@ -35,6 +35,7 @@ jobs:
       EDITORIAL_RELEASE: neptune-editorial-workspace-20260730-v2
       STUDIO_OPERATIONS_RELEASE: neptune-studio-client-journey-20260805-v77
       STUDIO_UI_RELEASE: neptune-studio-ui-20260812-v105-three-tab-canonical-shell
+      CATALOG_AUDIT_RELEASE: neptune-media-catalog-audit-20260813-v109
       SMART_EMAIL_RELEASE: neptune-smart-email-governor-20260806-v84
       HORIZONTAL_JOURNEY_RELEASE: neptune-horizontal-client-journey-20260810-v93
       DRIVE_UPLOAD_RELEASE: neptune-studio-drive-upload-20260811-v94
@@ -61,11 +62,11 @@ jobs:
       - name: Deploy Worker and Studio assets
         run: npx wrangler deploy --config wrangler.jsonc
 
-      - name: Verify Studio v105 and client journey on both production domains
+      - name: Verify Studio v105, Catalogue v109 and client journey on both production domains
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p /tmp/neptune-studio-v105
+          mkdir -p /tmp/neptune-studio-v109
 
           verify_domain() {
             local base="$1"
@@ -73,31 +74,35 @@ jobs:
             local ready=0
 
             for attempt in $(seq 1 24); do
-              local query="studio_v105=$GITHUB_SHA&attempt=$attempt"
+              local query="studio_v109=$GITHUB_SHA&attempt=$attempt"
               curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-                "$base/api/public/release?$query" > "/tmp/neptune-studio-v105/$slug-release.json" || true
+                "$base/api/public/release?$query" > "/tmp/neptune-studio-v109/$slug-release.json" || true
               curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-                "$base/studio/clients?$query" > "/tmp/neptune-studio-v105/$slug-clients.html" || true
+                "$base/studio/clients?$query" > "/tmp/neptune-studio-v109/$slug-clients.html" || true
               curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-                "$base/studio/video-ai.html?$query" > "/tmp/neptune-studio-v105/$slug-video.html" || true
+                "$base/studio/video-ai.html?$query" > "/tmp/neptune-studio-v109/$slug-video.html" || true
               curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-                "$base/studio/studio-information-architecture-v65-1.js?v=105&$query" > "/tmp/neptune-studio-v105/$slug-shell.js" || true
+                "$base/studio/studio-information-architecture-v65-1.js?v=107&$query" > "/tmp/neptune-studio-v109/$slug-shell.js" || true
               curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-                "$base/studio/studio-shell-v105.css?v=1&$query" > "/tmp/neptune-studio-v105/$slug-shell.css" || true
+                "$base/studio/studio-shell-v105.css?v=3&$query" > "/tmp/neptune-studio-v109/$slug-shell.css" || true
               curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-                "$base/espace-client/?$query" > "/tmp/neptune-studio-v105/$slug-client.html" || true
+                "$base/studio/media-catalog-manager-v98.js?v=2&$query" > "/tmp/neptune-studio-v109/$slug-catalog-manager.js" || true
               curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-                "$base/studio/content-gallery-v76.js?$query" > "/tmp/neptune-studio-v105/$slug-gallery.js" || true
+                "$base/reserver/assets/app-v96.js?$query" > "/tmp/neptune-studio-v109/$slug-tunnel.js" || true
               curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-                "$base/studio/studio-journey-v77.js?$query" > "/tmp/neptune-studio-v105/$slug-journey.js" || true
+                "$base/espace-client/?$query" > "/tmp/neptune-studio-v109/$slug-client.html" || true
               curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-                "$base/studio/studio-journey-v77.css?$query" > "/tmp/neptune-studio-v105/$slug-journey.css" || true
+                "$base/studio/content-gallery-v76.js?$query" > "/tmp/neptune-studio-v109/$slug-gallery.js" || true
               curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-                "$base/espace-client/client-preparation-v77.js?$query" > "/tmp/neptune-studio-v105/$slug-preparation.js" || true
+                "$base/studio/studio-journey-v77.js?$query" > "/tmp/neptune-studio-v109/$slug-journey.js" || true
               curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-                "$base/confirmation-studio/app.js?$query" > "/tmp/neptune-studio-v105/$slug-confirmation.js" || true
+                "$base/studio/studio-journey-v77.css?$query" > "/tmp/neptune-studio-v109/$slug-journey.css" || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
+                "$base/espace-client/client-preparation-v77.js?$query" > "/tmp/neptune-studio-v109/$slug-preparation.js" || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
+                "$base/confirmation-studio/app.js?$query" > "/tmp/neptune-studio-v109/$slug-confirmation.js" || true
 
-              if RELEASE_FILE="/tmp/neptune-studio-v105/$slug-release.json" node <<'NODE'
+              if RELEASE_FILE="/tmp/neptune-studio-v109/$slug-release.json" node <<'NODE'
           const fs = require('node:fs');
           let data;
           try { data = JSON.parse(fs.readFileSync(process.env.RELEASE_FILE, 'utf8')); } catch { process.exit(1); }
@@ -107,6 +112,7 @@ jobs:
           if (JSON.stringify(data.studioPrimaryNavigation) !== JSON.stringify(['Parcours clients', 'Diffusion', 'Réglages'])) process.exit(1);
           if (data.studioUi !== process.env.STUDIO_UI_RELEASE) process.exit(1);
           if (data.studioShell !== process.env.STUDIO_UI_RELEASE) process.exit(1);
+          if (data.mediaCatalogAudit !== process.env.CATALOG_AUDIT_RELEASE) process.exit(1);
           if (data.studioClientManagement !== 'edit-archive-reactivate-confirmed-delete') process.exit(1);
           if (data.studioClientDeletionPolicy !== 'database-and-r2-deleted-google-drive-preserved') process.exit(1);
           if (data.studioContentLibrary !== 'equal-height-cards-compact-plus-upload-paginated-24-v77') process.exit(1);
@@ -119,33 +125,36 @@ jobs:
           if (data.notificationDecisionMode !== 'state-aware-priority-and-stale-message-supersession-v84') process.exit(1);
           NODE
               then
-                if grep -Fq '/studio/studio-shell-v105.css?v=1' "/tmp/neptune-studio-v105/$slug-clients.html" \
-                  && grep -Fq '/studio/studio-information-architecture-v65-1.js?v=105' "/tmp/neptune-studio-v105/$slug-clients.html" \
-                  && grep -Fq '/studio/studio-shell-v105.css?v=1' "/tmp/neptune-studio-v105/$slug-video.html" \
-                  && grep -Fq '/studio/studio-information-architecture-v65-1.js?v=105' "/tmp/neptune-studio-v105/$slug-video.html" \
-                  && grep -Fq "link('clients', '/studio/clients'" "/tmp/neptune-studio-v105/$slug-shell.js" \
-                  && grep -Fq "link('diffusion', '/studio/webtv.html'" "/tmp/neptune-studio-v105/$slug-shell.js" \
-                  && grep -Fq "link('settings', '/studio/advanced.html#programs'" "/tmp/neptune-studio-v105/$slug-shell.js" \
-                  && ! grep -Fq "link('production'" "/tmp/neptune-studio-v105/$slug-shell.js" \
-                  && grep -Fq 'id="neptuneStudioLogout"' "/tmp/neptune-studio-v105/$slug-shell.js" \
-                  && grep -Fq 'body.studio-shell-v105 .neptune-studio-account' "/tmp/neptune-studio-v105/$slug-shell.css" \
-                  && grep -Fq '/studio/content-gallery-v76.js?v=1' "/tmp/neptune-studio-v105/$slug-clients.html" \
-                  && grep -Fq '/studio/studio-journey-v77.js?v=1' "/tmp/neptune-studio-v105/$slug-clients.html" \
-                  && grep -Fq '/espace-client/client-preparation-v77.js?v=1' "/tmp/neptune-studio-v105/$slug-client.html" \
-                  && grep -Fq 'const PAGE_SIZE = 24;' "/tmp/neptune-studio-v105/$slug-gallery.js" \
-                  && grep -Fq 'studio-upload-details-v77' "/tmp/neptune-studio-v105/$slug-journey.js" \
-                  && grep -Fq 'Réserver la préparation' "/tmp/neptune-studio-v105/$slug-journey.js" \
-                  && grep -Fq 'height:286px' "/tmp/neptune-studio-v105/$slug-journey.css" \
-                  && grep -Fq 'cards-rendered-without-binary-assets-v77' "/tmp/neptune-studio-v105/$slug-preparation.js" \
-                  && grep -Fq 'Réserver ma préparation' "/tmp/neptune-studio-v105/$slug-preparation.js" \
-                  && grep -Fq 'requestedDecision' "/tmp/neptune-studio-v105/$slug-confirmation.js" \
-                  && grep -Fq 'Confirmer définitivement ce créneau' "/tmp/neptune-studio-v105/$slug-confirmation.js"; then
+                if grep -Fq '/studio/studio-shell-v105.css?v=3' "/tmp/neptune-studio-v109/$slug-clients.html" \
+                  && grep -Fq '/studio/studio-information-architecture-v65-1.js?v=107' "/tmp/neptune-studio-v109/$slug-clients.html" \
+                  && grep -Fq '/studio/studio-shell-v105.css?v=3' "/tmp/neptune-studio-v109/$slug-video.html" \
+                  && grep -Fq '/studio/studio-information-architecture-v65-1.js?v=107' "/tmp/neptune-studio-v109/$slug-video.html" \
+                  && grep -Fq "link('clients', '/studio/clients'" "/tmp/neptune-studio-v109/$slug-shell.js" \
+                  && grep -Fq "link('diffusion', '/studio/webtv.html'" "/tmp/neptune-studio-v109/$slug-shell.js" \
+                  && grep -Fq "link('settings', '/studio/advanced.html#programs'" "/tmp/neptune-studio-v109/$slug-shell.js" \
+                  && ! grep -Fq "link('production'" "/tmp/neptune-studio-v109/$slug-shell.js" \
+                  && grep -Fq 'id="neptuneStudioLogout"' "/tmp/neptune-studio-v109/$slug-shell.js" \
+                  && grep -Fq 'body.studio-shell-v105 .neptune-studio-account' "/tmp/neptune-studio-v109/$slug-shell.css" \
+                  && grep -Fq 'let wasActive=active()' "/tmp/neptune-studio-v109/$slug-catalog-manager.js" \
+                  && grep -Fq "STUDIO_CATALOG_PREVIEW=params.get('catalog_preview')==='studio'" "/tmp/neptune-studio-v109/$slug-tunnel.js" \
+                  && grep -Fq 'o.description||configurationCopy(o.label)' "/tmp/neptune-studio-v109/$slug-tunnel.js" \
+                  && grep -Fq '/studio/content-gallery-v76.js?v=1' "/tmp/neptune-studio-v109/$slug-clients.html" \
+                  && grep -Fq '/studio/studio-journey-v77.js?v=1' "/tmp/neptune-studio-v109/$slug-clients.html" \
+                  && grep -Fq '/espace-client/client-preparation-v77.js?v=1' "/tmp/neptune-studio-v109/$slug-client.html" \
+                  && grep -Fq 'const PAGE_SIZE = 24;' "/tmp/neptune-studio-v109/$slug-gallery.js" \
+                  && grep -Fq 'studio-upload-details-v77' "/tmp/neptune-studio-v109/$slug-journey.js" \
+                  && grep -Fq 'Réserver la préparation' "/tmp/neptune-studio-v109/$slug-journey.js" \
+                  && grep -Fq 'height:286px' "/tmp/neptune-studio-v109/$slug-journey.css" \
+                  && grep -Fq 'cards-rendered-without-binary-assets-v77' "/tmp/neptune-studio-v109/$slug-preparation.js" \
+                  && grep -Fq 'Réserver ma préparation' "/tmp/neptune-studio-v109/$slug-preparation.js" \
+                  && grep -Fq 'requestedDecision' "/tmp/neptune-studio-v109/$slug-confirmation.js" \
+                  && grep -Fq 'Confirmer définitivement ce créneau' "/tmp/neptune-studio-v109/$slug-confirmation.js"; then
                   ready=1
-                  echo "$base: Studio v105 canonical shell and client journey verified on attempt $attempt."
+                  echo "$base: Studio v105, Catalogue v109 and client journey verified on attempt $attempt."
                   break
                 fi
               fi
-              echo "$base: Studio v105 not fully propagated on attempt $attempt; retrying."
+              echo "$base: Studio/Catalogue not fully propagated on attempt $attempt; retrying."
               sleep 5
             done
             test "$ready" = 1
@@ -216,10 +225,10 @@ jobs:
                   && grep -Fq "dropzone('long', 'Long format'" "/tmp/neptune-drive-upload-v94/$slug-upload.js" \
                   && grep -Fq "dropzone('short', 'Shorts'" "/tmp/neptune-drive-upload-v94/$slug-upload.js" \
                   && grep -Fq 'grid-template-columns:repeat(2,minmax(0,1fr))' "/tmp/neptune-drive-upload-v94/$slug-upload.css"; then
-                  ready=1
-                  echo "$base: Studio Drive upload v94 verified on attempt $attempt."
-                  break
-                fi
+                ready=1
+                echo "$base: Studio Drive upload v94 verified on attempt $attempt."
+                break
+              fi
               fi
               sleep 5
             done

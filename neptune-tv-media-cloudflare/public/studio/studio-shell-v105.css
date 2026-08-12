@@ -1,6 +1,38 @@
 /* Neptune Media Studio · canonical shell v105
    One sidebar DOM across every Studio route. */
 
+/*
+  The historical page markup still exists underneath the canonical shell.
+  The Worker marks Studio documents before first paint, so keep that legacy
+  shell invisible until the canonical JS has normalized it. This removes the
+  perceptible flash/jump of the old navigation when changing Studio pages.
+*/
+html[data-neptune-studio-shell-boot="v105"]:not([data-neptune-studio-shell-ready="v105"]) body {
+  background: #f6f8fc;
+}
+
+html[data-neptune-studio-shell-boot="v105"]:not([data-neptune-studio-shell-ready="v105"]) .studio-shell,
+html[data-neptune-studio-shell-boot="v105"]:not([data-neptune-studio-shell-ready="v105"]) .video-ai-shell,
+html[data-neptune-studio-shell-boot="v105"]:not([data-neptune-studio-shell-ready="v105"]) #app.shell {
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+html[data-neptune-studio-shell-ready="v105"] .studio-shell,
+html[data-neptune-studio-shell-ready="v105"] .video-ai-shell,
+html[data-neptune-studio-shell-ready="v105"] #app.shell {
+  visibility: visible;
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html[data-neptune-studio-shell-ready="v105"] .studio-shell,
+  html[data-neptune-studio-shell-ready="v105"] .video-ai-shell,
+  html[data-neptune-studio-shell-ready="v105"] #app.shell {
+    transition: opacity 80ms ease-out;
+  }
+}
+
 body.studio-shell-v105 .neptune-studio-sidebar {
   isolation: isolate;
 }

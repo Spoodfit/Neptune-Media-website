@@ -54,6 +54,8 @@ must(entry.includes("STUDIO_CATALOG_PREVIEW=params.get('catalog_preview')==='stu
 must(entry.includes('hydrateStudioCatalogPreview()'),'preview family hydration missing');
 must(entry.includes('o.description||configurationCopy(o.label)'),'client-facing configuration description is not wired to tunnel');
 must(entry.includes('if(STUDIO_CATALOG_PREVIEW)return;localStorage.setItem'),'preview may still mutate reservation localStorage');
+must(entry.includes("setCspDirective(value,'frame-src',[\"'self'\",'https://www.youtube.com','https://www.youtube-nocookie.com','https://drive.google.com'])"),'Studio CSP must allow the same-origin real tunnel preview without weakening frame-ancestors');
+must(entry.includes("setCspDirective(csp,'frame-ancestors',[\"'none'\"])"),'Studio itself must remain non-embeddable');
 must(entry.includes('mediaCatalogAudit:AUDIT_RELEASE'),'public release marker for v109 missing');
 
 const stripeStart=salesEntry.indexOf("if(key==='stripe-links')");
@@ -67,4 +69,4 @@ must(router.includes("'settings/catalogue':'/studio/advanced.html#programs'"),'c
 must(entry.includes("const STUDIO_NAV_JS='/studio/studio-information-architecture-v65-1.js?v=107'"),'current Studio JS cache key mismatch');
 must(entry.includes("const STUDIO_SHELL_CSS='/studio/studio-shell-v105.css?v=3'"),'current Studio CSS cache key mismatch');
 
-console.log('Media catalog v109 source contract: OK — exact visuals, stable remounts, CSRF, isolated real preview, ordered configurations, inactive-tier guard and authenticated Stripe discovery.');
+console.log('Media catalog v109 source contract: OK — exact visuals, stable remounts, CSRF, secured same-origin preview, ordered configurations, inactive-tier guard and authenticated Stripe discovery.');

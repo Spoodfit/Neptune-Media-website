@@ -10,4 +10,8 @@ must(sync.includes("params.set('catalog_family',selectedFamilyKey)"),'selected f
 must(sync.includes("event.target.closest('[data-c99-family]')"),'changing the family cannot refresh preview');
 must(sync.includes("event.target.closest('[data-c98-tab]')"),'changing catalog tab cannot refresh preview');
 must(sync.includes('if(current.pathname===target.pathname&&current.search===target.search)return'),'preview synchronizer lacks idempotence guard');
-console.log('Catalogue preview sync v109 contract: OK.');
+must(sync.includes("preview.dataset.catalogPreviewOwner='v109'"),'v109 does not explicitly own the preview lifecycle');
+must(sync.includes('preview.replaceChildren()'),'legacy preview iframe is not replaced by the v109 owner');
+must(sync.includes("frame.dataset.catalogPreviewV109='1'"),'stable v109 iframe marker missing');
+must(sync.includes("preview.dataset.c99='1'"),'v99 preview renderer is not disabled after v109 takes ownership');
+console.log('Catalogue preview sync v109 contract: OK — single owner, stable iframe and synchronized family/screen.');

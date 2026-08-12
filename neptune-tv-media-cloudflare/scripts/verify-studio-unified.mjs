@@ -45,23 +45,28 @@ expect(ia.includes("settings: [['programs', 'Catalogue Media']"), 'Catalogue Med
 expect(!ia.includes("['programs', 'Formats']"), 'Formats ne doit plus être présenté comme sous-section de Diffusion.');
 expect(ia.includes("groupForTab(tab) { return ['programs', 'finances', 'users', 'audit', 'settings'].includes(tab) ? 'settings' : 'diffusion'; }"), 'Le catalogue doit activer Réglages et non Diffusion.');
 expect(ia.includes("document.documentElement.dataset.neptuneStudioShellReady = 'v105'"), 'Le runtime doit signaler la fin du boot canonique.');
+expect(ia.includes('settleAdvancedSession(markReady)'), 'Réglages doit attendre la résolution de session avant de se révéler.');
 expect(ia.includes('revealLegacyFallback'), 'Le runtime doit révéler un fallback si le boot canonique échoue.');
 expect(!ia.includes('installWebTvContext'), 'Diffusion ne doit plus injecter une seconde rangée de navigation.');
 expect(shellCss.includes('body.studio-shell-v105 .neptune-studio-account'), 'Le bloc compte/déconnexion doit avoir un rendu unique.');
 expect(shellCss.includes('data-neptune-studio-shell-boot="v105"'), 'Le CSS doit empêcher le flash du shell historique avant initialisation.');
 expect(shellCss.includes('data-neptune-studio-shell-ready="v105"'), 'Le CSS doit révéler le shell canonique une fois prêt.');
+expect(shellCss.includes('#auth.login'), 'Le CSS doit empêcher le flash du formulaire de connexion historique.');
 
-expect(advanced.includes('/studio/media-catalog-loader-v104.js?v=1'), 'advanced.html doit charger le loader Catalogue.');
+expect(advanced.includes('<main id="auth" class="login" hidden>'), 'advanced.html doit masquer la connexion avant le résultat de session.');
+expect(advanced.includes('/studio/media-catalog-loader-v104.js?v=2'), 'advanced.html doit charger le loader Catalogue borné.');
 expect(catalogLoader.includes("const CATALOG_HASH='programs'"), 'Le loader Catalogue ne doit s’activer que sur #programs.');
 expect(catalogLoader.includes('await import(CATALOG_MANAGER)') && catalogLoader.includes('await import(CATALOG_UX)'), 'Le loader doit charger le moteur et l’UX du catalogue.');
+expect(catalogLoader.includes('installCatalogFetchGuard()'), 'Le loader Catalogue doit borner les appels réseau.');
+expect(catalogLoader.includes('waitForManagerState()'), 'Le loader Catalogue doit attendre un état manager déterministe.');
 
 expect(entry.includes('/studio/studio-login-v48.js?v=2'), 'La racine Studio doit conserver la passerelle de connexion.');
 expect(login.includes("const CANONICAL_STUDIO_PATH = '/studio/clients'"), 'La connexion doit ouvrir directement Parcours clients.');
 expect(login.includes('location.replace(destination)'), 'Une session valide doit naviguer vers la page métier.');
 
 expect(worker.includes("const STUDIO_UI_RELEASE='neptune-studio-ui-20260812-v105-three-tab-canonical-shell'"), 'Le Worker doit déclarer la release Studio v105.');
-expect(worker.includes("const STUDIO_NAV_JS='/studio/studio-information-architecture-v65-1.js?v=106'"), 'Toutes les pages Studio doivent recevoir le runtime anti-flash cache-busté.');
-expect(worker.includes("const STUDIO_SHELL_CSS='/studio/studio-shell-v105.css?v=2'"), 'Toutes les pages Studio doivent recevoir le style anti-flash canonique.');
+expect(worker.includes("const STUDIO_NAV_JS='/studio/studio-information-architecture-v65-1.js?v=107'"), 'Toutes les pages Studio doivent recevoir le runtime Réglages cache-busté.');
+expect(worker.includes("const STUDIO_SHELL_CSS='/studio/studio-shell-v105.css?v=3'"), 'Toutes les pages Studio doivent recevoir le style anti-flash Réglages.');
 expect(worker.includes('data-neptune-studio-shell-boot="v105"'), 'Le Worker doit marquer les pages Studio avant leur premier paint.');
 expect(worker.includes("url.searchParams.has('studio_embed')"), 'Le Worker doit nettoyer les anciennes URLs iframe encore en cache.');
 expect(worker.includes("target.searchParams.delete('studio_embed')"), 'Le paramètre iframe historique doit être supprimé.');
@@ -81,4 +86,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Studio v105 validé : shell sans flash legacy, trois onglets principaux, Diffusion sans doublon et aucune iframe métier.');
+console.log('Studio v105 validé : shell sans flash connexion, trois onglets principaux, Catalogue borné et aucune iframe métier.');

@@ -16,10 +16,11 @@ if (activeEntry !== expectedEntry) {
 const entryPath = path.join(root, activeEntry);
 const entry = fs.readFileSync(entryPath, 'utf8');
 const required = [
-  "const STUDIO_NAV_JS='/studio/studio-information-architecture-v65-1.js?v=105';",
-  "const STUDIO_SHELL_CSS='/studio/studio-shell-v105.css?v=1';",
+  "const STUDIO_NAV_JS='/studio/studio-information-architecture-v65-1.js?v=106';",
+  "const STUDIO_SHELL_CSS='/studio/studio-shell-v105.css?v=2';",
   "const STUDIO_PRIMARY_NAVIGATION=['Parcours clients','Diffusion','Réglages'];",
   "const STUDIO_UI_RELEASE='neptune-studio-ui-20260812-v105-three-tab-canonical-shell';",
+  'data-neptune-studio-shell-boot="v105"',
   'injectStudioNavigation(response)',
   'studioPrimaryNavigation:STUDIO_PRIMARY_NAVIGATION',
 ];
@@ -35,5 +36,7 @@ if (JSON.stringify(visibleRoutes) !== JSON.stringify(['clients', 'diffusion', 's
 }
 if (shell.includes("link('production'")) throw new Error('Production vidéo must not be a primary sidebar item');
 if (!shell.includes('id="neptuneStudioLogout"')) throw new Error('Canonical Studio logout block is missing');
+if (!shell.includes("document.documentElement.dataset.neptuneStudioShellReady = 'v105'")) throw new Error('Canonical Studio shell never marks itself ready');
+if (shell.includes('installWebTvContext')) throw new Error('Diffusion must not inject the obsolete Antenne/Programme/Publicités/Audience context row');
 
-console.log('Studio v105 active entry verified: entry-v36 + 3-tab canonical shell.');
+console.log('Studio v105 active entry verified: entry-v36 + anti-flash boot + 3-tab canonical shell.');

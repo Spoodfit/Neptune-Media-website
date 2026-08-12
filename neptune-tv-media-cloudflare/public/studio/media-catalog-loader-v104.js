@@ -49,7 +49,29 @@ async function waitForAdvancedInitialRender(){
       setTimeout(()=>{observer.disconnect();resolve();},12000);
     });
   }
+  if(currentTab()===CATALOG_HASH)await waitForProgramsActivation();
   await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+}
+
+async function waitForProgramsActivation(){
+  const active=()=>{
+    const legacy=document.querySelector('#studioLegacyTabControlsV105 [data-tab="programs"]')||document.querySelector('[data-tab="programs"]');
+    return Boolean(legacy?.classList.contains('active'));
+  };
+  if(active())return;
+  await new Promise(resolve=>{
+    const observer=new MutationObserver(()=>{
+      if(!active())return;
+      observer.disconnect();
+      clearTimeout(timeout);
+      resolve();
+    });
+    observer.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
+    const timeout=setTimeout(()=>{
+      observer.disconnect();
+      resolve();
+    },4000);
+  });
 }
 
 async function importUxWithoutObserverFeedbackLoop(){

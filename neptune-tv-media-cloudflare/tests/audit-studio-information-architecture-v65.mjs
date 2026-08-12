@@ -44,7 +44,7 @@ const publishedCatalog = { ok: true, formats: [], cities: [], offers: [], suppli
 const screens = [
   { id: 'clients', path: '/studio/clients', active: 'Parcours clients', context: [] },
   { id: 'production-legacy', path: '/studio/video-ai.html', active: null, context: [] },
-  { id: 'webtv', path: '/studio/webtv.html', active: 'Diffusion', context: ['Antenne', 'Programme', 'Publicités', 'Audience'] },
+  { id: 'webtv', path: '/studio/webtv.html', active: 'Diffusion', context: [] },
   { id: 'programme', path: '/studio/advanced.html#episodes', active: 'Diffusion', context: ['Web TV', 'Programme', 'Publicités', 'Audience'] },
   { id: 'catalogue', path: '/studio/advanced.html#programs', active: 'Réglages', context: ['Catalogue Media', 'Finances', 'Équipe', 'Journal', 'Général'] },
 ];
@@ -184,6 +184,7 @@ try {
       if (screen.id === 'webtv') {
         const sectionLabels = await page.locator('[data-webtv-section-button]').allTextContents();
         assert(sectionLabels.length === 3 && sectionLabels.some((label) => label.includes('Antenne')) && sectionLabels.some((label) => label.includes('Programme')) && sectionLabels.some((label) => label.includes('Configuration')), `webtv/${viewport.id}: sections de régie incorrectes ${JSON.stringify(sectionLabels)}`);
+        assert(await page.locator('.studio-context-nav-v65').count() === 0, `webtv/${viewport.id}: l’ancienne rangée Antenne / Programme / Publicités / Audience est encore présente`);
         assert(await page.locator('#save').isVisible(), `webtv/${viewport.id}: action globale antenne absente`);
       }
 
@@ -195,7 +196,7 @@ try {
 }
 
 await writeFile(path.join(outputDir, 'report.json'), JSON.stringify({ ok: true, reports }, null, 2));
-console.log('Studio visual audit v105 passed: sidebar canonique unique, trois destinations, un seul bloc de déconnexion, desktop/mobile cohérents.');
+console.log('Studio visual audit v105 passed: sidebar canonique unique, Diffusion sans sous-navigation redondante, desktop/mobile cohérents.');
 
 async function routeApi(route) {
   const url = new URL(route.request().url());

@@ -2,12 +2,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
-const wranglerPath = path.join(root, 'wrangler.jsonc');
+const packageRoot = fs.existsSync(path.join(root, 'src/entry-v36.js')) && fs.existsSync(path.join(root, 'public/studio/studio-information-architecture-v65-1.js'));
+const prefix = packageRoot ? '' : 'neptune-tv-media-cloudflare/';
+const wranglerPath = path.join(root, `${prefix}wrangler.jsonc`);
 const wrangler = fs.readFileSync(wranglerPath, 'utf8');
 const mainMatch = wrangler.match(/"main"\s*:\s*"([^"]+)"/u);
 if (!mainMatch) throw new Error('wrangler.jsonc: main entry is missing');
 
-const expectedEntry = 'neptune-tv-media-cloudflare/src/entry-v36.js';
+const expectedEntry = packageRoot ? 'src/entry-v36.js' : 'neptune-tv-media-cloudflare/src/entry-v36.js';
 const activeEntry = mainMatch[1];
 if (activeEntry !== expectedEntry) {
   throw new Error(`Studio v105 is not active: wrangler main is ${activeEntry}, expected ${expectedEntry}`);
@@ -28,7 +30,7 @@ for (const marker of required) {
   if (!entry.includes(marker)) throw new Error(`Active Studio entry is missing v105 marker: ${marker}`);
 }
 
-const shellPath = path.join(root, 'neptune-tv-media-cloudflare/public/studio/studio-information-architecture-v65-1.js');
+const shellPath = path.join(root, `${prefix}public/studio/studio-information-architecture-v65-1.js`);
 const shell = fs.readFileSync(shellPath, 'utf8');
 const visibleRoutes = [...shell.matchAll(/\$\{link\('([^']+)'/gu)].map((match) => match[1]);
 if (JSON.stringify(visibleRoutes) !== JSON.stringify(['clients', 'diffusion', 'settings'])) {

@@ -145,6 +145,7 @@ async function injectStudioNavigation(response){
   let body=await response.text();
   body=body.replace(/<script\b[^>]*src=["'][^"']*studio-information-architecture-v65(?:-1)?\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu,'');
   body=body.replace(/<script\b[^>]*src=["'][^"']*webtv-nav-compat-v1\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu,'');
+  body=body.replace(/<script\b[^>]*src=["'][^"']*studio-hash-advanced-v36\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu,'');
   body=body.replace(/<link\b[^>]*href=["'][^"']*studio-shell-v105\.css[^"']*["'][^>]*>\s*/giu,'');
   body=body.replace('</head>',`<link rel="stylesheet" href="${STUDIO_SHELL_CSS}"></head>`);
   body=body.replace('</body>',`<script type="module" src="${STUDIO_NAV_JS}"></script></body>`);

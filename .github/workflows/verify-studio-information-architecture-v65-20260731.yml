@@ -16,12 +16,15 @@ on:
       - 'neptune-tv-media-cloudflare/public/studio/advanced.html'
       - 'neptune-tv-media-cloudflare/public/studio/studio-information-architecture-v65.css'
       - 'neptune-tv-media-cloudflare/public/studio/studio-information-architecture-v65-1.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-shell-v105.css'
       - 'neptune-tv-media-cloudflare/scripts/verify-studio-information-architecture-v65.mjs'
       - 'neptune-tv-media-cloudflare/scripts/verify-studio-unified.mjs'
       - 'neptune-tv-media-cloudflare/scripts/verify-media-catalog-v98.mjs'
       - 'neptune-tv-media-cloudflare/tests/audit-studio-information-architecture-v65.mjs'
   push:
-    branches: [main]
+    branches:
+      - main
+      - 'fix/studio-*'
     paths:
       - '.github/workflows/verify-studio-information-architecture-v65-20260731.yml'
       - 'neptune-tv-media-cloudflare/wrangler.jsonc'
@@ -35,6 +38,7 @@ on:
       - 'neptune-tv-media-cloudflare/public/studio/advanced.html'
       - 'neptune-tv-media-cloudflare/public/studio/studio-information-architecture-v65.css'
       - 'neptune-tv-media-cloudflare/public/studio/studio-information-architecture-v65-1.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-shell-v105.css'
       - 'neptune-tv-media-cloudflare/scripts/verify-studio-information-architecture-v65.mjs'
       - 'neptune-tv-media-cloudflare/scripts/verify-studio-unified.mjs'
       - 'neptune-tv-media-cloudflare/scripts/verify-media-catalog-v98.mjs'
@@ -83,14 +87,15 @@ jobs:
         run: |
           set -euo pipefail
           sed -i 's/"compatibility_date": "2026-07-30"/"compatibility_date": "2026-07-07"/' neptune-tv-media-cloudflare/wrangler.jsonc
-          ./neptune-tv-media-cloudflare/node_modules/.bin/wrangler dev --config neptune-tv-media-cloudflare/wrangler.jsonc --local --port 8787 > /tmp/wrangler-v104.log 2>&1 &
-          echo $! > /tmp/wrangler-v104.pid
+          ./neptune-tv-media-cloudflare/node_modules/.bin/wrangler dev --config neptune-tv-media-cloudflare/wrangler.jsonc --local --port 8787 > /tmp/wrangler-v105.log 2>&1 &
+          echo $! > /tmp/wrangler-v105.pid
           ready=0
           for attempt in $(seq 1 60); do
-            if curl --fail --silent --show-error --location http://127.0.0.1:8787/studio/clients > /tmp/studio-v104.html; then
-              if grep -Fq '/studio/studio-information-architecture-v65.css?v=1' /tmp/studio-v104.html \
-                && grep -Fq '/studio/studio-information-architecture-v65-1.js?v=104' /tmp/studio-v104.html \
-                && ! grep -Fq 'studio_embed=' /tmp/studio-v104.html; then
+            if curl --fail --silent --show-error --location http://127.0.0.1:8787/studio/clients > /tmp/studio-v105.html; then
+              if grep -Fq '/studio/studio-information-architecture-v65.css?v=1' /tmp/studio-v105.html \
+                && grep -Fq '/studio/studio-shell-v105.css?v=1' /tmp/studio-v105.html \
+                && grep -Fq '/studio/studio-information-architecture-v65-1.js?v=105' /tmp/studio-v105.html \
+                && ! grep -Fq 'studio_embed=' /tmp/studio-v105.html; then
                 ready=1
                 break
               fi
@@ -98,23 +103,23 @@ jobs:
             sleep 2
           done
           if [ "$ready" != 1 ]; then
-            cat /tmp/wrangler-v104.log
+            cat /tmp/wrangler-v105.log
             exit 1
           fi
 
-      - name: Audit Studio v104 navigation and readability
+      - name: Audit Studio v105 canonical sidebar
         env:
           STUDIO_BASE_URL: http://127.0.0.1:8787
-          OUTPUT_DIR: test-results/studio-information-architecture-v104
+          OUTPUT_DIR: test-results/studio-information-architecture-v105
         run: node neptune-tv-media-cloudflare/tests/audit-studio-information-architecture-v65.mjs
 
       - name: Upload visual evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: studio-information-architecture-v104-evidence
+          name: studio-information-architecture-v105-evidence
           path: |
-            test-results/studio-information-architecture-v104
-            /tmp/wrangler-v104.log
+            test-results/studio-information-architecture-v105
+            /tmp/wrangler-v105.log
           if-no-files-found: warn
           retention-days: 14

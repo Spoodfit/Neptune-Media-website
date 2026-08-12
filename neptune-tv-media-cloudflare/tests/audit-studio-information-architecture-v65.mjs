@@ -3,7 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const baseURL = process.env.STUDIO_BASE_URL || 'http://127.0.0.1:8787';
-const outputDir = process.env.OUTPUT_DIR || 'test-results/studio-information-architecture-v65';
+const outputDir = process.env.OUTPUT_DIR || 'test-results/studio-information-architecture-v105';
 await mkdir(outputDir, { recursive: true });
 
 const portal = {
@@ -38,15 +38,12 @@ const webTvState = {
   encoder: { status: 'not_connected', lastHeartbeatAt: null, lastError: null, currentItem: null },
 };
 
-const catalogContext = {
-  ok: true,
-  formats: [], suppliers: [], cities: [], families: [], configurationVisuals: [], offers: [],
-};
+const catalogContext = { ok: true, formats: [], suppliers: [], cities: [], families: [], configurationVisuals: [], offers: [] };
 const publishedCatalog = { ok: true, formats: [], cities: [], offers: [], suppliers: [], pricing: {} };
 
 const screens = [
   { id: 'clients', path: '/studio/clients', active: 'Parcours clients', context: [] },
-  { id: 'production', path: '/studio/video-ai.html', active: 'Production vidéo', context: [] },
+  { id: 'production-legacy', path: '/studio/video-ai.html', active: null, context: [] },
   { id: 'webtv', path: '/studio/webtv.html', active: 'Diffusion', context: ['Antenne', 'Programme', 'Publicités', 'Audience'] },
   { id: 'programme', path: '/studio/advanced.html#episodes', active: 'Diffusion', context: ['Web TV', 'Programme', 'Publicités', 'Audience'] },
   { id: 'catalogue', path: '/studio/advanced.html#programs', active: 'Réglages', context: ['Catalogue Media', 'Finances', 'Équipe', 'Journal', 'Général'] },
@@ -55,7 +52,7 @@ const viewports = [
   { id: 'desktop', width: 1440, height: 900 },
   { id: 'mobile', width: 390, height: 844 },
 ];
-const expectedPrimary = ['Parcours clients', 'Production vidéo', 'Diffusion', 'Réglages'];
+const expectedPrimary = ['Parcours clients', 'Diffusion', 'Réglages'];
 const readinessTimeout = 30000;
 
 const browser = await chromium.launch({ headless: true });
@@ -77,6 +74,7 @@ try {
           if (url.pathname === '/api/admin/media-catalog-v98/context') return jsonResponse(catalog);
           if (url.pathname === '/api/reservation/catalog-v96') return jsonResponse(published);
           if (url.pathname === '/api/auth/status') return jsonResponse({ authenticated: true, csrfToken: 'test-csrf', user: adminUser });
+          if (url.pathname === '/api/auth/logout') return jsonResponse({ ok: true });
           return nativeFetch(input, init);
         };
       }, { catalog: catalogContext, published: publishedCatalog, adminUser: adminState.user });
@@ -93,19 +91,19 @@ try {
       const response = await page.goto(`${baseURL}${screen.path}`, { waitUntil: 'commit', timeout: readinessTimeout });
       assert(response?.ok(), `${screen.id}/${viewport.id}: page HTTP invalide ${response?.status()}`);
       await page.waitForSelector('body', { state: 'attached', timeout: readinessTimeout });
-      await page.waitForFunction(() => document.body.classList.contains('studio-information-architecture-v65'), null, { timeout: readinessTimeout });
+      await page.waitForFunction(() => document.body.classList.contains('studio-shell-v105') && document.documentElement.dataset.neptuneStudioShellReady === 'v105', null, { timeout: readinessTimeout });
       if (screen.id === 'programme' || screen.id === 'catalogue') {
         await page.waitForSelector('#app:not([hidden])', { timeout: readinessTimeout });
         await page.waitForSelector('#content', { state: 'visible', timeout: readinessTimeout });
       }
       if (screen.id === 'catalogue') await page.waitForSelector('.c98-page', { timeout: readinessTimeout });
-      if (screen.id === 'production') await page.waitForSelector('.video-ai-main', { timeout: readinessTimeout });
+      if (screen.id === 'production-legacy') await page.waitForSelector('.video-ai-main', { timeout: readinessTimeout });
       if (screen.id === 'webtv') {
         await page.waitForSelector('#save', { timeout: readinessTimeout });
         await page.waitForSelector('[data-webtv-section-button="antenna"]', { timeout: readinessTimeout });
         await page.waitForSelector('#importVideo', { state: 'attached', timeout: readinessTimeout });
       }
-      await page.waitForTimeout(700);
+      await page.waitForTimeout(500);
 
       const metrics = await page.evaluate(() => {
         const visible = (element) => {
@@ -129,6 +127,9 @@ try {
           attachedPrimaryTexts: allLinks.map(label),
           attachedActiveTexts: allLinks.filter((link) => link.classList.contains('active')).map(label),
           primaryTexts: links.map(label),
+          primarySidebarCount: document.querySelectorAll('.neptune-studio-sidebar').length,
+          logoutCount: document.querySelectorAll('#neptuneStudioLogout').length,
+          productionNavCount: allLinks.filter((link) => label(link) === 'Production vidéo' || link.dataset.studioRoute === 'production').length,
           sidebar: box('.neptune-studio-sidebar'),
           navFontSize: Number.parseFloat(getComputedStyle(links[0]?.querySelector('strong')).fontSize || '0'),
           horizontalOverflow: document.documentElement.scrollWidth - innerWidth,
@@ -144,8 +145,12 @@ try {
       await writeFile(path.join(outputDir, 'report-progress.json'), JSON.stringify({ reports }, null, 2));
 
       assert(metrics.topLevel, `${screen.id}/${viewport.id}: l’écran métier est encore embarqué dans une iframe`);
+      assert(metrics.primarySidebarCount === 1, `${screen.id}/${viewport.id}: ${metrics.primarySidebarCount} sidebars canoniques détectées`);
+      assert(metrics.logoutCount === 1, `${screen.id}/${viewport.id}: le bloc unique de déconnexion est absent ou dupliqué (${metrics.logoutCount})`);
+      assert(metrics.productionNavCount === 0, `${screen.id}/${viewport.id}: Production vidéo réapparaît dans la navigation principale`);
       assert(JSON.stringify(metrics.attachedPrimaryTexts) === JSON.stringify(expectedPrimary), `${screen.id}/${viewport.id}: navigation attachée incorrecte ${JSON.stringify(metrics.attachedPrimaryTexts)} · ${browserErrors.join(' | ')}`);
-      assert(metrics.attachedActiveTexts.length === 1 && metrics.attachedActiveTexts[0] === screen.active, `${screen.id}/${viewport.id}: destination active incorrecte ${JSON.stringify(metrics.attachedActiveTexts)}`);
+      if (screen.active) assert(metrics.attachedActiveTexts.length === 1 && metrics.attachedActiveTexts[0] === screen.active, `${screen.id}/${viewport.id}: destination active incorrecte ${JSON.stringify(metrics.attachedActiveTexts)}`);
+      else assert(metrics.attachedActiveTexts.length === 0, `${screen.id}/${viewport.id}: une destination principale ne doit pas être active sur cette route interne ${JSON.stringify(metrics.attachedActiveTexts)}`);
       assert(metrics.horizontalOverflow <= 2 || metrics.horizontalOverflowClipped, `${screen.id}/${viewport.id}: débordement horizontal global de ${metrics.horizontalOverflow}px sans politique de clipping ${JSON.stringify(metrics.overflowPolicy)}`);
       assert(JSON.stringify(metrics.contextTexts) === JSON.stringify(screen.context), `${screen.id}/${viewport.id}: sous-navigation incorrecte ${JSON.stringify(metrics.contextTexts)}`);
 
@@ -158,7 +163,7 @@ try {
         assert(await toggle.isVisible(), `${screen.id}: bouton mobile absent`);
         await toggle.click();
         await page.waitForFunction(() => document.body.classList.contains('studio-menu-open-v65'), null, { timeout: readinessTimeout });
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(250);
         const drawer = await page.evaluate(() => {
           const rect = document.querySelector('.neptune-studio-sidebar').getBoundingClientRect();
           const visibleLinks = [...document.querySelectorAll('.neptune-studio-nav-link')].filter((element) => {
@@ -174,7 +179,7 @@ try {
         await page.waitForFunction(() => !document.body.classList.contains('studio-menu-open-v65'), null, { timeout: readinessTimeout });
       }
 
-      if (screen.id === 'production') assert(await page.locator('.video-ai-main').isVisible(), `production/${viewport.id}: workspace Production absent`);
+      if (screen.id === 'production-legacy') assert(await page.locator('.video-ai-main').isVisible(), `production/${viewport.id}: workspace interne absent`);
       if (screen.id === 'catalogue') assert(await page.locator('#content').isVisible(), `catalogue/${viewport.id}: contenu Réglages absent`);
       if (screen.id === 'webtv') {
         const sectionLabels = await page.locator('[data-webtv-section-button]').allTextContents();
@@ -190,7 +195,7 @@ try {
 }
 
 await writeFile(path.join(outputDir, 'report.json'), JSON.stringify({ ok: true, reports }, null, 2));
-console.log('Studio visual audit v104 passed: pages métier top-level, quatre destinations cohérentes, Catalogue Media dans Réglages, desktop/mobile lisibles.');
+console.log('Studio visual audit v105 passed: sidebar canonique unique, trois destinations, un seul bloc de déconnexion, desktop/mobile cohérents.');
 
 async function routeApi(route) {
   const url = new URL(route.request().url());

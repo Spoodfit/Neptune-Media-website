@@ -1,10 +1,13 @@
 import { json } from './security.js';
 import {
-  publicSalesCatalogV97,
-  saveTunnelSelectionV97,
   startTunnelProspectV97,
   tunnelProspectContextV97,
 } from './portal-sales-tunnel-v97.js';
+import {
+  publicSalesCatalogGuardedV109,
+  saveTunnelSelectionGuardedV109,
+  SALES_TUNNEL_GUARD_RELEASE,
+} from './portal-sales-tunnel-v109-guard.js';
 import {
   MEDIA_CATALOG_VISUALS_RELEASE,
   ensureMediaCatalogVisualsV98Schema,
@@ -16,10 +19,10 @@ export const SALES_CATALOG_RELEASE='neptune-sales-catalog-20260811-v98';
 
 export async function publicSalesCatalogV98(store){
   ensureMediaCatalogVisualsV98Schema(store);
-  const response=await publicSalesCatalogV97(store),data=await response.json().catch(()=>({}));
+  const response=await publicSalesCatalogGuardedV109(store),data=await response.json().catch(()=>({}));
   if(!response.ok)return json(data,response.status);
   enhanceCatalog(store,data);
-  return json({...data,catalogRelease:SALES_CATALOG_RELEASE,visualsRelease:MEDIA_CATALOG_VISUALS_RELEASE});
+  return json({...data,catalogRelease:SALES_CATALOG_RELEASE,visualsRelease:MEDIA_CATALOG_VISUALS_RELEASE,dataGuardRelease:SALES_TUNNEL_GUARD_RELEASE});
 }
 
 export async function startTunnelProspectV98(store,raw={}){
@@ -37,9 +40,9 @@ export async function tunnelProspectContextV98(store,raw={}){
 
 export async function saveTunnelSelectionV98(store,raw={}){
   ensureMediaCatalogVisualsV98Schema(store);
-  const response=await saveTunnelSelectionV97(store,raw),data=await response.json().catch(()=>({}));
+  const response=await saveTunnelSelectionGuardedV109(store,raw),data=await response.json().catch(()=>({}));
   if(response.ok&&data.selection)enhanceSelection(store,data.selection);
-  return json({...data,catalogRelease:SALES_CATALOG_RELEASE},response.status);
+  return json({...data,catalogRelease:SALES_CATALOG_RELEASE,dataGuardRelease:SALES_TUNNEL_GUARD_RELEASE},response.status);
 }
 
 function enhanceCatalog(store,data){

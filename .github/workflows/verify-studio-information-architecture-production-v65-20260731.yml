@@ -22,7 +22,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: verify-studio-information-architecture-production-v65-${{ github.ref }}
@@ -35,8 +35,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -46,7 +44,7 @@ jobs:
       - name: Check verifier syntax
         run: node --check neptune-tv-media-cloudflare/scripts/verify-studio-information-architecture-production-v65.mjs
 
-      - name: Verify Studio v105 on production domains
+      - name: Verify Studio v105 and Catalogue v109 on production domains
         id: verify
         env:
           STUDIO_PRODUCTION_BASE_URLS: https://neptune-media-webtv.neptunebusinessclub.workers.dev,https://tv.neptunebusiness.com
@@ -55,10 +53,10 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          node neptune-tv-media-cloudflare/scripts/verify-studio-information-architecture-production-v65.mjs 2>&1 | tee /tmp/studio-v65-production.log
+          node neptune-tv-media-cloudflare/scripts/verify-studio-information-architecture-production-v65.mjs 2>&1 | tee /tmp/studio-v109-production.log
 
-      - name: Record production verification result
-        if: always() && github.ref == 'refs/heads/main'
+      - name: Build production verification artifact
+        if: always()
         env:
           VERIFY_OUTCOME: ${{ steps.verify.outcome }}
           WORKFLOW_RUN_ID: ${{ github.run_id }}
@@ -66,19 +64,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cd "$GITHUB_WORKSPACE"
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-
-          for push_attempt in 1 2 3 4; do
-            git fetch origin main
-            git reset --hard origin/main
-            git clean -fd
-
-            python3 - <<'PY'
+          mkdir -p test-results/studio-production-v109
+          python3 - <<'PY'
           import json, os
           from datetime import datetime, timezone
-          log_path = '/tmp/studio-v65-production.log'
+          log_path = '/tmp/studio-v109-production.log'
           try:
               log = open(log_path, encoding='utf-8', errors='replace').read()
           except FileNotFoundError:
@@ -86,7 +76,7 @@ jobs:
           outcome = os.environ.get('VERIFY_OUTCOME', 'unknown')
           report = {
               'status': 'success' if outcome == 'success' else 'failed',
-              'verifier': 'studio-production-verifier-v105',
+              'verifier': 'studio-production-verifier-v109',
               'source_sha': os.environ.get('SOURCE_SHA', ''),
               'workflow_run_id': os.environ.get('WORKFLOW_RUN_ID', ''),
               'checked_at': datetime.now(timezone.utc).isoformat(),
@@ -96,30 +86,24 @@ jobs:
               ],
               'expected_navigation': ['Parcours clients', 'Diffusion', 'Réglages'],
               'expected_studio_release': 'neptune-studio-ui-20260812-v105-three-tab-canonical-shell',
+              'expected_catalog_audit': 'neptune-media-catalog-audit-20260813-v109',
               'expected_shell_assets': {
-                  'runtime': '/studio/studio-information-architecture-v65-1.js?v=106',
-                  'stylesheet': '/studio/studio-shell-v105.css?v=2',
+                  'runtime': '/studio/studio-information-architecture-v65-1.js?v=107',
+                  'stylesheet': '/studio/studio-shell-v105.css?v=3',
               },
               'outcome': outcome,
               'log_tail': log[-8000:],
           }
-          with open('studio-v65-production-status.json', 'w', encoding='utf-8') as handle:
+          with open('test-results/studio-production-v109/status.json', 'w', encoding='utf-8') as handle:
               json.dump(report, handle, ensure_ascii=False, indent=2)
               handle.write('\n')
           PY
 
-            git add studio-v65-production-status.json
-            if git diff --cached --quiet; then
-              echo 'Studio v105 production status is already current.'
-              exit 0
-            fi
-            git commit -m 'chore: record Studio v105 production verification [skip ci]'
-            if git push origin HEAD:main; then
-              exit 0
-            fi
-            echo "Main advanced while recording Studio verification; retry ${push_attempt}/4."
-            sleep $((push_attempt * 5))
-          done
-
-          echo 'Unable to record Studio v105 production verification.' >&2
-          exit 1
+      - name: Upload production verification artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: studio-production-v109-${{ github.run_id }}
+          path: test-results/studio-production-v109
+          if-no-files-found: error
+          retention-days: 14

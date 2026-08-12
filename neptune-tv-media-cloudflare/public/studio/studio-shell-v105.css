@@ -1,0 +1,121 @@
+/* Neptune Media Studio · canonical shell v105
+   One sidebar DOM across every Studio route. */
+
+body.studio-shell-v105 .neptune-studio-sidebar {
+  isolation: isolate;
+}
+
+body.studio-shell-v105 .neptune-studio-nav {
+  flex: 0 0 auto !important;
+  overflow: visible !important;
+}
+
+body.studio-shell-v105 .neptune-studio-nav-link {
+  min-height: 58px !important;
+  padding: 11px 12px !important;
+  border-radius: 14px !important;
+}
+
+body.studio-shell-v105 .neptune-studio-nav-icon {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 10px !important;
+}
+
+body.studio-shell-v105 .neptune-studio-nav-link strong {
+  font-size: 14px !important;
+}
+
+body.studio-shell-v105 .neptune-studio-account {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  display: grid !important;
+  grid-template-columns: 36px minmax(0, 1fr) 24px !important;
+  align-items: center !important;
+  gap: 10px !important;
+  width: 100% !important;
+  min-height: 68px !important;
+  margin-top: auto !important;
+  padding: 11px !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  border-radius: 14px !important;
+  background: rgba(255,255,255,.055) !important;
+  color: #fff !important;
+  text-align: left !important;
+  cursor: pointer !important;
+  box-shadow: 0 15px 34px rgba(0,0,0,.14) !important;
+  font: inherit !important;
+}
+
+body.studio-shell-v105 .neptune-studio-account:hover,
+body.studio-shell-v105 .neptune-studio-account:focus-visible {
+  border-color: rgba(89,221,255,.28) !important;
+  background: rgba(255,255,255,.085) !important;
+  outline: none !important;
+}
+
+body.studio-shell-v105 .neptune-studio-account:disabled {
+  cursor: wait !important;
+  opacity: .72 !important;
+}
+
+body.studio-shell-v105 .neptune-studio-account .studio-avatar {
+  width: 36px !important;
+  height: 36px !important;
+  display: grid !important;
+  place-items: center !important;
+  border-radius: 10px !important;
+  background: linear-gradient(135deg,#4a7cff,#d642cf) !important;
+  color: #fff !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+}
+
+body.studio-shell-v105 .neptune-studio-account-copy {
+  min-width: 0 !important;
+  display: grid !important;
+  gap: 3px !important;
+}
+
+body.studio-shell-v105 .neptune-studio-account-copy b {
+  overflow: hidden !important;
+  color: #fff !important;
+  font-size: 12px !important;
+  font-weight: 850 !important;
+  line-height: 1.2 !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+body.studio-shell-v105 .neptune-studio-account-copy small {
+  overflow: hidden !important;
+  color: rgba(220,232,255,.62) !important;
+  font-size: 10px !important;
+  font-weight: 650 !important;
+  line-height: 1.2 !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+body.studio-shell-v105 .neptune-studio-account > i {
+  justify-self: end !important;
+  color: #9fb5de !important;
+  font-style: normal !important;
+  font-size: 18px !important;
+}
+
+body.studio-shell-v105 #studioLegacyTabControlsV105 {
+  display: none !important;
+}
+
+/* Legacy navigation owners remain available to their business modules but cannot surface another sidebar. */
+body.studio-shell-v105 .studio-nav-three-items-v76,
+body.studio-shell-v105 [data-studio-route="production"] {
+  display: none !important;
+}
+
+@media (max-width: 860px) {
+  body.studio-shell-v105 .neptune-studio-nav {
+    flex: 0 0 auto !important;
+  }
+}

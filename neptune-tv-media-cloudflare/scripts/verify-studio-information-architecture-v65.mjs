@@ -55,8 +55,18 @@ check(files.shellStyles, 'data-neptune-studio-shell-boot="v105"', 'le CSS ne mas
 check(files.shellStyles, 'data-neptune-studio-shell-ready="v105"', 'le CSS ne révèle pas explicitement le shell canonique prêt');
 check(files.shellStyles, '#auth.login', 'l’écran de connexion historique n’est pas masqué pendant le bootstrap');
 check(files.advanced, '<main id="auth" class="login" hidden>', 'Réglages peint encore le formulaire de connexion avant la vérification de session');
-check(files.advanced, '/studio/media-catalog-loader-v104.js?v=2', 'Réglages ne charge pas le bootstrap Catalogue corrigé');
-for (const marker of ['ADMIN_TIMEOUT_MS=10000', 'PUBLIC_PREVIEW_TIMEOUT_MS=3500', 'MANAGER_SETTLE_TIMEOUT_MS=12000', 'waitForManagerState()', 'installCatalogFetchGuard()']) {
+check(files.advanced, '/studio/media-catalog-loader-v104.js?v=3', 'Réglages ne charge pas le bootstrap Catalogue v108');
+for (const marker of [
+  'ADMIN_TIMEOUT_MS=10000',
+  'PUBLIC_PREVIEW_TIMEOUT_MS=3500',
+  'MANAGER_SETTLE_TIMEOUT_MS=12000',
+  'waitForManagerState()',
+  'installCatalogFetchGuard()',
+  "headers.set('X-CSRF-Token',csrf)",
+  "sessionStorage.getItem('neptune_csrf')",
+  'refreshStudioCsrf',
+  "document.documentElement.dataset.neptuneMediaCatalog='v108'",
+]) {
   check(files.catalogueLoader, marker, `le garde-fou Catalogue est absent : ${marker}`);
 }
 check(files.webtv, '<h1>Diffusion</h1>', 'la page Web TV n’est pas présentée comme l’onglet Diffusion');
@@ -76,7 +86,7 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Studio IA v105 validée : shell sans flash de connexion, trois destinations et Catalogue borné sans spinner infini.');
+console.log('Studio IA v105 validée : shell sans flash, trois destinations et Catalogue v108 avec CSRF et bootstrap borné.');
 
 async function read(path) { return readFile(new URL(`../${path}`, import.meta.url), 'utf8'); }
 function check(content, needle, message) { if (!content.includes(needle)) failures.push(message); }

@@ -36,7 +36,9 @@ export default{
       return Response.redirect(target.toString(),302);
     }
     if(request.method==='GET'&&url.pathname===LEGACY_CLIENT_OPERATIONS){
-      return neutralizeLegacyStudioClientOperations(await base.fetch(request,env,ctx));
+      const response=await base.fetch(request,env,ctx);
+      if(!isClientOperationsRequest(request))return disableLegacyStudioClientOperations(response);
+      return neutralizeLegacyStudioClientOperations(response);
     }
     if(request.method==='GET'&&url.pathname===MEDIA_CATALOG_MANAGER){
       return stabilizeMediaCatalogManager(await base.fetch(request,env,ctx));
@@ -109,10 +111,16 @@ async function studioAuth(request,env,ctx){
 function callStore(studio,path,body){return studio.fetch(`https://store${path}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});}
 function secure(response){const h=new Headers(response.headers);h.set('Cache-Control','no-store');h.set('X-Content-Type-Options','nosniff');h.set('X-Neptune-Media-Catalog',MEDIA_CATALOG_RELEASE);return new Response(response.body,{status:response.status,statusText:response.statusText,headers:h});}
 function isAdvancedPath(path){return path==='/studio/advanced'||path==='/studio/advanced/'||path==='/studio/advanced.html';}
+function isStudioClientsPath(path){return path==='/studio/clients'||path==='/studio/clients/'||path==='/studio/clients.html';}
 function isStudioAppPath(path){return path==='/studio/app'||path==='/studio/app/'||path==='/studio/app.html';}
 function isSalesTunnelDocument(path){return path==='/reserver'||path==='/reserver/';}
-function isLegacyStudioPath(path){return path==='/studio/clients'||path==='/studio/clients/'||path==='/studio/clients.html'||path==='/studio/video-ai'||path==='/studio/video-ai/'||path==='/studio/video-ai.html'||path==='/studio/webtv'||path==='/studio/webtv/'||path==='/studio/webtv.html'||isAdvancedPath(path);}
+function isLegacyStudioPath(path){return isStudioClientsPath(path)||path==='/studio/video-ai'||path==='/studio/video-ai/'||path==='/studio/video-ai.html'||path==='/studio/webtv'||path==='/studio/webtv/'||path==='/studio/webtv.html'||isAdvancedPath(path);}
 function isCatalogPreviewRequest(url){return isSalesTunnelDocument(url.pathname)&&url.searchParams.get('catalog_preview')==='studio';}
+function isClientOperationsRequest(request){
+  const referer=request.headers.get('Referer')||request.headers.get('referer')||'';
+  if(!referer)return true;
+  try{return isStudioClientsPath(new URL(referer).pathname);}catch{return true;}
+}
 function secureStudioDocument(response){
   const headers=new Headers(response.headers);headers.delete('Content-Length');headers.set('Cache-Control','private, no-store, max-age=0');headers.set('X-Content-Type-Options','nosniff');headers.set('X-Frame-Options','DENY');headers.set('Referrer-Policy','same-origin');headers.set('Content-Security-Policy',studioTopLevelCsp(headers.get('Content-Security-Policy')||''));headers.set('X-Neptune-Studio-UI',STUDIO_UI_RELEASE);
   return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
@@ -150,6 +158,13 @@ function rewrittenHeaders(response){
   for(const name of ['Content-Length','Content-Encoding','ETag','Last-Modified','Content-Range','Accept-Ranges'])headers.delete(name);
   headers.set('Cache-Control','private, no-store, max-age=0');
   return headers;
+}
+function disableLegacyStudioClientOperations(response){
+  if(!response.ok)return response;
+  const headers=rewrittenHeaders(response);
+  headers.set('Content-Type','application/javascript; charset=utf-8');
+  headers.set('X-Neptune-Studio-Legacy-Navigation','disabled-outside-clients-v109');
+  return new Response('void 0;\n',{status:response.status,statusText:response.statusText,headers});
 }
 async function neutralizeLegacyStudioClientOperations(response){
   if(!response.ok)return response;

@@ -18,8 +18,8 @@ if (activeEntry !== expectedEntry) {
 const entryPath = path.join(root, activeEntry);
 const entry = fs.readFileSync(entryPath, 'utf8');
 const required = [
-  "const STUDIO_NAV_JS='/studio/studio-information-architecture-v65-1.js?v=106';",
-  "const STUDIO_SHELL_CSS='/studio/studio-shell-v105.css?v=2';",
+  "const STUDIO_NAV_JS='/studio/studio-information-architecture-v65-1.js?v=107';",
+  "const STUDIO_SHELL_CSS='/studio/studio-shell-v105.css?v=3';",
   "const STUDIO_PRIMARY_NAVIGATION=['Parcours clients','Diffusion','Réglages'];",
   "const STUDIO_UI_RELEASE='neptune-studio-ui-20260812-v105-three-tab-canonical-shell';",
   'data-neptune-studio-shell-boot="v105"',
@@ -39,6 +39,19 @@ if (JSON.stringify(visibleRoutes) !== JSON.stringify(['clients', 'diffusion', 's
 if (shell.includes("link('production'")) throw new Error('Production vidéo must not be a primary sidebar item');
 if (!shell.includes('id="neptuneStudioLogout"')) throw new Error('Canonical Studio logout block is missing');
 if (!shell.includes("document.documentElement.dataset.neptuneStudioShellReady = 'v105'")) throw new Error('Canonical Studio shell never marks itself ready');
+if (!shell.includes('settleAdvancedSession(markReady)')) throw new Error('Réglages must wait for session resolution before first reveal');
 if (shell.includes('installWebTvContext')) throw new Error('Diffusion must not inject the obsolete Antenne/Programme/Publicités/Audience context row');
 
-console.log('Studio v105 active entry verified: entry-v36 + anti-flash boot + 3-tab canonical shell.');
+const css = fs.readFileSync(path.join(root, `${prefix}public/studio/studio-shell-v105.css`), 'utf8');
+if (!css.includes('#auth.login')) throw new Error('The legacy login screen is not hidden by the pre-paint guard');
+
+const advanced = fs.readFileSync(path.join(root, `${prefix}public/studio/advanced.html`), 'utf8');
+if (!advanced.includes('<main id="auth" class="login" hidden>')) throw new Error('advanced.html must keep the login screen hidden until auth actually fails');
+if (!advanced.includes('/studio/media-catalog-loader-v104.js?v=2')) throw new Error('Réglages must load the hardened catalogue bootstrap');
+
+const catalogueLoader = fs.readFileSync(path.join(root, `${prefix}public/studio/media-catalog-loader-v104.js`), 'utf8');
+for (const marker of ['ADMIN_TIMEOUT_MS=10000', 'PUBLIC_PREVIEW_TIMEOUT_MS=3500', 'MANAGER_SETTLE_TIMEOUT_MS=12000', 'waitForManagerState()', 'installCatalogFetchGuard()']) {
+  if (!catalogueLoader.includes(marker)) throw new Error(`Catalogue bootstrap safety is missing: ${marker}`);
+}
+
+console.log('Studio v105 active entry verified: 3-tab canonical shell + Réglages auth gate + bounded catalogue bootstrap.');

@@ -1,3 +1,4 @@
+await import('./diagnose-catalog-preview-v109.mjs');
 import { chromium } from 'playwright';
 
 const baseURL=process.env.STUDIO_BASE_URL||'http://127.0.0.1:8787';
@@ -65,7 +66,6 @@ try{
   await page.waitForSelector('.c98-page',{timeout});
   await page.waitForFunction(()=>document.getElementById('content')?.dataset.c98==='ready',null,{timeout});
 
-  // Regression 1: another Settings screen replaces #content, then Catalogue must really remount.
   await page.getByRole('button',{name:'Finances'}).click();
   await page.waitForFunction(()=>!document.querySelector('.c98-page'),null,{timeout});
   await page.getByRole('button',{name:'Catalogue Media'}).click();
@@ -73,7 +73,6 @@ try{
   await page.waitForFunction(()=>document.getElementById('content')?.dataset.c98==='ready',null,{timeout});
   assert(!(await page.locator('#content').getByText('Organisez les formats éditoriaux de la chaîne.').count()),'Retour Catalogue affiche encore le gestionnaire legacy');
 
-  // Regression 2: opening visual configurations must update the real tunnel preview URL.
   await page.locator('[data-c98-tab="configurations"]').click();
   await page.waitForSelector('[data-c99-config-manager]',{timeout});
   await page.waitForSelector('.c99-config-card',{timeout});
@@ -88,7 +87,6 @@ try{
   const src=await iframe.getAttribute('src');
   assert(src.includes(`catalog_family=${encodeURIComponent(familyKey)}`),`Aperçu non ciblé sur la famille: ${src}`);
 
-  // FrameLocator waits for the iframe navigation itself; page.frames() alone can be one event-loop behind src changes.
   const tunnel=page.frameLocator('#c98Preview iframe');
   await tunnel.locator('.configuration-grid').waitFor({state:'visible',timeout});
   assert(await tunnel.getByText('Quel univers souhaitez-vous ?').isVisible(),'Aperçu réel non ouvert sur l’écran Configuration');

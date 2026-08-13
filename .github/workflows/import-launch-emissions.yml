@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: neptune-media-import
@@ -37,6 +37,7 @@ jobs:
           registry-url: https://registry.npmjs.org
       - run: npm install --package-lock=false --registry=https://registry.npmjs.org
       - run: npx wrangler r2 bucket create "$R2_BUCKET" 2>/dev/null || true
+
       - name: Download, publish and register the two emissions
         id: media_import
         shell: bash
@@ -46,7 +47,8 @@ jobs:
           code=${PIPESTATUS[0]}
           echo "exit_code=$code" >> "$GITHUB_OUTPUT"
           exit "$code"
-      - name: Record media import status
+
+      - name: Build media import report
         if: always()
         env:
           IMPORT_STATUS: ${{ job.status }}
@@ -64,9 +66,12 @@ jobs:
             --arg direct "$PUBLIC_URL/direct/" \
             --rawfile log /tmp/media-import-tail.log \
             '{status:$status,source_sha:$source_sha,checked_at:$checked_at,exit_code:$exit_code,catalog:$catalog,direct:$direct,log:$log}' > media-import-status.json
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add media-import-status.json
-          git commit -m "chore: record media import status [skip ci]" || true
-          git pull --rebase origin main || true
-          git push || true
+
+      - name: Upload media import evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neptune-launch-media-import-${{ github.run_id }}
+          path: media-import-status.json
+          if-no-files-found: warn
+          retention-days: 14

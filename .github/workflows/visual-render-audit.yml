@@ -3,13 +3,10 @@ name: Visual Render Audit
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - 'visual-audit/**'
-      - 'visual-audit-status.json'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: neptune-visual-render-audit
@@ -23,8 +20,6 @@ jobs:
       BASE_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
     steps:
       - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-node@v4
         with:
@@ -202,11 +197,11 @@ jobs:
           JS
           node /tmp/neptune-visual-audit/audit.mjs
 
-      - name: Commit visual audit evidence
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add visual-audit/latest
-          git commit -m 'chore: capture Neptune visual render audit [skip ci]' || true
-          git pull --rebase origin main || true
-          git push
+      - name: Upload visual audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neptune-visual-render-audit-${{ github.run_id }}
+          path: visual-audit/latest/
+          if-no-files-found: warn
+          retention-days: 14

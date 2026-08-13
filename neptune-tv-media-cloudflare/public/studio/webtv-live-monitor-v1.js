@@ -1,3 +1,4 @@
+const LIVE_MONITOR_RELEASE='neptune-webtv-youtube-stability-20260813-v117';
 const monitor={
   state:null,
   itemKey:'',
@@ -12,7 +13,14 @@ const monitor={
   ytFallbackUntil:0,
   ytBufferTimer:null,
   ytLiveSeekTimer:null,
+  ytRecoveryCooldownUntil:0,
+  ytLastCurrentTime:null,
+  ytLastProgressAt:0,
+  ytLastDuration:null,
+  ytLastDurationProgressAt:0,
 };
+
+document.body.dataset.webtvYoutubeStability=LIVE_MONITOR_RELEASE;
 
 const els={
   youtube:document.getElementById('youtubeLivePreview'),
@@ -46,6 +54,7 @@ async function refresh(forceSync=false){
     const state=await response.json();
     monitor.state=state;
     render(state,forceSync);
+    watchYoutubePlayback(state);
   }catch{
     setBadge(false,'INDISPONIBLE');
     els.sync.textContent='État indisponible';
@@ -60,21 +69,19 @@ async function resyncLive(){
     const state=monitor.state||{};
     const youtubeId=String(state?.output?.videoId||'').trim();
     const encoder=state?.encoder||{};
-    const live=state?.enabled===true&&['running','live','streaming'].includes(String(encoder.status||''));
+    const live=isLiveState(state);
     monitor.ytFallbackUntil=0;
+    monitor.ytRecoveryCooldownUntil=0;
     monitor.ytErrorCode=0;
+    resetYoutubeProgress();
 
     if(youtubeId&&live){
-      showYoutube(youtubeId,false);
+      showYoutube(youtubeId,true);
       const ready=await ensureYoutubePlayer();
       if(ready&&syncYoutubeToLiveEdge(true)){
         els.sync.textContent='Retour YouTube · recollé au direct';
         return;
       }
-      // Do not tear down/recreate the iframe here. Repeated iframe reloads are
-      // exactly what caused transient YouTube playback IDs and endless spinners.
-      // Give the existing player a short window to become ready, then fall back
-      // to the source Neptune if YouTube still cannot provide a usable return.
       armYoutubeBufferFallback(7000,'YouTube met trop de temps à rejoindre le direct.');
       els.sync.textContent='Retour YouTube · reconnexion au direct…';
       return;
@@ -100,8 +107,7 @@ async function resyncLive(){
 
 function render(state,forceSync){
   const encoder=state?.encoder||{};
-  const status=String(encoder.status||'not_connected');
-  const live=state?.enabled===true&&['running','live','streaming'].includes(status);
+  const live=isLiveState(state);
   const current=encoder.currentItem||null;
   const youtubeId=String(state?.output?.videoId||'').trim();
 
@@ -160,6 +166,10 @@ function showYoutube(videoId,forceLoad=false){
 
   const changed=monitor.youtubeKey!==videoId;
   monitor.youtubeKey=videoId;
+  if(changed){
+    resetYoutubeProgress();
+    monitor.ytRecoveryCooldownUntil=0;
+  }
   if(changed||!els.youtube.getAttribute('src')){
     monitor.ytReady=false;
     monitor.ytErrorCode=0;
@@ -171,9 +181,7 @@ function showYoutube(videoId,forceLoad=false){
 
   ensureYoutubePlayer().then(ready=>{
     if(!ready)return;
-    if(monitor.state?.enabled===true&&['running','live','streaming'].includes(String(monitor.state?.encoder?.status||''))){
-      scheduleYoutubeLiveSeek();
-    }
+    if(isLiveState(monitor.state))scheduleYoutubeLiveSeek();
   });
 }
 
@@ -191,6 +199,7 @@ async function ensureYoutubePlayer(){
               monitor.ytReady=true;
               monitor.ytErrorCode=0;
               clearYoutubeBufferFallback();
+              resetYoutubeProgress();
               try{monitor.ytPlayer.mute();}catch{}
               scheduleYoutubeLiveSeek();
             },
@@ -244,16 +253,22 @@ function loadYoutubeApi(){
   return monitor.ytApiPromise;
 }
 
-function onYoutubeStateChange(state){
-  // YT.PlayerState: PLAYING=1, BUFFERING=3, CUED=5.
-  if(state===1){
+function onYoutubeStateChange(playerState){
+  // YT.PlayerState: ENDED=0, PLAYING=1, BUFFERING=3, CUED=5.
+  if(playerState===0){
+    if(isLiveState(monitor.state))recoverYoutubeMonitor('Le lecteur YouTube a atteint la fin du broadcast.');
+    return;
+  }
+  if(playerState===1){
     clearYoutubeBufferFallback();
     monitor.ytFallbackUntil=0;
+    monitor.ytRecoveryCooldownUntil=0;
+    resetYoutubeProgress();
     els.screen.classList.remove('has-error');
     els.sync.textContent='Retour YouTube · direct';
     return;
   }
-  if(state===3){
+  if(playerState===3){
     armYoutubeBufferFallback(9000,'Le retour YouTube reste bloqué en chargement.');
   }
 }
@@ -268,7 +283,49 @@ function onYoutubeError(code){
     150:'lecture intégrée désactivée par YouTube',
     153:'identification du lecteur intégrée refusée par YouTube',
   };
-  fallbackFromYoutube(labels[code]||`erreur lecteur YouTube ${code||'inconnue'}`);
+  fallbackFromYoutube(labels[code]||`erreur lecteur YouTube ${code||'inconnue'}`,30000);
+}
+
+function watchYoutubePlayback(state){
+  if(!isLiveState(state)||els.youtube.hidden||!monitor.ytPlayer||!monitor.ytReady||Date.now()<monitor.ytFallbackUntil)return;
+  let playerState,current,duration;
+  try{
+    playerState=Number(monitor.ytPlayer.getPlayerState?.());
+    current=Number(monitor.ytPlayer.getCurrentTime?.()||0);
+    duration=Number(monitor.ytPlayer.getDuration?.()||0);
+  }catch{return;}
+  if(playerState===0){recoverYoutubeMonitor('Le lecteur YouTube signale une diffusion terminée.');return;}
+  if(playerState!==1)return;
+  const now=Date.now();
+  if(monitor.ytLastCurrentTime===null||current>monitor.ytLastCurrentTime+.2){
+    monitor.ytLastCurrentTime=current;
+    monitor.ytLastProgressAt=now;
+  }else if(monitor.ytLastProgressAt&&now-monitor.ytLastProgressAt>12000){
+    recoverYoutubeMonitor('Le retour YouTube est figé alors que l’encodeur continue de diffuser.');
+    return;
+  }
+  if(monitor.ytLastDuration===null||duration>monitor.ytLastDuration+.2){
+    monitor.ytLastDuration=duration;
+    monitor.ytLastDurationProgressAt=now;
+  }else if(duration>0&&current>=duration-.75&&monitor.ytLastDurationProgressAt&&now-monitor.ytLastDurationProgressAt>12000){
+    recoverYoutubeMonitor('YouTube reste bloqué sur la dernière image du live.');
+  }
+}
+
+function recoverYoutubeMonitor(reason){
+  const now=Date.now();
+  if(now<monitor.ytRecoveryCooldownUntil)return;
+  monitor.ytRecoveryCooldownUntil=now+15000;
+  resetYoutubeProgress();
+  try{monitor.ytPlayer?.pauseVideo?.();}catch{}
+  fallbackFromYoutube(reason,15000);
+}
+
+function resetYoutubeProgress(){
+  monitor.ytLastCurrentTime=null;
+  monitor.ytLastProgressAt=0;
+  monitor.ytLastDuration=null;
+  monitor.ytLastDurationProgressAt=0;
 }
 
 function syncYoutubeToLiveEdge(force=false){
@@ -276,12 +333,7 @@ function syncYoutubeToLiveEdge(force=false){
   try{
     const duration=Number(monitor.ytPlayer.getDuration?.()||0);
     monitor.ytPlayer.mute?.();
-    if(duration>0){
-      // For a live event YouTube documents getDuration() as the elapsed live
-      // stream time. Seeking to its end therefore rejoins the live edge without
-      // reloading the iframe and creating a new playback session.
-      monitor.ytPlayer.seekTo?.(Math.max(0,duration-1.25),true);
-    }
+    if(duration>0)monitor.ytPlayer.seekTo?.(Math.max(0,duration-1.25),true);
     monitor.ytPlayer.playVideo?.();
     if(force)armYoutubeBufferFallback(9000,'YouTube n’a pas rejoint le direct après la resynchronisation.');
     return true;
@@ -305,9 +357,10 @@ function scheduleYoutubeLiveSeek(){
 function armYoutubeBufferFallback(delayMs,reason){
   clearYoutubeBufferFallback();
   monitor.ytBufferTimer=setTimeout(()=>{
-    const state=Number(monitor.ytPlayer?.getPlayerState?.());
-    if(state===1)return;
-    fallbackFromYoutube(reason);
+    const playerState=Number(monitor.ytPlayer?.getPlayerState?.());
+    if(playerState===1)return;
+    if(playerState===0&&isLiveState(monitor.state)){recoverYoutubeMonitor('Le lecteur YouTube a atteint la fin du broadcast.');return;}
+    fallbackFromYoutube(reason,30000);
   },delayMs);
 }
 
@@ -316,13 +369,13 @@ function clearYoutubeBufferFallback(){
   monitor.ytBufferTimer=null;
 }
 
-function fallbackFromYoutube(reason){
+function fallbackFromYoutube(reason,durationMs=30000){
   clearYoutubeBufferFallback();
-  monitor.ytFallbackUntil=Date.now()+30000;
+  monitor.ytFallbackUntil=Date.now()+durationMs;
   const state=monitor.state||{};
   const encoder=state?.encoder||{};
   const current=encoder.currentItem||null;
-  const live=state?.enabled===true&&['running','live','streaming'].includes(String(encoder.status||''));
+  const live=isLiveState(state);
   const source=resolveSource(state,current);
   els.youtube.hidden=true;
   if(live&&current&&source){
@@ -332,8 +385,8 @@ function fallbackFromYoutube(reason){
   }
   clearVideo();
   els.screen.classList.add('has-error');
-  showPlaceholder('Retour YouTube indisponible',`${reason}. Le direct RTMPS peut continuer normalement ; Neptune réessaiera automatiquement.`);
-  els.sync.textContent='YouTube indisponible · reprise automatique';
+  showPlaceholder('Retour YouTube en reconnexion',`${reason} Le flux RTMPS est surveillé séparément ; Neptune réessaiera automatiquement.`);
+  els.sync.textContent='YouTube en reconnexion · reprise automatique';
 }
 
 function clearYoutube(resetPlayer=false){
@@ -344,6 +397,7 @@ function clearYoutube(resetPlayer=false){
     if(els.youtube.getAttribute('src'))els.youtube.removeAttribute('src');
     monitor.youtubeKey='';
     monitor.ytReady=false;
+    resetYoutubeProgress();
   }
 }
 
@@ -409,6 +463,9 @@ function showVideoError(){
   els.sync.textContent='Erreur de lecture locale';
 }
 
+function isLiveState(state){
+  return state?.enabled===true&&['running','live','streaming'].includes(String(state?.encoder?.status||''));
+}
 function showPlaceholder(title,text){
   els.placeholder.hidden=false;
   els.placeholderTitle.textContent=title;

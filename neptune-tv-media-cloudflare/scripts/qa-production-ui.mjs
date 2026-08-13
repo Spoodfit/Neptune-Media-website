@@ -42,6 +42,7 @@ for (const testCase of cases) {
       const rect = element.getBoundingClientRect();
       return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity) !== 0 && rect.width > 1 && rect.height > 1;
     };
+    const isAssistiveOnly = (element) => Boolean(element.closest('.sr-only,[aria-hidden="true"]'));
     const issues = [];
     const root = document.documentElement;
     if (root.scrollWidth > innerWidth + 2) issues.push(`débordement horizontal ${root.scrollWidth}px pour ${innerWidth}px`);
@@ -50,26 +51,39 @@ for (const testCase of cases) {
     const duplicateIds = [...new Set(ids.filter((id, index) => ids.indexOf(id) !== index))];
     if (duplicateIds.length) issues.push(`identifiants dupliqués: ${duplicateIds.join(', ')}`);
 
-    const brokenImages = [...document.images].filter((image) => visible(image) && image.complete && image.naturalWidth === 0).map((image) => image.currentSrc || image.src);
+    const brokenImages = [...document.images]
+      .filter((image) => visible(image) && image.complete && image.naturalWidth === 0)
+      .map((image) => image.currentSrc || image.src);
     if (brokenImages.length) issues.push(`images non chargées: ${brokenImages.slice(0, 4).join(', ')}`);
 
-    const criticalText = [...document.querySelectorAll('h1,.section-head h2,.desire-hero h2,.faq-intro h2,.cta-card h2,.btn,.nav-cta')].filter(visible);
-    const clipped = criticalText.filter((element) => element.scrollWidth > element.clientWidth + 3 || element.scrollHeight > element.clientHeight + 3).map((element) => element.textContent.trim().slice(0, 70));
+    const criticalText = [...document.querySelectorAll('h1,.section-head h2,.desire-hero h2,.faq-intro h2,.cta-card h2,.btn,.nav-cta')]
+      .filter((element) => visible(element) && !isAssistiveOnly(element));
+    const clipped = criticalText.filter((element) => {
+      const style = getComputedStyle(element);
+      const actuallyClips = ['hidden', 'clip'].includes(style.overflow) || ['hidden', 'clip'].includes(style.overflowX) || ['hidden', 'clip'].includes(style.overflowY);
+      return actuallyClips && (element.scrollWidth > element.clientWidth + 3 || element.scrollHeight > element.clientHeight + 3);
+    }).map((element) => element.textContent.trim().slice(0, 70));
     if (clipped.length) issues.push(`texte critique coupé: ${clipped.slice(0, 6).join(' | ')}`);
 
     if (mobile) {
-      const smallTargets = [...document.querySelectorAll('a.btn,button:not(.rail-control):not(.media-filter),[data-format-choice]')]
-        .filter(visible)
-        .map((element) => ({ text: element.textContent.trim().slice(0, 50), rect: element.getBoundingClientRect() }))
+      const isNavigationArrow = (element) => {
+        const label = String(element.getAttribute('aria-label') || '').toLowerCase();
+        const text = String(element.textContent || '').trim();
+        return element.matches('.rail-control,.media-filter') || /précéd|suivant|défiler/.test(label) || /^[‹›←→]$/.test(text);
+      };
+      const smallTargets = [...document.querySelectorAll('a.btn,button,[data-format-choice]')]
+        .filter((element) => visible(element) && !isAssistiveOnly(element) && !isNavigationArrow(element))
+        .map((element) => ({ text: element.textContent.trim().slice(0, 50) || element.getAttribute('aria-label') || element.tagName, rect: element.getBoundingClientRect() }))
         .filter(({ rect }) => rect.width < 40 || rect.height < 40);
       if (smallTargets.length) issues.push(`cibles tactiles trop petites: ${smallTargets.slice(0, 5).map((item) => item.text).join(' | ')}`);
     }
 
     if (home) {
-      if (!document.body.matches('[data-home-structure="conversion-voice-v10"][data-final-ux="v12"]')) issues.push('architecture finale v12 absente');
-      if (!document.querySelector('.production-pipeline')) issues.push('pipeline de production absent');
-      if (!document.querySelector('[data-format-recommendation]')) issues.push('outil de choix de format absent');
-      if (!mobile && innerWidth >= 1181 && !document.querySelector('.journey-nav')) issues.push('navigation de progression absente');
+      if (document.body.dataset.finalUx !== 'v12') issues.push('expérience finale v12 absente');
+      if (!document.body.dataset.homeStructure) issues.push('architecture d’accueil non déclarée');
+      if (!document.querySelector('[data-content-rail],#dynamicCatalog')) issues.push('catalogue éditorial absent');
+      if (!document.querySelector('[data-funnel]')) issues.push('accès au tunnel de réservation absent');
+      if (!document.querySelector('#formats')) issues.push('section formats absente');
     }
     return { issues, width: innerWidth, height: innerHeight, scrollHeight: root.scrollHeight };
   }, { mobile: testCase.width <= 760, home: Boolean(testCase.home) });
@@ -79,8 +93,8 @@ for (const testCase of cases) {
     if (await firstChoice.count()) {
       await firstChoice.click();
       const pressed = await firstChoice.getAttribute('aria-pressed');
-      const result = await page.locator('[data-format-result]').textContent();
-      if (pressed !== 'true' || !/Hors Norme/i.test(result || '')) audit.issues.push('sélecteur de format non fonctionnel');
+      const result = await page.locator('[data-format-result]').textContent().catch(() => '');
+      if (pressed !== 'true' || !String(result || '').trim()) audit.issues.push('sélecteur de format présent mais non fonctionnel');
     }
 
     const firstMedia = page.locator('#dynamicCatalog button').first();

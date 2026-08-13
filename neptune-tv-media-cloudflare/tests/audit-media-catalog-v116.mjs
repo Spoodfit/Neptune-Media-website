@@ -58,7 +58,8 @@ try{
   await page.locator('[data-c98-tab="offers"]').click();await page.locator(`[data-edit-offer="${familyKey}"]`).click();await page.waitForSelector('#offerForm[data-c116="1"]',{timeout});
   assert(await page.locator('#offerForm [name="supplierNet"]').count()===0,'Coût fournisseur libre encore présent dans l’offre');
   assert(await page.locator('#offerForm [name="vatRate"]').count()===0,'TVA fournisseur libre encore présente dans l’offre');
-  const rateOptions=await page.locator('#offerForm [name="supplierRateId"] option').allTextContents();assert(rateOptions.filter(Boolean).length===2,`Sélecteur tarif fournisseur incomplet: ${JSON.stringify(rateOptions)}`);
+  const rateOptions=await page.locator('#offerForm [name="supplierRateId"] option').evaluateAll(options=>options.filter(option=>option.value).map(option=>option.textContent||''));assert(rateOptions.length===2,`Sélecteur tarif fournisseur incomplet: ${JSON.stringify(rateOptions)}`);
+  assert(rateOptions.some(text=>text.includes('Bloc horaire · 2 h'))&&rateOptions.some(text=>text.includes('Demi-journée · 4 h')),'Les deux tarifs structurés ne sont pas sélectionnables dans l’offre');
   assert(errors.length===0,`Erreurs navigateur: ${errors.join(' | ')}`);
   console.log('Catalogue Media v116 browser audit: OK — slugs verrouillés, durées structurées, prestations multi-tarifs, offre sans coût libre et aperçu pleine largeur rétractable.');
   await context.close();

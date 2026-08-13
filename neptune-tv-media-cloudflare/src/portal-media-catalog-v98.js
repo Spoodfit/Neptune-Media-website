@@ -72,7 +72,7 @@ export async function saveMediaFormatV98(store,body={}){
   if(!concept&&sanitizeText(p.concept,180).trim())concept=ensureConcept(store,sanitizeText(p.concept,180).trim(),new Date().toISOString());
   if(!concept&&detail.conceptId)concept=conceptById(store,detail.conceptId);
   if(!concept)return json({error:'concept_required'},400);
-  const shoot=positiveMinutes(p.shootMinutes)||parseDuration(p.durationLabel)||Number(detail.shootMinutes||0),total=positiveMinutes(p.totalMinutes)||Number(detail.totalMinutes||0)||shoot;
+  const shoot=positiveMinutes(p.shootMinutes)||parseDuration(p.durationLabel)||Number(detail.shootMinutes||0),total=positiveMinutes(p.totalMinutes)||Number(detail.totalMinutes||0);
   if(!shoot)return json({error:'shoot_duration_required'},400);if(!total)return json({error:'total_duration_required'},400);if(total<shoot)return json({error:'total_duration_shorter_than_shoot'},400);
   const slug=current?.slug||uniqueFormatSlug(store,name,id),description=sanitizeText(p.description,1200),active=boolInt(p.active),publicOrder=clamp(p.publicOrder,0,9999),at=new Date().toISOString();
   if(current)store.sql.exec('UPDATE portal_media_formats_v95 SET name=?,concept=?,description=?,duration_label=?,active=?,public_order=?,updated_at=? WHERE id=?',name,concept.label,description,durationLabel(shoot),active,publicOrder,at,id);
@@ -161,7 +161,14 @@ export async function saveMediaOfferFamilyV98(store,body={}){
 }
 
 export async function saveMediaConfigurationVisualV98(store,body={}){
-  ensureMediaCatalogV98Schema(store);const access=await requireOperator(store,body);if(!access.ok)return access.response;const p=payload(body),formatId=cleanId(p.formatId),label=sanitizeText(p.label,80);if(!formatId||!label)return json({error:'configuration_visual_fields_required'},400);if(!store.sql.exec('SELECT id FROM portal_media_formats_v95 WHERE id=? LIMIT 1',formatId).toArray()[0])return json({error:'format_not_found'},404);saveConfigurationVisualV98(store,formatId,label,p.imageUrl,p.description);return json({ok:true,release:MEDIA_CATALOG_RELEASE,...contextData(store)});
+  ensureMediaCatalogV98Schema(store);
+  const access=await requireOperator(store,body);if(!access.ok)return access.response;
+  const p=payload(body),formatId=cleanId(p.formatId),label=sanitizeText(p.label,80);
+  if(!formatId||!label)return json({error:'configuration_visual_fields_required'},400);
+  if(!store.sql.exec('SELECT id FROM portal_media_formats_v95 WHERE id=? LIMIT 1',formatId).toArray()[0])return json({error:'format_not_found'},404);
+  saveConfigurationVisualV98(store,formatId,label,p.imageUrl,p.description);
+  store.audit?.(access.actor?.id||'studio','media_configuration_visual_saved_v98','media_configuration_visual',`${formatId}:${label}`,{imageUrl:safeHttpUrl(p.imageUrl),description:sanitizeText(p.description,900)});
+  return json({ok:true,release:MEDIA_CATALOG_RELEASE,...contextData(store)});
 }
 
 export function formatScheduleV116(store,formatId){ensureMediaCatalogV98Schema(store);const row=store.sql.exec('SELECT shoot_minutes AS shootMinutes,total_minutes AS totalMinutes FROM portal_media_format_details_v116 WHERE format_id=? LIMIT 1',formatId).toArray()[0]||{};return{shootMinutes:Number(row.shootMinutes||0),totalMinutes:Number(row.totalMinutes||0),shootDurationLabel:durationLabel(row.shootMinutes),totalDurationLabel:durationLabel(row.totalMinutes)};}
@@ -183,7 +190,34 @@ function contextData(store){
 }
 function buildFamilies(store,offers,configs,formats){const configMap=new Map();for(const row of configs){if(!row.active)continue;if(!configMap.has(row.offerId))configMap.set(row.offerId,[]);configMap.get(row.offerId).push(row.label);}const formatMap=new Map(formats.map(x=>[x.id,x])),groups=new Map();for(const offer of offers){const key=`${offer.cityId}|${offer.formatId}|${offer.supplierId}`;if(!groups.has(key))groups.set(key,{key,cityId:offer.cityId,cityName:offer.cityName,formatId:offer.formatId,formatName:offer.formatName,formatSlug:offer.formatSlug,supplierId:offer.supplierId,supplierName:offer.supplierName,active:false,publicOrder:offer.publicOrder??100,priceSuffix:offer.priceSuffix||'HT',currency:offer.currency||'eur',supplierNetCents:offer.supplierNetCents||0,vatRateBps:offer.vatRateBps||2000,preparationUrl:offer.preparationUrl||'',tiers:{launch:null,promo:null,base:null},configurationOptions:[]});const family=groups.get(key),tier=tierKey(offer);if(tier)family.tiers[tier]=offer;family.active=family.active||offer.active;for(const label of configMap.get(offer.id)||[])if(!family.configurationOptions.includes(label))family.configurationOptions.push(label);}const families=[...groups.values()];for(const family of families){family.configurationVisuals=family.configurationOptions.map(label=>configurationVisualV98(store,family.formatId,family.formatSlug,label));family.format=formatMap.get(family.formatId)||null;}return families.sort((a,b)=>a.cityName.localeCompare(b.cityName,'fr')||a.formatName.localeCompare(b.formatName,'fr')||a.supplierName.localeCompare(b.supplierName,'fr'));}
 
-function migrateLegacyCatalog(store){const at=new Date().toISOString();for(const format of store.sql.exec('SELECT id,concept,duration_label AS durationLabel FROM portal_media_formats_v95').toArray()){const concept=ensureConcept(store,sanitizeText(format.concept,180).trim()||'Concept à préciser',at),minutes=parseDuration(format.durationLabel);if(!store.sql.exec('SELECT format_id FROM portal_media_format_details_v116 WHERE format_id=? LIMIT 1',format.id).toArray()[0])store.sql.exec('INSERT INTO portal_media_format_details_v116(format_id,concept_id,shoot_minutes,total_minutes,updated_at) VALUES(?,?,?,?,?)',format.id,concept.id,minutes,0,at);}for(const family of store.sql.exec('SELECT city_id AS cityId,supplier_id AS supplierId,format_id AS formatId,MAX(supplier_net_cents) AS netCents,MAX(vat_rate_bps) AS vatRateBps,MAX(preparation_url) AS preparationUrl FROM portal_media_offers_v96 GROUP BY city_id,supplier_id,format_id').toArray()){let service=serviceForTriple(store,family.cityId,family.supplierId,family.formatId);if(!service){const id=crypto.randomUUID();store.sql.exec("INSERT INTO portal_supplier_services_v116(id,city_id,supplier_id,format_id,preparation_url,notes,active,created_at,updated_at) VALUES(?,?,?,?,?,'Migration automatique v116',1,?,?)",id,family.cityId,family.supplierId,family.formatId,family.preparationUrl||'',at,at);service=serviceById(store,id);}let rate=rateRows(store).find(r=>r.serviceId===service.id&&r.unitCode==='legacy');const net=Number(family.netCents||0),vat=Number(family.vatRateBps||2000);if(!rate){const id=crypto.randomUUID(),gross=net+Math.round(net*vat/10000);store.sql.exec("INSERT INTO portal_supplier_rates_v116(id,service_id,unit_code,duration_minutes,label,net_cents,vat_rate_bps,gross_cents,active,public_order,created_at,updated_at) VALUES(?,?,'legacy',0,?,?,?,?,1,999,?,?)",id,service.id,'Tarif historique · durée à préciser',net,vat,gross,at,at);rate=rateById(store,id);}for(const offer of store.sql.exec('SELECT id FROM portal_media_offers_v96 WHERE city_id=? AND supplier_id=? AND format_id=?',family.cityId,family.supplierId,family.formatId).toArray())store.sql.exec('INSERT OR IGNORE INTO portal_offer_supplier_rate_v116(offer_id,rate_id,updated_at) VALUES(?,?,?)',offer.id,rate.id,at);}}
+function migrateLegacyCatalog(store){
+  const at=new Date().toISOString();
+  for(const format of store.sql.exec('SELECT id,concept,duration_label AS durationLabel FROM portal_media_formats_v95').toArray()){
+    const concept=ensureConcept(store,sanitizeText(format.concept,180).trim()||'Concept à préciser',at),minutes=parseDuration(format.durationLabel);
+    if(!store.sql.exec('SELECT format_id FROM portal_media_format_details_v116 WHERE format_id=? LIMIT 1',format.id).toArray()[0])store.sql.exec('INSERT INTO portal_media_format_details_v116(format_id,concept_id,shoot_minutes,total_minutes,updated_at) VALUES(?,?,?,?,?)',format.id,concept.id,minutes,0,at);
+  }
+  const families=store.sql.exec('SELECT city_id AS cityId,supplier_id AS supplierId,format_id AS formatId,MAX(preparation_url) AS preparationUrl FROM portal_media_offers_v96 GROUP BY city_id,supplier_id,format_id').toArray();
+  for(const family of families){
+    let service=serviceForTriple(store,family.cityId,family.supplierId,family.formatId);
+    if(!service){
+      const id=crypto.randomUUID();
+      store.sql.exec("INSERT INTO portal_supplier_services_v116(id,city_id,supplier_id,format_id,preparation_url,notes,active,created_at,updated_at) VALUES(?,?,?,?,?,'Migration automatique v116',1,?,?)",id,family.cityId,family.supplierId,family.formatId,family.preparationUrl||'',at,at);
+      service=serviceById(store,id);
+    }
+    const offers=store.sql.exec('SELECT id,supplier_net_cents AS netCents,vat_rate_bps AS vatRateBps FROM portal_media_offers_v96 WHERE city_id=? AND supplier_id=? AND format_id=?',family.cityId,family.supplierId,family.formatId).toArray();
+    for(const offer of offers){
+      const net=Number(offer.netCents||0),vat=Number(offer.vatRateBps||2000);
+      let rate=rateRows(store).find(item=>item.serviceId===service.id&&item.unitCode==='legacy'&&Number(item.netCents)===net&&Number(item.vatRateBps)===vat);
+      if(!rate){
+        const id=crypto.randomUUID(),gross=net+Math.round(net*vat/10000);
+        store.sql.exec("INSERT INTO portal_supplier_rates_v116(id,service_id,unit_code,duration_minutes,label,net_cents,vat_rate_bps,gross_cents,active,public_order,created_at,updated_at) VALUES(?,?,'legacy',0,?,?,?,?,1,999,?,?)",id,service.id,'Tarif historique · durée à préciser',net,vat,gross,at,at);
+        rate=rateById(store,id);
+      }
+      store.sql.exec(`INSERT INTO portal_offer_supplier_rate_v116(offer_id,rate_id,updated_at) VALUES(?,?,?)
+        ON CONFLICT(offer_id) DO UPDATE SET rate_id=excluded.rate_id,updated_at=excluded.updated_at`,offer.id,rate.id,at);
+    }
+  }
+}
 function serviceRows(store){return store.sql.exec('SELECT x.id,x.city_id AS cityId,x.supplier_id AS supplierId,x.format_id AS formatId,x.preparation_url AS preparationUrl,x.notes,x.active,c.name AS cityName,s.name AS supplierName,f.name AS formatName FROM portal_supplier_services_v116 x JOIN portal_media_cities_v96 c ON c.id=x.city_id JOIN portal_media_suppliers_v95 s ON s.id=x.supplier_id JOIN portal_media_formats_v95 f ON f.id=x.format_id ORDER BY c.public_order,c.name,s.name,f.public_order,f.name').toArray().map(x=>({...x,active:Boolean(x.active)}));}
 function rateRows(store){return store.sql.exec('SELECT id,service_id AS serviceId,unit_code AS unitCode,duration_minutes AS durationMinutes,label,net_cents AS netCents,vat_rate_bps AS vatRateBps,gross_cents AS grossCents,active,public_order AS publicOrder FROM portal_supplier_rates_v116 ORDER BY service_id,active DESC,public_order,duration_minutes,label').toArray().map(x=>({...x,active:Boolean(x.active)}));}
 function serviceById(store,id){return serviceRows(store).find(x=>x.id===id)||null;}function serviceForTriple(store,cityId,supplierId,formatId){return serviceRows(store).find(x=>x.cityId===cityId&&x.supplierId===supplierId&&x.formatId===formatId)||null;}function rateById(store,id){return rateRows(store).find(x=>x.id===id)||null;}

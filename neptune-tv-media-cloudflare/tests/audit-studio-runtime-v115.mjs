@@ -11,7 +11,8 @@ try{
   const source=await probe.text();
   assert(probe.ok(),'runtime Diffusion inaccessible');
   assert(probe.headers()['x-neptune-webtv-runtime']==='neptune-studio-runtime-recovery-20260813-v115','runtime v115 non servi');
-  for(const marker of ['initV115();','Promise.allSettled','retryWebTvStateV115','const accountName=$(\'#accountName\')','Reconnectez la régie avant de modifier le programme'])assert(source.includes(marker),`runtime incomplet: ${marker}`);
+  for(const marker of ['initV115();','Promise.allSettled','retryWebTvStateV115','const accountName=$(\'#accountName\')','Reconnectez la régie avant de modifier le programme',"$$('[data-add]').forEach"])assert(source.includes(marker),`runtime incomplet: ${marker}`);
+  assert(!source.includes("$('[data-add]').forEach"),'le Worker a écrasé le helper $$ en helper $ dans le runtime servi');
   new Function(source);
 
   let webtvAttempts=0;

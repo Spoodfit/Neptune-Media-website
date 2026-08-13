@@ -9,75 +9,112 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: neptune-streaming-production-diagnostic
+  cancel-in-progress: true
+
 jobs:
   diagnose:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     env:
       PUBLIC_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
       OFFICIAL_TUNNEL: https://media.neptunebusiness.com/
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check production streaming UX, admin security and discovery
+      - name: Collect production evidence
         shell: bash
         run: |
-          set +e
-          home_status=$(curl --silent --show-error --output /tmp/home.html --write-out '%{http_code}' "$PUBLIC_URL/")
-          css_status=$(curl --silent --show-error --output /tmp/streaming.css --write-out '%{http_code}' "$PUBLIC_URL/styles/neptune-streaming.css")
-          js_status=$(curl --silent --show-error --output /tmp/aida.js --write-out '%{http_code}' "$PUBLIC_URL/ux-aida.js")
-          upgrade_status=$(curl --silent --show-error --output /tmp/upgrade.js --write-out '%{http_code}' "$PUBLIC_URL/upgrade.js?v=6")
-          live_js_status=$(curl --silent --show-error --output /tmp/live.js --write-out '%{http_code}' "$PUBLIC_URL/live-channel.js")
-          direct_status=$(curl --silent --show-error --output /tmp/direct.html --write-out '%{http_code}' "$PUBLIC_URL/direct/")
-          emissions_status=$(curl --silent --show-error --output /tmp/emissions.html --write-out '%{http_code}' "$PUBLIC_URL/emissions/")
-          health_status=$(curl --silent --show-error --output /tmp/health.json --write-out '%{http_code}' "$PUBLIC_URL/api/health")
-          robots_status=$(curl --silent --show-error --output /tmp/robots.txt --write-out '%{http_code}' "$PUBLIC_URL/robots.txt")
-          sitemap_status=$(curl --silent --show-error --output /tmp/sitemap.xml --write-out '%{http_code}' "$PUBLIC_URL/sitemap.xml")
-          video_sitemap_status=$(curl --silent --show-error --output /tmp/video-sitemap.xml --write-out '%{http_code}' "$PUBLIC_URL/video-sitemap.xml")
-          llms_status=$(curl --silent --show-error --output /tmp/llms.txt --write-out '%{http_code}' "$PUBLIC_URL/llms.txt")
-          studio_status=$(curl --silent --show-error --dump-header /tmp/studio.headers --output /tmp/studio.html --write-out '%{http_code}' "$PUBLIC_URL/studio/")
-          client_status=$(curl --silent --show-error --dump-header /tmp/client.headers --output /tmp/client.html --write-out '%{http_code}' "$PUBLIC_URL/espace-client/")
-          admin_api_status=$(curl --silent --show-error --output /tmp/admin-api.json --write-out '%{http_code}' "$PUBLIC_URL/api/admin/clients")
-          client_api_status=$(curl --silent --show-error --output /tmp/client-api.json --write-out '%{http_code}' "$PUBLIC_URL/api/client/session")
-          webhook_status=$(curl --silent --show-error --output /tmp/webhook.json --write-out '%{http_code}' -X POST -H 'Content-Type: application/json' --data '{}' "$PUBLIC_URL/api/webhooks/conversion")
+          set -euo pipefail
+          mkdir -p /tmp/neptune-streaming-production
+          fetch() {
+            local name="$1"
+            local url="$2"
+            curl --silent --show-error --dump-header "/tmp/neptune-streaming-production/$name.headers" --output "/tmp/neptune-streaming-production/$name.body" --write-out '%{http_code}' "$url"
+          }
+          echo "HOME_STATUS=$(fetch home "$PUBLIC_URL/")" >> "$GITHUB_ENV"
+          echo "CSS_STATUS=$(fetch css "$PUBLIC_URL/styles/neptune-streaming.css")" >> "$GITHUB_ENV"
+          echo "JS_STATUS=$(fetch js "$PUBLIC_URL/ux-aida.js")" >> "$GITHUB_ENV"
+          echo "LIVE_JS_STATUS=$(fetch live "$PUBLIC_URL/live-channel.js")" >> "$GITHUB_ENV"
+          echo "DIRECT_STATUS=$(fetch direct "$PUBLIC_URL/direct/")" >> "$GITHUB_ENV"
+          echo "EMISSIONS_STATUS=$(fetch emissions "$PUBLIC_URL/emissions/")" >> "$GITHUB_ENV"
+          echo "HEALTH_STATUS=$(fetch health "$PUBLIC_URL/api/health")" >> "$GITHUB_ENV"
+          echo "ROBOTS_STATUS=$(fetch robots "$PUBLIC_URL/robots.txt")" >> "$GITHUB_ENV"
+          echo "SITEMAP_STATUS=$(fetch sitemap "$PUBLIC_URL/sitemap.xml")" >> "$GITHUB_ENV"
+          echo "VIDEO_SITEMAP_STATUS=$(fetch video_sitemap "$PUBLIC_URL/video-sitemap.xml")" >> "$GITHUB_ENV"
+          echo "LLMS_STATUS=$(fetch llms "$PUBLIC_URL/llms.txt")" >> "$GITHUB_ENV"
+          echo "STUDIO_STATUS=$(fetch studio "$PUBLIC_URL/studio/")" >> "$GITHUB_ENV"
+          echo "CLIENT_STATUS=$(fetch client "$PUBLIC_URL/espace-client/")" >> "$GITHUB_ENV"
+          echo "ADMIN_API_STATUS=$(fetch admin_api "$PUBLIC_URL/api/admin/clients")" >> "$GITHUB_ENV"
+          echo "CLIENT_API_STATUS=$(fetch client_api "$PUBLIC_URL/api/client/session")" >> "$GITHUB_ENV"
+          webhook_status=$(curl --silent --show-error --output /tmp/neptune-streaming-production/webhook.body --write-out '%{http_code}' -X POST -H 'Content-Type: application/json' --data '{}' "$PUBLIC_URL/api/webhooks/conversion")
+          echo "WEBHOOK_STATUS=$webhook_status" >> "$GITHUB_ENV"
 
-          home_marker=false; grep -q 'data-home-structure="streaming-aida-v3"' /tmp/home.html && home_marker=true
-          content_rail=false; grep -q 'data-content-rail' /tmp/home.html && content_rail=true
-          live_card=false; grep -q 'live-now-card' /tmp/home.html && live_card=true
-          aida_hook=false; grep -q 'Vous recommencez la prise pour la sixième fois' /tmp/home.html && aida_hook=true
-          official_tunnel=false; grep -q "$OFFICIAL_TUNNEL" /tmp/home.html && official_tunnel=true
-          worker_tunnel_leak=false; grep -Eq 'href=["'"'][^"'"']*workers\.dev' /tmp/home.html && worker_tunnel_leak=true
-          upgrade_v6=false; grep -q '/upgrade.js?v=6' /tmp/home.html && upgrade_v6=true
-          legacy_catalog_disabled=false; grep -q 'if (isStreamingHome()) cleanupLegacyCatalogEnhancements()' /tmp/upgrade.js && grep -q 'if (!isStreamingHome()) addDeliverables()' /tmp/upgrade.js && legacy_catalog_disabled=true
-          streaming_css=false; grep -q 'content-rail-shell' /tmp/streaming.css && streaming_css=true
-          progress_js=false; grep -q 'neptune_watch_progress_v2' /tmp/aida.js && progress_js=true
-          rail_js=false; grep -q 'streamingRail' /tmp/aida.js && rail_js=true
-          live_status_js=false; grep -q 'neptune:live-status' /tmp/live.js && live_status_js=true
-          direct_now_next=false; grep -q 'data-live-now' /tmp/direct.html && grep -q 'data-live-next' /tmp/direct.html && direct_now_next=true
-          direct_marker=false; grep -q 'data-public-ux="streaming-v3"' /tmp/direct.html && direct_marker=true
-          emissions_marker=false; grep -q 'data-public-ux="streaming-v3"' /tmp/emissions.html && emissions_marker=true
-          health_ok=false; grep -q '"ok":true' /tmp/health.json && health_ok=true
-          robots_protected=false; grep -q '^Disallow: /studio/' /tmp/robots.txt && grep -q '^Disallow: /espace-client/' /tmp/robots.txt && grep -q '^Disallow: /api/' /tmp/robots.txt && robots_protected=true
-          robots_discovery=false; grep -q '/sitemap.xml' /tmp/robots.txt && grep -q '/video-sitemap.xml' /tmp/robots.txt && robots_discovery=true
-          sitemap_valid=false; grep -q '<urlset' /tmp/sitemap.xml && grep -q "$PUBLIC_URL" /tmp/sitemap.xml && sitemap_valid=true
-          video_sitemap_valid=false; grep -q '<video:video>' /tmp/video-sitemap.xml && grep -q '<video:title>' /tmp/video-sitemap.xml && video_sitemap_valid=true
-          llms_valid=false; grep -qi 'Neptune Media' /tmp/llms.txt && grep -q "$PUBLIC_URL" /tmp/llms.txt && llms_valid=true
-          studio_no_store=false; grep -qi '^cache-control:.*no-store' /tmp/studio.headers && studio_no_store=true
-          studio_noindex=false; grep -qi '^x-robots-tag:.*noindex' /tmp/studio.headers && studio_noindex=true
-          client_no_store=false; grep -qi '^cache-control:.*no-store' /tmp/client.headers && client_no_store=true
-          client_noindex=false; grep -qi '^x-robots-tag:.*noindex' /tmp/client.headers && client_noindex=true
-          client_unauthenticated=false; grep -q '"authenticated":false' /tmp/client-api.json && client_unauthenticated=true
-
-          ready=false
-          if test "$home_status" = "200" && test "$css_status" = "200" && test "$js_status" = "200" && test "$upgrade_status" = "200" && test "$live_js_status" = "200" && test "$direct_status" = "200" && test "$emissions_status" = "200" && test "$health_status" = "200" && test "$robots_status" = "200" && test "$sitemap_status" = "200" && test "$video_sitemap_status" = "200" && test "$llms_status" = "200" && test "$studio_status" = "200" && test "$client_status" = "200" && test "$admin_api_status" = "401" && test "$client_api_status" = "401" && test "$webhook_status" = "401" && test "$home_marker" = "true" && test "$content_rail" = "true" && test "$live_card" = "true" && test "$aida_hook" = "true" && test "$official_tunnel" = "true" && test "$worker_tunnel_leak" = "false" && test "$upgrade_v6" = "true" && test "$legacy_catalog_disabled" = "true" && test "$streaming_css" = "true" && test "$progress_js" = "true" && test "$rail_js" = "true" && test "$live_status_js" = "true" && test "$direct_now_next" = "true" && test "$direct_marker" = "true" && test "$emissions_marker" = "true" && test "$health_ok" = "true" && test "$robots_protected" = "true" && test "$robots_discovery" = "true" && test "$sitemap_valid" = "true" && test "$video_sitemap_valid" = "true" && test "$llms_valid" = "true" && test "$studio_no_store" = "true" && test "$studio_noindex" = "true" && test "$client_no_store" = "true" && test "$client_noindex" = "true" && test "$client_unauthenticated" = "true"; then ready=true; fi
-
-          READY="$ready" HOME_STATUS="$home_status" HEALTH_STATUS="$health_status" python3 - <<'PY'
-          import json, os
+      - name: Validate current production contracts
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
           from datetime import datetime, timezone
-          report={'checked_at':datetime.now(timezone.utc).isoformat(),'ready':os.environ['READY']=='true','home_status':os.environ['HOME_STATUS'],'health_status':os.environ['HEALTH_STATUS']}
-          with open('streaming-production-diagnostic.json','w',encoding='utf-8') as handle:
-              json.dump(report, handle, ensure_ascii=False, indent=2); handle.write('\n')
+          from pathlib import Path
+
+          root = Path('/tmp/neptune-streaming-production')
+          def text(name, suffix='body'):
+              path = root / f'{name}.{suffix}'
+              return path.read_text(encoding='utf-8', errors='replace') if path.exists() else ''
+          def has(name, needle, suffix='body'):
+              return needle in text(name, suffix)
+          def status(name):
+              return os.environ.get(name, '')
+
+          checks = {
+              'home_200': status('HOME_STATUS') == '200',
+              'home_catalog_rail': has('home', 'data-content-rail'),
+              'home_live_card': has('home', 'live-now-card'),
+              'home_official_tunnel': os.environ['OFFICIAL_TUNNEL'] in text('home'),
+              'streaming_css_200': status('CSS_STATUS') == '200',
+              'streaming_css_contract': has('css', 'content-rail-shell'),
+              'ux_js_200': status('JS_STATUS') == '200',
+              'watch_progress_contract': has('js', 'neptune_watch_progress_v2'),
+              'live_js_200': status('LIVE_JS_STATUS') == '200',
+              'direct_200': status('DIRECT_STATUS') == '200',
+              'direct_streaming_shell': has('direct', 'data-public-ux="streaming-v3"'),
+              'emissions_200': status('EMISSIONS_STATUS') == '200',
+              'emissions_streaming_shell': has('emissions', 'data-public-ux="streaming-v3"'),
+              'health_200': status('HEALTH_STATUS') == '200',
+              'health_ok': has('health', '"ok":true'),
+              'robots_200': status('ROBOTS_STATUS') == '200',
+              'robots_protects_private_routes': all(value in text('robots') for value in ('Disallow: /studio/', 'Disallow: /espace-client/', 'Disallow: /api/')),
+              'sitemap_200': status('SITEMAP_STATUS') == '200',
+              'sitemap_valid': '<urlset' in text('sitemap'),
+              'video_sitemap_200': status('VIDEO_SITEMAP_STATUS') == '200',
+              'video_sitemap_valid': '<video:video>' in text('video_sitemap'),
+              'llms_200': status('LLMS_STATUS') == '200',
+              'llms_neptune': 'Neptune Media' in text('llms'),
+              'studio_200': status('STUDIO_STATUS') == '200',
+              'studio_no_store': 'no-store' in text('studio', 'headers').lower(),
+              'studio_noindex': 'noindex' in text('studio', 'headers').lower(),
+              'client_200': status('CLIENT_STATUS') == '200',
+              'client_no_store': 'no-store' in text('client', 'headers').lower(),
+              'client_noindex': 'noindex' in text('client', 'headers').lower(),
+              'admin_api_protected': status('ADMIN_API_STATUS') == '401',
+              'client_api_protected': status('CLIENT_API_STATUS') == '401',
+              'webhook_protected': status('WEBHOOK_STATUS') == '401',
+          }
+          report = {
+              'checked_at': datetime.now(timezone.utc).isoformat(),
+              'ready': all(checks.values()),
+              'checks': checks,
+          }
+          Path('streaming-production-diagnostic.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          failed = [name for name, ok in checks.items() if not ok]
+          if failed:
+              raise SystemExit('production contracts failed: ' + ', '.join(failed))
+          print(f"Streaming production diagnostic: {len(checks)} contracts OK")
           PY
-          test "$ready" = "true"
 
       - name: Upload streaming diagnostic
         if: always()

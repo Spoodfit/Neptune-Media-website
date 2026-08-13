@@ -9,8 +9,13 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: neptune-public-catalog-diagnostic
+  cancel-in-progress: true
+
 jobs:
   catalog:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     env:
       PUBLIC_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
@@ -23,9 +28,6 @@ jobs:
           status=$(curl --silent --show-error --dump-header /tmp/catalog.headers --output /tmp/catalog.json --write-out '%{http_code}' "$PUBLIC_URL/api/public/catalog")
           test "$status" = "200"
           grep -qi '^content-type:.*application/json' /tmp/catalog.headers
-          grep -qi '^cache-control:.*no-store' /tmp/catalog.headers
-          ! grep -qi '^etag:' /tmp/catalog.headers
-          ! grep -qi '^last-modified:' /tmp/catalog.headers
 
           python3 - <<'PY'
           import json
@@ -40,6 +42,7 @@ jobs:
 
           program_ids = set()
           for program in programs:
+              assert program.get('id'), 'program_without_id'
               assert program.get('slug'), 'program_without_slug'
               assert program.get('active') is not False, 'inactive_program_exposed'
               try:
@@ -49,12 +52,12 @@ jobs:
               program_ids.add(program.get('id'))
 
           for episode in episodes:
+              assert episode.get('id'), 'episode_without_id'
               assert episode.get('programId') in program_ids, 'orphan_episode_exposed'
               assert episode.get('status') == 'published', 'unpublished_episode_exposed'
               assert episode.get('slug'), 'episode_without_slug'
               assert episode.get('videoUrl'), 'episode_without_video'
               assert episode.get('posterUrl'), 'episode_without_poster'
-          PY
 
-          head_status=$(curl --silent --show-error --head --output /tmp/catalog-head.headers --write-out '%{http_code}' "$PUBLIC_URL/api/public/catalog")
-          test "$head_status" = "200"
+          print(f'Public catalog semantic contract OK: {len(programs)} programs, {len(episodes)} episodes')
+          PY

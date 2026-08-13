@@ -17,7 +17,12 @@ must(backend.includes('current?.slug||uniqueFormatSlug(store,name,id)'),'slug fo
 must(backend.includes('current?.slug||uniqueCitySlug(store,name,id)'),'slug ville non verrouillé');
 must(backend.includes('shoot_minutes INTEGER NOT NULL')&&backend.includes('total_minutes INTEGER NOT NULL'),'double durée absente');
 must(backend.includes('if(total<shoot)'), 'contrainte durée totale >= tournage absente');
+must(!backend.includes('Number(detail.totalMinutes||0)||shoot'),'le backend invente encore durée totale = durée de tournage');
 must(backend.includes("'Tarif historique · durée à préciser'"),'migration historique invente potentiellement une durée');
+must(!backend.includes('MAX(supplier_net_cents)'),'la migration fusionne encore des coûts historiques différents');
+must(backend.includes('SELECT id,supplier_net_cents AS netCents,vat_rate_bps AS vatRateBps FROM portal_media_offers_v96'),'migration historique non réalisée offre par offre');
+must(backend.includes('ON CONFLICT(offer_id) DO UPDATE SET rate_id=excluded.rate_id'),'migration historique non réparatrice/idempotente');
+must(backend.includes("'media_configuration_visual_saved_v98'"),'audit visuel/configuration absent');
 must(store.includes("if(!(Number(payload?.totalMinutes)>0))return json({error:'total_duration_required'},400)"),'Store n’impose pas la durée totale');
 must(store.includes('portal_offer_supplier_rate_v116 m'),'compatibilité configuration visuelle / tarif mappé absente');
 must(store.includes("includes('portal_offer_supplier_rate_v116')"),'fallback de compatibilité non tolérant avant initialisation du schéma');
@@ -38,4 +43,4 @@ must(services.includes('data-c116-add-rate'),'ajout de plusieurs tarifs absent')
 must(runtime.includes("import('/studio/media-catalog-form-v116.js?v=1')"),'module formulaire v116 non chargé');
 must(runtime.includes("import('/studio/media-catalog-services-v116.js?v=1')"),'module prestations v116 non chargé');
 must(runtime.includes("host.dataset.catalogPreviewOwner='v109'"),'v116 ne doit pas déposséder v109 de l’aperçu');
-console.log('Catalogue Media v116: OK — villes multi-fournisseurs, prestations multi-formats, grilles multi-tarifs, slugs verrouillés, durées structurées et aperçu rétractable pleine largeur.');
+console.log('Catalogue Media v116: OK — villes multi-fournisseurs, prestations multi-formats, grilles multi-tarifs, slugs verrouillés, durées structurées, migration historique fidèle et aperçu rétractable pleine largeur.');

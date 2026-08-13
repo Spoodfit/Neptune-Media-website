@@ -1,0 +1,40 @@
+import fs from 'node:fs';
+import path from 'node:path';
+const root=process.cwd(),read=p=>fs.readFileSync(path.join(root,p),'utf8'),must=(value,message)=>{if(!value)throw new Error(`media-catalog-v116: ${message}`);};
+const backend=read('src/portal-media-catalog-v98.js');
+const store=read('src/store-v29.js');
+const form=read('public/studio/media-catalog-form-v116.js');
+const services=read('public/studio/media-catalog-services-v116.js');
+const runtime=read('public/studio/media-catalog-runtime-fix-v115.js');
+
+must(backend.includes("MEDIA_CATALOG_MODEL_RELEASE='neptune-media-catalog-model-20260813-v116'"),'release modèle absente');
+must(backend.includes('CREATE TABLE IF NOT EXISTS portal_supplier_services_v116'),'table prestations fournisseur absente');
+must(backend.includes('UNIQUE(city_id,supplier_id,format_id)'),'relation Ville × Fournisseur × Format non protégée');
+must(backend.includes('CREATE TABLE IF NOT EXISTS portal_supplier_rates_v116'),'grille de tarifs multiples absente');
+must(backend.includes('portal_offer_supplier_rate_v116'),'offre non reliée à un tarif fournisseur');
+must(backend.includes("['half_hour','Demi-heure']")&&backend.includes("['half_day','Demi-journée']")&&backend.includes("['day','Journée']"),'unités demi-heure / demi-journée / journée absentes');
+must(backend.includes('current?.slug||uniqueFormatSlug(store,name,id)'),'slug format non verrouillé');
+must(backend.includes('current?.slug||uniqueCitySlug(store,name,id)'),'slug ville non verrouillé');
+must(backend.includes('shoot_minutes INTEGER NOT NULL')&&backend.includes('total_minutes INTEGER NOT NULL'),'double durée absente');
+must(backend.includes('if(total<shoot)'), 'contrainte durée totale >= tournage absente');
+must(backend.includes("'Tarif historique · durée à préciser'"),'migration historique invente potentiellement une durée');
+must(store.includes("if(!(Number(payload?.totalMinutes)>0))return json({error:'total_duration_required'},400)"),'Store n’impose pas la durée totale');
+must(store.includes('portal_offer_supplier_rate_v116 m'),'compatibilité configuration visuelle / tarif mappé absente');
+
+must(form.includes("input[readonly]")&&form.includes("readonly aria-readonly"),'slug non verrouillé dans l’UI');
+must(form.includes("'Durée de tournage','shootMinutes'")&&form.includes("'Durée totale allouée le jour J','totalMinutes'"),'sélecteurs des deux durées absents');
+must(form.includes("+ Ajouter un autre concept"),'ajout contrôlé de concept absent');
+must(form.includes("for(const name of ['defaultNet','vatRate'])"),'coût fournisseur libre encore présent sur la fiche fournisseur');
+must(form.includes("for(const name of ['supplierNet','vatRate'])"),'coût fournisseur libre encore présent dans l’offre');
+must(form.includes('supplierRateId'),'offre ne sélectionne pas un tarif fournisseur structuré');
+must(form.includes('c116-preview-panel'),'aperçu bas / rétractable absent');
+must(form.includes('.c98-layout{display:block!important'),'zone de travail non repassée en pleine largeur');
+
+must(services.includes('Prestations fournisseurs'),'onglet prestations absent');
+must(services.includes("catalogAction:'service_save'"),'sauvegarde prestation absente');
+must(services.includes("catalogAction:'rate_save'"),'sauvegarde tarif multiple absente');
+must(services.includes('data-c116-add-rate'),'ajout de plusieurs tarifs absent');
+must(runtime.includes("import('/studio/media-catalog-form-v116.js?v=1')"),'module formulaire v116 non chargé');
+must(runtime.includes("import('/studio/media-catalog-services-v116.js?v=1')"),'module prestations v116 non chargé');
+must(runtime.includes("host.dataset.catalogPreviewOwner='v109'"),'v116 ne doit pas déposséder v109 de l’aperçu');
+console.log('Catalogue Media v116: OK — villes multi-fournisseurs, prestations multi-formats, grilles multi-tarifs, slugs verrouillés, durées structurées et aperçu rétractable pleine largeur.');

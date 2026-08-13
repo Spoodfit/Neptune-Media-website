@@ -9,7 +9,7 @@
     ? document.addEventListener('DOMContentLoaded', callback, { once: true })
     : callback();
 
-  appendStylesheet('/styles/final-quality-v12.css?v=1', 'finalQuality', 'v12');
+  appendStylesheet('/styles/final-quality-v12.css?v=2', 'finalQuality', 'v12');
   appendStylesheet('/styles/clarity-air-v15.css?v=15', 'clarityAir', 'v15');
   appendStylesheet('/styles/scroll-pipeline-v2.css?v=6', 'scrollPipelineCurve', 'v6', true);
   appendStylesheet('/styles/single-header-v1.css?v=2', 'singleHeader', 'v2', true);
@@ -316,4 +316,4 @@
   }
 })();
 
-// Production browser quality gate revision 29.
+// Production browser quality gate revision 30.

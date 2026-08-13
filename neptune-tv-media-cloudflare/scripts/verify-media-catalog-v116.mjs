@@ -20,8 +20,9 @@ must(backend.includes('if(total<shoot)'), 'contrainte durée totale >= tournage 
 must(backend.includes("'Tarif historique · durée à préciser'"),'migration historique invente potentiellement une durée');
 must(store.includes("if(!(Number(payload?.totalMinutes)>0))return json({error:'total_duration_required'},400)"),'Store n’impose pas la durée totale');
 must(store.includes('portal_offer_supplier_rate_v116 m'),'compatibilité configuration visuelle / tarif mappé absente');
+must(store.includes("includes('portal_offer_supplier_rate_v116')"),'fallback de compatibilité non tolérant avant initialisation du schéma');
 
-must(form.includes("input[readonly]")&&form.includes("readonly aria-readonly"),'slug non verrouillé dans l’UI');
+must(form.includes("slug.readOnly=true")&&form.includes("setAttribute('aria-readonly','true')"),'slug non verrouillé dans l’UI');
 must(form.includes("'Durée de tournage','shootMinutes'")&&form.includes("'Durée totale allouée le jour J','totalMinutes'"),'sélecteurs des deux durées absents');
 must(form.includes("+ Ajouter un autre concept"),'ajout contrôlé de concept absent');
 must(form.includes("for(const name of ['defaultNet','vatRate'])"),'coût fournisseur libre encore présent sur la fiche fournisseur');

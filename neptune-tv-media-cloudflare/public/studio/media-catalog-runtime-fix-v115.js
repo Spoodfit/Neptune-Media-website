@@ -125,3 +125,8 @@ function installStyles(){
   `;
   document.head.append(style);
 }
+
+Promise.all([
+  import('/studio/media-catalog-form-v116.js?v=1'),
+  import('/studio/media-catalog-services-v116.js?v=1'),
+]).catch(error=>console.error('[Neptune Studio] Extensions Catalogue v116 non chargées',error));

@@ -12,6 +12,9 @@ export default{
       return hardenWebTvUi(await base.fetch(request,env,ctx));
     }
     let response=await base.fetch(request,env,ctx);
+    if(request.method==='GET'&&isWebTvPage(url.pathname)&&response.ok&&(response.headers.get('Content-Type')||'').includes('text/html')){
+      response=await rewriteWebTvPage(response);
+    }
     if(request.method==='GET'&&url.pathname==='/api/public/release'&&response.ok){
       response=await augmentRelease(response);
     }
@@ -41,6 +44,15 @@ async function hardenWebTvUi(response){
 
   const headers=rewrittenHeaders(response);
   headers.set('Content-Type','application/javascript; charset=utf-8');
+  headers.set('X-Neptune-WebTV-Runtime',RELEASE);
+  return new Response(body,{status:response.status,statusText:response.statusText,headers});
+}
+
+async function rewriteWebTvPage(response){
+  let body=await response.text();
+  body=required(body,'/studio/webtv-v1.js?v=6','/studio/webtv-v1.js?v=7','webtv cache bust');
+  const headers=rewrittenHeaders(response);
+  headers.set('Content-Type','text/html; charset=utf-8');
   headers.set('X-Neptune-WebTV-Runtime',RELEASE);
   return new Response(body,{status:response.status,statusText:response.statusText,headers});
 }
@@ -169,6 +181,8 @@ function rewrittenHeaders(response){
   headers.set('Cache-Control','private, no-store, max-age=0');
   return headers;
 }
+
+function isWebTvPage(path){return path==='/studio/webtv'||path==='/studio/webtv/'||path==='/studio/webtv.html';}
 
 async function augmentRelease(response){
   const current=await response.json().catch(()=>({}));

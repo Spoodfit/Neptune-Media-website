@@ -14,16 +14,20 @@ const expect=(condition,message)=>{if(!condition)failures.push(message);};
 
 expect(advanced.includes('/studio/media-catalog-runtime-fix-v115.js?v=1'),'Réglages ne charge pas le runtime correctif v115');
 for(const marker of [
-  "decodeURIComponent(location.hash.slice(1)).trim()==='programs'",
+  "document.querySelector('[data-tab].active')",
+  "activeTab.dataset.tab==='programs'",
   "content.dataset.c98=''",
+  "if(!catalogueActive())return;",
   "new MouseEvent('click'",
   "iframe[data-catalog-preview-v109]",
   "data-catalog-preview-shell-v115",
+  "host.dataset.catalogPreviewOwner='v109'",
   'c115-preview-device',
   'width:100%!important',
   'height:100%!important',
   'min-height:44px!important',
 ])expect(fix.includes(marker),`correctif Catalogue/Aperçu v115 incomplet : ${marker}`);
+expect(!fix.includes("catalogPreviewOwner='v115'"),'v115 ne doit pas usurper la propriété de l’iframe v109');
 expect(!fix.includes('localStorage.setItem'),'le correctif d’aperçu ne doit jamais écrire dans le localStorage client');
 expect(previewSync.includes("catalog_preview:'studio'"),'le mode d’aperçu Studio isolé a disparu');
 expect(previewSync.includes('dataset.catalogPreviewV109'),'le propriétaire de l’iframe v109 a changé sans migration');
@@ -54,4 +58,4 @@ if(failures.length){
   console.error(failures.map(failure=>`- ${failure}`).join('\n'));
   process.exit(1);
 }
-console.log('Studio runtime v115 validé : Réglages remonte le Catalogue après Actualiser, aperçu réel dimensionné et isolé, Diffusion résiste à une panne WebTV partielle et permet la reconnexion sans effacer le catalogue Studio.');
+console.log('Studio runtime v115 validé : Réglages remonte le Catalogue uniquement quand il est réellement actif, aperçu dimensionné sans déposséder v109, Diffusion résiste à une panne WebTV partielle et permet la reconnexion sans effacer le catalogue Studio.');

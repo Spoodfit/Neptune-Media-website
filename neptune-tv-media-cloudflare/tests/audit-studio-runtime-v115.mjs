@@ -24,7 +24,7 @@ try{
   const runtimeSource=await runtimeProbe.text();
   assert(runtimeProbe.ok(),`Runtime Diffusion HTTP ${runtimeProbe.status()}`);
   assert(runtimeProbe.headers()['x-neptune-webtv-runtime']==='neptune-studio-runtime-recovery-20260813-v115','Le Worker local ne sert pas la transformation Diffusion v115');
-  for(const marker of ['initV115();','Promise.allSettled','retryWebTvStateV115','Régie indisponible'])assert(runtimeSource.includes(marker),`Runtime Diffusion servi sans ${marker}`);
+  for(const marker of ['initV115();','Promise.allSettled','retryWebTvStateV115','Régie indisponible','const accountName=$(\'#accountName\')','Reconnectez la régie avant de modifier le programme'])assert(runtimeSource.includes(marker),`Runtime Diffusion servi sans ${marker}`);
   assert(!runtimeSource.includes('\ninit();\n'),'Le runtime Diffusion servi exécute encore init() legacy');
   try{new Function(runtimeSource);}catch(error){throw new Error(`Runtime Diffusion transformé invalide: ${error.message}`);}
 
@@ -55,36 +55,36 @@ try{
 
   const response=await page.goto(`${baseURL}/studio/webtv.html?runtime_v115=${Date.now()}`,{waitUntil:'domcontentloaded',timeout});
   assert(response?.ok(),`Diffusion HTTP ${response?.status()}`);
-  await waitUntil(()=>webtvAttempts>=3,8000,`La reprise v115 n'a lancé aucun cycle de retry WebTV. URL=${page.url()} status=${awaitText(page,'#syncState')} pageErrors=${pageErrors.join(' | ')} console=${consoleErrors.join(' | ')}`);
+  await waitUntil(()=>webtvAttempts>=3,8000,await diagnostic(page,webtvAttempts,pageErrors,consoleErrors,'La reprise v115 n’a lancé aucun cycle de retry WebTV'));
 
   await page.waitForFunction(()=>document.getElementById('syncState')?.textContent?.includes('Régie indisponible'),null,{timeout:8000}).catch(async error=>{
-    throw new Error(`État dégradé non affiché après ${webtvAttempts} tentatives WebTV. syncState=${awaitText(page,'#syncState')} save=${awaitText(page,'#save')} pageErrors=${pageErrors.join(' | ')} console=${consoleErrors.join(' | ')} (${error.message})`);
+    throw new Error(`${await diagnostic(page,webtvAttempts,pageErrors,consoleErrors,'État dégradé non affiché')} (${error.message})`);
   });
-  assert(await page.locator('#accountName').textContent()==='Compte Studio','L’identité Studio n’a pas été conservée pendant la panne WebTV');
+  assert(await page.locator('.neptune-studio-account-copy b').textContent()==='Compte Studio','Le shell canonique n’est plus compatible avec l’initialisation Diffusion');
 
   const addContent=page.locator('#addFromLibrary');
-  assert(await addContent.isEnabled(),'Ajouter un contenu reste désactivé pendant une panne partielle');
+  assert(await addContent.isEnabled(),'Ajouter un contenu reste désactivé : le catalogue doit rester consultable pendant la panne');
   await addContent.click();
   await page.locator('#libraryDialog[open]').waitFor({state:'visible',timeout});
   assert(await page.locator('.library-item').count()===1,'Le catalogue Studio a disparu pendant la panne WebTV');
   assert(await page.locator('.library-item').getByText('Émission Neptune de test').isVisible(),'L’émission Studio récupérée n’est plus visible');
-
-  await page.locator('.library-item [data-add]').click();
-  await page.locator('.playlist-item').waitFor({state:'visible',timeout});
-  assert(await page.locator('.playlist-item').getByText('Émission Neptune de test').isVisible(),'Le bouton Ajouter n’a pas modifié le programme local');
+  const addItem=page.locator('.library-item [data-add]');
+  assert(await addItem.isDisabled(),'Le programme réel peut être modifié alors que sa dernière version n’a pas pu être chargée');
+  assert((await page.locator('#libraryHint').textContent())?.includes('régie doit être reconnectée'),'Le catalogue n’explique pas pourquoi l’ajout est temporairement bloqué');
 
   const save=page.locator('#save');
   assert(await save.isDisabled(),'Une publication antenne reste possible alors que la régie est indisponible');
   assert((await save.textContent())?.includes('Régie à reconnecter'),'Le blocage antenne n’explique pas la reconnexion requise');
 
+  await page.locator('#closeLibrary').click();
   const refresh=page.locator('#refreshState');
   await refresh.click();
   await page.waitForFunction(()=>document.getElementById('refreshState')?.textContent==='Actualiser',null,{timeout});
   assert((await page.locator('#syncState').textContent())?.includes('Régie indisponible'),'Actualiser masque à tort la panne persistante');
-  assert(await page.locator('.playlist-item').count()===1,'Actualiser a effacé le programme local pendant la panne');
+  assert(await page.locator('#addFromLibrary').isEnabled(),'Actualiser a désactivé le catalogue Studio');
 
   assert(pageErrors.length===0,`Erreurs JavaScript dans Diffusion v115: ${pageErrors.join(' | ')}`);
-  console.log(`Studio runtime v115 browser audit: OK — ${webtvAttempts} appels WebTV en échec simulé, catalogue Studio conservé, boutons actifs et publication antenne bloquée.`);
+  console.log(`Studio runtime v115 browser audit: OK — ${webtvAttempts} appels WebTV en échec simulé, shell canonique compatible, catalogue Studio consultable et mutations antenne bloquées jusqu’à reconnexion.`);
   await context.close();
 } finally {
   await browser.close();
@@ -98,5 +98,8 @@ async function waitUntil(predicate,limit,message){
   while(Date.now()-started<limit){if(await predicate())return;await new Promise(resolve=>setTimeout(resolve,100));}
   throw new Error(message);
 }
-async function awaitText(page,selector){return String(await page.locator(selector).textContent().catch(()=>''));}
+async function text(page,selector){return String(await page.locator(selector).textContent().catch(()=>''));}
+async function diagnostic(page,attempts,pageErrors,consoleErrors,prefix){
+  return `${prefix}. attempts=${attempts} URL=${page.url()} syncState=${await text(page,'#syncState')} save=${await text(page,'#save')} pageErrors=${pageErrors.join(' | ')} console=${consoleErrors.join(' | ')}`;
+}
 function assert(condition,message){if(!condition)throw new Error(message);}

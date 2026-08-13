@@ -55,7 +55,16 @@ export class StudioStore extends LegacyStore {
     }
     if(method==='POST'&&url.pathname==='/portal/media-catalog-v98/supplier-save')return saveMediaSupplierV98(this,await body());
     if(method==='POST'&&url.pathname==='/portal/media-catalog-v98/city-save')return saveMediaCityV98(this,await body());
-    if(method==='POST'&&url.pathname==='/portal/media-catalog-v98/family-save')return saveMediaOfferFamilyV98(this,await body());
+    if(method==='POST'&&url.pathname==='/portal/media-catalog-v98/family-save'){
+      const raw=await body(),payload=raw?.payload&&typeof raw.payload==='object'?raw.payload:raw;
+      if(!payload.catalogAction&&!payload.supplierRateId&&payload.cityId&&payload.formatId&&payload.supplierId){
+        const mapped=this.sql.exec(`SELECT m.rate_id AS rateId FROM portal_media_offers_v96 o
+          JOIN portal_offer_supplier_rate_v116 m ON m.offer_id=o.id
+          WHERE o.city_id=? AND o.format_id=? AND o.supplier_id=? LIMIT 1`,payload.cityId,payload.formatId,payload.supplierId).toArray()[0];
+        if(mapped?.rateId)payload.supplierRateId=mapped.rateId;
+      }
+      return saveMediaOfferFamilyV98(this,raw?.payload?{...raw,payload}:payload);
+    }
     if(method==='POST'&&url.pathname==='/portal/media-catalog-v98/configuration-visual-save')return saveMediaConfigurationVisualV98(this,await body());
     return super.fetch(request);
   }

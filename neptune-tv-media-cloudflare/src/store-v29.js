@@ -48,7 +48,11 @@ export class StudioStore extends LegacyStore {
     if(url.pathname==='/portal/sales-tunnel-v96/prospect-context'&&method==='POST')return tunnelProspectContextV98(this,await body());
     if(url.pathname==='/portal/sales-tunnel-v96/selection'&&method==='POST')return saveTunnelSelectionV98(this,await body());
     if(method==='POST'&&url.pathname==='/portal/media-catalog-v98/context')return mediaCatalogContextV98(this,await body());
-    if(method==='POST'&&url.pathname==='/portal/media-catalog-v98/format-save')return saveMediaFormatV98(this,await body());
+    if(method==='POST'&&url.pathname==='/portal/media-catalog-v98/format-save'){
+      const raw=await body(),payload=raw?.payload&&typeof raw.payload==='object'?raw.payload:raw;
+      if(!(Number(payload?.totalMinutes)>0))return json({error:'total_duration_required'},400);
+      return saveMediaFormatV98(this,raw);
+    }
     if(method==='POST'&&url.pathname==='/portal/media-catalog-v98/supplier-save')return saveMediaSupplierV98(this,await body());
     if(method==='POST'&&url.pathname==='/portal/media-catalog-v98/city-save')return saveMediaCityV98(this,await body());
     if(method==='POST'&&url.pathname==='/portal/media-catalog-v98/family-save')return saveMediaOfferFamilyV98(this,await body());

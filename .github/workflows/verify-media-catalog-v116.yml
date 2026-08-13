@@ -1,0 +1,34 @@
+name: Verify Media Catalog V116
+
+on:
+  pull_request:
+    paths:
+      - 'neptune-tv-media-cloudflare/src/portal-media-catalog-v98.js'
+      - 'neptune-tv-media-cloudflare/src/store-v29.js'
+      - 'neptune-tv-media-cloudflare/public/studio/media-catalog-form-v116.js'
+      - 'neptune-tv-media-cloudflare/public/studio/media-catalog-services-v116.js'
+      - 'neptune-tv-media-cloudflare/public/studio/media-catalog-runtime-fix-v115.js'
+      - 'neptune-tv-media-cloudflare/scripts/verify-media-catalog-v116.mjs'
+      - '.github/workflows/verify-media-catalog-v116.yml'
+  workflow_dispatch:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: neptune-tv-media-cloudflare
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Syntaxe v116
+        run: |
+          node --check src/portal-media-catalog-v98.js
+          node --check src/store-v29.js
+          node --check public/studio/media-catalog-form-v116.js
+          node --check public/studio/media-catalog-services-v116.js
+          node --check public/studio/media-catalog-runtime-fix-v115.js
+      - name: Contrat Catalogue v116
+        run: node scripts/verify-media-catalog-v116.mjs

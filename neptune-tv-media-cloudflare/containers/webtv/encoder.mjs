@@ -6,11 +6,15 @@ const LOCAL_UDP_PORT = Number(process.env.WEBTV_LOCAL_UDP_PORT || 23000);
 const LOCAL_INPUT = `udp://127.0.0.1:${LOCAL_UDP_PORT}?fifo_size=1000000&overrun_nonfatal=1`;
 const LOCAL_OUTPUT = `udp://127.0.0.1:${LOCAL_UDP_PORT}?pkt_size=1316`;
 const RELAY_RESTART_DELAYS_MS = [500, 1000, 2000, 4000, 8000];
+const RELAY_STALL_GRACE_MS = 25000;
+const OUTPUT_FRESH_MS = 15000;
 const startedAt = Date.now();
 
 let config = null;
 let relay = null;
+let relayStartedAt = 0;
 let playout = null;
+let activePlayoutToken = null;
 let playoutToken = 0;
 let relayToken = 0;
 let relayRestartTimer = null;
@@ -39,15 +43,17 @@ const server = http.createServer(async (req, res) => {
       const previous = config;
       const revisionChanged = !previous || previous.revision !== next.revision;
       const transportChanged = !previous || relayFingerprint(previous) !== relayFingerprint(next);
-      const hardRestart = next.forceRestart === true || transportChanged;
+      const requestedRestart = next.forceRestart === true;
+      const relayHealthy = Boolean(relay && outputProgressFresh(30000));
+      const hardRestart = transportChanged || (requestedRestart && !relayHealthy);
 
       config = next;
       state.revision = next.revision;
       state.lastError = null;
       touch();
 
-      if (hardRestart) restartAll(next.forceRestart ? 'manual_or_forced_restart' : 'transport_changed');
-      else if (revisionChanged) restartPlayout('playlist_changed');
+      if (hardRestart) restartAll(transportChanged ? 'transport_changed' : 'relay_unhealthy_restart');
+      else if (revisionChanged || requestedRestart) restartPlayout(requestedRestart ? 'playout_restart_keep_relay' : 'playlist_changed');
       else {
         ensureRelay(relayToken);
         ensurePlayout(playoutToken);
@@ -79,6 +85,10 @@ server.listen(PORT, '0.0.0.0', () => {
 setInterval(() => {
   touch();
   if (!config?.enabled) return;
+  if (relay && playout && relayStartedAt && Date.now() - relayStartedAt > RELAY_STALL_GRACE_MS && !outputProgressFresh(OUTPUT_FRESH_MS)) {
+    restartRelayInPlace('youtube_output_stalled');
+    return;
+  }
   ensureRelay(relayToken);
   ensurePlayout(playoutToken);
 }, 5000).unref();
@@ -101,10 +111,26 @@ function restartPlayout(reason) {
   playoutToken += 1;
   stopPlayout(reason);
   state.currentItem = null;
-  state.status = relay ? 'starting' : 'reconnecting';
+  state.status = outputProgressFresh(OUTPUT_FRESH_MS) ? 'streaming' : relay ? 'starting' : 'reconnecting';
   touch();
   ensureRelay(relayToken);
   ensurePlayout(playoutToken);
+}
+
+function restartRelayInPlace(reason) {
+  const token = relayToken;
+  stopRelay(reason);
+  state.status = 'reconnecting';
+  state.lastError = reason;
+  state.relayRestarts += 1;
+  state.lastOutputProgressAt = null;
+  touch();
+  clearRelayRestartTimer();
+  relayRestartTimer = setTimeout(() => {
+    relayRestartTimer = null;
+    ensureRelay(token);
+  }, RELAY_RESTART_DELAYS_MS[0]);
+  relayRestartTimer.unref?.();
 }
 
 function stopAll(reason) {
@@ -119,6 +145,7 @@ function ensureRelay(token) {
   clearRelayRestartTimer();
   const child = spawn('ffmpeg', buildRelayArgs(config), { stdio: ['ignore', 'pipe', 'pipe'] });
   relay = child;
+  relayStartedAt = Date.now();
   state.relayPid = child.pid || null;
   state.ffmpegPid = child.pid || null;
   state.status = 'starting';
@@ -131,14 +158,12 @@ function ensureRelay(token) {
     const lines = progressBuffer.split(/\r?\n/u);
     progressBuffer = lines.pop() || '';
     for (const line of lines) {
-      if (!line.startsWith('out_time_') && line !== 'progress=continue' && line !== 'progress=end') continue;
-      if (line.startsWith('out_time_')) {
-        state.lastOutputProgressAt = new Date().toISOString();
-        state.status = playout ? 'streaming' : 'starting';
-        state.lastError = null;
-        relayRestartAttempt = 0;
-        touch();
-      }
+      if (!line.startsWith('out_time_')) continue;
+      state.lastOutputProgressAt = new Date().toISOString();
+      state.status = playout ? 'streaming' : 'starting';
+      state.lastError = null;
+      relayRestartAttempt = 0;
+      touch();
     }
   });
   child.stderr.on('data', (chunk) => {
@@ -161,6 +186,7 @@ function relayExited(child, token, error) {
   state.status = 'reconnecting';
   state.lastError = error || 'youtube_relay_disconnected';
   state.relayRestarts += 1;
+  state.lastOutputProgressAt = null;
   touch();
   const delay = RELAY_RESTART_DELAYS_MS[Math.min(relayRestartAttempt, RELAY_RESTART_DELAYS_MS.length - 1)];
   relayRestartAttempt += 1;
@@ -174,18 +200,26 @@ function relayExited(child, token, error) {
 
 function clearRelayProcess(child) {
   if (relay === child) relay = null;
+  relayStartedAt = 0;
   state.relayPid = null;
   state.ffmpegPid = null;
   touch();
 }
 
 function ensurePlayout(token) {
-  if (playout || !config?.enabled || token !== playoutToken) return;
-  queueMicrotask(() => playoutLoop(token));
+  if (playout || activePlayoutToken !== null || !config?.enabled || token !== playoutToken) return;
+  activePlayoutToken = token;
+  queueMicrotask(async () => {
+    try {
+      await playoutLoop(token);
+    } finally {
+      if (activePlayoutToken === token) activePlayoutToken = null;
+      if (config?.enabled && !playout) ensurePlayout(playoutToken);
+    }
+  });
 }
 
 async function playoutLoop(token) {
-  if (playout || token !== playoutToken || !config?.enabled) return;
   let consecutiveFailures = 0;
   while (token === playoutToken && config?.enabled) {
     const items = config.playlist.filter((item) => item.mediaUrl);
@@ -203,7 +237,7 @@ async function playoutLoop(token) {
       const nextItem = items[(index + 1) % items.length];
       if (nextItem?.mediaUrl) void probeHasAudio(nextItem.mediaUrl);
 
-      state.status = relay ? 'starting' : 'reconnecting';
+      state.status = outputProgressFresh(OUTPUT_FRESH_MS) ? 'streaming' : relay ? 'starting' : 'reconnecting';
       state.currentItem = {
         id: item.id,
         title: item.title,
@@ -269,7 +303,7 @@ function buildPlayoutArgs(mediaUrl, hasAudio, cfg) {
     '-hide_banner', '-nostdin', '-loglevel', 'warning',
     '-re', '-i', mediaUrl,
   ];
-  if (!hasAudio) args.push('-f', 'lavfi', '-i', 'anullsrc=channel_layout=stereo:sample_rate=48000');
+  if (!hasAudio) args.push('-re', '-f', 'lavfi', '-i', 'anullsrc=channel_layout=stereo:sample_rate=48000');
   args.push(
     '-map', '0:v:0',
     ...(hasAudio ? ['-map', '0:a:0?'] : ['-map', '1:a:0']),
@@ -279,7 +313,7 @@ function buildPlayoutArgs(mediaUrl, hasAudio, cfg) {
     '-g', String(e.fps * 2), '-keyint_min', String(e.fps * 2), '-sc_threshold', '0',
     '-x264-params', 'repeat-headers=1',
     '-c:a', 'aac', '-b:a', `${e.audioBitrateKbps}k`, '-ar', '48000', '-ac', '2',
-    '-af', 'aresample=async=1:first_pts=0,apad',
+    '-af', 'aresample=async=1:first_pts=0',
     '-shortest',
     '-muxdelay', '0', '-muxpreload', '0',
     '-mpegts_flags', '+resend_headers+initial_discontinuity',
@@ -293,7 +327,7 @@ function buildSlateArgs(seconds, cfg) {
   return [
     '-hide_banner', '-nostdin', '-loglevel', 'warning',
     '-re', '-f', 'lavfi', '-i', `color=c=0x06183f:s=${e.width}x${e.height}:r=${e.fps}:d=${seconds}`,
-    '-f', 'lavfi', '-i', `anullsrc=channel_layout=stereo:sample_rate=48000:d=${seconds}`,
+    '-re', '-f', 'lavfi', '-i', `anullsrc=channel_layout=stereo:sample_rate=48000:d=${seconds}`,
     '-map', '0:v:0', '-map', '1:a:0',
     '-c:v', 'libx264', '-preset', e.preset, '-tune', 'zerolatency',
     '-b:v', `${e.videoBitrateKbps}k`, '-maxrate', `${e.videoBitrateKbps}k`, '-bufsize', `${e.videoBitrateKbps * 2}k`,
@@ -326,7 +360,7 @@ function runPlayout(args, token) {
     const child = spawn('ffmpeg', args, { stdio: ['ignore', 'ignore', 'pipe'] });
     playout = child;
     state.playoutPid = child.pid || null;
-    state.status = relay ? 'streaming' : 'reconnecting';
+    state.status = outputProgressFresh(OUTPUT_FRESH_MS) ? 'streaming' : relay ? 'starting' : 'reconnecting';
     touch();
     let stderr = '';
     let settled = false;
@@ -362,6 +396,7 @@ function stopRelay(reason) {
   clearRelayRestartTimer();
   const child = relay;
   relay = null;
+  relayStartedAt = 0;
   state.relayPid = null;
   state.ffmpegPid = null;
   terminate(child);
@@ -391,10 +426,11 @@ function probeHasAudio(mediaUrl) {
     ], { stdio: ['ignore', 'pipe', 'ignore'] });
     let stdout = '';
     let settled = false;
+    let timeout = null;
     const finish = (value) => {
       if (settled) return;
       settled = true;
-      clearTimeout(timeout);
+      if (timeout) clearTimeout(timeout);
       const hasAudio = value !== false;
       audioProbeCache.set(mediaUrl, hasAudio);
       audioProbePending.delete(mediaUrl);
@@ -403,7 +439,7 @@ function probeHasAudio(mediaUrl) {
     child.stdout.on('data', (chunk) => { stdout = (stdout + chunk.toString('utf8')).slice(-1024); });
     child.once('error', () => finish(true));
     child.once('exit', (code) => finish(code === 0 ? stdout.includes('audio') : true));
-    const timeout = setTimeout(() => {
+    timeout = setTimeout(() => {
       try { child.kill('SIGKILL'); } catch {}
       finish(true);
     }, 15000);
@@ -411,6 +447,11 @@ function probeHasAudio(mediaUrl) {
   });
   audioProbePending.set(mediaUrl, pending);
   return pending;
+}
+
+function outputProgressFresh(maxAgeMs = OUTPUT_FRESH_MS) {
+  const timestamp = Date.parse(state.lastOutputProgressAt || '');
+  return Number.isFinite(timestamp) && Date.now() - timestamp <= maxAgeMs;
 }
 
 function relayFingerprint(cfg) {
@@ -484,7 +525,7 @@ function snapshot() {
     ...state,
     heartbeatAt: new Date().toISOString(),
     uptimeSeconds: Math.floor((Date.now() - startedAt) / 1000),
-    relayConnected: Boolean(relay && state.lastOutputProgressAt),
+    relayConnected: Boolean(relay && outputProgressFresh(OUTPUT_FRESH_MS)),
   };
 }
 

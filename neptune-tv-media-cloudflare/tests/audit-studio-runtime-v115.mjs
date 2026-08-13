@@ -51,7 +51,7 @@ try{
   const pageErrors=[];
   const consoleErrors=[];
   page.on('pageerror',error=>pageErrors.push(error.stack||error.message));
-  page.on('console',message=>{if(message.type()==='error')consoleErrors.push(message.text());});
+  page.on('console',message=>{if(message.type()==='error'&&!message.text().includes('503'))consoleErrors.push(message.text());});
 
   const response=await page.goto(`${baseURL}/studio/webtv.html?runtime_v115=${Date.now()}`,{waitUntil:'domcontentloaded',timeout});
   assert(response?.ok(),`Diffusion HTTP ${response?.status()}`);
@@ -62,7 +62,13 @@ try{
   });
   assert(await page.locator('.neptune-studio-account-copy b').textContent()==='Compte Studio','Le shell canonique n’est plus compatible avec l’initialisation Diffusion');
 
+  const programTab=page.locator('[data-webtv-section-button="program"]');
+  await programTab.waitFor({state:'visible',timeout});
+  await programTab.click();
+  await page.locator('[data-webtv-section-panel="program"]:not([hidden])').waitFor({state:'visible',timeout});
+
   const addContent=page.locator('#addFromLibrary');
+  assert(await addContent.isVisible(),'Ajouter un contenu n’est pas visible dans la sous-vue Programme');
   assert(await addContent.isEnabled(),'Ajouter un contenu reste désactivé : le catalogue doit rester consultable pendant la panne');
   await addContent.click();
   await page.locator('#libraryDialog[open]').waitFor({state:'visible',timeout});
@@ -84,7 +90,8 @@ try{
   assert(await page.locator('#addFromLibrary').isEnabled(),'Actualiser a désactivé le catalogue Studio');
 
   assert(pageErrors.length===0,`Erreurs JavaScript dans Diffusion v115: ${pageErrors.join(' | ')}`);
-  console.log(`Studio runtime v115 browser audit: OK — ${webtvAttempts} appels WebTV en échec simulé, shell canonique compatible, catalogue Studio consultable et mutations antenne bloquées jusqu’à reconnexion.`);
+  assert(consoleErrors.length===0,`Erreurs console inattendues dans Diffusion v115: ${consoleErrors.join(' | ')}`);
+  console.log(`Studio runtime v115 browser audit: OK — ${webtvAttempts} appels WebTV en échec simulé, navigation Programme réelle, shell canonique compatible, catalogue Studio consultable et mutations antenne bloquées jusqu’à reconnexion.`);
   await context.close();
 } finally {
   await browser.close();

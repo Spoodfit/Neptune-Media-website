@@ -4,6 +4,8 @@ document.body.dataset.mediaCatalogServicesV116=RELEASE;
 installStyles();
 document.addEventListener('neptune:catalog-services-v116',openServices);
 document.addEventListener('click',event=>{if(event.target.closest('[data-c98-tab]'))document.querySelector('[data-c116-services]')?.classList.remove('is-active');},true);
+const openPreviewOnce=()=>{const panel=document.querySelector('details.c116-preview-panel');if(panel&&!panel.dataset.c116DefaultOpened){panel.open=true;panel.dataset.c116DefaultOpened='1';}};
+new MutationObserver(()=>queueMicrotask(openPreviewOnce)).observe(document.body,{subtree:true,childList:true});queueMicrotask(openPreviewOnce);
 
 async function openServices(){
   const tab=document.querySelector('[data-c116-services]'),work=document.getElementById('c98Work');if(!tab||!work)return;

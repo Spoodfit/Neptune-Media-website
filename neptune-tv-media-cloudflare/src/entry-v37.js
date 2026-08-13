@@ -177,7 +177,7 @@ function waitV115(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
 
 function required(body,needle,replacement,label){
   if(!body.includes(needle))throw new Error(`webtv_v115_source_contract_changed:${label}`);
-  return body.replace(needle,replacement);
+  return body.replace(needle,()=>replacement);
 }
 
 function rewrittenHeaders(response){

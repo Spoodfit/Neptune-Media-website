@@ -81,7 +81,7 @@ for (const testCase of cases) {
     if (home) {
       if (document.body.dataset.finalUx !== 'v12') issues.push('expérience finale v12 absente');
       if (!document.body.dataset.homeStructure) issues.push('architecture d’accueil non déclarée');
-      if (!document.querySelector('[data-content-rail],#dynamicCatalog')) issues.push('catalogue éditorial absent');
+      if (!document.querySelector('#a-voir.visibility-showcase [data-showcase-video]')) issues.push('showcase éditorial absent');
       if (!document.querySelector('[data-funnel]')) issues.push('accès au tunnel de réservation absent');
       if (!document.querySelector('#formats')) issues.push('section formats absente');
     }
@@ -97,18 +97,10 @@ for (const testCase of cases) {
       if (pressed !== 'true' || !String(result || '').trim()) audit.issues.push('sélecteur de format présent mais non fonctionnel');
     }
 
-    const firstMedia = page.locator('#dynamicCatalog button').first();
-    if (await firstMedia.count()) {
-      await firstMedia.click();
-      const modal = page.locator('.video-modal.is-open');
-      await modal.waitFor({ state: 'visible', timeout: 10000 }).catch(() => null);
-      if (await modal.count()) {
-        const box = await page.locator('.video-modal.is-open .modal-frame').boundingBox();
-        if (!box || box.width > testCase.width + 2 || box.height > testCase.height * 1.6) audit.issues.push('lecteur vidéo hors du cadre utile');
-        await page.locator('[data-video-close]').click().catch(() => null);
-      } else {
-        audit.issues.push('lecteur vidéo non ouvert depuis le catalogue');
-      }
+    const firstShowcaseVideo = page.locator('#a-voir.visibility-showcase [data-showcase-video]').first();
+    if (await firstShowcaseVideo.count()) {
+      const hasSource = await firstShowcaseVideo.evaluate((element) => Boolean(element.dataset.src || element.currentSrc || element.src));
+      if (!hasSource) audit.issues.push('showcase vidéo présent sans source');
     }
   }
 

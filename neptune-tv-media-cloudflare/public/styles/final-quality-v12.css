@@ -1,4 +1,4 @@
-/* Neptune Media final QA corrections v12.1 — verified clipping and touch-target fixes. */
+/* Neptune Media final QA corrections v12.2 — verified clipping and touch-target fixes. */
 body[data-final-ux="v12"] .section-head--minimal h2,
 body[data-public-ux="streaming-v3"][data-final-ux="v12"] .catalogue-hero h1{
   box-sizing:border-box;
@@ -9,6 +9,12 @@ body[data-public-ux="streaming-v3"][data-final-ux="v12"] .catalogue-hero h1{
 }
 
 @media(max-width:760px){
+  body[data-final-ux="v12"] button[aria-label^="Afficher l’image"],
+  body[data-final-ux="v12"] button[aria-label^="Afficher l'image"]{
+    min-width:44px!important;
+    min-height:44px!important;
+  }
+
   body[data-public-ux="streaming-v3"][data-final-ux="v12"] .public-desktop-nav{display:none!important}
   body[data-public-ux="streaming-v3"][data-final-ux="v12"] .public-mobile-menu{display:block!important;flex:0 0 auto}
   body[data-public-ux="streaming-v3"][data-final-ux="v12"] .public-mobile-menu>summary{display:grid!important;place-items:center;min-width:48px!important;min-height:48px!important;padding:0!important}

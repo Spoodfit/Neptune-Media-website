@@ -26,7 +26,7 @@ for(const marker of [
 ])expect(fix.includes(marker),`correctif Catalogue/Aperçu v115 incomplet : ${marker}`);
 expect(!fix.includes('localStorage.setItem'),'le correctif d’aperçu ne doit jamais écrire dans le localStorage client');
 expect(previewSync.includes("catalog_preview:'studio'"),'le mode d’aperçu Studio isolé a disparu');
-expect(previewSync.includes('data.catalogPreviewV109'),'le propriétaire de l’iframe v109 a changé sans migration');
+expect(previewSync.includes('dataset.catalogPreviewV109'),'le propriétaire de l’iframe v109 a changé sans migration');
 
 for(const marker of [
   "from './entry-v36.js'",

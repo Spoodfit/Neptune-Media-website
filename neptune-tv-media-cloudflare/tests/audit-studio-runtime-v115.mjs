@@ -20,6 +20,14 @@ const studioState={
 const browser=await chromium.launch({headless:true});
 try{
   const context=await browser.newContext({viewport:{width:1440,height:1000},serviceWorkers:'block'});
+  const runtimeProbe=await context.request.get(`${baseURL}/studio/webtv-v1.js?v=7&runtime_probe=${Date.now()}`,{timeout});
+  const runtimeSource=await runtimeProbe.text();
+  assert(runtimeProbe.ok(),`Runtime Diffusion HTTP ${runtimeProbe.status()}`);
+  assert(runtimeProbe.headers()['x-neptune-webtv-runtime']==='neptune-studio-runtime-recovery-20260813-v115','Le Worker local ne sert pas la transformation Diffusion v115');
+  for(const marker of ['initV115();','Promise.allSettled','retryWebTvStateV115','Régie indisponible'])assert(runtimeSource.includes(marker),`Runtime Diffusion servi sans ${marker}`);
+  assert(!runtimeSource.includes('\ninit();\n'),'Le runtime Diffusion servi exécute encore init() legacy');
+  try{new Function(runtimeSource);}catch(error){throw new Error(`Runtime Diffusion transformé invalide: ${error.message}`);}
+
   let webtvAttempts=0;
   await context.route('**/api/**',async route=>{
     const url=new URL(route.request().url());
@@ -41,13 +49,17 @@ try{
 
   const page=await context.newPage();
   const pageErrors=[];
+  const consoleErrors=[];
   page.on('pageerror',error=>pageErrors.push(error.stack||error.message));
+  page.on('console',message=>{if(message.type()==='error')consoleErrors.push(message.text());});
 
   const response=await page.goto(`${baseURL}/studio/webtv.html?runtime_v115=${Date.now()}`,{waitUntil:'domcontentloaded',timeout});
   assert(response?.ok(),`Diffusion HTTP ${response?.status()}`);
+  await waitUntil(()=>webtvAttempts>=3,8000,`La reprise v115 n'a lancé aucun cycle de retry WebTV. URL=${page.url()} status=${awaitText(page,'#syncState')} pageErrors=${pageErrors.join(' | ')} console=${consoleErrors.join(' | ')}`);
 
-  await page.waitForFunction(()=>document.getElementById('syncState')?.textContent?.includes('Régie indisponible'),null,{timeout});
-  assert(webtvAttempts>=3,`La reprise v115 n'a pas effectué ses retries WebTV: ${webtvAttempts}`);
+  await page.waitForFunction(()=>document.getElementById('syncState')?.textContent?.includes('Régie indisponible'),null,{timeout:8000}).catch(async error=>{
+    throw new Error(`État dégradé non affiché après ${webtvAttempts} tentatives WebTV. syncState=${awaitText(page,'#syncState')} save=${awaitText(page,'#save')} pageErrors=${pageErrors.join(' | ')} console=${consoleErrors.join(' | ')} (${error.message})`);
+  });
   assert(await page.locator('#accountName').textContent()==='Compte Studio','L’identité Studio n’a pas été conservée pendant la panne WebTV');
 
   const addContent=page.locator('#addFromLibrary');
@@ -81,4 +93,10 @@ try{
 async function json(route,status,body){
   await route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});
 }
+async function waitUntil(predicate,limit,message){
+  const started=Date.now();
+  while(Date.now()-started<limit){if(await predicate())return;await new Promise(resolve=>setTimeout(resolve,100));}
+  throw new Error(message);
+}
+async function awaitText(page,selector){return String(await page.locator(selector).textContent().catch(()=>''));}
 function assert(condition,message){if(!condition)throw new Error(message);}

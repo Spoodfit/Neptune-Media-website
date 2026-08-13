@@ -9,26 +9,52 @@ on:
       - 'neptune-tv-media-cloudflare/public/studio/media-catalog-services-v116.js'
       - 'neptune-tv-media-cloudflare/public/studio/media-catalog-runtime-fix-v115.js'
       - 'neptune-tv-media-cloudflare/scripts/verify-media-catalog-v116.mjs'
+      - 'neptune-tv-media-cloudflare/tests/audit-media-catalog-v116.mjs'
       - '.github/workflows/verify-media-catalog-v116.yml'
   workflow_dispatch:
 
 jobs:
   verify:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: neptune-tv-media-cloudflare
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Syntaxe v116
+      - name: Install Worker dependencies
+        working-directory: neptune-tv-media-cloudflare
+        run: npm install --package-lock=false --ignore-scripts --no-audit --no-fund
+      - name: Syntaxe et contrat v116
+        working-directory: neptune-tv-media-cloudflare
         run: |
           node --check src/portal-media-catalog-v98.js
           node --check src/store-v29.js
           node --check public/studio/media-catalog-form-v116.js
           node --check public/studio/media-catalog-services-v116.js
           node --check public/studio/media-catalog-runtime-fix-v115.js
-      - name: Contrat Catalogue v116
-        run: node scripts/verify-media-catalog-v116.mjs
+          node --check tests/audit-media-catalog-v116.mjs
+          node scripts/verify-media-catalog-v116.mjs
+      - name: Install Chromium
+        run: |
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Start local Worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          sed -i 's/"compatibility_date": "2026-07-30"/"compatibility_date": "2026-07-07"/' neptune-tv-media-cloudflare/wrangler.jsonc
+          ./neptune-tv-media-cloudflare/node_modules/.bin/wrangler dev --config neptune-tv-media-cloudflare/wrangler.jsonc --local --port 8787 > /tmp/wrangler-v116.log 2>&1 &
+          ready=0
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:8787/studio/advanced.html >/dev/null; then ready=1; break; fi
+            sleep 2
+          done
+          if [ "$ready" != 1 ]; then cat /tmp/wrangler-v116.log; exit 1; fi
+      - name: Audit Catalogue v116 dans Chromium
+        env:
+          STUDIO_BASE_URL: http://127.0.0.1:8787
+        run: node neptune-tv-media-cloudflare/tests/audit-media-catalog-v116.mjs
+      - name: Worker log on failure
+        if: failure()
+        run: cat /tmp/wrangler-v116.log || true

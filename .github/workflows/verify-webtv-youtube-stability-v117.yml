@@ -31,6 +31,10 @@ jobs:
           node --check neptune-tv-media-cloudflare/public/studio/webtv-live-monitor-v1.js
           node --check neptune-tv-media-cloudflare/scripts/verify-webtv-youtube-stability-v117.mjs
           node neptune-tv-media-cloudflare/scripts/verify-webtv-youtube-stability-v117.mjs
+      - name: Install FFmpeg test runtime
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends ffmpeg
       - name: Validate continuous FFmpeg relay across media boundaries
         shell: bash
         run: |
@@ -59,15 +63,9 @@ jobs:
           send_item() {
             local input="$1"
             local audio="$2"
-            local args=(
-              -hide_banner -nostdin -loglevel error -re -i "$input"
-            )
-            if [ "$audio" = no ]; then
-              args+=( -re -f lavfi -i 'anullsrc=channel_layout=stereo:sample_rate=48000' )
-            fi
-            args+=(
-              -map 0:v:0
-            )
+            local args=( -hide_banner -nostdin -loglevel error -re -i "$input" )
+            if [ "$audio" = no ]; then args+=( -re -f lavfi -i 'anullsrc=channel_layout=stereo:sample_rate=48000' ); fi
+            args+=( -map 0:v:0 )
             if [ "$audio" = yes ]; then args+=( -map '0:a:0?' ); else args+=( -map '1:a:0' ); fi
             args+=(
               -vf 'scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,fps=30,format=yuv420p,setpts=PTS-STARTPTS'

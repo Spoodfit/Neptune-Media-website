@@ -21,6 +21,8 @@ queueMicrotask(()=>{
 });
 
 function catalogueActive(){
+  const activeTab=document.querySelector('[data-tab].active');
+  if(activeTab)return activeTab.dataset.tab==='programs';
   return decodeURIComponent(location.hash.slice(1)).trim()==='programs';
 }
 
@@ -34,6 +36,7 @@ function ensureCatalogueMounted(){
   content.dataset.c98='';
   setTimeout(()=>{
     try{
+      if(!catalogueActive())return;
       const tab=document.querySelector('#studioLegacyTabControlsV105 [data-tab="programs"]')||document.querySelector('[data-tab="programs"]');
       if(tab)tab.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true}));
     }finally{
@@ -49,7 +52,7 @@ function repairPreview(){
   if(!frame)return;
   const currentShell=frame.closest('[data-catalog-preview-shell-v115]');
   if(currentShell){
-    host.dataset.catalogPreviewOwner='v115';
+    host.dataset.catalogPreviewOwner='v109';
     return;
   }
 
@@ -99,7 +102,7 @@ function repairPreview(){
   shell.append(head,note,device,actions);
   host.replaceChildren(shell);
   host.dataset.c99='1';
-  host.dataset.catalogPreviewOwner='v115';
+  host.dataset.catalogPreviewOwner='v109';
 }
 
 function installStyles(){
@@ -107,7 +110,7 @@ function installStyles(){
   const style=document.createElement('style');
   style.id='mediaCatalogRuntimeFixV115Style';
   style.textContent=`
-    #c98Preview[data-catalog-preview-owner="v115"]{min-width:0}
+    #c98Preview[data-catalog-preview-owner="v109"]{min-width:0}
     .c115-preview-shell{gap:14px!important;padding:18px!important;overflow:hidden}
     .c115-preview-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px}
     .c115-preview-head .c98-eyebrow{margin:0 0 6px!important}

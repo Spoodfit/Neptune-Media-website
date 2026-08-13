@@ -32,7 +32,8 @@ async function verifyBase(base,attempt){
 
   const webtvRuntime=await fetchText(`${base}/studio/webtv-v1.js?v=7&studio_v115=${nonce}`);
   assert(webtvRuntime.headers.get('x-neptune-webtv-runtime')===RELEASE,'Diffusion JS v115 header missing');
-  for(const marker of ['initV115();','Promise.allSettled','controlDegraded','retryWebTvStateV115','refreshRuntimeV115',"studioState=studioResult.status==='fulfilled'",'Régie indisponible'])assert(webtvRuntime.body.includes(marker),`Diffusion transformed runtime missing ${marker}`);
+  for(const marker of ['initV115();','Promise.allSettled','controlDegraded','retryWebTvStateV115','refreshRuntimeV115',"studioState=studioResult.status==='fulfilled'",'Régie indisponible',"$$('[data-add]').forEach"])assert(webtvRuntime.body.includes(marker),`Diffusion transformed runtime missing ${marker}`);
+  assert(!/(^|[^$])\$\('\[data-add\]'\)\.forEach/m.test(webtvRuntime.body),'Diffusion production runtime collapsed the $$ helper into $');
   assert(!webtvRuntime.body.includes('\ninit();\n'),'legacy destructive Diffusion init still executes');
 
   const advanced=await fetchText(`${base}/studio/advanced.html?studio_v115=${nonce}`);

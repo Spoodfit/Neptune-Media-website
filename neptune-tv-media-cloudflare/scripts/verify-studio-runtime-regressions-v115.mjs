@@ -37,10 +37,14 @@ for(const marker of [
   "const WEBTV_UI='/studio/webtv-v1.js'",
   'Promise.allSettled',
   "studioState=studioResult.status==='fulfilled'",
+  "const accountName=$('#accountName')",
+  'if(accountName)accountName.textContent=',
+  'if(accountRole)accountRole.textContent=',
   'controlDegraded=false',
   'degradedControlV115',
   'retryWebTvStateV115',
   'refreshRuntimeV115',
+  'Reconnectez la régie avant de modifier le programme',
   "webtv-v1.js?v=7",
   'X-Neptune-WebTV-Runtime',
 ])expect(entry37.includes(marker),`reprise Diffusion v115 incomplète : ${marker}`);
@@ -52,10 +56,11 @@ for(const sourceContract of [
   "$('#restartEncoder').disabled=!control.enabled||!control.output?.configured||list.length===0;",
   "function updateApplyState(){\n  const button=$('#save');if(!button||!control)return;",
   "async function save(){\n  const button=$('#save');",
+  "  hydrateThumbnails($('#library'));\n  $$('[data-add]').forEach(button=>button.addEventListener('click',()=>{",
 ])expect(webtvUi.includes(sourceContract),`le contrat source WebTV nécessaire à la transformation v115 a changé : ${sourceContract}`);
 
 if(failures.length){
   console.error(failures.map(failure=>`- ${failure}`).join('\n'));
   process.exit(1);
 }
-console.log('Studio runtime v115 validé : Réglages remonte le Catalogue uniquement quand il est réellement actif, aperçu dimensionné sans déposséder v109, Diffusion résiste à une panne WebTV partielle et permet la reconnexion sans effacer le catalogue Studio.');
+console.log('Studio runtime v115 validé : Réglages remonte le Catalogue uniquement quand il est réellement actif, aperçu dimensionné sans déposséder v109, Diffusion tolère la sidebar canonique et conserve le catalogue en mode dégradé sans permettre d’écraser une grille antenne inconnue.');

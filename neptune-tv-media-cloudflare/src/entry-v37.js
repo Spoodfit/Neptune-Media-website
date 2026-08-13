@@ -37,9 +37,10 @@ async function hardenWebTvUi(response){
   body=required(body,"$('#restartEncoder').disabled=!control.enabled||!control.output?.configured||list.length===0;","$('#restartEncoder').disabled=controlDegraded||!control.enabled||!control.output?.configured||list.length===0;",'encoder guard');
   body=required(body,"function updateApplyState(){\n  const button=$('#save');if(!button||!control)return;",`function updateApplyState(){\n  const button=$('#save');if(!button||!control)return;\n  if(controlDegraded){button.disabled=true;button.textContent='Régie à reconnecter';$('#syncState').textContent='Régie indisponible';return;}`,'apply guard');
   body=required(body,"async function save(){\n  const button=$('#save');",`async function save(){\n  if(controlDegraded){toast('La régie doit être reconnectée avant de publier un programme.',true);return;}\n  const button=$('#save');`,'save guard');
+  body=required(body,"  hydrateThumbnails($('#library'));\n  $$('[data-add]').forEach(button=>button.addEventListener('click',()=>{",`  hydrateThumbnails($('#library'));\n  if(controlDegraded){\n    $('#libraryHint').textContent+=' La régie doit être reconnectée avant de modifier le programme.';\n    $$('[data-add]').forEach(button=>{button.disabled=true;button.title='Reconnectez la régie avant de modifier le programme';});\n  }\n  $$('[data-add]').forEach(button=>button.addEventListener('click',()=>{`,'degraded library guard');
   body=required(body,"window.addEventListener('beforeunload',()=>{if(runtimePoll)clearInterval(runtimePoll);});",`${recoveryRuntime()}\nwindow.addEventListener('beforeunload',()=>{if(runtimePoll)clearInterval(runtimePoll);});`,'recovery runtime');
 
-  const requiredMarkers=['initV115();','Promise.allSettled','controlDegraded','retryWebTvStateV115','refreshRuntimeV115','Régie indisponible'];
+  const requiredMarkers=['initV115();','Promise.allSettled','controlDegraded','retryWebTvStateV115','refreshRuntimeV115','Régie indisponible','Reconnectez la régie avant de modifier le programme'];
   for(const marker of requiredMarkers)if(!body.includes(marker))throw new Error(`webtv_v115_transform_missing:${marker}`);
 
   const headers=rewrittenHeaders(response);
@@ -85,8 +86,10 @@ async function initV115(){
     }
 
     const user=studioState.user||auth.user||{};
-    $('#accountName').textContent=user.fullName||user.email||'Compte Studio';
-    $('#accountRole').textContent=user.displayRole||user.role||'Admin';
+    const accountName=$('#accountName');
+    const accountRole=$('#accountRole');
+    if(accountName)accountName.textContent=user.fullName||user.email||'Compte Studio';
+    if(accountRole)accountRole.textContent=user.displayRole||user.role||'Admin';
     bind();
     installRefreshRecoveryV115();
     render();
@@ -104,8 +107,10 @@ async function initV115(){
     runtimePoll=setInterval(refreshRuntimeV115,15000);
     document.addEventListener('visibilitychange',()=>{if(!document.hidden)refreshRuntimeV115();});
   }catch(error){
-    $('#syncState').textContent='Connexion requise';
-    toast(error.message==='http_401'||error.message==='http_403'||error.message==='studio_forbidden'?'Accès Studio requis.':'Impossible de charger le Studio.',true);
+    const authError=error.message==='http_401'||error.message==='http_403'||error.message==='studio_forbidden';
+    $('#syncState').textContent=authError?'Connexion requise':'Régie indisponible';
+    toast(authError?'Accès Studio requis.':'Impossible de charger le Studio.',true);
+    console.error('[Neptune Studio] Initialisation Diffusion impossible',error);
   }
 }
 

@@ -4,7 +4,6 @@ on:
   workflow_run:
     workflows:
       - Deploy Neptune Media to Cloudflare
-      - Deploy Neptune Copy Hotfix
     types: [completed]
 
 permissions:

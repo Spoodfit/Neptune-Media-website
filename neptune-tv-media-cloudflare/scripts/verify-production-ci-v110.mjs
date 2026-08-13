@@ -13,50 +13,27 @@ must(!deployWorkflow.includes('mkdir -p /tmp/neptune-studio-v109'),'deployment m
 must(!deployWorkflow.includes("grep -Fq 'let wasActive=active()'"),'deployment must not duplicate Catalogue implementation assertions');
 
 for(const obsolete of [
-  'build-client-portal.yml',
-  'implement-studio-password-reset.yml',
-  'upgrade-client-account.yml',
-  'post-deploy-render-polish.yml',
-  'diagnose-aida-production.yml',
-  'diagnose-story-home-production.yml',
-  'check-render-polish-production.yml',
-  'deploy-neptune-copy-hotfix.yml',
-  'fix-render-polish-idempotence.yml',
-  'fix-studio-auth-now.yml',
-  'harden-password-reset-rate-limit.yml',
-  'install-exact-backstage-media.yml',
-  'integrate-visual-polish-v11.yml',
-  'persist-client-portal.yml',
-  'persist-render-polish-source.yml',
-  'publish-visual-artifact.yml',
-  'run-studio-auth-patch.yml',
-  'trigger-studio-auth.yml',
-  'validate-render-polish.yml',
-  'visual-final-audit-v14.yml',
-  'visual-preview.yml',
-  'visual-regression-v13.yml',
-  'visual-render-audit-v11.yml',
-  'visual-render-audit-v12.yml',
+  'build-client-portal.yml','implement-studio-password-reset.yml','upgrade-client-account.yml','post-deploy-render-polish.yml','diagnose-aida-production.yml','diagnose-story-home-production.yml',
+  'check-render-polish-production.yml','deploy-neptune-copy-hotfix.yml','fix-render-polish-idempotence.yml','fix-studio-auth-now.yml','harden-password-reset-rate-limit.yml',
+  'install-exact-backstage-media.yml','integrate-visual-polish-v11.yml','persist-client-portal.yml','persist-render-polish-source.yml','publish-visual-artifact.yml',
+  'run-studio-auth-patch.yml','trigger-studio-auth.yml','validate-render-polish.yml','visual-final-audit-v14.yml','visual-preview.yml','visual-regression-v13.yml',
+  'visual-render-audit-v11.yml','visual-render-audit-v12.yml',
 ]){
   must(!fs.existsSync(workflowPath(obsolete)),`${obsolete} is obsolete and must stay removed`);
 }
 
 const workflowFiles=fs.readdirSync(workflowDir).filter((name)=>/\.ya?ml$/u.test(name));
+const repositoryWriters=[];
 for(const name of workflowFiles){
   const content=readWorkflow(name);
-  must(!/^\s*contents:\s*write\s*$/mu.test(content),`${name} must not have repository write permission`);
-  must(!/(^|\s)git\s+push(?:\s|$)/mu.test(content),`${name} must never push generated state into the repository`);
+  const reasons=[];
+  if(/^\s*contents:\s*write\s*$/mu.test(content))reasons.push('contents:write');
+  if(/(^|\s)git\s+push(?:\s|$)/mu.test(content))reasons.push('git-push');
+  if(reasons.length)repositoryWriters.push(`${name}(${reasons.join('+')})`);
 }
+must(repositoryWriters.length===0,`repository-mutating workflows remain: ${repositoryWriters.join(', ')}`);
 
-for(const diagnostic of [
-  'visual-render-audit.yml',
-  'diagnose-streaming-production.yml',
-  'ui-quality-gate.yml',
-  'validate-streaming-source.yml',
-  'diagnose-client-portal-production.yml',
-  'diagnose-public-accessibility.yml',
-  'import-launch-emissions.yml',
-]){
+for(const diagnostic of ['visual-render-audit.yml','diagnose-streaming-production.yml','ui-quality-gate.yml','validate-streaming-source.yml','diagnose-client-portal-production.yml','diagnose-public-accessibility.yml','import-launch-emissions.yml']){
   const content=readWorkflow(diagnostic);
   must(content.includes('actions/upload-artifact@v4'),`${diagnostic} must preserve evidence as a GitHub artifact`);
 }

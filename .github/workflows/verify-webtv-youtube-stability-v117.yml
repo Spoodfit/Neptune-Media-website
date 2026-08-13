@@ -44,11 +44,11 @@ jobs:
           work="$(mktemp -d)"
           port=23117
           ffmpeg -hide_banner -loglevel error \
-            -f lavfi -i 'testsrc=size=640x360:rate=30:duration=2' \
-            -f lavfi -i 'sine=frequency=440:sample_rate=48000:duration=2' \
+            -f lavfi -i 'testsrc=size=640x360:rate=30:duration=6' \
+            -f lavfi -i 'sine=frequency=440:sample_rate=48000:duration=6' \
             -c:v libx264 -pix_fmt yuv420p -c:a aac -shortest "$work/a.mp4"
           ffmpeg -hide_banner -loglevel error \
-            -f lavfi -i 'testsrc2=size=320x240:rate=25:duration=2.5' \
+            -f lavfi -i 'testsrc2=size=320x240:rate=25:duration=3' \
             -c:v libx264 -pix_fmt yuv420p "$work/b.mp4"
           ffmpeg -hide_banner -nostdin -loglevel warning \
             -fflags +genpts+discardcorrupt -use_wallclock_as_timestamps 1 \
@@ -83,7 +83,7 @@ jobs:
           sleep 0.2
           kill -0 "$relay_pid"
           send_item "$work/b.mp4" no
-          sleep 0.5
+          sleep 2
           kill -0 "$relay_pid"
           kill -KILL "$relay_pid" 2>/dev/null || true
           wait "$relay_pid" 2>/dev/null || true
@@ -100,7 +100,7 @@ jobs:
               last=value; count++;
             }
             END {
-              if(count<30 || bad>0 || last-first<3.0) exit 1;
+              if(count<120 || bad>0 || last-first<7.0) exit 1;
               printf("continuous relay verified: packets=%d span=%.3fs\n",count,last-first);
             }
           ' "$work/pts.txt"

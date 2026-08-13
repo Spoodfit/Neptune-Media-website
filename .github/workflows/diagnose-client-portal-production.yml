@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   diagnose:
@@ -17,42 +17,66 @@ jobs:
       PUBLIC_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: main
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Probe production and commit report
+      - name: Probe production
+        id: probe
+        continue-on-error: true
         shell: bash
         run: |
-          set +e
-          portal_code=$(curl --location --silent --output /tmp/portal.html --write-out '%{http_code}' "$PUBLIC_URL/espace-client/")
-          studio_code=$(curl --location --silent --output /tmp/studio.html --write-out '%{http_code}' "$PUBLIC_URL/studio/clients")
+          set -euo pipefail
+          portal_code=$(curl --location --silent --show-error --output /tmp/portal.html --write-out '%{http_code}' "$PUBLIC_URL/espace-client/")
+          studio_code=$(curl --location --silent --show-error --output /tmp/studio.html --write-out '%{http_code}' "$PUBLIC_URL/studio/clients")
           session_code=$(curl --silent --output /tmp/session.json --write-out '%{http_code}' "$PUBLIC_URL/api/client/session")
           request_code=$(curl --silent --output /tmp/request.json --write-out '%{http_code}' -X POST "$PUBLIC_URL/api/client/request-code" -H "Origin: $PUBLIC_URL" -H 'Content-Type: application/json' --data '{"email":"portal-smoke-test@example.invalid"}')
           admin_code=$(curl --silent --output /tmp/admin.json --write-out '%{http_code}' "$PUBLIC_URL/api/admin/clients")
           webhook_code=$(curl --silent --output /tmp/webhook.json --write-out '%{http_code}' -X POST "$PUBLIC_URL/api/webhooks/client-order" -H "Origin: $PUBLIC_URL" -H 'Content-Type: application/json' --data '{}')
-          export portal_code studio_code session_code request_code admin_code webhook_code
+          printf 'portal=%s\nstudio=%s\nsession=%s\nrequest=%s\nadmin=%s\nwebhook=%s\n' "$portal_code" "$studio_code" "$session_code" "$request_code" "$admin_code" "$webhook_code" > /tmp/statuses.env
+          test "$portal_code" = '200'
+          test "$studio_code" = '200'
+          test "$session_code" = '401'
+          test "$request_code" = '200'
+          test "$admin_code" = '401'
+          test "$webhook_code" = '401'
+
+      - name: Build diagnostic report
+        if: always()
+        env:
+          PROBE_OUTCOME: ${{ steps.probe.outcome }}
+        shell: bash
+        run: |
+          set -a
+          source /tmp/statuses.env 2>/dev/null || true
+          set +a
           python3 - <<'PY'
-          import json, os, pathlib, datetime
+          import json, os, pathlib
+          from datetime import datetime, timezone
           def read(path):
-              try: return pathlib.Path(path).read_text(errors='replace')[:1500]
+              try: return pathlib.Path(path).read_text(errors='replace')[:1800]
               except Exception as exc: return f'ERROR:{exc}'
           report={
-            'checked_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            'portal':{'status':os.environ['portal_code'],'contains_expected':'Tous vos passages Neptune Media' in read('/tmp/portal.html'),'body':read('/tmp/portal.html')},
-            'studio_clients':{'status':os.environ['studio_code'],'contains_expected':'Comptes, passages et livrables' in read('/tmp/studio.html'),'body':read('/tmp/studio.html')},
-            'client_session':{'status':os.environ['session_code'],'body':read('/tmp/session.json')},
-            'request_code':{'status':os.environ['request_code'],'body':read('/tmp/request.json')},
-            'admin_clients':{'status':os.environ['admin_code'],'body':read('/tmp/admin.json')},
-            'webhook':{'status':os.environ['webhook_code'],'body':read('/tmp/webhook.json')},
+            'checked_at':datetime.now(timezone.utc).isoformat(),
+            'ready':os.environ.get('PROBE_OUTCOME')=='success',
+            'portal':{'status':os.environ.get('portal',''),'body':read('/tmp/portal.html')},
+            'studio_clients':{'status':os.environ.get('studio',''),'body':read('/tmp/studio.html')},
+            'client_session':{'status':os.environ.get('session',''),'body':read('/tmp/session.json')},
+            'request_code':{'status':os.environ.get('request',''),'body':read('/tmp/request.json')},
+            'admin_clients':{'status':os.environ.get('admin',''),'body':read('/tmp/admin.json')},
+            'webhook':{'status':os.environ.get('webhook',''),'body':read('/tmp/webhook.json')},
           }
-          pathlib.Path('client-portal-production-diagnostic.json').write_text(json.dumps(report,ensure_ascii=False,indent=2))
+          pathlib.Path('client-portal-production-diagnostic.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
           PY
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add client-portal-production-diagnostic.json
-          git commit -m "chore: record client portal production diagnostic [skip ci]" || true
-          git push
 
-# Canonical route diagnostic.
+      - name: Upload diagnostic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-portal-production-diagnostic-${{ github.run_id }}
+          path: client-portal-production-diagnostic.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Enforce production probe
+        if: always()
+        env:
+          PROBE_OUTCOME: ${{ steps.probe.outcome }}
+        run: test "$PROBE_OUTCOME" = 'success'

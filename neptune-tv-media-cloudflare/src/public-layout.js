@@ -15,7 +15,7 @@ export function episodeCard(origin, catalog, episode) {
   const kind = isShortEpisode(episode) ? 'short' : 'episode';
   const shortClass = kind === 'short' ? ' is-short' : '';
   const formatName = formatLabel(program?.name);
-  return `<article class="seo-card${shortClass}" data-media-kind="${kind}" data-episode-slug="${escapeHtml(episode.slug)}" data-program="${escapeHtml(formatName)}" data-search="${escapeHtml(searchText)}"><a href="/emissions/${encodeURIComponent(episode.slug)}/" aria-label="Regarder ${escapeHtml(episode.title)}"><div class="seo-card-media"><img loading="lazy" decoding="async" src="${escapeHtml(absolute(origin, episode.posterUrl))}" alt="${escapeHtml(episode.title)}"><span class="card-play" aria-hidden="true">▶</span><span class="watch-progress" aria-hidden="true" hidden><i></i></span></div><div class="seo-card-copy"><span>${escapeHtml(formatName)} · ${formatDuration(episode.durationSeconds)}</span><h2>${escapeHtml(episode.title)}</h2><strong>Regarder →</strong></div></a></article>`;
+  return `<article class="seo-card${shortClass}" data-media-kind="${kind}" data-episode-slug="${escapeHtml(episode.slug)}" data-program="${escapeHtml(formatName)}" data-search="${escapeHtml(searchText)}"><a href="/emissions/${encodeURIComponent(episode.slug)}/" aria-label="Regarder ${escapeHtml(episode.title)}"><div class="seo-card-media"><img loading="lazy" decoding="async" src="${escapeHtml(absolute(origin, episode.posterUrl))}" alt="${escapeHtml(episode.title)}" onerror="this.onerror=null;this.src='/assets/posters/default.svg'"><span class="card-play" aria-hidden="true">▶</span><span class="watch-progress" aria-hidden="true" hidden><i></i></span></div><div class="seo-card-copy"><span>${escapeHtml(formatName)} · ${formatDuration(episode.durationSeconds)}</span><h2>${escapeHtml(episode.title)}</h2><strong>Regarder →</strong></div></a></article>`;
 }
 
 export function bookingUrl(medium, parameters = {}) {
@@ -37,7 +37,15 @@ export function isShortEpisode(episode) {
   return metadata.short === true || metadata.vertical === true || /short|reel|vertical|portrait/i.test(String(declared)) || (!metadata.fullEpisode && duration > 0 && duration <= 90);
 }
 export function formatLabel(programName) { return /hors\s*norme/i.test(String(programName || '')) ? 'Hors Norme' : 'Concept Libre'; }
-export function absolute(origin, value) { try { return new URL(value || '/assets/posters/default.svg', `${origin}/`).toString(); } catch { return `${origin}/assets/posters/default.svg`; } }
+export function absolute(origin, value) {
+  const raw = String(value || '').trim();
+  const normalized = raw === '/media/posters/hors-norme.webp'
+    ? '/assets/posters/hors-norme-wide.webp'
+    : raw === '/media/posters/jeu-connexio.webp'
+      ? '/assets/posters/default.svg'
+      : raw || '/assets/posters/default.svg';
+  try { return new URL(normalized, `${origin}/`).toString(); } catch { return `${origin}/assets/posters/default.svg`; }
+}
 export function isoDuration(seconds) { const value = Math.max(0, Math.round(Number(seconds || 0))); return `PT${Math.floor(value / 60)}M${value % 60}S`; }
 export function escapeHtml(value) { return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char])); }
 export function toList(value) { if (Array.isArray(value)) return value.filter(Boolean).map(String); return String(value || '').split(/\n|\|/).map((item) => item.trim()).filter(Boolean); }

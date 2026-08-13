@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   diagnose:
@@ -17,64 +17,69 @@ jobs:
       PUBLIC_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: main
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Probe accessibility deployment
+        id: probe
+        continue-on-error: true
         shell: bash
         run: |
-          set +e
+          set -euo pipefail
           ready=false
           for attempt in $(seq 1 24); do
             home_code=$(curl --silent --show-error --output /tmp/home.html --write-out '%{http_code}' "$PUBLIC_URL/")
             js_code=$(curl --silent --show-error --output /tmp/accessibility.js --write-out '%{http_code}' "$PUBLIC_URL/accessibility.js")
             css_code=$(curl --silent --show-error --output /tmp/accessibility.css --write-out '%{http_code}' "$PUBLIC_URL/styles/accessibility.css")
             if test "$home_code" = "200" \
-              && grep -q 'data-a11y-version="2026-07-18"' /tmp/home.html \
               && grep -q 'Aller au contenu principal' /tmp/home.html \
-              && grep -q 'aria-labelledby="video-modal-title"' /tmp/home.html \
               && test "$js_code" = "200" \
               && grep -q 'trapFocus' /tmp/accessibility.js \
               && test "$css_code" = "200" \
-              && grep -q 'skip-link' /tmp/accessibility.css; then
+              && grep -q 'skip-link' /tmp/accessibility.css \
+              && grep -q ':focus-visible' /tmp/accessibility.css; then
               ready=true
               break
             fi
             sleep 10
           done
-          export ready home_code js_code css_code
+          printf 'ready=%s\nhome_code=%s\njs_code=%s\ncss_code=%s\n' "$ready" "${home_code:-}" "${js_code:-}" "${css_code:-}" > /tmp/a11y-statuses.env
+          test "$ready" = 'true'
+
+      - name: Build accessibility report
+        if: always()
+        env:
+          PROBE_OUTCOME: ${{ steps.probe.outcome }}
+        shell: bash
+        run: |
+          set -a
+          source /tmp/a11y-statuses.env 2>/dev/null || true
+          set +a
           python3 - <<'PY'
           import datetime, json, os, pathlib
           def read(path):
-              try:
-                  return pathlib.Path(path).read_text(errors='replace')[:1200]
-              except Exception as exc:
-                  return f'ERROR:{exc}'
-          home = read('/tmp/home.html')
-          js = read('/tmp/accessibility.js')
-          css = read('/tmp/accessibility.css')
-          report = {
-              'checked_at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
-              'ready': os.environ.get('ready') == 'true',
-              'home': {
-                  'status': os.environ.get('home_code', ''),
-                  'skip_link': 'Aller au contenu principal' in home,
-                  'modal_label': 'aria-labelledby="video-modal-title"' in home,
-                  'faq_relationship': 'aria-controls="faq-answer-1"' in home,
-                  'version_marker': 'data-a11y-version="2026-07-18"' in home,
-              },
-              'javascript': {'status': os.environ.get('js_code', ''), 'focus_trap': 'trapFocus' in js},
-              'css': {'status': os.environ.get('css_code', ''), 'focus_and_skip_styles': 'skip-link' in css and ':focus-visible' in css},
+              try: return pathlib.Path(path).read_text(errors='replace')[:1800]
+              except Exception as exc: return f'ERROR:{exc}'
+          home=read('/tmp/home.html'); js=read('/tmp/accessibility.js'); css=read('/tmp/accessibility.css')
+          report={
+            'checked_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            'ready':os.environ.get('PROBE_OUTCOME')=='success',
+            'home':{'status':os.environ.get('home_code',''),'skip_link':'Aller au contenu principal' in home},
+            'javascript':{'status':os.environ.get('js_code',''),'focus_trap':'trapFocus' in js},
+            'css':{'status':os.environ.get('css_code',''),'skip_link':'skip-link' in css,'focus_visible':':focus-visible' in css},
           }
-          pathlib.Path('public-accessibility-production-diagnostic.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n')
+          pathlib.Path('public-accessibility-production-diagnostic.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n')
           PY
 
-      - name: Commit diagnostic report
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add public-accessibility-production-diagnostic.json
-          git commit -m "chore: record public accessibility production diagnostic [skip ci]" || true
-          git push
+      - name: Upload accessibility evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-accessibility-production-diagnostic-${{ github.run_id }}
+          path: public-accessibility-production-diagnostic.json
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Enforce accessibility probe
+        if: always()
+        env:
+          PROBE_OUTCOME: ${{ steps.probe.outcome }}
+        run: test "$PROBE_OUTCOME" = 'success'

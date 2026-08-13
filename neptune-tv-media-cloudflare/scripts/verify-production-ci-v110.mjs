@@ -17,7 +17,7 @@ for(const obsolete of [
   'check-render-polish-production.yml','deploy-neptune-copy-hotfix.yml','fix-render-polish-idempotence.yml','fix-studio-auth-now.yml','harden-password-reset-rate-limit.yml',
   'install-exact-backstage-media.yml','integrate-visual-polish-v11.yml','persist-client-portal.yml','persist-render-polish-source.yml','publish-visual-artifact.yml',
   'run-studio-auth-patch.yml','trigger-studio-auth.yml','validate-render-polish.yml','visual-final-audit-v14.yml','visual-preview.yml','visual-regression-v13.yml',
-  'visual-render-audit-v11.yml','visual-render-audit-v12.yml',
+  'visual-render-audit-v11.yml','visual-render-audit-v12.yml','diagnose-video-cloud-v67.yml','verify-neptune-copy.yml','verify-openai-video-production-v66.yml',
 ]){
   must(!fs.existsSync(workflowPath(obsolete)),`${obsolete} is obsolete and must stay removed`);
 }

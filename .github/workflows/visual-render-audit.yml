@@ -3,13 +3,10 @@ name: Visual Render Audit
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - 'visual-audit/**'
-      - 'visual-audit-status.json'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: neptune-visual-render-audit
@@ -23,8 +20,6 @@ jobs:
       BASE_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
     steps:
       - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-node@v4
         with:
@@ -38,7 +33,7 @@ jobs:
           npm install playwright@1.55.0 >/dev/null
           npx playwright install --with-deps chromium
 
-      - name: Wait for production and capture screenshots
+      - name: Capture visual audit
         run: |
           set -euo pipefail
           mkdir -p visual-audit/latest
@@ -51,162 +46,74 @@ jobs:
           import fs from 'node:fs/promises';
           import path from 'node:path';
 
-          const base = process.env.BASE_URL;
-          const output = path.resolve(process.cwd(), 'visual-audit/latest');
-          const viewports = [
-            { name: 'desktop-1440', width: 1440, height: 1000 },
-            { name: 'laptop-1280', width: 1280, height: 800 },
-            { name: 'tablet-834', width: 834, height: 1112 },
-            { name: 'mobile-390', width: 390, height: 844 },
-            { name: 'mobile-360', width: 360, height: 800 },
+          const base=process.env.BASE_URL;
+          const output=path.resolve(process.cwd(),'visual-audit/latest');
+          const viewports=[
+            {name:'desktop-1440',width:1440,height:1000},
+            {name:'laptop-1280',width:1280,height:800},
+            {name:'tablet-834',width:834,height:1112},
+            {name:'mobile-390',width:390,height:844},
+            {name:'mobile-360',width:360,height:800},
           ];
-          const routes = [
-            { name: 'home', url: '/' },
-            { name: 'emissions', url: '/emissions/' },
-            { name: 'direct', url: '/direct/' },
-          ];
-          const report = { generatedAt: new Date().toISOString(), base, captures: [], issues: [] };
-          const browser = await chromium.launch({ headless: true, args: ['--disable-dev-shm-usage'] });
+          const routes=[{name:'home',url:'/'},{name:'emissions',url:'/emissions/'},{name:'direct',url:'/direct/'}];
+          const report={generatedAt:new Date().toISOString(),base,captures:[],issues:[]};
+          const browser=await chromium.launch({headless:true,args:['--disable-dev-shm-usage']});
+          const safe=(value)=>value.replace(/[^a-z0-9-]+/gi,'-').toLowerCase();
 
-          function safeName(value) { return value.replace(/[^a-z0-9-]+/gi, '-').toLowerCase(); }
-
-          for (const viewport of viewports) {
-            const context = await browser.newContext({
-              viewport: { width: viewport.width, height: viewport.height },
-              deviceScaleFactor: 1,
-              reducedMotion: 'reduce',
-            });
-            for (const route of routes) {
-              const page = await context.newPage();
-              const consoleErrors = [];
-              const failedRequests = [];
-              page.on('console', (message) => {
-                if (message.type() === 'error') consoleErrors.push(message.text());
-              });
-              page.on('requestfailed', (request) => {
-                failedRequests.push({ url: request.url(), reason: request.failure()?.errorText || 'request_failed' });
-              });
-              const url = `${base}${route.url}?visual_audit=${Date.now()}`;
-              let status = 0;
-              try {
-                const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
-                status = response?.status() || 0;
-                await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+          for(const viewport of viewports){
+            const context=await browser.newContext({viewport:{width:viewport.width,height:viewport.height},deviceScaleFactor:1,reducedMotion:'reduce'});
+            for(const route of routes){
+              const page=await context.newPage();
+              const consoleErrors=[];
+              const failedRequests=[];
+              page.on('console',(message)=>{if(message.type()==='error')consoleErrors.push(message.text());});
+              page.on('requestfailed',(request)=>failedRequests.push({url:request.url(),reason:request.failure()?.errorText||'request_failed'}));
+              let status=0;
+              try{
+                const response=await page.goto(`${base}${route.url}?visual_audit=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:60000});
+                status=response?.status()||0;
+                await page.waitForLoadState('networkidle',{timeout:15000}).catch(()=>{});
                 await page.waitForTimeout(2500);
-              } catch (error) {
-                report.issues.push({ severity: 'error', viewport: viewport.name, route: route.name, type: 'navigation', message: String(error) });
-              }
+              }catch(error){report.issues.push({severity:'error',viewport:viewport.name,route:route.name,type:'navigation',message:String(error)});}
 
-              const diagnostics = await page.evaluate(() => {
-                const visible = (el) => {
-                  const style = getComputedStyle(el);
-                  const rect = el.getBoundingClientRect();
-                  return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity) !== 0 && rect.width > 0 && rect.height > 0;
-                };
-                const selector = (el) => {
-                  if (el.id) return `#${el.id}`;
-                  const classes = [...el.classList].slice(0, 3).join('.');
-                  return `${el.tagName.toLowerCase()}${classes ? `.${classes}` : ''}`;
-                };
-                const doc = document.documentElement;
-                const horizontalOverflow = Math.max(doc.scrollWidth, document.body.scrollWidth) - innerWidth;
-                const brokenImages = [...document.images]
-                  .filter((img) => visible(img) && img.complete && img.naturalWidth === 0)
-                  .map((img) => ({ selector: selector(img), src: img.currentSrc || img.src }));
-                const clippedText = [...document.querySelectorAll('h1,h2,h3,p,blockquote,button,a,span')]
-                  .filter((el) => visible(el) && (el.textContent || '').trim().length > 8)
-                  .filter((el) => {
-                    const style = getComputedStyle(el);
-                    const intentional = ['auto', 'scroll'].includes(style.overflowX) || ['auto', 'scroll'].includes(style.overflowY);
-                    if (intentional) return false;
-                    return el.scrollWidth > el.clientWidth + 2 || el.scrollHeight > el.clientHeight + 2;
-                  })
-                  .slice(0, 30)
-                  .map((el) => ({ selector: selector(el), text: el.textContent.trim().slice(0, 120), client: [el.clientWidth, el.clientHeight], scroll: [el.scrollWidth, el.scrollHeight] }));
-                const offscreen = [...document.querySelectorAll('main *')]
-                  .filter((el) => visible(el))
-                  .filter((el) => {
-                    const rect = el.getBoundingClientRect();
-                    const style = getComputedStyle(el);
-                    const allowedRail = el.closest('[data-rail-track], .seo-grid-shorts, .media-filter-row');
-                    return !allowedRail && (rect.left < -3 || rect.right > innerWidth + 3) && style.position !== 'fixed';
-                  })
-                  .slice(0, 30)
-                  .map((el) => { const r = el.getBoundingClientRect(); return { selector: selector(el), rect: [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)] }; });
-                const smallTargets = innerWidth <= 834 ? [...document.querySelectorAll('a,button,input,summary')]
-                  .filter((el) => visible(el))
-                  .map((el) => ({ el, r: el.getBoundingClientRect() }))
-                  .filter(({ r }) => r.width < 42 || r.height < 42)
-                  .slice(0, 30)
-                  .map(({ el, r }) => ({ selector: selector(el), text: (el.textContent || el.getAttribute('aria-label') || '').trim().slice(0, 80), size: [Math.round(r.width), Math.round(r.height)] })) : [];
-                const h1 = document.querySelector('h1');
-                return {
-                  title: document.title,
-                  bodyWidth: document.body.getBoundingClientRect().width,
-                  horizontalOverflow,
-                  brokenImages,
-                  clippedText,
-                  offscreen,
-                  smallTargets,
-                  h1: h1 ? { text: h1.textContent.trim(), rect: [...Object.values(h1.getBoundingClientRect().toJSON())].slice(0, 8) } : null,
-                };
+              const diagnostics=await page.evaluate(()=>{
+                const visible=(el)=>{const style=getComputedStyle(el);const rect=el.getBoundingClientRect();return style.display!=='none'&&style.visibility!=='hidden'&&Number(style.opacity)!==0&&rect.width>0&&rect.height>0;};
+                const selector=(el)=>el.id?`#${el.id}`:`${el.tagName.toLowerCase()}${[...el.classList].slice(0,3).length?'.'+[...el.classList].slice(0,3).join('.'):''}`;
+                const doc=document.documentElement;
+                const horizontalOverflow=Math.max(doc.scrollWidth,document.body.scrollWidth)-innerWidth;
+                const brokenImages=[...document.images].filter((img)=>visible(img)&&img.complete&&img.naturalWidth===0).map((img)=>({selector:selector(img),src:img.currentSrc||img.src}));
+                const clippedText=[...document.querySelectorAll('h1,h2,h3,p,blockquote,button,a,span')].filter((el)=>visible(el)&&(el.textContent||'').trim().length>8).filter((el)=>{const style=getComputedStyle(el);if(['auto','scroll'].includes(style.overflowX)||['auto','scroll'].includes(style.overflowY))return false;return el.scrollWidth>el.clientWidth+2||el.scrollHeight>el.clientHeight+2;}).slice(0,30).map((el)=>({selector:selector(el),text:el.textContent.trim().slice(0,120)}));
+                const offscreen=[...document.querySelectorAll('main *')].filter(visible).filter((el)=>{const rect=el.getBoundingClientRect();const style=getComputedStyle(el);const allowed=el.closest('[data-rail-track], .seo-grid-shorts, .media-filter-row');return !allowed&&(rect.left<-3||rect.right>innerWidth+3)&&style.position!=='fixed';}).slice(0,30).map((el)=>({selector:selector(el)}));
+                return {horizontalOverflow,brokenImages,clippedText,offscreen};
               });
 
-              const prefix = `${safeName(route.name)}-${viewport.name}`;
-              const foldPath = path.join(output, `${prefix}-fold.jpg`);
-              const fullPath = path.join(output, `${prefix}-full.jpg`);
-              await page.screenshot({ path: foldPath, type: 'jpeg', quality: 58, fullPage: false });
-              await page.screenshot({ path: fullPath, type: 'jpeg', quality: 42, fullPage: true });
-
-              if (route.name === 'home') {
-                const episode = page.locator('#dynamicCatalog [data-episode-id], #dynamicCatalog [data-video-src]').first();
-                if (await episode.count()) {
-                  await episode.click().catch(() => {});
-                  await page.waitForTimeout(1000);
-                  if (await page.locator('[data-video-modal].is-open').count()) {
-                    await page.screenshot({ path: path.join(output, `${prefix}-episode-modal.jpg`), type: 'jpeg', quality: 58, fullPage: false });
-                    await page.locator('[data-video-close]').click().catch(() => {});
-                  }
-                }
-                const shortCard = page.locator('#shortsCatalog [data-episode-id], #shortsCatalog [data-video-src]').first();
-                if (await shortCard.count()) {
-                  await shortCard.scrollIntoViewIfNeeded().catch(() => {});
-                  await shortCard.click().catch(() => {});
-                  await page.waitForTimeout(1000);
-                  if (await page.locator('[data-video-modal].is-open').count()) {
-                    await page.screenshot({ path: path.join(output, `${prefix}-short-modal.jpg`), type: 'jpeg', quality: 58, fullPage: false });
-                    await page.locator('[data-video-close]').click().catch(() => {});
-                  }
-                }
-              }
-
-              const capture = { viewport, route, status, diagnostics, consoleErrors, failedRequests, files: [`${prefix}-fold.jpg`, `${prefix}-full.jpg`] };
-              report.captures.push(capture);
-              if (status >= 400 || status === 0) report.issues.push({ severity: 'error', viewport: viewport.name, route: route.name, type: 'http', message: `HTTP ${status}` });
-              if (diagnostics.horizontalOverflow > 3) report.issues.push({ severity: 'error', viewport: viewport.name, route: route.name, type: 'horizontal-overflow', message: `${diagnostics.horizontalOverflow}px` });
-              for (const issue of diagnostics.brokenImages) report.issues.push({ severity: 'error', viewport: viewport.name, route: route.name, type: 'broken-image', ...issue });
-              for (const issue of diagnostics.clippedText) report.issues.push({ severity: 'warning', viewport: viewport.name, route: route.name, type: 'clipped-text', ...issue });
-              for (const issue of diagnostics.offscreen) report.issues.push({ severity: 'warning', viewport: viewport.name, route: route.name, type: 'offscreen-element', ...issue });
-              for (const issue of consoleErrors) report.issues.push({ severity: 'warning', viewport: viewport.name, route: route.name, type: 'console-error', message: issue });
+              const prefix=`${safe(route.name)}-${viewport.name}`;
+              await page.screenshot({path:path.join(output,`${prefix}-fold.jpg`),type:'jpeg',quality:58,fullPage:false});
+              await page.screenshot({path:path.join(output,`${prefix}-full.jpg`),type:'jpeg',quality:42,fullPage:true});
+              report.captures.push({viewport,route,status,diagnostics,consoleErrors,failedRequests});
+              if(status>=400||status===0)report.issues.push({severity:'error',viewport:viewport.name,route:route.name,type:'http',message:`HTTP ${status}`});
+              if(diagnostics.horizontalOverflow>3)report.issues.push({severity:'error',viewport:viewport.name,route:route.name,type:'horizontal-overflow',message:`${diagnostics.horizontalOverflow}px`});
+              for(const issue of diagnostics.brokenImages)report.issues.push({severity:'error',viewport:viewport.name,route:route.name,type:'broken-image',...issue});
+              for(const issue of diagnostics.clippedText)report.issues.push({severity:'warning',viewport:viewport.name,route:route.name,type:'clipped-text',...issue});
+              for(const issue of diagnostics.offscreen)report.issues.push({severity:'warning',viewport:viewport.name,route:route.name,type:'offscreen-element',...issue});
+              for(const message of consoleErrors)report.issues.push({severity:'warning',viewport:viewport.name,route:route.name,type:'console-error',message});
               await page.close();
             }
             await context.close();
           }
-
           await browser.close();
-          await fs.writeFile(path.join(output, 'audit.json'), JSON.stringify(report, null, 2));
-          const counts = report.issues.reduce((acc, issue) => { acc[issue.severity] = (acc[issue.severity] || 0) + 1; return acc; }, {});
-          const rows = report.issues.slice(0, 120).map((issue) => `| ${issue.severity} | ${issue.viewport} | ${issue.route} | ${issue.type} | ${(issue.message || issue.text || issue.selector || '').replaceAll('|', '\\|')} |`).join('\n');
-          const markdown = `# Audit visuel Neptune Media\n\nGénéré : ${report.generatedAt}\n\n- Captures : ${report.captures.length}\n- Erreurs : ${counts.error || 0}\n- Avertissements : ${counts.warning || 0}\n\n## Problèmes détectés\n\n| Niveau | Écran | Page | Type | Détail |\n|---|---|---|---|---|\n${rows || '| — | — | — | — | Aucun problème automatisé détecté |'}\n`;
-          await fs.writeFile(path.join(output, 'README.md'), markdown);
+          await fs.writeFile(path.join(output,'audit.json'),JSON.stringify(report,null,2));
+          const counts=report.issues.reduce((acc,issue)=>{acc[issue.severity]=(acc[issue.severity]||0)+1;return acc;},{});
+          const markdown=`# Audit visuel Neptune Media\n\nGénéré : ${report.generatedAt}\n\n- Captures : ${report.captures.length}\n- Erreurs : ${counts.error||0}\n- Avertissements : ${counts.warning||0}\n`;
+          await fs.writeFile(path.join(output,'README.md'),markdown);
           JS
           node /tmp/neptune-visual-audit/audit.mjs
 
-      - name: Commit visual audit evidence
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add visual-audit/latest
-          git commit -m 'chore: capture Neptune visual render audit [skip ci]' || true
-          git pull --rebase origin main || true
-          git push
+      - name: Upload visual audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neptune-visual-render-audit-${{ github.run_id }}
+          path: visual-audit/latest/
+          if-no-files-found: warn
+          retention-days: 14

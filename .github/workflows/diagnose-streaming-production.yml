@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   diagnose:
@@ -17,8 +17,6 @@ jobs:
       OFFICIAL_TUNNEL: https://media.neptunebusiness.com/
     steps:
       - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check production streaming UX, admin security and discovery
         shell: bash
@@ -72,63 +70,20 @@ jobs:
           ready=false
           if test "$home_status" = "200" && test "$css_status" = "200" && test "$js_status" = "200" && test "$upgrade_status" = "200" && test "$live_js_status" = "200" && test "$direct_status" = "200" && test "$emissions_status" = "200" && test "$health_status" = "200" && test "$robots_status" = "200" && test "$sitemap_status" = "200" && test "$video_sitemap_status" = "200" && test "$llms_status" = "200" && test "$studio_status" = "200" && test "$client_status" = "200" && test "$admin_api_status" = "401" && test "$client_api_status" = "401" && test "$webhook_status" = "401" && test "$home_marker" = "true" && test "$content_rail" = "true" && test "$live_card" = "true" && test "$aida_hook" = "true" && test "$official_tunnel" = "true" && test "$worker_tunnel_leak" = "false" && test "$upgrade_v6" = "true" && test "$legacy_catalog_disabled" = "true" && test "$streaming_css" = "true" && test "$progress_js" = "true" && test "$rail_js" = "true" && test "$live_status_js" = "true" && test "$direct_now_next" = "true" && test "$direct_marker" = "true" && test "$emissions_marker" = "true" && test "$health_ok" = "true" && test "$robots_protected" = "true" && test "$robots_discovery" = "true" && test "$sitemap_valid" = "true" && test "$video_sitemap_valid" = "true" && test "$llms_valid" = "true" && test "$studio_no_store" = "true" && test "$studio_noindex" = "true" && test "$client_no_store" = "true" && test "$client_noindex" = "true" && test "$client_unauthenticated" = "true"; then ready=true; fi
 
-          HOME_STATUS="$home_status" CSS_STATUS="$css_status" JS_STATUS="$js_status" UPGRADE_STATUS="$upgrade_status" LIVE_JS_STATUS="$live_js_status" DIRECT_STATUS="$direct_status" EMISSIONS_STATUS="$emissions_status" HEALTH_STATUS="$health_status" ROBOTS_STATUS="$robots_status" SITEMAP_STATUS="$sitemap_status" VIDEO_SITEMAP_STATUS="$video_sitemap_status" LLMS_STATUS="$llms_status" STUDIO_STATUS="$studio_status" CLIENT_STATUS="$client_status" ADMIN_API_STATUS="$admin_api_status" CLIENT_API_STATUS="$client_api_status" WEBHOOK_STATUS="$webhook_status" HOME_MARKER="$home_marker" CONTENT_RAIL="$content_rail" LIVE_CARD="$live_card" AIDA_HOOK="$aida_hook" OFFICIAL_TUNNEL_OK="$official_tunnel" WORKER_TUNNEL_LEAK="$worker_tunnel_leak" UPGRADE_V6="$upgrade_v6" LEGACY_CATALOG_DISABLED="$legacy_catalog_disabled" STREAMING_CSS="$streaming_css" PROGRESS_JS="$progress_js" RAIL_JS="$rail_js" LIVE_STATUS_JS="$live_status_js" DIRECT_NOW_NEXT="$direct_now_next" DIRECT_MARKER="$direct_marker" EMISSIONS_MARKER="$emissions_marker" HEALTH_OK="$health_ok" ROBOTS_PROTECTED="$robots_protected" ROBOTS_DISCOVERY="$robots_discovery" SITEMAP_VALID="$sitemap_valid" VIDEO_SITEMAP_VALID="$video_sitemap_valid" LLMS_VALID="$llms_valid" STUDIO_NO_STORE="$studio_no_store" STUDIO_NOINDEX="$studio_noindex" CLIENT_NO_STORE="$client_no_store" CLIENT_NOINDEX="$client_noindex" CLIENT_UNAUTHENTICATED="$client_unauthenticated" READY="$ready" python3 - <<'PY'
-          import json
-          import os
+          READY="$ready" HOME_STATUS="$home_status" HEALTH_STATUS="$health_status" python3 - <<'PY'
+          import json, os
           from datetime import datetime, timezone
-          truth = lambda name: os.environ[name] == "true"
-          report = {
-            "checked_at": datetime.now(timezone.utc).isoformat(),
-            "ready": truth("READY"),
-            "home": {
-              "status": os.environ["HOME_STATUS"], "streaming_marker": truth("HOME_MARKER"),
-              "content_rail": truth("CONTENT_RAIL"), "live_now": truth("LIVE_CARD"),
-              "aida_hook": truth("AIDA_HOOK"), "official_tunnel": truth("OFFICIAL_TUNNEL_OK"),
-              "worker_tunnel_leak": truth("WORKER_TUNNEL_LEAK"), "upgrade_v6": truth("UPGRADE_V6")
-            },
-            "assets": {
-              "css_status": os.environ["CSS_STATUS"], "streaming_css": truth("STREAMING_CSS"),
-              "js_status": os.environ["JS_STATUS"], "progress": truth("PROGRESS_JS"),
-              "rail_controls": truth("RAIL_JS"), "upgrade_status": os.environ["UPGRADE_STATUS"],
-              "legacy_catalog_disabled": truth("LEGACY_CATALOG_DISABLED"),
-              "live_js_status": os.environ["LIVE_JS_STATUS"], "live_feedback": truth("LIVE_STATUS_JS")
-            },
-            "public_pages": {
-              "direct_status": os.environ["DIRECT_STATUS"], "direct_now_next": truth("DIRECT_NOW_NEXT"),
-              "direct_marker": truth("DIRECT_MARKER"), "emissions_status": os.environ["EMISSIONS_STATUS"],
-              "emissions_marker": truth("EMISSIONS_MARKER")
-            },
-            "discovery": {
-              "robots_status": os.environ["ROBOTS_STATUS"], "robots_protected": truth("ROBOTS_PROTECTED"),
-              "robots_discovery": truth("ROBOTS_DISCOVERY"), "sitemap_status": os.environ["SITEMAP_STATUS"],
-              "sitemap_valid": truth("SITEMAP_VALID"), "video_sitemap_status": os.environ["VIDEO_SITEMAP_STATUS"],
-              "video_sitemap_valid": truth("VIDEO_SITEMAP_VALID"), "llms_status": os.environ["LLMS_STATUS"],
-              "llms_valid": truth("LLMS_VALID")
-            },
-            "protected_pages": {
-              "studio_status": os.environ["STUDIO_STATUS"], "studio_no_store": truth("STUDIO_NO_STORE"),
-              "studio_noindex": truth("STUDIO_NOINDEX"), "client_status": os.environ["CLIENT_STATUS"],
-              "client_no_store": truth("CLIENT_NO_STORE"), "client_noindex": truth("CLIENT_NOINDEX")
-            },
-            "protected_apis": {
-              "admin_status": os.environ["ADMIN_API_STATUS"], "client_status": os.environ["CLIENT_API_STATUS"],
-              "client_unauthenticated": truth("CLIENT_UNAUTHENTICATED"), "webhook_status": os.environ["WEBHOOK_STATUS"]
-            },
-            "health": {"status": os.environ["HEALTH_STATUS"], "ok": truth("HEALTH_OK")}
-          }
-          with open("streaming-production-diagnostic.json", "w", encoding="utf-8") as handle:
-              json.dump(report, handle, ensure_ascii=False, indent=2)
-              handle.write("\n")
+          report={'checked_at':datetime.now(timezone.utc).isoformat(),'ready':os.environ['READY']=='true','home_status':os.environ['HOME_STATUS'],'health_status':os.environ['HEALTH_STATUS']}
+          with open('streaming-production-diagnostic.json','w',encoding='utf-8') as handle:
+              json.dump(report, handle, ensure_ascii=False, indent=2); handle.write('\n')
           PY
-
           test "$ready" = "true"
 
-      - name: Record diagnostic
+      - name: Upload streaming diagnostic
         if: always()
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add streaming-production-diagnostic.json
-          git commit -m "chore: record streaming production diagnostic [skip ci]" || true
-          git pull --rebase
-          git push
+        uses: actions/upload-artifact@v4
+        with:
+          name: streaming-production-diagnostic-${{ github.run_id }}
+          path: streaming-production-diagnostic.json
+          if-no-files-found: warn
+          retention-days: 14

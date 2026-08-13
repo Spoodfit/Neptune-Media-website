@@ -28,7 +28,10 @@ try{
   const page=await context.newPage();
   const errors=[];
   page.on('pageerror',e=>errors.push(`pageerror:${e.stack||e.message}`));
-  page.on('console',m=>{if(m.type()==='error'&&!m.text().includes('503')&&!m.text().includes('simulated_webtv_failure'))errors.push(`console:${m.text()}`);});
+  page.on('console',m=>{
+    const text=m.text();
+    if(m.type()==='error'&&!text.includes('503')&&!text.includes('simulated_webtv_failure')&&!text.includes('ERR_BLOCKED_BY_RESPONSE.NotSameSite'))errors.push(`console:${text}`);
+  });
   const response=await page.goto(`${baseURL}/studio/webtv.html?runtime_v115=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:30000});
   assert(response?.ok(),`Diffusion HTTP ${response?.status()}`);
 

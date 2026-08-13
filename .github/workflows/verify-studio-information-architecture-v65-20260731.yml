@@ -6,7 +6,10 @@ on:
     paths:
       - '.github/workflows/verify-studio-information-architecture-v65-20260731.yml'
       - 'neptune-tv-media-cloudflare/wrangler.jsonc'
+      - 'neptune-tv-media-cloudflare/src/entry-v34.js'
       - 'neptune-tv-media-cloudflare/src/entry-v36.js'
+      - 'neptune-tv-media-cloudflare/src/media-catalog-visuals-v98.js'
+      - 'neptune-tv-media-cloudflare/src/portal-media-catalog-v98.js'
       - 'neptune-tv-media-cloudflare/public/studio/app.html'
       - 'neptune-tv-media-cloudflare/public/studio/studio-app-router-v104.js'
       - 'neptune-tv-media-cloudflare/public/studio/media-catalog-loader-v104.js'
@@ -22,15 +25,20 @@ on:
       - 'neptune-tv-media-cloudflare/scripts/verify-media-catalog-v98.mjs'
       - 'neptune-tv-media-cloudflare/scripts/verify-studio-shell-v105-entry.mjs'
       - 'neptune-tv-media-cloudflare/tests/audit-studio-information-architecture-v65.mjs'
+      - 'neptune-tv-media-cloudflare/tests/audit-media-catalog-v109.mjs'
   push:
     branches:
       - main
       - 'fix/studio-*'
       - 'fix/settings-*'
+      - 'fix/catalog-*'
     paths:
       - '.github/workflows/verify-studio-information-architecture-v65-20260731.yml'
       - 'neptune-tv-media-cloudflare/wrangler.jsonc'
+      - 'neptune-tv-media-cloudflare/src/entry-v34.js'
       - 'neptune-tv-media-cloudflare/src/entry-v36.js'
+      - 'neptune-tv-media-cloudflare/src/media-catalog-visuals-v98.js'
+      - 'neptune-tv-media-cloudflare/src/portal-media-catalog-v98.js'
       - 'neptune-tv-media-cloudflare/public/studio/app.html'
       - 'neptune-tv-media-cloudflare/public/studio/studio-app-router-v104.js'
       - 'neptune-tv-media-cloudflare/public/studio/media-catalog-loader-v104.js'
@@ -46,6 +54,7 @@ on:
       - 'neptune-tv-media-cloudflare/scripts/verify-media-catalog-v98.mjs'
       - 'neptune-tv-media-cloudflare/scripts/verify-studio-shell-v105-entry.mjs'
       - 'neptune-tv-media-cloudflare/tests/audit-studio-information-architecture-v65.mjs'
+      - 'neptune-tv-media-cloudflare/tests/audit-media-catalog-v109.mjs'
   workflow_dispatch:
 
 permissions:
@@ -71,11 +80,15 @@ jobs:
       - name: Validate architecture sources
         working-directory: neptune-tv-media-cloudflare
         run: |
+          node --check src/entry-v34.js
           node --check src/entry-v36.js
+          node --check src/media-catalog-visuals-v98.js
+          node --check src/portal-media-catalog-v98.js
           node --check public/studio/studio-app-router-v104.js
           node --check public/studio/media-catalog-loader-v104.js
           node --check public/studio/studio-information-architecture-v65-1.js
           node --check tests/audit-studio-information-architecture-v65.mjs
+          node --check tests/audit-media-catalog-v109.mjs
           node scripts/verify-studio-information-architecture-v65.mjs
           node scripts/verify-studio-unified.mjs
           node scripts/verify-media-catalog-v98.mjs
@@ -118,11 +131,16 @@ jobs:
           OUTPUT_DIR: test-results/studio-information-architecture-v105
         run: node neptune-tv-media-cloudflare/tests/audit-studio-information-architecture-v65.mjs
 
+      - name: Audit Catalogue Media v109 regressions
+        env:
+          STUDIO_BASE_URL: http://127.0.0.1:8787
+        run: node neptune-tv-media-cloudflare/tests/audit-media-catalog-v109.mjs
+
       - name: Upload visual evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: studio-information-architecture-v105-evidence
+          name: studio-information-architecture-v109-evidence
           path: |
             test-results/studio-information-architecture-v105
             /tmp/wrangler-v105.log

@@ -38,7 +38,11 @@ export default {
     if(request.method==='POST'&&url.pathname.startsWith(ADMIN_PREFIX)){
       if(!isSameOrigin(request))return secure(json({error:'origin_forbidden'},403));
       const key=url.pathname.slice(ADMIN_PREFIX.length);
-      if(key==='stripe-links')return secure(await activeStripeLinks(env));
+      if(key==='stripe-links'){
+        const auth=await studioAuth(request,env,ctx);
+        if(!auth.ok)return secure(json({error:'unauthorized'},401));
+        return secure(await activeStripeLinks(env));
+      }
       if(!ADMIN_ROUTES.has(key))return secure(json({error:'not_found'},404));
       const payload=await request.json().catch(()=>({}));
       return secure(await callStore(studio,ADMIN_ROUTES.get(key),{...adminAuth(request),payload}));
@@ -55,6 +59,15 @@ export default {
   async scheduled(controller,env,ctx){if(typeof base.scheduled==='function')return base.scheduled(controller,env,ctx);},
 };
 
+async function studioAuth(request,env,ctx){
+  const url=new URL(request.url);url.pathname='/api/auth/status';url.search='';
+  const probe=new Request(url.toString(),{method:'GET',headers:request.headers});
+  const response=await base.fetch(probe,env,ctx);
+  if(!response.ok)return{ok:false};
+  const data=await response.json().catch(()=>({})),user=data.user||{};
+  if(data.authenticated===false||!['admin','editor'].includes(String(user.role||'')))return{ok:false};
+  return{ok:true,user};
+}
 function callStore(studio,path,body){return studio.fetch(`https://store${path}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});}
 async function publicJson(response,env){
   const data=await response.json().catch(()=>({}));

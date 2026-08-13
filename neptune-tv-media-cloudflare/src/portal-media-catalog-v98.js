@@ -138,7 +138,6 @@ function buildFamilies(store,offers,configs,formats){
   }
   const families=[...groups.values()];
   for(const family of families){
-    family.configurationOptions.sort((a,b)=>a.localeCompare(b,'fr'));
     family.configurationVisuals=family.configurationOptions.map(label=>configurationVisualV98(store,family.formatId,family.formatSlug,label));
     family.format=formatMap.get(family.formatId)||null;
   }

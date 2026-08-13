@@ -20,9 +20,12 @@ const STUDIO_NAV_JS='/studio/studio-information-architecture-v65-1.js?v=107';
 const STUDIO_SHELL_CSS='/studio/studio-shell-v105.css?v=3';
 const STUDIO_PRIMARY_NAVIGATION=['Parcours clients','Diffusion','Réglages'];
 const RELEASE_TAG='neptune-media-catalog-ux-20260811-v99';
+const AUDIT_RELEASE='neptune-media-catalog-audit-20260813-v109';
 const STUDIO_UI_RELEASE='neptune-studio-ui-20260812-v105-three-tab-canonical-shell';
 const LEGACY_CLIENT_OPERATIONS='/studio/studio-client-operations-v76.js';
 const MEDIA_CATALOG_MANAGER='/studio/media-catalog-manager-v98.js';
+const MEDIA_CATALOG_UX='/studio/media-catalog-ux-v99.js';
+const SALES_TUNNEL_APP='/reserver/assets/app-v96.js';
 
 export default{
   async fetch(request,env,ctx){
@@ -33,10 +36,18 @@ export default{
       return Response.redirect(target.toString(),302);
     }
     if(request.method==='GET'&&url.pathname===LEGACY_CLIENT_OPERATIONS){
-      return neutralizeLegacyStudioClientOperations(await base.fetch(request,env,ctx));
+      const response=await base.fetch(request,env,ctx);
+      if(!isClientOperationsRequest(request))return disableLegacyStudioClientOperations(response);
+      return neutralizeLegacyStudioClientOperations(response);
     }
     if(request.method==='GET'&&url.pathname===MEDIA_CATALOG_MANAGER){
       return stabilizeMediaCatalogManager(await base.fetch(request,env,ctx));
+    }
+    if(request.method==='GET'&&url.pathname===MEDIA_CATALOG_UX){
+      return enhanceMediaCatalogUx(await base.fetch(request,env,ctx));
+    }
+    if(request.method==='GET'&&url.pathname===SALES_TUNNEL_APP){
+      return enhanceSalesTunnelApp(await base.fetch(request,env,ctx));
     }
     if(request.method==='GET'&&url.pathname.startsWith('/media/catalog-v98/'))return catalogAsset(request,env);
     if(request.method==='POST'&&url.pathname.startsWith(ADMIN_PREFIX)){
@@ -51,6 +62,7 @@ export default{
     if(request.method==='GET'&&url.pathname==='/api/public/release'&&response.ok)response=await augmentRelease(response);
     if(request.method==='GET'&&response.ok&&(response.headers.get('Content-Type')||'').includes('text/html')){
       if(isCatalogPreviewRequest(url))response=allowSameOriginFrame(response,'X-Neptune-Studio-Preview');
+      else if(isSalesTunnelDocument(url.pathname))response=secureSalesTunnelDocument(response);
       else if(isLegacyStudioPath(url.pathname))response=secureStudioDocument(await injectStudioNavigation(response));
       else if(isStudioAppPath(url.pathname))response=secureStudioDocument(response);
     }
@@ -99,19 +111,42 @@ async function studioAuth(request,env,ctx){
 function callStore(studio,path,body){return studio.fetch(`https://store${path}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});}
 function secure(response){const h=new Headers(response.headers);h.set('Cache-Control','no-store');h.set('X-Content-Type-Options','nosniff');h.set('X-Neptune-Media-Catalog',MEDIA_CATALOG_RELEASE);return new Response(response.body,{status:response.status,statusText:response.statusText,headers:h});}
 function isAdvancedPath(path){return path==='/studio/advanced'||path==='/studio/advanced/'||path==='/studio/advanced.html';}
+function isStudioClientsPath(path){return path==='/studio/clients'||path==='/studio/clients/'||path==='/studio/clients.html';}
 function isStudioAppPath(path){return path==='/studio/app'||path==='/studio/app/'||path==='/studio/app.html';}
-function isLegacyStudioPath(path){return path==='/studio/clients'||path==='/studio/clients/'||path==='/studio/clients.html'||path==='/studio/video-ai'||path==='/studio/video-ai/'||path==='/studio/video-ai.html'||path==='/studio/webtv'||path==='/studio/webtv/'||path==='/studio/webtv.html'||isAdvancedPath(path);}
-function isCatalogPreviewRequest(url){return (url.pathname==='/reserver'||url.pathname==='/reserver/')&&url.searchParams.get('catalog_preview')==='studio';}
+function isSalesTunnelDocument(path){return path==='/reserver'||path==='/reserver/';}
+function isLegacyStudioPath(path){return isStudioClientsPath(path)||path==='/studio/video-ai'||path==='/studio/video-ai/'||path==='/studio/video-ai.html'||path==='/studio/webtv'||path==='/studio/webtv/'||path==='/studio/webtv.html'||isAdvancedPath(path);}
+function isCatalogPreviewRequest(url){return isSalesTunnelDocument(url.pathname)&&url.searchParams.get('catalog_preview')==='studio';}
+function isClientOperationsRequest(request){
+  const referer=request.headers.get('Referer')||request.headers.get('referer')||'';
+  if(!referer)return true;
+  try{return isStudioClientsPath(new URL(referer).pathname);}catch{return true;}
+}
 function secureStudioDocument(response){
   const headers=new Headers(response.headers);headers.delete('Content-Length');headers.set('Cache-Control','private, no-store, max-age=0');headers.set('X-Content-Type-Options','nosniff');headers.set('X-Frame-Options','DENY');headers.set('Referrer-Policy','same-origin');headers.set('Content-Security-Policy',studioTopLevelCsp(headers.get('Content-Security-Policy')||''));headers.set('X-Neptune-Studio-UI',STUDIO_UI_RELEASE);
   return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
 }
-function allowSameOriginFrame(response,marker='X-Neptune-Studio-Preview'){
-  const headers=new Headers(response.headers);headers.delete('Content-Length');headers.set('Cache-Control','private, no-store, max-age=0');headers.set('X-Content-Type-Options','nosniff');headers.set('X-Frame-Options','SAMEORIGIN');headers.set('Referrer-Policy','same-origin');headers.set('Content-Security-Policy',studioPreviewCsp(headers.get('Content-Security-Policy')||''));headers.set(marker,STUDIO_UI_RELEASE);
+function secureSalesTunnelDocument(response){
+  const headers=new Headers(response.headers);headers.delete('Content-Length');headers.set('X-Content-Type-Options','nosniff');headers.set('X-Frame-Options','DENY');headers.set('Referrer-Policy','same-origin');headers.set('Content-Security-Policy',salesTunnelCsp(headers.get('Content-Security-Policy')||'',false));headers.set('X-Neptune-Sales-Tunnel-CSP','v109');
   return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
 }
-function studioTopLevelCsp(value){return setCspDirective(value,'frame-ancestors',["'none'"]);}
-function studioPreviewCsp(value){return setCspDirective(value,'frame-ancestors',["'self'"]);}
+function allowSameOriginFrame(response,marker='X-Neptune-Studio-Preview'){
+  const headers=new Headers(response.headers);headers.delete('Content-Length');headers.set('Cache-Control','private, no-store, max-age=0');headers.set('X-Content-Type-Options','nosniff');headers.set('X-Frame-Options','SAMEORIGIN');headers.set('Referrer-Policy','same-origin');headers.set('Content-Security-Policy',salesTunnelCsp(headers.get('Content-Security-Policy')||'',true));headers.set(marker,STUDIO_UI_RELEASE);headers.set('X-Neptune-Sales-Tunnel-CSP','v109');
+  return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
+}
+function studioTopLevelCsp(value){
+  let csp=setCspDirective(value,'frame-src',["'self'",'https://www.youtube.com','https://www.youtube-nocookie.com','https://drive.google.com']);
+  return setCspDirective(csp,'frame-ancestors',["'none'"]);
+}
+function salesTunnelCsp(value,preview){
+  let csp=String(value||"default-src 'self'");
+  csp=setCspDirective(csp,'script-src',["'self'","'unsafe-inline'"]);
+  csp=setCspDirective(csp,'style-src',["'self'","'unsafe-inline'"]);
+  csp=setCspDirective(csp,'img-src',["'self'",'data:']);
+  csp=setCspDirective(csp,'connect-src',["'self'"]);
+  csp=setCspDirective(csp,'frame-src',["'self'",'https://calendar.google.com']);
+  csp=setCspDirective(csp,'frame-ancestors',[preview?"'self'":"'none'"]);
+  return csp;
+}
 function setCspDirective(value,name,sources){
   const directives=String(value||"default-src 'self'").split(';').map(item=>item.trim()).filter(Boolean),prefix=`${name} `;
   const next=`${name} ${sources.join(' ')}`;let replaced=false;
@@ -124,13 +159,22 @@ function rewrittenHeaders(response){
   headers.set('Cache-Control','private, no-store, max-age=0');
   return headers;
 }
+function disableLegacyStudioClientOperations(response){
+  if(!response.ok)return response;
+  const headers=rewrittenHeaders(response);
+  headers.set('Content-Type','application/javascript; charset=utf-8');
+  headers.set('X-Neptune-Studio-Legacy-Navigation','disabled-outside-clients-v109');
+  return new Response('void 0;\n',{status:response.status,statusText:response.statusText,headers});
+}
 async function neutralizeLegacyStudioClientOperations(response){
   if(!response.ok)return response;
   const contentType=response.headers.get('Content-Type')||'';
   if(!contentType.includes('javascript')&&!contentType.includes('text/plain'))return response;
   let body=await response.text();
+  body=body.replace('const $ = (selector, root = document) => root.querySelector(selector);','const $ = (selector, root = document) => root?.querySelector?.(selector) ?? null;');
+  body=body.replace('const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];','const $$ = (selector, root = document) => root?.querySelectorAll ? [...root.querySelectorAll(selector)] : [];');
   body=body.replaceAll('cleanObsoleteVideoWorkspace();','void 0;');
-  const headers=rewrittenHeaders(response);headers.set('X-Neptune-Studio-Legacy-Navigation','neutralized-v105');
+  const headers=rewrittenHeaders(response);headers.set('X-Neptune-Studio-Legacy-Navigation','neutralized-v109');
   return new Response(body,{status:response.status,statusText:response.statusText,headers});
 }
 async function stabilizeMediaCatalogManager(response){
@@ -139,7 +183,34 @@ async function stabilizeMediaCatalogManager(response){
   if(!contentType.includes('javascript')&&!contentType.includes('text/plain'))return response;
   let body=await response.text();
   body=body.replace("function rename(){document.querySelectorAll('[data-tab=\"programs\"] strong,[data-go=\"programs\"] strong').forEach(x=>x.textContent='Catalogue Media')}","function rename(){document.querySelectorAll('[data-tab=\"programs\"] strong,[data-go=\"programs\"] strong').forEach(x=>{if(x.textContent!=='Catalogue Media')x.textContent='Catalogue Media'})}");
-  const headers=rewrittenHeaders(response);headers.set('X-Neptune-Media-Catalog-Manager','stabilized-v105');
+  body=body.replace(`function boot(){document.body.dataset.mediaCatalogManager=RELEASE;rename();document.addEventListener('click',e=>{if(e.target.closest('[data-tab="programs"],[data-go="programs"]'))setTimeout(mount,0)},true);new MutationObserver(()=>{rename();if(active())mount()}).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','hidden']});if(active())mount()}`,`function boot(){document.body.dataset.mediaCatalogManager=RELEASE;rename();let wasActive=active();const remount=()=>{const h=document.getElementById('content');if(!h)return;if(!h.querySelector('.c98-page'))h.dataset.c98='';mount()};document.addEventListener('click',e=>{if(e.target.closest('[data-tab="programs"],[data-go="programs"]'))setTimeout(remount,0)},true);new MutationObserver(()=>{rename();const now=active();if(now&&!wasActive)setTimeout(remount,0);wasActive=now}).observe(document.body,{subtree:true,attributes:true,attributeFilter:['class','hidden']});if(wasActive)remount()}`);
+  body=body.replace("catch(e){h.dataset.c98='';h.innerHTML=error(e.message)}","catch(e){h.dataset.c98='error';h.innerHTML=error(e.message)}");
+  const headers=rewrittenHeaders(response);headers.set('X-Neptune-Media-Catalog-Manager','stabilized-v109');
+  return new Response(body,{status:response.status,statusText:response.statusText,headers});
+}
+async function enhanceMediaCatalogUx(response){
+  if(!response.ok)return response;
+  const contentType=response.headers.get('Content-Type')||'';
+  if(!contentType.includes('javascript')&&!contentType.includes('text/plain'))return response;
+  let body=await response.text();
+  body=body.replace("const params=new URLSearchParams({catalog_preview:'studio'});","const params=new URLSearchParams({catalog_preview:'studio'});const active=document.querySelector('[data-c98-tab].is-active')?.dataset.c98Tab;params.set('catalog_view',active==='configurations'?'configuration':'format');");
+  const headers=rewrittenHeaders(response);headers.set('X-Neptune-Media-Catalog-UX',AUDIT_RELEASE);
+  return new Response(body,{status:response.status,statusText:response.statusText,headers});
+}
+async function enhanceSalesTunnelApp(response){
+  if(!response.ok)return response;
+  const contentType=response.headers.get('Content-Type')||'';
+  if(!contentType.includes('javascript')&&!contentType.includes('text/plain'))return response;
+  let body=await response.text();
+  body=body.replace("const host=document.getElementById('app-content'),progress=document.getElementById('progress'),params=new URLSearchParams(location.search);","const host=document.getElementById('app-content'),progress=document.getElementById('progress'),params=new URLSearchParams(location.search),STUDIO_CATALOG_PREVIEW=params.get('catalog_preview')==='studio';");
+  body=body.replace("const saved=readSaved();state.token=params.get('reservation_token')||saved?.token||'';","const saved=STUDIO_CATALOG_PREVIEW?null:readSaved();state.token=STUDIO_CATALOG_PREVIEW?'':(params.get('reservation_token')||saved?.token||'');");
+  body=body.replace("state.catalog=await get(API.catalog);state.preparationUrl=state.catalog.preparationBookingUrl||state.preparationUrl;renderUrgency();","state.catalog=await get(API.catalog);state.preparationUrl=state.catalog.preparationBookingUrl||state.preparationUrl;renderUrgency();if(STUDIO_CATALOG_PREVIEW){hydrateStudioCatalogPreview();render();return;}");
+  body=body.replace("function hydrateContext(ctx){","function hydrateStudioCatalogPreview(){document.body.dataset.catalogPreview='studio';const parts=String(params.get('catalog_family')||'').split('|'),cityId=parts[0]||'',formatId=parts[1]||'';state.city=findCity(cityId)||state.catalog?.cities?.[0]||null;state.format=state.city?.formats?.find(f=>f.id===formatId)||state.city?.formats?.[0]||null;state.offer=(state.format?.offers||[])[0]||null;state.configurationChoice='';state.requestedDate='';state.requestedDaypart='';state.stage=params.get('catalog_view')==='configuration'&&needsConfiguration(state.offer)?'configuration':'format';}\nfunction hydrateContext(ctx){");
+  body=body.replace("state.stage=needsConfiguration(state.offer)?'configuration':'date';save();render();","state.stage=needsConfiguration(state.offer)?'configuration':(STUDIO_CATALOG_PREVIEW?'format':'date');save();render();");
+  body=body.replace('<p>${configurationCopy(o.label)}</p>','<p>${esc(o.description||configurationCopy(o.label))}</p>');
+  body=body.replace("state.configurationChoice=b.dataset.configuration;state.stage='date';save();render();","state.configurationChoice=b.dataset.configuration;if(STUDIO_CATALOG_PREVIEW){renderConfiguration();return;}state.stage='date';save();render();");
+  body=body.replace('function save(){localStorage.setItem','function save(){if(STUDIO_CATALOG_PREVIEW)return;localStorage.setItem');
+  const headers=rewrittenHeaders(response);headers.set('X-Neptune-Sales-Tunnel-Preview',AUDIT_RELEASE);
   return new Response(body,{status:response.status,statusText:response.statusText,headers});
 }
 async function injectStudioNavigation(response){
@@ -156,5 +227,5 @@ async function injectStudioNavigation(response){
 }
 async function augmentRelease(response){
   const current=await response.json().catch(()=>({}));
-  return new Response(JSON.stringify({...current,mediaCatalogManager:MEDIA_CATALOG_RELEASE,salesCatalog:SALES_CATALOG_RELEASE,mediaCatalogUx:RELEASE_TAG,studioUi:STUDIO_UI_RELEASE,studioShell:STUDIO_UI_RELEASE,studioPrimaryNavigation:STUDIO_PRIMARY_NAVIGATION}),{status:response.status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
+  return new Response(JSON.stringify({...current,mediaCatalogManager:MEDIA_CATALOG_RELEASE,salesCatalog:SALES_CATALOG_RELEASE,mediaCatalogUx:RELEASE_TAG,mediaCatalogAudit:AUDIT_RELEASE,studioUi:STUDIO_UI_RELEASE,studioShell:STUDIO_UI_RELEASE,studioPrimaryNavigation:STUDIO_PRIMARY_NAVIGATION}),{status:response.status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
 }

@@ -10,7 +10,7 @@ const CATALOG_RAIL_CSS='/espace-client/client-catalog-rail-v118.css?v=1';
 const VISUAL_CSS='/espace-client/client-visual-coherence-v118-2.css?v=1';
 const POLISH_CSS='/espace-client/client-ux-polish-v118-3.css?v=1';
 const COMMAND_JS='/espace-client/client-command-center-v118-1.js?v=1';
-const PREPARATION_CONTEXT_JS='/espace-client/client-preparation-context-v118.js?v=2';
+const PREPARATION_CONTEXT_JS='/espace-client/client-preparation-context-v118.js?v=3';
 const PASSAGE_JS='/espace-client/client-passage-deeplink-v118.js?v=1';
 const VISUAL_JS='/espace-client/client-visual-coherence-v118-2.js?v=1';
 
@@ -50,7 +50,7 @@ async function injectClientExperience(response){
 
 async function augmentRelease(response){
   const current=await response.json().catch(()=>({}));
-  return new Response(JSON.stringify({...current,clientExperience:RELEASE,clientCommandCenter:'contextual-stage-details-content-folders-v118.2',clientPreparation:'step-local-reading-ack-v118',clientPreparationBridge:'v77-state-context-bridge-v118',clientCatalogVisuals:'studio-synced-v118',clientCatalogLayout:'city-first-horizontal-rail-v118.2',clientVisualCoherence:'selected-stage-support-spacing-snapshot-retirement-v118.2',clientUxPolish:'stable-stage-hitboxes-preloaded-preparation-compact-support-v118.3',clientLibraryLayout:'drive-aligned-long-short-folders-v118.3',clientLoadingStates:'skeleton-error-retry-reduced-motion-v117'}),{
+  return new Response(JSON.stringify({...current,clientExperience:RELEASE,clientCommandCenter:'contextual-stage-details-content-folders-v118.2',clientPreparation:'step-local-reading-ack-v118',clientPreparationBridge:'v77-state-context-bridge-v118.3.1',clientCatalogVisuals:'studio-synced-v118',clientCatalogLayout:'city-first-horizontal-rail-v118.2',clientVisualCoherence:'selected-stage-support-spacing-snapshot-retirement-v118.2',clientUxPolish:'stable-stage-hitboxes-preloaded-preparation-compact-support-v118.3',clientLibraryLayout:'drive-aligned-long-short-folders-v118.3',clientLoadingStates:'skeleton-error-retry-reduced-motion-v117'}),{
     status:response.status,
     headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'},
   });

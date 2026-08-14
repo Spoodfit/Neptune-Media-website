@@ -1,7 +1,8 @@
 import { json, sanitizeText } from './security.js';
 import { publicSalesCatalogV97, saveTunnelSelectionV97 } from './portal-sales-tunnel-v97.js';
+import { formatVisualV98 } from './media-catalog-visuals-v98.js';
 
-export const SALES_TUNNEL_GUARD_RELEASE='neptune-sales-tunnel-data-guard-20260813-v109';
+export const SALES_TUNNEL_GUARD_RELEASE='neptune-sales-tunnel-data-guard-20260814-v118';
 
 export async function publicSalesCatalogGuardedV109(store){
   const response=await publicSalesCatalogV97(store),data=await response.json().catch(()=>({}));
@@ -9,6 +10,12 @@ export async function publicSalesCatalogGuardedV109(store){
   for(const city of data.cities||[]){
     city.formats=(city.formats||[]).filter(format=>{
       format.offers=(format.offers||[]).filter(offer=>offerIsActive(store,offer?.id));
+      if(format.id){
+        const visual=formatVisualV98(store,String(format.id),String(format.slug||''));
+        format.image=visual.image;
+        format.imagePublicUrl=visual.image;
+        format.visualSource=visual.imageSource;
+      }
       return format.offers.length>0;
     });
   }

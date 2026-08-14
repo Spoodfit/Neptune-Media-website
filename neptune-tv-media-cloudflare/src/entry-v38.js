@@ -2,9 +2,14 @@ import base,{StudioStore,WebTvEncoder} from './entry-v37.js';
 
 export {StudioStore,WebTvEncoder};
 
-const RELEASE='neptune-client-experience-20260814-v117';
+const RELEASE='neptune-client-experience-20260814-v118';
 const CLIENT_CSS='/espace-client/client-experience-v117.css?v=1';
 const CLIENT_JS='/espace-client/client-experience-v117.js?v=1';
+const COMMAND_CSS='/espace-client/client-command-center-v118.css?v=1';
+const CATALOG_RAIL_CSS='/espace-client/client-catalog-rail-v118.css?v=1';
+const COMMAND_JS='/espace-client/client-command-center-v118-1.js?v=1';
+const PREPARATION_CONTEXT_JS='/espace-client/client-preparation-context-v118.js?v=1';
+const PASSAGE_JS='/espace-client/client-passage-deeplink-v118.js?v=1';
 
 export default{
   async fetch(request,env,ctx){
@@ -29,10 +34,10 @@ function isClientDocument(path){
 
 async function injectClientExperience(response){
   let body=await response.text();
-  body=body.replace(/<link\b[^>]*href=["'][^"']*\/espace-client\/client-experience-v117\.css[^"']*["'][^>]*>\s*/giu,'');
-  body=body.replace(/<script\b[^>]*src=["'][^"']*\/espace-client\/client-experience-v117\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu,'');
-  body=body.replace('</head>',`<link rel="stylesheet" href="${CLIENT_CSS}"></head>`);
-  body=body.replace('</body>',`<script type="module" src="${CLIENT_JS}"></script></body>`);
+  body=body.replace(/<link\b[^>]*href=["'][^"']*\/espace-client\/(?:client-experience-v117|client-command-center-v118|client-catalog-rail-v118)\.css[^"']*["'][^>]*>\s*/giu,'');
+  body=body.replace(/<script\b[^>]*src=["'][^"']*\/espace-client\/(?:client-experience-v117|client-command-center-v118(?:-1)?|client-preparation-context-v118|client-passage-deeplink-v118)\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu,'');
+  body=body.replace('</head>',`<link rel="stylesheet" href="${CLIENT_CSS}"><link rel="stylesheet" href="${COMMAND_CSS}"><link rel="stylesheet" href="${CATALOG_RAIL_CSS}"></head>`);
+  body=body.replace('</body>',`<script type="module" src="${CLIENT_JS}"></script><script type="module" src="${COMMAND_JS}"></script><script type="module" src="${PREPARATION_CONTEXT_JS}"></script><script type="module" src="${PASSAGE_JS}"></script></body>`);
   const headers=new Headers(response.headers);
   headers.delete('Content-Length');
   headers.set('Cache-Control','private, no-store, max-age=0');
@@ -42,7 +47,7 @@ async function injectClientExperience(response){
 
 async function augmentRelease(response){
   const current=await response.json().catch(()=>({}));
-  return new Response(JSON.stringify({...current,clientExperience:RELEASE,clientCommandCenter:'workflow-eight-stages-action-first-v117',clientLoadingStates:'skeleton-error-retry-reduced-motion-v117'}),{
+  return new Response(JSON.stringify({...current,clientExperience:RELEASE,clientCommandCenter:'contextual-stage-details-content-folders-v118.1',clientPreparation:'step-local-reading-ack-v118',clientPreparationBridge:'v77-state-context-bridge-v118',clientCatalogVisuals:'studio-synced-v118',clientCatalogLayout:'horizontal-rail-v118',clientLoadingStates:'skeleton-error-retry-reduced-motion-v117'}),{
     status:response.status,
     headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'},
   });

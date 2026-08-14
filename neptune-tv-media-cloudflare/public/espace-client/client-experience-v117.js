@@ -3,7 +3,17 @@ const RETRY_TEXT=/impossible|indisponible|erreur|réessay/iu;
 
 document.documentElement.dataset.clientExperience='v117';
 document.documentElement.dataset.clientExperienceRelease=RELEASE;
+installSharedStyles();
 start();
+
+function installSharedStyles(){
+  if(document.querySelector('link[href*="/espace-client/client-experience-v117.css"]'))return;
+  const link=document.createElement('link');
+  link.rel='stylesheet';
+  link.href='/espace-client/client-experience-v117.css?v=2';
+  link.dataset.clientExperienceCss='v117';
+  document.head.append(link);
+}
 
 function start(){document.readyState==='loading'?document.addEventListener('DOMContentLoaded',boot,{once:true}):boot();}
 function boot(){

@@ -1,0 +1,122 @@
+/* Neptune Media — client UX polish v118.3
+ * Stable workflow geometry, instant-feeling preparation mount and denser utility layout.
+ */
+
+html[data-client-command-center-v118="1"] .cc-flow-scroll{
+  padding:8px 28px 24px!important;
+  scroll-padding-inline:28px;
+}
+html[data-client-command-center-v118="1"] .cc-flow{
+  padding-inline:2px;
+}
+html[data-client-command-center-v118="1"] .cc-stage{
+  padding-inline:2px;
+}
+html[data-client-command-center-v118="1"] .cc-stage-button{
+  min-height:128px;
+  transform:none!important;
+}
+html[data-client-command-center-v118="1"] .cc-stage.is-selected-v118 .cc-stage-button{
+  transform:none!important;
+}
+html[data-client-command-center-v118="1"] .cc-stage.is-selected-v118 .cc-stage-button::after{
+  inset:0 1px 0!important;
+  border-radius:17px!important;
+  box-shadow:0 9px 28px rgba(67,46,169,.12)!important;
+}
+
+/* Never move a hit target under the pointer. Visual feedback stays on color/shadow only. */
+html[data-client-command-center-v118="1"] .dashboard-v37 button:not(:disabled),
+html[data-client-command-center-v118="1"] .dashboard-v37 button:not(:disabled) *,
+html[data-client-command-center-v118="1"] .dashboard-v37 a[href],
+html[data-client-command-center-v118="1"] .dashboard-v37 a[href] *{
+  cursor:pointer!important;
+}
+html[data-client-command-center-v118="1"] .dashboard-v37 button:disabled,
+html[data-client-command-center-v118="1"] .dashboard-v37 button:disabled *{
+  cursor:not-allowed!important;
+}
+html[data-client-command-center-v118="1"] .dashboard-v37 .cc-primary-action:hover,
+html[data-client-command-center-v118="1"] .dashboard-v37 .cc-details-button:hover,
+html[data-client-command-center-v118="1"] .dashboard-v37 .cc-v118-action:hover,
+html[data-client-command-center-v118="1"] .dashboard-v37 .cc-v118-folder:hover,
+html[data-client-command-center-v118="1"] .dashboard-v37 .cc-v118-folder-controls button:hover,
+html[data-client-command-center-v118="1"] .dashboard-v37 .cc-v1182-city-filter button:hover,
+html[data-client-command-center-v118="1"] .dashboard-v37 .inline-action:hover,
+html[data-client-command-center-v118="1"] .dashboard-v37 .utility-action:hover{
+  transform:none!important;
+}
+
+/* The deck is preloaded in v118.3; keep the cold-start fallback deliberately compact. */
+html[data-client-command-center-v118="1"] .cc-v118-prep-loading{
+  min-height:44px!important;
+  display:grid!important;
+  place-items:center!important;
+  padding:11px 14px!important;
+}
+html[data-client-command-center-v118="1"] .cc-v118-preparation{
+  margin-top:18px!important;
+  padding-top:18px!important;
+}
+html[data-client-command-center-v118="1"] .cc-v118-prep-status{
+  margin-bottom:12px!important;
+  padding:14px 16px!important;
+}
+
+/* Referral receives the useful width; support becomes a compact secondary card. */
+html[data-client-visual-coherence-v1182="1"][data-client-command-center="v117"] .dashboard-v37 .cc-utility-grid>.utility-column{
+  grid-template-columns:minmax(0,1.55fr) minmax(205px,.45fr)!important;
+  gap:12px!important;
+}
+html[data-client-visual-coherence-v1182="1"][data-client-command-center="v117"] .dashboard-v37 .cc-utility-grid>.utility-column>.support-card{
+  padding:13px!important;
+}
+html[data-client-visual-coherence-v1182="1"] .cc-utility-grid .support-card .utility-heading{
+  margin-bottom:0!important;
+}
+html[data-client-visual-coherence-v1182="1"] .cc-utility-grid .support-card .utility-heading h2{
+  margin:0 0 2px!important;
+  font-size:14px!important;
+  line-height:1.15!important;
+}
+html[data-client-visual-coherence-v1182="1"] .cc-utility-grid .support-card .utility-heading p{
+  margin:0!important;
+  font-size:10.5px!important;
+  line-height:1.35!important;
+}
+html[data-client-visual-coherence-v1182="1"][data-client-command-center="v117"] .dashboard-v37 .cc-utility-grid>.utility-column>.support-card .support-actions{
+  grid-template-columns:1fr!important;
+  gap:5px!important;
+  margin-top:8px!important;
+}
+html[data-client-visual-coherence-v1182="1"][data-client-command-center="v117"] .dashboard-v37 .cc-utility-grid>.utility-column>.support-card .utility-action{
+  min-height:32px!important;
+  padding:6px 9px!important;
+  font-size:10px!important;
+}
+
+@media(max-width:900px){
+  html[data-client-visual-coherence-v1182="1"][data-client-command-center="v117"] .dashboard-v37 .cc-utility-grid>.utility-column{
+    grid-template-columns:minmax(0,1.35fr) minmax(190px,.65fr)!important;
+  }
+}
+@media(max-width:760px){
+  html[data-client-command-center-v118="1"] .cc-flow-scroll{
+    padding-inline:20px!important;
+    scroll-padding-inline:20px;
+  }
+  html[data-client-visual-coherence-v1182="1"][data-client-command-center="v117"] .dashboard-v37 .cc-utility-grid>.utility-column{
+    grid-template-columns:1fr!important;
+  }
+}
+@media(max-width:390px){
+  html[data-client-command-center-v118="1"] .cc-flow-scroll{
+    padding-inline:16px!important;
+    scroll-padding-inline:16px;
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  html[data-client-command-center-v118="1"] .dashboard-v37 *{
+    scroll-behavior:auto!important;
+  }
+}

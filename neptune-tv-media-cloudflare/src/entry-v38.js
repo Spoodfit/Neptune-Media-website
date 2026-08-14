@@ -30,7 +30,7 @@ export default{
       response=await augmentRelease(response);
     }
     if(request.method==='GET'&&isClientDocument(url.pathname)&&response.ok&&(response.headers.get('Content-Type')||'').includes('text/html')){
-      response=await injectClientExperience(response);
+      response=await injectClientExperience(response,url.pathname);
     }
     return response;
   },
@@ -67,10 +67,13 @@ function isClientDocument(path){
   return path==='/espace-client'||path==='/espace-client/'||path==='/espace-client/index.html'||path.startsWith('/espace-client/videos')||path.startsWith('/espace-client/calendrier');
 }
 
-async function injectClientExperience(response){
+async function injectClientExperience(response,pathname=''){
   let body=await response.text();
   body=body.replace(/<link\b[^>]*href=["'][^"']*\/espace-client\/(?:client-experience-v117|client-command-center-v118|client-catalog-rail-v118|client-visual-coherence-v118-2|client-ux-polish-v118-3|client-ux-v118-4)\.css[^"']*["'][^>]*>\s*/giu,'');
   body=body.replace(/<script\b[^>]*src=["'][^"']*\/espace-client\/(?:client-experience-v117|client-command-center-v118(?:-1)?|client-preparation-context-v118|client-passage-deeplink-v118|client-visual-coherence-v118-2|client-ux-v118-4)\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu,'');
+  if(pathname.startsWith('/espace-client/calendrier')){
+    body=body.replace(/<script\b[^>]*src=["'][^"']*\/espace-client\/calendrier\/(?:calendar|calendar-compact-v5)\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu,'');
+  }
   body=body.replace('</head>',`<link rel="stylesheet" href="${CLIENT_CSS}"><link rel="stylesheet" href="${COMMAND_CSS}"><link rel="stylesheet" href="${CATALOG_RAIL_CSS}"><link rel="stylesheet" href="${VISUAL_CSS}"><link rel="stylesheet" href="${POLISH_CSS}"><link rel="stylesheet" href="${UX_V1184_CSS}"></head>`);
   body=body.replace('</body>',`<script type="module" src="${CLIENT_JS}"></script><script type="module" src="${COMMAND_JS}"></script><script type="module" src="${PREPARATION_CONTEXT_JS}"></script><script type="module" src="${PASSAGE_JS}"></script><script type="module" src="${VISUAL_JS}"></script><script type="module" src="${UX_V1184_JS}"></script></body>`);
   const headers=new Headers(response.headers);

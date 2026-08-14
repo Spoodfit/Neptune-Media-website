@@ -43,9 +43,17 @@ function preloadPreparation(){
   if(preparationModulePromise)return preparationModulePromise;
   importing=true;
   preparationModulePromise=import('/espace-client/client-preparation-v77.js?v=2')
+    .then(()=>{
+      /* v77 debounces its initial refresh on every dashboard mutation. Trigger its
+       * existing force-refresh hook once after import so the 10 static cards are
+       * already rendered before the client opens the Préparation step. */
+      window.dispatchEvent(new Event('focus'));
+      return true;
+    })
     .catch(error=>{
       console.error('client_preparation_context_v118_import_failed',error);
       preparationModulePromise=null;
+      return false;
     })
     .finally(()=>{
       importing=false;
@@ -181,5 +189,5 @@ function formatDateTime(date){
 }
 
 function escapeHtml(value){
-  return String(value??'').replace(/[&<>"']/gu,character=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[character]);
+  return String(value??'').replace(/[&<>"']/gu,character=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'})[character]);
 }

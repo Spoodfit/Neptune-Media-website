@@ -59,6 +59,8 @@ const scenarios=[
     expect(d.overflow<=3,`débordement mobile 390 de ${d.overflow}px`);
     expect(d.detailCloseInside,'le bouton de fermeture du détail doit rester dans le viewport');
     expect(d.cityFilterScrollable||d.cityFilterFits,'le sélecteur de ville doit rester exploitable sur mobile');
+    expect(d.headerContainsNav,`la navigation sort encore du header mobile (${d.navBottom}px > ${d.headerBottom}px)`);
+    expect(!d.headerContentOverlap,`le header recouvre encore le contenu mobile (écart ${d.headerContentGap}px)`);
   }},
   {name:'narrow-320-coherence',viewport:{width:320,height:700},state:{authenticated:true,client,orders:[{id:'prep-narrow',title:'Hors Norme',format:'Hors Norme',status:'preparation',paymentStatus:'paid',workflow:{supplierStatus:'confirmed'},files:[]}]},async assert(page){
     await page.waitForSelector('#clientCityFilterV1182');
@@ -69,6 +71,8 @@ const scenarios=[
     expect(d.selectedLabel.length>0,'le libellé d’étape doit rester visible à 320px');
     expect(!d.selectedIsWhite,'le libellé sélectionné ne doit pas devenir invisible à 320px');
     expect(!d.snapshotVisible,'aucun résumé historique ne doit réapparaître à 320px');
+    expect(d.headerContainsNav,`la navigation sort du header à 320px (${d.navBottom}px > ${d.headerBottom}px)`);
+    expect(!d.headerContentOverlap,`le header recouvre le contenu à 320px (écart ${d.headerContentGap}px)`);
   }},
 ];
 
@@ -143,10 +147,16 @@ async function diagnostics(page){
     const cityButtons=[...document.querySelectorAll('[data-v1182-city]')];
     const cards=[...document.querySelectorAll('[data-v1182-city-card]')];
     const close=document.querySelector('.cc-v118-detail-head>button');
+    const header=document.querySelector('.media-header');
+    const primaryNav=document.querySelector('.media-header .client-primary-nav-v117');
+    const firstContent=document.querySelector('.dashboard-heading');
     const closeRect=close?.getBoundingClientRect();
     const filterRect=cityFilter?.getBoundingClientRect();
     const formatRect=formats?.getBoundingClientRect();
     const utilityRect=utility?.getBoundingClientRect();
+    const headerRect=header?.getBoundingClientRect();
+    const navRect=primaryNav?.getBoundingClientRect();
+    const contentRect=firstContent?.getBoundingClientRect();
     const white=/rgb\(255,\s*255,\s*255\)|rgba\(255,\s*255,\s*255/iu.test(selectedColor);
     return {
       selectedLabel:selected?.textContent?.trim()||'',
@@ -166,6 +176,11 @@ async function diagnostics(page){
       cityFilterFits:Boolean(filterRect&&filterRect.width<=innerWidth+1),
       cityFilterScrollable:Boolean(cityFilter&&cityFilter.scrollWidth>cityFilter.clientWidth+1),
       detailCloseInside:Boolean(!closeRect||(closeRect.left>=-1&&closeRect.right<=innerWidth+1)),
+      headerBottom:Math.round(headerRect?.bottom||0),
+      navBottom:Math.round(navRect?.bottom||0),
+      headerContainsNav:Boolean(!headerRect||!navRect||(navRect.top>=headerRect.top-1&&navRect.bottom<=headerRect.bottom+1)),
+      headerContentGap:headerRect&&contentRect?Math.round(contentRect.top-headerRect.bottom):0,
+      headerContentOverlap:Boolean(headerRect&&contentRect&&contentRect.top<headerRect.bottom-1),
       overflow:Math.max(doc.scrollWidth,document.body.scrollWidth)-innerWidth,
     };
   });

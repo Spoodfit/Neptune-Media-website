@@ -12,6 +12,7 @@ on:
       - 'tests/client-command-center-v118.mjs'
       - 'tests/client-visual-coherence-v118-2.mjs'
       - 'tests/client-ux-polish-v118-3.mjs'
+      - 'tests/client-ux-v118-4.mjs'
       - 'tests/client-production-real-account-audit.mjs'
       - '.github/workflows/client-dashboard-validation.yml'
   workflow_dispatch:
@@ -89,6 +90,14 @@ jobs:
           set -o pipefail
           node tests/client-ux-polish-v118-3.mjs 2>&1 | tee /tmp/client-ux-polish-v118-3.log
 
+      - name: Validate v118.4 client planning UX
+        shell: bash
+        env:
+          DASHBOARD_BASE_URL: http://127.0.0.1:4173
+        run: |
+          set -o pipefail
+          node tests/client-ux-v118-4.mjs 2>&1 | tee /tmp/client-ux-v118-4.log
+
       - name: Validate authenticated content runtime
         shell: bash
         env:
@@ -121,6 +130,7 @@ jobs:
             test-results/client-command-center-v118
             test-results/client-visual-coherence-v118-2
             test-results/client-ux-polish-v118-3
+            test-results/client-ux-v118-4
             test-results/client-content-runtime
             test-results/client-production-real-account-audit
             /tmp/client-dashboard-run.log
@@ -128,6 +138,7 @@ jobs:
             /tmp/client-command-center-v118.log
             /tmp/client-visual-coherence-v118-2.log
             /tmp/client-ux-polish-v118-3.log
+            /tmp/client-ux-v118-4.log
             /tmp/client-content-runtime.log
             /tmp/client-production-real-account-audit.log
             /tmp/client-dashboard-server.log

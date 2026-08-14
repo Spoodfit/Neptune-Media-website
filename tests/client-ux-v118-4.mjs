@@ -124,8 +124,8 @@ async function calendarAudit(viewport,name){
 
     await page.locator('[data-v1184-mode="month"]').click();await page.waitForSelector('.planning-v1184-month',{timeout:3000});
     expect(await page.locator('.planning-v1184-month-item').count()>=2,`${name}: occurrences absentes en vue mois`);
-    await page.locator('[data-v1184-mode="week"]').click();
-    await page.locator('[data-v1184-occurrence="occ-1"]').click();await page.waitForSelector('.v1184-publication-sheet',{timeout:3000});
+    await page.locator('.planning-v1184-month-item[data-v1184-occurrence="occ-1"]').click();
+    await page.waitForSelector('.v1184-publication-sheet',{timeout:3000});
     const sheet=await page.evaluate(()=>({wrong:document.querySelector('#editorBody')?.innerText.includes('TITRE IA HORS CONTEXTE'),real:document.querySelector('#editorTitle')?.textContent?.includes('Sujet Reel 01'),hasTitleField:Boolean(document.querySelector('[data-v1184-publication-form] input[name="title"]')),hasDate:Boolean(document.querySelector('[data-v1184-publication-form] input[name="publishAt"]'))}));
     expect(!sheet.wrong,`${name}: mauvais titre IA dans le détail`);expect(sheet.real,`${name}: vraie vidéo absente du détail`);expect(!sheet.hasTitleField,`${name}: champ titre IA encore exposé`);expect(sheet.hasDate,`${name}: édition planning absente`);
     if(browserErrors.length)throw new Error(browserErrors.join(' | '));

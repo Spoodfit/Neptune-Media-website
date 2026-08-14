@@ -124,6 +124,41 @@ html[data-client-visual-coherence-v1182="1"] .client-footer nav a{
   }
 }
 
+/*
+ * The home dashboard uses the legacy .media-header, whereas library/calendar
+ * use dedicated responsive headers. On small screens the shared navigation
+ * is wider than the original fixed 60px header and used to spill over the
+ * first dashboard heading. Give the home header its own second row so the
+ * horizontal navigation remains scrollable without covering page content.
+ */
+@media(max-width:620px){
+  html[data-client-visual-coherence-v1182="1"] .dashboard-v37 .media-header{
+    height:auto!important;
+    min-height:104px;
+    flex-wrap:wrap;
+    align-content:center;
+    row-gap:5px;
+    padding:8px 12px 7px!important;
+  }
+  html[data-client-visual-coherence-v1182="1"] .dashboard-v37 .media-header .media-brand{
+    flex:0 0 auto;
+    min-width:0;
+  }
+  html[data-client-visual-coherence-v1182="1"] .dashboard-v37 .media-header .client-nav-host-v117{
+    order:2;
+    flex:0 0 100%;
+    width:100%!important;
+    margin-left:0!important;
+    padding-bottom:1px;
+  }
+  html[data-client-visual-coherence-v1182="1"] .dashboard-v37 .media-header .client-primary-nav-v117{
+    padding-right:4px;
+  }
+  html[data-client-visual-coherence-v1182="1"] .dashboard-v37 .dashboard-canvas{
+    min-height:calc(100dvh - 104px);
+  }
+}
+
 @media(max-width:360px){
   html[data-client-visual-coherence-v1182="1"] .cc-v1182-city-filter button{
     min-height:36px;
@@ -133,6 +168,13 @@ html[data-client-visual-coherence-v1182="1"] .client-footer nav a{
   html[data-client-visual-coherence-v1182="1"] .cc-v118-detail-head>button{
     width:34px;
     height:34px;
+  }
+  html[data-client-visual-coherence-v1182="1"] .dashboard-v37 .media-header{
+    min-height:100px;
+    padding-inline:10px!important;
+  }
+  html[data-client-visual-coherence-v1182="1"] .dashboard-v37 .media-header .client-primary-nav-v117 a{
+    padding-inline:9px;
   }
 }
 

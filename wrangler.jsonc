@@ -1,12 +1,13 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "neptune-media-webtv",
-  "main": "neptune-tv-media-cloudflare/src/entry-v37.js",
+  "main": "neptune-tv-media-cloudflare/src/entry-v38.js",
   "compatibility_date": "2026-07-30",
   "workers_dev": true,
   "keep_vars": true,
   "routes": [
-    { "pattern": "tv.neptunebusiness.com", "custom_domain": true }
+    { "pattern": "tv.neptunebusiness.com", "custom_domain": true },
+    { "pattern": "media.neptunebusiness.com", "custom_domain": true }
   ],
   "triggers": { "crons": ["*/5 * * * *", "* * * * *"] },
   "assets": {

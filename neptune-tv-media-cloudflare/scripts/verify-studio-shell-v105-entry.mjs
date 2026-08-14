@@ -2,23 +2,29 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
-const packageRoot = fs.existsSync(path.join(root, 'src/entry-v37.js')) && fs.existsSync(path.join(root, 'public/studio/studio-information-architecture-v65-1.js'));
+const packageRoot = fs.existsSync(path.join(root, 'src/entry-v38.js')) && fs.existsSync(path.join(root, 'public/studio/studio-information-architecture-v65-1.js'));
 const prefix = packageRoot ? '' : 'neptune-tv-media-cloudflare/';
 const wranglerPath = path.join(root, 'wrangler.jsonc');
 const wrangler = fs.readFileSync(wranglerPath, 'utf8');
 const mainMatch = wrangler.match(/"main"\s*:\s*"([^"]+)"/u);
 if (!mainMatch) throw new Error('wrangler.jsonc: main entry is missing');
 
-const expectedEntry = packageRoot ? 'src/entry-v37.js' : 'neptune-tv-media-cloudflare/src/entry-v37.js';
+const expectedEntry = packageRoot ? 'src/entry-v38.js' : 'neptune-tv-media-cloudflare/src/entry-v38.js';
 const activeEntry = mainMatch[1];
 if (activeEntry !== expectedEntry) {
-  throw new Error(`Studio v115 is not active: wrangler main is ${activeEntry}, expected ${expectedEntry}`);
+  throw new Error(`Studio v115 is not active through v38: wrangler main is ${activeEntry}, expected ${expectedEntry}`);
 }
 
-const entry37Path = path.join(root, activeEntry);
+const entry38Path = path.join(root, activeEntry);
+const entry38 = fs.readFileSync(entry38Path, 'utf8');
+if (!entry38.includes("from './entry-v37.js'")) {
+  throw new Error('Active v38 entry must preserve the complete v37 Studio runtime');
+}
+
+const entry37Path = path.join(root, `${prefix}src/entry-v37.js`);
 const entry37 = fs.readFileSync(entry37Path, 'utf8');
 if (!entry37.includes("from './entry-v36.js'")) {
-  throw new Error('Active v37 entry must preserve the complete v36 Studio shell runtime');
+  throw new Error('Preserved v37 entry must preserve the complete v36 Studio shell runtime');
 }
 
 const entry36Path = path.join(root, `${prefix}src/entry-v36.js`);
@@ -70,4 +76,4 @@ for (const marker of [
   if (!catalogueLoader.includes(marker)) throw new Error(`Catalogue bootstrap safety is missing: ${marker}`);
 }
 
-console.log('Studio v115 active entry verified: v37 preserves v36 canonical 3-tab shell, Réglages auth gate, Catalogue v108 bootstrap and v115 runtime recovery.');
+console.log('Studio v115 active entry verified: v38 preserves v37/v36 canonical 3-tab shell, Réglages auth gate, Catalogue v108 bootstrap and v115 runtime recovery.');

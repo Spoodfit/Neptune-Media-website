@@ -2,14 +2,15 @@ import { readFile } from 'node:fs/promises';
 
 const read=(path)=>readFile(new URL(`../${path}`,import.meta.url),'utf8');
 const readRoot=(path)=>readFile(new URL(`../../${path}`,import.meta.url),'utf8');
-const [activeEntry37,activeEntry36,activeEntry,appEntry,webtvEntry,control,media,directR2,encoder,html,ui,uploadUi,ia,navCompat,security,corsRaw,corsWorkflow,rootRaw,localRaw,rootPackageRaw,localPackageRaw]=await Promise.all([
-  read('src/entry-v37.js'),read('src/entry-v36.js'),read('src/entry-v35.js'),read('src/entry-v34.js'),read('src/entry-v33.js'),read('src/webtv-control-v1.js'),read('src/webtv-media-v1.js'),read('src/webtv-r2-direct-v1.js'),read('containers/webtv/encoder.mjs'),read('public/studio/webtv.html'),read('public/studio/webtv-v1.js'),read('public/studio/webtv-upload-v4.js'),read('public/studio/studio-information-architecture-v65-1.js'),read('public/studio/webtv-nav-compat-v1.js'),read('src/security.js'),read('config/webtv-r2-cors-wrangler.json'),readRoot('.github/workflows/configure-webtv-r2-cors.yml'),readRoot('wrangler.jsonc'),read('wrangler.jsonc'),readRoot('package.json'),read('package.json'),
+const [activeEntry38,activeEntry37,activeEntry36,activeEntry,appEntry,webtvEntry,control,media,directR2,encoder,html,ui,uploadUi,ia,navCompat,security,corsRaw,corsWorkflow,rootRaw,localRaw,rootPackageRaw,localPackageRaw]=await Promise.all([
+  read('src/entry-v38.js'),read('src/entry-v37.js'),read('src/entry-v36.js'),read('src/entry-v35.js'),read('src/entry-v34.js'),read('src/entry-v33.js'),read('src/webtv-control-v1.js'),read('src/webtv-media-v1.js'),read('src/webtv-r2-direct-v1.js'),read('containers/webtv/encoder.mjs'),read('public/studio/webtv.html'),read('public/studio/webtv-v1.js'),read('public/studio/webtv-upload-v4.js'),read('public/studio/studio-information-architecture-v65-1.js'),read('public/studio/webtv-nav-compat-v1.js'),read('src/security.js'),read('config/webtv-r2-cors-wrangler.json'),readRoot('.github/workflows/configure-webtv-r2-cors.yml'),readRoot('wrangler.jsonc'),read('wrangler.jsonc'),readRoot('package.json'),read('package.json'),
 ]);
 const root=JSON.parse(rootRaw),local=JSON.parse(localRaw),cors=JSON.parse(corsRaw),rootPackage=JSON.parse(rootPackageRaw),localPackage=JSON.parse(localPackageRaw),failures=[];
 const expect=(condition,message)=>{if(!condition)failures.push(message);};
 
-expect(root.main==='neptune-tv-media-cloudflare/src/entry-v37.js','le Worker racine doit cibler entry-v37');
-expect(local.main==='src/entry-v37.js','le Worker local doit cibler entry-v37');
+expect(root.main==='neptune-tv-media-cloudflare/src/entry-v38.js','le Worker racine doit cibler entry-v38');
+expect(local.main==='src/entry-v38.js','le Worker local doit cibler entry-v38');
+expect(activeEntry38.includes("from './entry-v37.js'"),'entry-v38 ne prolonge plus entry-v37');
 expect(activeEntry37.includes("from './entry-v36.js'"),'entry-v37 ne prolonge plus entry-v36');
 for(const marker of ['neptune-studio-runtime-recovery-20260813-v115','Promise.allSettled','controlDegraded','retryWebTvStateV115','refreshRuntimeV115','webtv-v1.js?v=7','X-Neptune-WebTV-Runtime'])expect(activeEntry37.includes(marker),`reprise Diffusion v115 absente : ${marker}`);
 expect(activeEntry37.includes("if(controlDegraded){button.disabled=true;button.textContent='Régie à reconnecter'"),'la publication reste possible pendant une panne de régie');
@@ -67,4 +68,4 @@ expect(corsWorkflow.includes('wrangler r2 bucket cors set neptune-media-assets')
 expect(corsWorkflow.includes('wrangler r2 bucket cors list neptune-media-assets'),'le workflow ne vérifie pas la politique CORS R2 appliquée');
 
 if(failures.length){console.error(failures.map(failure=>`- ${failure}`).join('\n'));process.exit(1);}
-console.log('WebTV validée : reprise v115 non destructive, catalogue Studio conservé en panne partielle, publication bloquée tant que la régie est indisponible, import R2, programme, Container FFmpeg et RTMPS préservés.');
+console.log('WebTV validée à travers entry-v38 : reprise v115 non destructive, catalogue Studio conservé en panne partielle, publication bloquée tant que la régie est indisponible, import R2, programme, Container FFmpeg et RTMPS préservés.');

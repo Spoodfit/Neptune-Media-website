@@ -8,6 +8,7 @@ const expect=(name,ok)=>checks.push({name,ok:Boolean(ok)});
 
 const rootWrangler=read('../wrangler.jsonc');
 const localWrangler=read('wrangler.jsonc');
+const activeEntry38=read('src/entry-v38.js');
 const activeEntry37=read('src/entry-v37.js');
 const activeEntry36=read('src/entry-v36.js');
 const activeEntry=read('src/entry-v35.js');
@@ -27,8 +28,9 @@ const css=read('public/reserver/assets/styles-v96.css');
 const html=read('public/reserver/index.html');
 const terms=read('public/reserver/conditions/index.html');
 
-expect('root Worker targets active v37',rootWrangler.includes('neptune-tv-media-cloudflare/src/entry-v37.js'));
-expect('local Worker targets v37',localWrangler.includes('src/entry-v37.js'));
+expect('root Worker targets active v38',rootWrangler.includes('neptune-tv-media-cloudflare/src/entry-v38.js'));
+expect('local Worker targets v38',localWrangler.includes('src/entry-v38.js'));
+expect('v38 preserves v37 sales tunnel',activeEntry38.includes("from './entry-v37.js'"));
 expect('v37 preserves v36 sales tunnel',activeEntry37.includes("from './entry-v36.js'"));
 expect('v36 preserves v35 sales tunnel',activeEntry36.includes("from './entry-v35.js'")&&activeEntry36.includes("from './store-v29.js'"));
 expect('v35 preserves v34 sales tunnel',activeEntry.includes("from './entry-v34.js'"));
@@ -84,4 +86,4 @@ expect('responsive tunnel shell preserved',html.includes('viewport-fit=cover')&&
 const failed=checks.filter(x=>!x.ok);
 for(const c of checks)console.log(`${c.ok?'✓':'✗'} ${c.name}`);
 if(failed.length){console.error(`Sales tunnel v97 verification failed: ${failed.length} check(s).`);process.exit(1);}
-console.log(`Sales tunnel v97 verified through active v37 and v98 catalog overlay: ${checks.length} checks.`);
+console.log(`Sales tunnel v97 verified through active v38 and v98 catalog overlay: ${checks.length} checks.`);

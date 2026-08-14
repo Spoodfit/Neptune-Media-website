@@ -10,6 +10,7 @@ on:
       - 'tests/client-content-runtime.mjs'
       - 'tests/client-command-center-v117.mjs'
       - 'tests/client-command-center-v118.mjs'
+      - 'tests/client-visual-coherence-v118-2.mjs'
       - '.github/workflows/client-dashboard-validation.yml'
   workflow_dispatch:
 
@@ -70,6 +71,14 @@ jobs:
           set -o pipefail
           node tests/client-command-center-v118.mjs 2>&1 | tee /tmp/client-command-center-v118.log
 
+      - name: Validate v118.2 visual coherence
+        shell: bash
+        env:
+          DASHBOARD_BASE_URL: http://127.0.0.1:4173
+        run: |
+          set -o pipefail
+          node tests/client-visual-coherence-v118-2.mjs 2>&1 | tee /tmp/client-visual-coherence-v118-2.log
+
       - name: Validate authenticated content runtime
         shell: bash
         env:
@@ -82,15 +91,17 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: client-dashboard-v118-validation
+          name: client-dashboard-v118-2-validation
           path: |
             test-results/client-dashboard
             test-results/client-command-center-v117
             test-results/client-command-center-v118
+            test-results/client-visual-coherence-v118-2
             test-results/client-content-runtime
             /tmp/client-dashboard-run.log
             /tmp/client-command-center-v117.log
             /tmp/client-command-center-v118.log
+            /tmp/client-visual-coherence-v118-2.log
             /tmp/client-content-runtime.log
             /tmp/client-dashboard-server.log
           if-no-files-found: warn

@@ -15,7 +15,12 @@ function start(){
   document.readyState==='loading'?document.addEventListener('DOMContentLoaded',boot,{once:true}):boot();
 }
 
+function home(){
+  return ['/espace-client','/espace-client/','/espace-client/index.html'].includes(location.pathname);
+}
+
 function boot(){
+  if(!home())return;
   ensurePreparationCss();
   syncSeenAlias();
   document.addEventListener('click',onClick,true);

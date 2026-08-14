@@ -18,6 +18,7 @@ const PREPARATION_CONTEXT_JS='/espace-client/client-preparation-context-v118.js?
 const PASSAGE_JS='/espace-client/client-passage-deeplink-v118.js?v=1';
 const VISUAL_JS='/espace-client/client-visual-coherence-v118-2.js?v=1';
 const UX_V1184_JS='/espace-client/client-ux-v118-4.js?v=1';
+const CALENDAR_CHROME_JS='/espace-client/client-calendar-chrome-v118-4-1.js?v=1';
 
 export default{
   async fetch(request,env,ctx){
@@ -70,12 +71,13 @@ function isClientDocument(path){
 async function injectClientExperience(response,pathname=''){
   let body=await response.text();
   body=body.replace(/<link\b[^>]*href=["'][^"']*\/espace-client\/(?:client-experience-v117|client-command-center-v118|client-catalog-rail-v118|client-visual-coherence-v118-2|client-ux-polish-v118-3|client-ux-v118-4)\.css[^"']*["'][^>]*>\s*/giu,'');
-  body=body.replace(/<script\b[^>]*src=["'][^"']*\/espace-client\/(?:client-experience-v117|client-command-center-v118(?:-1)?|client-preparation-context-v118|client-passage-deeplink-v118|client-visual-coherence-v118-2|client-ux-v118-4)\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu,'');
+  body=body.replace(/<script\b[^>]*src=["'][^"']*\/espace-client\/(?:client-experience-v117|client-command-center-v118(?:-1)?|client-preparation-context-v118|client-passage-deeplink-v118|client-visual-coherence-v118-2|client-ux-v118-4|client-calendar-chrome-v118-4-1)\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu,'');
   if(pathname.startsWith('/espace-client/calendrier')){
     body=body.replace(/<script\b[^>]*src=["'][^"']*\/espace-client\/calendrier\/(?:calendar|calendar-compact-v5)\.js[^"']*["'][^>]*>\s*<\/script>\s*/giu,'');
   }
   body=body.replace('</head>',`<link rel="stylesheet" href="${CLIENT_CSS}"><link rel="stylesheet" href="${COMMAND_CSS}"><link rel="stylesheet" href="${CATALOG_RAIL_CSS}"><link rel="stylesheet" href="${VISUAL_CSS}"><link rel="stylesheet" href="${POLISH_CSS}"><link rel="stylesheet" href="${UX_V1184_CSS}"></head>`);
-  body=body.replace('</body>',`<script type="module" src="${CLIENT_JS}"></script><script type="module" src="${COMMAND_JS}"></script><script type="module" src="${PREPARATION_CONTEXT_JS}"></script><script type="module" src="${PASSAGE_JS}"></script><script type="module" src="${VISUAL_JS}"></script><script type="module" src="${UX_V1184_JS}"></script></body>`);
+  const calendarChrome=pathname.startsWith('/espace-client/calendrier')?`<script type="module" src="${CALENDAR_CHROME_JS}"></script>`:'';
+  body=body.replace('</body>',`<script type="module" src="${CLIENT_JS}"></script><script type="module" src="${COMMAND_JS}"></script><script type="module" src="${PREPARATION_CONTEXT_JS}"></script><script type="module" src="${PASSAGE_JS}"></script><script type="module" src="${VISUAL_JS}"></script><script type="module" src="${UX_V1184_JS}"></script>${calendarChrome}</body>`);
   const headers=new Headers(response.headers);
   headers.delete('Content-Length');
   headers.set('Cache-Control','private, no-store, max-age=0');
@@ -85,7 +87,7 @@ async function injectClientExperience(response,pathname=''){
 
 async function augmentRelease(response){
   const current=await response.json().catch(()=>({}));
-  return new Response(JSON.stringify({...current,clientExperience:RELEASE,clientExperienceBase:BASE_CLIENT_EXPERIENCE,clientCommandCenter:'compact-selection-persistent-collapsible-stage-details-v118.4',clientPreparation:'step-local-reading-ack-v118',clientPreparationBridge:'v77-state-context-bridge-v118.3.1',clientCatalogVisuals:'studio-synced-v118',clientCatalogLayout:'city-first-horizontal-rail-v118.2',clientVisualCoherence:'icon-halo-selected-stage-v118.4',clientUxPolish:'stable-stage-hitboxes-preloaded-preparation-compact-support-v118.3',clientLibraryLayout:'full-width-responsive-long-short-workspaces-v118.4',clientContentPlanning:'week-month-grounded-video-identity-no-blocking-ai-v118.4',clientContentReuse:'instant-grounded-file-identity-no-ai-wait-v118.4',clientLoadingStates:'skeleton-error-retry-reduced-motion-v117'}),{
+  return new Response(JSON.stringify({...current,clientExperience:RELEASE,clientExperienceBase:BASE_CLIENT_EXPERIENCE,clientCommandCenter:'compact-selection-persistent-collapsible-stage-details-v118.4',clientPreparation:'step-local-reading-ack-v118',clientPreparationBridge:'v77-state-context-bridge-v118.3.1',clientCatalogVisuals:'studio-synced-v118',clientCatalogLayout:'city-first-horizontal-rail-v118.2',clientVisualCoherence:'icon-halo-selected-stage-v118.4',clientUxPolish:'stable-stage-hitboxes-preloaded-preparation-compact-support-v118.3',clientLibraryLayout:'full-width-responsive-long-short-workspaces-v118.4',clientContentPlanning:'week-month-grounded-video-identity-no-blocking-ai-v118.4',clientCalendarChrome:'persistent-publication-planner-copy-v118.4.1',clientContentReuse:'instant-grounded-file-identity-no-ai-wait-v118.4',clientLoadingStates:'skeleton-error-retry-reduced-motion-v117'}),{
     status:response.status,
     headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'},
   });

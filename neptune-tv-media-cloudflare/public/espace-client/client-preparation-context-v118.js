@@ -1,9 +1,10 @@
-const RELEASE='neptune-client-preparation-context-20260814-v118.2';
+const RELEASE='neptune-client-preparation-context-20260814-v118.3';
 const V77_SEEN='neptune_hors_norme_preparation_seen_v77';
 const V118_SEEN_ALIAS='neptune:hors-norme-preparation:v77';
 const ACK_PREFIX='neptune:preparation-ack:v118:';
 const FINISHED=new Set(['filmed','videos_pending','videos_received','editing','approval','delivered','completed']);
 let importing=false;
+let preparationModulePromise=null;
 let queued=false;
 let order=null;
 
@@ -14,11 +15,17 @@ function start(){
   document.readyState==='loading'?document.addEventListener('DOMContentLoaded',boot,{once:true}):boot();
 }
 
+function home(){
+  return ['/espace-client','/espace-client/','/espace-client/index.html'].includes(location.pathname);
+}
+
 function boot(){
+  if(!home())return;
   ensurePreparationCss();
   syncSeenAlias();
   document.addEventListener('click',onClick,true);
   new MutationObserver(queue).observe(document.body,{childList:true,subtree:true});
+  preloadPreparation();
   loadOrder();
   queue();
 }
@@ -30,6 +37,29 @@ function ensurePreparationCss(){
   link.href='/espace-client/client-preparation-v77.css?v=2';
   link.dataset.clientPreparationCssV118='1';
   document.head.append(link);
+}
+
+function preloadPreparation(){
+  if(preparationModulePromise)return preparationModulePromise;
+  importing=true;
+  preparationModulePromise=import('/espace-client/client-preparation-v77.js?v=2')
+    .then(()=>{
+      /* v77 debounces its initial refresh on every dashboard mutation. Trigger its
+       * existing force-refresh hook once after import so the 10 static cards are
+       * already rendered before the client opens the Préparation step. */
+      window.dispatchEvent(new Event('focus'));
+      return true;
+    })
+    .catch(error=>{
+      console.error('client_preparation_context_v118_import_failed',error);
+      preparationModulePromise=null;
+      return false;
+    })
+    .finally(()=>{
+      importing=false;
+      setTimeout(queue,20);
+    });
+  return preparationModulePromise;
 }
 
 async function loadOrder(){
@@ -77,11 +107,7 @@ function sync(){
     if(deck.parentElement!==mount)mount.replaceChildren(deck);
     return;
   }
-  if(importing)return;
-  importing=true;
-  import('/espace-client/client-preparation-v77.js?v=2')
-    .catch(error=>console.error('client_preparation_context_v118_import_failed',error))
-    .finally(()=>{importing=false;setTimeout(queue,220);});
+  if(!importing)preloadPreparation();
 }
 
 function claimStatusHost(){

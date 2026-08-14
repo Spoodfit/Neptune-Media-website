@@ -1,0 +1,162 @@
+/* Neptune Media — Drive-aligned library folders v118.3 */
+.media-folder-selector{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+  margin:0 0 14px;
+}
+.media-format-folder{
+  min-width:0;
+  display:grid;
+  grid-template-columns:46px minmax(0,1fr) auto 20px;
+  align-items:center;
+  gap:11px;
+  min-height:82px;
+  padding:12px 13px;
+  border:1px solid #dfe4ef;
+  border-radius:16px;
+  background:#fff;
+  color:#18274d;
+  text-align:left;
+  cursor:pointer;
+  box-shadow:0 7px 19px rgba(18,36,78,.045);
+  transition:border-color .16s ease,box-shadow .16s ease,background .16s ease;
+}
+.media-format-folder *,
+.passage-selector button:not(:disabled) *,
+.compact-media-open *{
+  cursor:inherit;
+}
+.media-format-folder:hover:not(:disabled){
+  border-color:#c9c1ff;
+  box-shadow:0 9px 22px rgba(55,42,139,.075);
+}
+.media-format-folder.is-active{
+  border-color:#8068f2;
+  background:linear-gradient(145deg,#f9f7ff,#f1edff);
+  box-shadow:inset 0 0 0 1px rgba(128,104,242,.08),0 9px 24px rgba(73,54,163,.09);
+}
+.media-format-folder:disabled{
+  opacity:.48;
+  cursor:not-allowed;
+  box-shadow:none;
+}
+.media-format-folder-icon{
+  width:46px;
+  height:46px;
+  display:grid;
+  place-items:center;
+  border-radius:13px;
+  background:#f1efff;
+  color:#6851dd;
+}
+.media-format-folder-icon svg{
+  width:25px;
+  height:25px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.7;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.media-format-folder.is-active .media-format-folder-icon{
+  background:#7258e8;
+  color:#fff;
+}
+.media-format-folder-copy{
+  min-width:0;
+  display:grid;
+  gap:2px;
+}
+.media-format-folder-copy small{
+  color:#7b68df;
+  font-size:.5rem;
+  font-weight:900;
+  letter-spacing:.11em;
+}
+.media-format-folder-copy strong{
+  overflow:hidden;
+  color:#102250;
+  font-size:.9rem;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.media-format-folder-copy em{
+  overflow:hidden;
+  color:#77829a;
+  font-size:.57rem;
+  font-style:normal;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.media-format-folder-count{
+  min-width:43px;
+  display:grid;
+  justify-items:end;
+  line-height:1;
+}
+.media-format-folder-count b{
+  color:#172a59;
+  font-size:1rem;
+}
+.media-format-folder-count small{
+  margin-top:4px;
+  color:#8790a5;
+  font-size:.5rem;
+  font-weight:750;
+}
+.media-format-folder-arrow{
+  color:#755ce9;
+  font-size:.95rem;
+  font-weight:900;
+}
+.media-format-folder.is-active .media-format-folder-arrow{transform:translateX(1px)}
+
+/* Pointer targets remain geometrically stable: no hover translate under the mouse. */
+.passage-selector button,
+.media-format-folder,
+.media-row-head button,
+.compact-media-open,
+.compact-media-actions a{
+  transform:none!important;
+}
+.passage-selector button:not(:disabled),
+.passage-selector button:not(:disabled) *,
+.media-row-head button:not(:disabled),
+.media-row-head button:not(:disabled) *,
+.compact-media-open,
+.compact-media-open *,
+.compact-media-actions a,
+.compact-media-actions a *{
+  cursor:pointer!important;
+}
+
+@media(max-width:620px){
+  .media-folder-selector{
+    display:flex;
+    gap:8px;
+    overflow-x:auto;
+    padding:1px 1px 7px;
+    scroll-snap-type:x mandatory;
+    scrollbar-width:none;
+  }
+  .media-folder-selector::-webkit-scrollbar{display:none}
+  .media-format-folder{
+    flex:0 0 min(286px,82vw);
+    scroll-snap-align:start;
+  }
+}
+@media(max-width:390px){
+  .media-format-folder{
+    grid-template-columns:42px minmax(0,1fr) auto 18px;
+    min-height:76px;
+    padding:10px 11px;
+  }
+  .media-format-folder-icon{width:42px;height:42px}
+  .media-format-folder-copy strong{font-size:.82rem}
+  .media-format-folder-copy em{font-size:.53rem}
+}
+@media(prefers-reduced-motion:reduce){
+  .media-format-folder{transition:none!important}
+  .media-format-folder.is-active .media-format-folder-arrow{transform:none}
+}

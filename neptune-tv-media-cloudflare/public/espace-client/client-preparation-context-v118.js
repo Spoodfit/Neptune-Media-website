@@ -1,4 +1,4 @@
-const RELEASE='neptune-client-preparation-context-20260814-v118.1';
+const RELEASE='neptune-client-preparation-context-20260814-v118.2';
 const V77_SEEN='neptune_hors_norme_preparation_seen_v77';
 const V118_SEEN_ALIAS='neptune:hors-norme-preparation:v77';
 const ACK_PREFIX='neptune:preparation-ack:v118:';
@@ -15,11 +15,21 @@ function start(){
 }
 
 function boot(){
+  ensurePreparationCss();
   syncSeenAlias();
   document.addEventListener('click',onClick,true);
   new MutationObserver(queue).observe(document.body,{childList:true,subtree:true});
   loadOrder();
   queue();
+}
+
+function ensurePreparationCss(){
+  if(document.querySelector('link[href*="client-preparation-v77.css"]'))return;
+  const link=document.createElement('link');
+  link.rel='stylesheet';
+  link.href='/espace-client/client-preparation-v77.css?v=2';
+  link.dataset.clientPreparationCssV118='1';
+  document.head.append(link);
 }
 
 async function loadOrder(){

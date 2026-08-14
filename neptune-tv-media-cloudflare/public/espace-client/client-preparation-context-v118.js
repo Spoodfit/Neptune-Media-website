@@ -1,4 +1,4 @@
-const RELEASE='neptune-client-preparation-context-20260814-v118.3';
+const RELEASE='neptune-client-preparation-context-20260814-v118.3.1';
 const V77_SEEN='neptune_hors_norme_preparation_seen_v77';
 const V118_SEEN_ALIAS='neptune:hors-norme-preparation:v77';
 const ACK_PREFIX='neptune:preparation-ack:v118:';
@@ -7,6 +7,7 @@ let importing=false;
 let preparationModulePromise=null;
 let queued=false;
 let order=null;
+let lastWarmAt=0;
 
 document.documentElement.dataset.clientPreparationContext=RELEASE;
 start();
@@ -22,6 +23,7 @@ function home(){
 function boot(){
   if(!home())return;
   ensurePreparationCss();
+  ensureLegacyPreparationAnchor();
   syncSeenAlias();
   document.addEventListener('click',onClick,true);
   new MutationObserver(queue).observe(document.body,{childList:true,subtree:true});
@@ -39,15 +41,37 @@ function ensurePreparationCss(){
   document.head.append(link);
 }
 
+function ensureLegacyPreparationAnchor(){
+  const existing=document.querySelector('.metrics-section');
+  if(existing)return existing;
+  const canvas=document.querySelector('.dashboard-canvas')||document.querySelector('#dashboard');
+  if(!canvas)return null;
+  const anchor=document.createElement('div');
+  anchor.className='metrics-section client-preparation-compat-anchor-v118';
+  anchor.hidden=true;
+  anchor.setAttribute('aria-hidden','true');
+  anchor.dataset.preparationCompat='v1183';
+  canvas.append(anchor);
+  return anchor;
+}
+
+function warmPreparation(){
+  if(document.querySelector('#horsNormePreparationV77'))return;
+  const now=Date.now();
+  if(now-lastWarmAt<250)return;
+  lastWarmAt=now;
+  ensureLegacyPreparationAnchor();
+  if(document.body)document.body.dataset.clientPreparationSignature='';
+  window.dispatchEvent(new Event('focus'));
+}
+
 function preloadPreparation(){
   if(preparationModulePromise)return preparationModulePromise;
   importing=true;
-  preparationModulePromise=import('/espace-client/client-preparation-v77.js?v=2')
+  ensureLegacyPreparationAnchor();
+  preparationModulePromise=import('/espace-client/client-preparation-v77.js?v=3')
     .then(()=>{
-      /* v77 debounces its initial refresh on every dashboard mutation. Trigger its
-       * existing force-refresh hook once after import so the 10 static cards are
-       * already rendered before the client opens the Préparation step. */
-      window.dispatchEvent(new Event('focus'));
+      warmPreparation();
       return true;
     })
     .catch(error=>{
@@ -57,7 +81,7 @@ function preloadPreparation(){
     })
     .finally(()=>{
       importing=false;
-      setTimeout(queue,20);
+      setTimeout(()=>{warmPreparation();queue();},40);
     });
   return preparationModulePromise;
 }
@@ -108,6 +132,7 @@ function sync(){
     return;
   }
   if(!importing)preloadPreparation();
+  warmPreparation();
 }
 
 function claimStatusHost(){

@@ -19,30 +19,54 @@
       "/robots.txt", "/sitemap.xml", "/video-sitemap.xml", "/llms.txt"
     ]
   },
-  "containers": [{"class_name":"WebTvEncoder","image":"./neptune-tv-media-cloudflare/containers/webtv/Dockerfile","instance_type":"standard-2","max_instances":1}],
-  "durable_objects":{"bindings":[{"name":"STUDIO","class_name":"StudioStore"},{"name":"WEBTV_ENCODER","class_name":"WebTvEncoder"}]},
-  "migrations":[{"tag":"v1","new_sqlite_classes":["StudioStore"]},{"tag":"v2","new_sqlite_classes":["VideoProcessor"]},{"tag":"v3","deleted_classes":["VideoProcessor"]},{"tag":"v4","new_sqlite_classes":["VideoProcessorV2"]},{"tag":"v5","deleted_classes":["VideoProcessorV2"]},{"tag":"v6","new_sqlite_classes":["WebTvEncoder"]}],
-  "r2_buckets":[{"binding":"MEDIA","bucket_name":"neptune-media-assets"}],
-  "ai":{"binding":"AI"},
-  "vars":{
-    "BOOKING_URL":"https://tv.neptunebusiness.com/reserver",
-    "PREPARATION_BOOKING_URL":"https://calendar.app.google/X9q1T5JT9ngMfZY67",
-    "PUBLIC_ORIGIN":"https://tv.neptunebusiness.com",
-    "AI_MODEL":"@cf/openai/gpt-oss-120b",
-    "OPENAI_MODEL":"gpt-5-mini",
-    "OPENAI_TRANSCRIPTION_MODEL":"whisper-1",
-    "OPENAI_BASE_URL":"https://api.openai.com/v1",
-    "RESEND_FROM_EMAIL":"Neptune Media <contact@media.neptunebusiness.com>",
-    "AUTH_FROM_EMAIL":"Neptune Media <contact@media.neptunebusiness.com>",
-    "RESEND_REPLY_TO_EMAIL":"contact@neptunebusiness.com",
-    "PORTAL_INTERNAL_EMAILS":"neptunebusinessclub@gmail.com",
-    "STUDIO_SUPPLIER_NAME":"REC BOX Studio",
-    "STUDIO_SUPPLIER_EMAIL":"contact@recbox.fr",
-    "STUDIO_ADDRESS":"11 Allée de Longueterre, 31850 Montrabé",
-    "WEBTV_WIDTH":"1280","WEBTV_HEIGHT":"720","WEBTV_FPS":"30","WEBTV_VIDEO_BITRATE_KBPS":"4000","WEBTV_AUDIO_BITRATE_KBPS":"128","WEBTV_X264_PRESET":"superfast",
-    "LEGACY_ACTIVE_V37_VERIFIER": { "main": "neptune-tv-media-cloudflare/src/entry-v37.js" },
-    "LEGACY_ROOT_VERIFIER":{"main":"neptune-tv-media-cloudflare/src/entry-v19.js"},
-    "LEGACY_EMAIL_VERIFIER":{"main":"neptune-tv-media-cloudflare/src/entry-v21.js"}
+  "containers": [
+    {
+      "class_name": "WebTvEncoder",
+      "image": "./neptune-tv-media-cloudflare/containers/webtv/Dockerfile",
+      "instance_type": "standard-2",
+      "max_instances": 1
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      { "name": "STUDIO", "class_name": "StudioStore" },
+      { "name": "WEBTV_ENCODER", "class_name": "WebTvEncoder" }
+    ]
   },
-  "observability":{"enabled":true}
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["StudioStore"] },
+    { "tag": "v2", "new_sqlite_classes": ["VideoProcessor"] },
+    { "tag": "v3", "deleted_classes": ["VideoProcessor"] },
+    { "tag": "v4", "new_sqlite_classes": ["VideoProcessorV2"] },
+    { "tag": "v5", "deleted_classes": ["VideoProcessorV2"] },
+    { "tag": "v6", "new_sqlite_classes": ["WebTvEncoder"] }
+  ],
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "neptune-media-assets" }],
+  "ai": { "binding": "AI" },
+  "vars": {
+    "BOOKING_URL": "https://tv.neptunebusiness.com/reserver",
+    "PREPARATION_BOOKING_URL": "https://calendar.app.google/X9q1T5JT9ngMfZY67",
+    "PUBLIC_ORIGIN": "https://tv.neptunebusiness.com",
+    "AI_MODEL": "@cf/openai/gpt-oss-120b",
+    "OPENAI_MODEL": "gpt-5-mini",
+    "OPENAI_TRANSCRIPTION_MODEL": "whisper-1",
+    "OPENAI_BASE_URL": "https://api.openai.com/v1",
+    "RESEND_FROM_EMAIL": "Neptune Media <contact@media.neptunebusiness.com>",
+    "AUTH_FROM_EMAIL": "Neptune Media <contact@media.neptunebusiness.com>",
+    "RESEND_REPLY_TO_EMAIL": "contact@neptunebusiness.com",
+    "PORTAL_INTERNAL_EMAILS": "neptunebusinessclub@gmail.com",
+    "STUDIO_SUPPLIER_NAME": "REC BOX Studio",
+    "STUDIO_SUPPLIER_EMAIL": "contact@recbox.fr",
+    "STUDIO_ADDRESS": "11 Allée de Longueterre, 31850 Montrabé",
+    "WEBTV_WIDTH": "1280",
+    "WEBTV_HEIGHT": "720",
+    "WEBTV_FPS": "30",
+    "WEBTV_VIDEO_BITRATE_KBPS": "4000",
+    "WEBTV_AUDIO_BITRATE_KBPS": "128",
+    "WEBTV_X264_PRESET": "superfast",
+    "LEGACY_ACTIVE_V37_VERIFIER": { "main": "neptune-tv-media-cloudflare/src/entry-v37.js" },
+    "LEGACY_ROOT_VERIFIER": { "main": "neptune-tv-media-cloudflare/src/entry-v19.js" },
+    "LEGACY_EMAIL_VERIFIER": { "main": "neptune-tv-media-cloudflare/src/entry-v21.js" }
+  },
+  "observability": { "enabled": true }
 }

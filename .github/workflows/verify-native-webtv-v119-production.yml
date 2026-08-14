@@ -1,0 +1,112 @@
+name: Verify Native WebTV V119 Production
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-native-webtv-v119-production.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-native-webtv-v119-production.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-native-webtv-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      WORKERS_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
+      TV_URL: https://tv.neptunebusiness.com
+      RELEASE_V119: neptune-media-native-webtv-20260814-v119
+      WEBTV_RELEASE: neptune-native-webtv-20260814-v118
+      WEBTV_UI_RELEASE: neptune-native-webtv-ui-20260814-v118
+      WIZARD_RELEASE: neptune-client-passage-wizard-20260814-v118
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify v119 production on both origins
+        shell: bash
+        run: |
+          set -euo pipefail
+          verify_origin() {
+            local base="$1"
+            local slug="$2"
+            local ready=0
+            mkdir -p "/tmp/neptune-v119/$slug"
+
+            for attempt in $(seq 1 24); do
+              local q="v119=${GITHUB_SHA}&attempt=${attempt}"
+              curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/api/public/release?$q" > "/tmp/neptune-v119/$slug/release.json" || true
+              curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/api/public/webtv/state?$q" > "/tmp/neptune-v119/$slug/state.json" || true
+              curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/direct/?$q" > "/tmp/neptune-v119/$slug/direct.html" || true
+              curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/studio/webtv-native-v118.js?v=2&$q" > "/tmp/neptune-v119/$slug/webtv-ui.js" || true
+              curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/studio/client-passage-wizard-v118.js?v=2&$q" > "/tmp/neptune-v119/$slug/wizard.js" || true
+
+              if ORIGIN_DIR="/tmp/neptune-v119/$slug" node <<'NODE'
+          const fs=require('node:fs');
+          const dir=process.env.ORIGIN_DIR;
+          let release,state;
+          try{
+            release=JSON.parse(fs.readFileSync(`${dir}/release.json`,'utf8'));
+            state=JSON.parse(fs.readFileSync(`${dir}/state.json`,'utf8'));
+          }catch{process.exit(1);}
+
+          if(release.nativeWebTv!==process.env.RELEASE_V119)process.exit(1);
+          if(release.webTvControlRoom!==process.env.WEBTV_RELEASE)process.exit(1);
+          if(release.webTvBroadcastEngine!=='neptune-native-hls-with-optional-youtube-rtmps')process.exit(1);
+          if(release.webTvPublicDirect!=='/direct/')process.exit(1);
+          if(release.clientPassageWizard!=='catalog-driven-step-by-step-v118')process.exit(1);
+
+          if(state.release!==process.env.WEBTV_RELEASE)process.exit(1);
+          if(state.stream?.protocol!=='hls')process.exit(1);
+          if(state.stream?.manifestUrl!=='/direct/live/index.m3u8')process.exit(1);
+          if(state.stream?.watchUrl!=='/direct/')process.exit(1);
+          if(!state.youtube||typeof state.youtube!=='object')process.exit(1);
+          const serialized=JSON.stringify(state).toLowerCase();
+          if(serialized.includes('youtube_stream_key')||serialized.includes('streamkey')||serialized.includes('rtmps://'))process.exit(1);
+          if(!Array.isArray(state.schedule))process.exit(1);
+          NODE
+              then
+                if grep -Fq 'BUSINESS · DIRECT' "/tmp/neptune-v119/$slug/direct.html" \
+                  && grep -Fq '/direct/live/index.m3u8' "/tmp/neptune-v119/$slug/direct.html" \
+                  && grep -Fq 'À SUIVRE' "/tmp/neptune-v119/$slug/direct.html" \
+                  && grep -Fq "$WEBTV_UI_RELEASE" "/tmp/neptune-v119/$slug/webtv-ui.js" \
+                  && grep -Fq 'youtube_start' "/tmp/neptune-v119/$slug/webtv-ui.js" \
+                  && grep -Fq 'youtube_stop' "/tmp/neptune-v119/$slug/webtv-ui.js" \
+                  && grep -Fq "$WIZARD_RELEASE" "/tmp/neptune-v119/$slug/wizard.js" \
+                  && grep -Fq '/api/admin/media-catalog-v98/context' "/tmp/neptune-v119/$slug/wizard.js" \
+                  && grep -Fq '/api/admin/client-order' "/tmp/neptune-v119/$slug/wizard.js"; then
+                  ready=1
+                  echo "$base: WebTV native v119 verified on attempt $attempt"
+                  break
+                fi
+              fi
+              sleep 5
+            done
+
+            test "$ready" = 1
+
+            local enabled
+            enabled=$(node -e "const s=require('/tmp/neptune-v119/$slug/state.json'); process.stdout.write(String(Boolean(s.enabled)))")
+            local manifest_status
+            manifest_status=$(curl -sS -o "/tmp/neptune-v119/$slug/manifest.out" -w '%{http_code}' -H 'Cache-Control: no-cache, no-store' "$base/direct/live/index.m3u8?v119=${GITHUB_SHA}" || true)
+            if [ "$enabled" = "true" ]; then
+              case "$manifest_status" in 200|503) ;; *) echo "Unexpected live manifest status while enabled: $manifest_status"; exit 1;; esac
+            else
+              case "$manifest_status" in 200|503) ;; *) echo "Unexpected live manifest status while antenna is off: $manifest_status"; exit 1;; esac
+            fi
+            echo "$base: live route safe status=$manifest_status, enabled=$enabled"
+          }
+
+          verify_origin "$WORKERS_URL" workers
+          verify_origin "$TV_URL" tv
+
+      - name: Summarize read-only verification
+        run: |
+          echo 'Native WebTV v119 production verification passed.'
+          echo 'No antenna state or YouTube simulcast mutation was performed.'

@@ -2,7 +2,7 @@ import base,{StudioStore,WebTvEncoder} from './entry-v37.js';
 
 export {StudioStore,WebTvEncoder};
 
-const RELEASE='neptune-client-experience-20260814-v118.3';
+const RELEASE='neptune-client-experience-20260814-v118.2';
 const CLIENT_CSS='/espace-client/client-experience-v117.css?v=1';
 const CLIENT_JS='/espace-client/client-experience-v117.js?v=1';
 const COMMAND_CSS='/espace-client/client-command-center-v118.css?v=1';
@@ -50,7 +50,7 @@ async function injectClientExperience(response){
 
 async function augmentRelease(response){
   const current=await response.json().catch(()=>({}));
-  return new Response(JSON.stringify({...current,clientExperience:RELEASE,clientCommandCenter:'contextual-stage-details-content-folders-v118.3',clientPreparation:'preloaded-step-local-reading-ack-v118.3',clientPreparationBridge:'v77-state-context-bridge-v118.3',clientCatalogVisuals:'studio-synced-v118',clientCatalogLayout:'city-first-horizontal-rail-v118.2',clientVisualCoherence:'stable-stage-hitboxes-compact-support-v118.3',clientLibraryLayout:'drive-aligned-long-short-folders-v118.3',clientLoadingStates:'skeleton-error-retry-reduced-motion-v117'}),{
+  return new Response(JSON.stringify({...current,clientExperience:RELEASE,clientCommandCenter:'contextual-stage-details-content-folders-v118.2',clientPreparation:'step-local-reading-ack-v118',clientPreparationBridge:'v77-state-context-bridge-v118',clientCatalogVisuals:'studio-synced-v118',clientCatalogLayout:'city-first-horizontal-rail-v118.2',clientVisualCoherence:'selected-stage-support-spacing-snapshot-retirement-v118.2',clientUxPolish:'stable-stage-hitboxes-preloaded-preparation-compact-support-v118.3',clientLibraryLayout:'drive-aligned-long-short-folders-v118.3',clientLoadingStates:'skeleton-error-retry-reduced-motion-v117'}),{
     status:response.status,
     headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'},
   });

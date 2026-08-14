@@ -11,7 +11,19 @@
 .client-skeleton-library-v117{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;padding:12px 0}.client-skeleton-library-v117 article{min-height:220px;padding:0 12px 14px;border:1px solid #e2e6ee;border-radius:16px;background:#fff;overflow:hidden}.client-skeleton-library-v117 article i{display:block;height:140px;margin:0 -12px 14px;background:#e9edf3}.client-skeleton-library-v117 article span,.client-skeleton-library-v117 article b{display:block;height:11px;border-radius:999px;background:#e9edf3}.client-skeleton-library-v117 article span{width:70%}.client-skeleton-library-v117 article b{width:45%;margin-top:9px}
 .client-skeleton-calendar-v117{display:grid!important;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;padding:0!important;background:#e2e6ee!important}.client-skeleton-calendar-v117 i{display:block;min-height:88px;background:#f5f7fa}
 .client-feedback-v117{position:relative}.client-feedback-v117 button[data-client-retry-v117]{display:inline-flex;margin-top:12px;padding:9px 12px;border:0;border-radius:10px;background:#172951;color:#fff;font:inherit;font-size:.72rem;font-weight:820;cursor:pointer}
+
+/* v117 visual-review corrections: isolate old lower-dashboard grid-area rules from the new composition. */
+html[data-client-command-center="v117"] .dashboard-v37 .client-secondary-row{align-items:start!important}
+html[data-client-command-center="v117"] .dashboard-v37 .client-secondary-row>.cc-activity-card{align-self:start!important;height:auto!important;min-height:0!important}
+html[data-client-command-center="v117"] .dashboard-v37 .cc-utility-grid{display:block!important;grid-template-columns:none!important;grid-template-areas:none!important}
+html[data-client-command-center="v117"] .dashboard-v37 .cc-utility-grid>.utility-column{position:static!important;display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-template-areas:none!important;grid-auto-flow:row!important;align-items:stretch!important;gap:12px!important;margin:0!important}
+html[data-client-command-center="v117"] .dashboard-v37 .cc-utility-grid>.utility-column>.referral-panel,
+html[data-client-command-center="v117"] .dashboard-v37 .cc-utility-grid>.utility-column>.support-card{position:relative!important;inset:auto!important;grid-area:auto!important;align-self:stretch!important;width:auto!important;height:auto!important;min-height:0!important;margin:0!important;transform:none!important}
+html[data-client-command-center="v117"] .dashboard-v37 .cc-utility-grid>.utility-column>.support-card{display:block!important;padding:20px!important}
+html[data-client-command-center="v117"] .dashboard-v37 .cc-utility-grid>.utility-column>.support-card .support-actions{display:grid!important;grid-template-columns:1fr!important;margin-top:16px!important}
+
 @keyframes clientSkeletonV117{0%,100%{opacity:.58}50%{opacity:1}}
 @media(max-width:900px){.client-primary-nav-v117{gap:4px}.client-primary-nav-v117 a{padding:8px 10px;font-size:.66rem}.client-skeleton-library-v117{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){html[data-client-command-center="v117"] .dashboard-v37 .cc-utility-grid>.utility-column{grid-template-columns:1fr!important}}
 @media(max-width:620px){.client-nav-host-v117{width:100%;overflow-x:auto;justify-content:flex-start!important;padding-bottom:2px;scrollbar-width:none}.client-nav-host-v117::-webkit-scrollbar{display:none}.client-primary-nav-v117{min-width:max-content}.client-primary-nav-v117 a{min-height:36px;padding:7px 10px}.client-nav-logout-v117{width:39px;min-height:36px}.client-skeleton-library-v117{grid-template-columns:1fr 1fr;gap:9px}.client-skeleton-calendar-v117 i{min-height:64px}}
 @media(prefers-reduced-motion:reduce){.client-primary-nav-v117 *,.client-skeleton-v117{animation:none!important;transition:none!important}}

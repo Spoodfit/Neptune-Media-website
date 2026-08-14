@@ -5,10 +5,10 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY encoder.mjs /app/encoder.mjs
+COPY encoder-v118.mjs /app/encoder-v118.mjs
 
 ENV NODE_ENV=production \
     PORT=8080
 
 EXPOSE 8080
-CMD ["node", "/app/encoder.mjs"]
+CMD ["node", "/app/encoder-v118.mjs"]

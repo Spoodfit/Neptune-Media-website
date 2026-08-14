@@ -1,4 +1,6 @@
 import base,{StudioStore,WebTvEncoder} from './entry-v37.js';
+import {clientToken} from './portal-http-utils.js';
+import {isSameOrigin,json} from './security.js';
 
 export {StudioStore,WebTvEncoder};
 
@@ -19,6 +21,9 @@ const UX_V1184_JS='/espace-client/client-ux-v118-4.js?v=1';
 export default{
   async fetch(request,env,ctx){
     const url=new URL(request.url);
+    if(request.method==='POST'&&url.pathname==='/api/client/content-calendar/reuse'){
+      return fastGroundedReuse(request,env);
+    }
     let response=await base.fetch(request,env,ctx);
     if(request.method==='GET'&&url.pathname==='/api/public/release'&&response.ok){
       response=await augmentRelease(response);
@@ -32,6 +37,30 @@ export default{
     if(typeof base.scheduled==='function')return base.scheduled(controller,env,ctx);
   },
 };
+
+async function fastGroundedReuse(request,env){
+  if(!isSameOrigin(request))return json({error:'origin_forbidden'},403);
+  const payload=await request.json().catch(()=>({}));
+  const token=clientToken(request);
+  const studio=env.STUDIO.get(env.STUDIO.idFromName('neptune-media-main'));
+  const contextResponse=await callStore(studio,'/portal/content-reuse-context',{token,payload:{fileId:payload.fileId}});
+  const context=await contextResponse.json().catch(()=>({}));
+  if(!contextResponse.ok||!context.item)return json(context,contextResponse.status);
+  const item=context.item;
+  const response=await callStore(studio,'/portal/content-reuse-create',{
+    token,
+    payload:{
+      fileId:payload.fileId,
+      publishAt:payload.publishAt||item.nextAllowedAt,
+      networks:payload.networks,
+      title:String(payload.title||cleanFileTitle(item.name)||item.orderTitle||'Contenu Neptune Media').slice(0,140),
+      description:String(payload.description||'').slice(0,1800),
+      hashtags:Array.isArray(payload.hashtags)?payload.hashtags:[],
+    },
+  });
+  const result=await response.json().catch(()=>({}));
+  return json(result,response.status);
+}
 
 function isClientDocument(path){
   return path==='/espace-client'||path==='/espace-client/'||path==='/espace-client/index.html'||path.startsWith('/espace-client/videos')||path.startsWith('/espace-client/calendrier');
@@ -52,8 +81,13 @@ async function injectClientExperience(response){
 
 async function augmentRelease(response){
   const current=await response.json().catch(()=>({}));
-  return new Response(JSON.stringify({...current,clientExperience:RELEASE,clientCommandCenter:'compact-selection-persistent-collapsible-stage-details-v118.4',clientPreparation:'step-local-reading-ack-v118',clientPreparationBridge:'v77-state-context-bridge-v118.3.1',clientCatalogVisuals:'studio-synced-v118',clientCatalogLayout:'city-first-horizontal-rail-v118.2',clientVisualCoherence:'icon-halo-selected-stage-v118.4',clientUxPolish:'stable-stage-hitboxes-preloaded-preparation-compact-support-v118.3',clientLibraryLayout:'full-width-responsive-long-short-workspaces-v118.4',clientContentPlanning:'week-month-grounded-video-identity-no-blocking-ai-v118.4',clientLoadingStates:'skeleton-error-retry-reduced-motion-v117'}),{
+  return new Response(JSON.stringify({...current,clientExperience:RELEASE,clientCommandCenter:'compact-selection-persistent-collapsible-stage-details-v118.4',clientPreparation:'step-local-reading-ack-v118',clientPreparationBridge:'v77-state-context-bridge-v118.3.1',clientCatalogVisuals:'studio-synced-v118',clientCatalogLayout:'city-first-horizontal-rail-v118.2',clientVisualCoherence:'icon-halo-selected-stage-v118.4',clientUxPolish:'stable-stage-hitboxes-preloaded-preparation-compact-support-v118.3',clientLibraryLayout:'full-width-responsive-long-short-workspaces-v118.4',clientContentPlanning:'week-month-grounded-video-identity-no-blocking-ai-v118.4',clientContentReuse:'instant-grounded-file-identity-no-ai-wait-v118.4',clientLoadingStates:'skeleton-error-retry-reduced-motion-v117'}),{
     status:response.status,
     headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'},
   });
 }
+
+function callStore(studio,path,body){
+  return studio.fetch(`https://store${path}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});
+}
+function cleanFileTitle(value){return String(value||'').replace(/\.[a-z0-9]{2,5}$/iu,'').replace(/[_-]+/gu,' ').replace(/\s+/gu,' ').trim();}

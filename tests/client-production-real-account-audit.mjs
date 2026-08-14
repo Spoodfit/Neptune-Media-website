@@ -59,6 +59,7 @@ const report={
   },
   scenarios:[],
   findings:[],
+  errors:[],
 };
 
 const scenarios=[
@@ -84,89 +85,110 @@ for(const scenario of scenarios){
     }
   });
 
-  const response=await page.goto(`${baseUrl}${scenario.path}?production_audit=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:60000});
-  expect(response&&response.status()<400,`${scenario.name}: navigation HTTP ${response?.status()||0}`);
+  try{
+    const response=await page.goto(`${baseUrl}${scenario.path}?production_audit=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:60000});
+    expect(response&&response.status()<400,`${scenario.name}: navigation HTTP ${response?.status()||0}`);
 
-  if(scenario.kind==='dashboard'){
-    await page.waitForSelector('#dashboard:not([hidden])',{timeout:25000});
-    await page.waitForSelector('.client-command-center #ccContent:not([hidden])',{timeout:25000});
-    await page.waitForTimeout(1200);
-  }else{
-    await page.waitForTimeout(1500);
-  }
-
-  const diagnostics=await page.evaluate(({kind,expectedFolders,expectedFiles,expectedCities,hasActive})=>{
-    const doc=document.documentElement;
-    const body=document.body;
-    const overflow=Math.max(doc.scrollWidth,body.scrollWidth)-innerWidth;
-    const duplicateIds=[...document.querySelectorAll('[id]')]
-      .map(node=>node.id)
-      .filter((id,index,all)=>id&&all.indexOf(id)!==index)
-      .filter((id,index,all)=>all.indexOf(id)===index);
-    const allButtons=[...document.querySelectorAll('button,a[href]')];
-    const clippedTargets=allButtons.map(node=>({node,rect:node.getBoundingClientRect()})).filter(({rect})=>rect.width>0&&rect.height>0&&rect.right>innerWidth+3).length;
-    const data={
-      kind,
-      title:document.title,
-      overflow,
-      duplicateIds,
-      clippedTargets,
-      releaseMarker:doc.dataset.clientVisualCoherenceV1182||'',
-      pageHeight:Math.round(Math.max(doc.scrollHeight,body.scrollHeight)),
-      expectedFolders,
-      expectedFiles,
-      expectedCities,
-      hasActive,
-    };
-    if(kind==='dashboard'){
-      const selected=document.querySelector('.cc-stage.is-selected-v118 .cc-stage-copy strong');
-      const selectedColor=selected?getComputedStyle(selected).color:'';
-      const snapshot=document.querySelector('#clientContentSnapshot');
-      const support=document.querySelector('.support-card');
-      const utility=document.querySelector('.cc-utility-grid>.utility-column');
-      const formats=document.querySelector('.formats-panel');
-      const formatRect=formats?.getBoundingClientRect();
-      const utilityRect=utility?.getBoundingClientRect();
-      const cityButtons=[...document.querySelectorAll('[data-v1182-city]')];
-      const folders=document.querySelectorAll('.cc-v118-folder').length;
-      const videoBadge=document.querySelector('#videoBadge')?.textContent?.trim()||'';
-      data.dashboard={
-        selectedLabel:selected?.textContent?.trim()||'',
-        selectedColor,
-        selectedWhite:/rgb\(255,\s*255,\s*255\)|rgba\(255,\s*255,\s*255/iu.test(selectedColor),
-        snapshotVisible:Boolean(snapshot&&!snapshot.hidden&&getComputedStyle(snapshot).display!=='none'),
-        supportHeight:Math.round(support?.getBoundingClientRect().height||0),
-        utilityAlign:utility?getComputedStyle(utility).alignItems:'',
-        catalogUtilityGap:formatRect&&utilityRect?Math.round(utilityRect.top-formatRect.bottom):null,
-        cityButtons:cityButtons.length,
-        activeCity:cityButtons.find(button=>button.getAttribute('aria-pressed')==='true')?.dataset.v1182City||'',
-        folders,
-        videoBadge,
-        stageCount:document.querySelectorAll('.cc-stage[data-stage-index]').length,
-        commandMode:document.querySelector('.client-command-center')?.dataset.mode||'',
-      };
+    if(scenario.kind==='dashboard'){
+      await page.waitForSelector('#dashboard:not([hidden])',{timeout:25000});
+      await page.waitForSelector('.client-command-center #ccContent:not([hidden])',{timeout:25000});
+      await page.waitForTimeout(1200);
+    }else{
+      await page.waitForTimeout(1500);
     }
-    return data;
-  },{kind:scenario.kind,expectedFolders:ordersWithFiles.length,expectedFiles:files.length,expectedCities:catalogCities.length,hasActive:Boolean(activeOrder)});
 
-  if(scenario.kind==='dashboard'){
-    const d=diagnostics.dashboard;
-    expect(d.selectedLabel.length>0||!activeOrder,`${scenario.name}: étape active sans libellé`);
-    expect(!d.selectedWhite,`${scenario.name}: libellé actif blanc sur surface claire`);
-    expect(!d.snapshotVisible,`${scenario.name}: ancien résumé contenus visible`);
-    expect(d.supportHeight<260,`${scenario.name}: bloc support anormalement haut (${d.supportHeight}px)`);
-    expect(d.folders===ordersWithFiles.length,`${scenario.name}: ${d.folders} dossiers affichés pour ${ordersWithFiles.length} passages avec fichiers`);
-    if(catalogCities.length>1)expect(d.cityButtons===catalogCities.length,`${scenario.name}: ${d.cityButtons} villes visibles pour ${catalogCities.length} villes catalogue`);
-    expect(d.stageCount===8||!activeOrder,`${scenario.name}: parcours attendu de 8 étapes, reçu ${d.stageCount}`);
+    const diagnostics=await page.evaluate(({kind,expectedFolders,expectedFiles,expectedCities,hasActive})=>{
+      const doc=document.documentElement;
+      const body=document.body;
+      const overflow=Math.max(doc.scrollWidth,body.scrollWidth)-innerWidth;
+      const duplicateIds=[...document.querySelectorAll('[id]')]
+        .map(node=>node.id)
+        .filter((id,index,all)=>id&&all.indexOf(id)!==index)
+        .filter((id,index,all)=>all.indexOf(id)===index);
+      const allTargets=[...document.querySelectorAll('button,a[href]')];
+      const clippedTargetDetails=allTargets.map(node=>{
+        const rect=node.getBoundingClientRect();
+        return {
+          tag:node.tagName.toLowerCase(),
+          text:(node.textContent||node.getAttribute('aria-label')||'').replace(/\s+/gu,' ').trim().slice(0,90),
+          className:String(node.className||'').slice(0,140),
+          href:node.getAttribute('href')||'',
+          left:Math.round(rect.left),right:Math.round(rect.right),top:Math.round(rect.top),width:Math.round(rect.width),height:Math.round(rect.height),
+          visible:rect.width>0&&rect.height>0,
+        };
+      }).filter(item=>item.visible&&(item.right>innerWidth+3||item.left<-3));
+      const data={
+        kind,
+        title:document.title,
+        overflow,
+        duplicateIds,
+        clippedTargets:clippedTargetDetails.length,
+        clippedTargetDetails,
+        releaseMarker:doc.dataset.clientVisualCoherenceV1182||'',
+        pageHeight:Math.round(Math.max(doc.scrollHeight,body.scrollHeight)),
+        expectedFolders,
+        expectedFiles,
+        expectedCities,
+        hasActive,
+      };
+      if(kind==='dashboard'){
+        const selected=document.querySelector('.cc-stage.is-selected-v118 .cc-stage-copy strong');
+        const selectedColor=selected?getComputedStyle(selected).color:'';
+        const snapshot=document.querySelector('#clientContentSnapshot');
+        const support=document.querySelector('.support-card');
+        const utility=document.querySelector('.cc-utility-grid>.utility-column');
+        const formats=document.querySelector('.formats-panel');
+        const formatRect=formats?.getBoundingClientRect();
+        const utilityRect=utility?.getBoundingClientRect();
+        const cityButtons=[...document.querySelectorAll('[data-v1182-city]')];
+        const folders=document.querySelectorAll('.cc-v118-folder').length;
+        const videoBadge=document.querySelector('#videoBadge')?.textContent?.trim()||'';
+        data.dashboard={
+          selectedLabel:selected?.textContent?.trim()||'',
+          selectedColor,
+          selectedWhite:/rgb\(255,\s*255,\s*255\)|rgba\(255,\s*255,\s*255/iu.test(selectedColor),
+          snapshotVisible:Boolean(snapshot&&!snapshot.hidden&&getComputedStyle(snapshot).display!=='none'),
+          supportHeight:Math.round(support?.getBoundingClientRect().height||0),
+          utilityAlign:utility?getComputedStyle(utility).alignItems:'',
+          catalogUtilityGap:formatRect&&utilityRect?Math.round(utilityRect.top-formatRect.bottom):null,
+          cityButtons:cityButtons.length,
+          activeCity:cityButtons.find(button=>button.getAttribute('aria-pressed')==='true')?.dataset.v1182City||'',
+          folders,
+          videoBadge,
+          stageCount:document.querySelectorAll('.cc-stage[data-stage-index]').length,
+          commandMode:document.querySelector('.client-command-center')?.dataset.mode||'',
+        };
+      }
+      return data;
+    },{kind:scenario.kind,expectedFolders:ordersWithFiles.length,expectedFiles:files.length,expectedCities:catalogCities.length,hasActive:Boolean(activeOrder)});
+
+    const screenshot=path.join(outputDir,`${scenario.name}.png`);
+    await page.screenshot({path:screenshot,fullPage:true});
+
+    const scenarioErrors=[];
+    const check=(condition,message)=>{if(!condition)scenarioErrors.push(message);};
+    if(scenario.kind==='dashboard'){
+      const d=diagnostics.dashboard;
+      check(d.selectedLabel.length>0||!activeOrder,`${scenario.name}: étape active sans libellé`);
+      check(!d.selectedWhite,`${scenario.name}: libellé actif blanc sur surface claire`);
+      check(!d.snapshotVisible,`${scenario.name}: ancien résumé contenus visible`);
+      check(d.supportHeight<260,`${scenario.name}: bloc support anormalement haut (${d.supportHeight}px)`);
+      check(d.folders===ordersWithFiles.length,`${scenario.name}: ${d.folders} dossiers affichés pour ${ordersWithFiles.length} passages avec fichiers`);
+      if(catalogCities.length>1)check(d.cityButtons===catalogCities.length,`${scenario.name}: ${d.cityButtons} villes visibles pour ${catalogCities.length} villes catalogue`);
+      check(d.stageCount===8||!activeOrder,`${scenario.name}: parcours attendu de 8 étapes, reçu ${d.stageCount}`);
+    }
+    check(diagnostics.overflow<=3,`${scenario.name}: débordement horizontal de ${diagnostics.overflow}px`);
+    check(diagnostics.clippedTargets===0,`${scenario.name}: ${diagnostics.clippedTargets} cible(s) interactive(s) débordent (${diagnostics.clippedTargetDetails.map(item=>`${item.text||item.className} [${item.left},${item.right}]`).join(' | ')})`);
+    check(diagnostics.duplicateIds.length===0,`${scenario.name}: IDs dupliqués ${diagnostics.duplicateIds.join(', ')}`);
+    check(pageErrors.length===0,`${scenario.name}: erreurs JavaScript: ${pageErrors.join(' | ')}`);
+
+    report.scenarios.push({...scenario,diagnostics,pageErrors,failedRequests:failedRequests.slice(0,20),errors:scenarioErrors});
+    report.errors.push(...scenarioErrors);
+  }catch(error){
+    report.errors.push(`${scenario.name}: ${error.message}`);
+    report.scenarios.push({...scenario,diagnostics:null,pageErrors,failedRequests:failedRequests.slice(0,20),errors:[error.message]});
+    try{await page.screenshot({path:path.join(outputDir,`${scenario.name}-failure.png`),fullPage:true});}catch{}
   }
-  expect(diagnostics.overflow<=3,`${scenario.name}: débordement horizontal de ${diagnostics.overflow}px`);
-  expect(diagnostics.clippedTargets===0,`${scenario.name}: ${diagnostics.clippedTargets} cible(s) interactive(s) débordent à droite`);
-  expect(diagnostics.duplicateIds.length===0,`${scenario.name}: IDs dupliqués ${diagnostics.duplicateIds.join(', ')}`);
-  expect(pageErrors.length===0,`${scenario.name}: erreurs JavaScript: ${pageErrors.join(' | ')}`);
-
-  const screenshot=path.join(outputDir,`${scenario.name}.png`);
-  await page.screenshot({path:screenshot,fullPage:true});
-  report.scenarios.push({...scenario,diagnostics,pageErrors,failedRequests:failedRequests.slice(0,20)});
   await context.close();
 }
 
@@ -178,11 +200,13 @@ for(const scenario of report.scenarios){
 
 await fs.writeFile(path.join(outputDir,'report.json'),JSON.stringify(report,null,2));
 console.log(JSON.stringify({
-  ok:true,
+  ok:report.errors.length===0,
   realData:report.realData,
-  scenarios:report.scenarios.map(item=>({name:item.name,overflow:item.diagnostics.overflow,pageHeight:item.diagnostics.pageHeight,dashboard:item.diagnostics.dashboard||null})),
+  scenarios:report.scenarios.map(item=>({name:item.name,overflow:item.diagnostics?.overflow??null,pageHeight:item.diagnostics?.pageHeight??null,clippedTargetDetails:item.diagnostics?.clippedTargetDetails||[],dashboard:item.diagnostics?.dashboard||null,errors:item.errors})),
   findings:report.findings,
+  errors:report.errors,
 },null,2));
+if(report.errors.length)process.exit(1);
 
 function countBy(values){
   return values.reduce((acc,value)=>{acc[value]=(acc[value]||0)+1;return acc;},{});

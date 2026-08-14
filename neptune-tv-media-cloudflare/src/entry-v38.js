@@ -4,6 +4,7 @@ import {isSameOrigin,json} from './security.js';
 
 export {StudioStore,WebTvEncoder};
 
+const BASE_CLIENT_EXPERIENCE='neptune-client-experience-20260814-v118.2';
 const RELEASE='neptune-client-experience-20260814-v118.4';
 const CLIENT_CSS='/espace-client/client-experience-v117.css?v=1';
 const CLIENT_JS='/espace-client/client-experience-v117.js?v=1';
@@ -81,7 +82,7 @@ async function injectClientExperience(response){
 
 async function augmentRelease(response){
   const current=await response.json().catch(()=>({}));
-  return new Response(JSON.stringify({...current,clientExperience:RELEASE,clientCommandCenter:'compact-selection-persistent-collapsible-stage-details-v118.4',clientPreparation:'step-local-reading-ack-v118',clientPreparationBridge:'v77-state-context-bridge-v118.3.1',clientCatalogVisuals:'studio-synced-v118',clientCatalogLayout:'city-first-horizontal-rail-v118.2',clientVisualCoherence:'icon-halo-selected-stage-v118.4',clientUxPolish:'stable-stage-hitboxes-preloaded-preparation-compact-support-v118.3',clientLibraryLayout:'full-width-responsive-long-short-workspaces-v118.4',clientContentPlanning:'week-month-grounded-video-identity-no-blocking-ai-v118.4',clientContentReuse:'instant-grounded-file-identity-no-ai-wait-v118.4',clientLoadingStates:'skeleton-error-retry-reduced-motion-v117'}),{
+  return new Response(JSON.stringify({...current,clientExperience:RELEASE,clientExperienceBase:BASE_CLIENT_EXPERIENCE,clientCommandCenter:'compact-selection-persistent-collapsible-stage-details-v118.4',clientPreparation:'step-local-reading-ack-v118',clientPreparationBridge:'v77-state-context-bridge-v118.3.1',clientCatalogVisuals:'studio-synced-v118',clientCatalogLayout:'city-first-horizontal-rail-v118.2',clientVisualCoherence:'icon-halo-selected-stage-v118.4',clientUxPolish:'stable-stage-hitboxes-preloaded-preparation-compact-support-v118.3',clientLibraryLayout:'full-width-responsive-long-short-workspaces-v118.4',clientContentPlanning:'week-month-grounded-video-identity-no-blocking-ai-v118.4',clientContentReuse:'instant-grounded-file-identity-no-ai-wait-v118.4',clientLoadingStates:'skeleton-error-retry-reduced-motion-v117'}),{
     status:response.status,
     headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'},
   });

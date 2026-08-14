@@ -11,6 +11,7 @@ on:
       - 'tests/client-command-center-v117.mjs'
       - 'tests/client-command-center-v118.mjs'
       - 'tests/client-visual-coherence-v118-2.mjs'
+      - 'tests/client-production-real-account-audit.mjs'
       - '.github/workflows/client-dashboard-validation.yml'
   workflow_dispatch:
 
@@ -20,7 +21,7 @@ permissions:
 jobs:
   validate-dashboard:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -87,22 +88,37 @@ jobs:
           set -o pipefail
           node tests/client-content-runtime.mjs 2>&1 | tee /tmp/client-content-runtime.log
 
+      # Production is still running main while a PR is being validated, so this
+      # step is evidence only at PR time. Local regression tests above remain
+      # blocking; the real-account audit is rerun after deployment for verdict.
+      - name: Audit real Neptune test account in production
+        continue-on-error: true
+        shell: bash
+        env:
+          CLIENT_PRODUCTION_URL: https://tv.neptunebusiness.com
+          CLIENT_AUDIT_EMAIL: contact@neptunebusiness.com
+        run: |
+          set -o pipefail
+          node tests/client-production-real-account-audit.mjs 2>&1 | tee /tmp/client-production-real-account-audit.log
+
       - name: Upload screenshots and report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: client-dashboard-v118-2-validation
+          name: client-dashboard-real-production-audit
           path: |
             test-results/client-dashboard
             test-results/client-command-center-v117
             test-results/client-command-center-v118
             test-results/client-visual-coherence-v118-2
             test-results/client-content-runtime
+            test-results/client-production-real-account-audit
             /tmp/client-dashboard-run.log
             /tmp/client-command-center-v117.log
             /tmp/client-command-center-v118.log
             /tmp/client-visual-coherence-v118-2.log
             /tmp/client-content-runtime.log
+            /tmp/client-production-real-account-audit.log
             /tmp/client-dashboard-server.log
           if-no-files-found: warn
           retention-days: 7

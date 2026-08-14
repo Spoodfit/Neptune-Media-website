@@ -67,6 +67,7 @@ jobs:
         env:
           LOCAL_BASE_URL: http://127.0.0.1:4173
           LIVE_BASE_URL: https://tv.neptunebusiness.com
+          PW_TEST_SCREENSHOT_NO_FONTS_READY: '1'
         run: node neptune-tv-media-cloudflare/tests/audit-entire-application-v60.mjs
 
       - name: Evaluate blocking findings

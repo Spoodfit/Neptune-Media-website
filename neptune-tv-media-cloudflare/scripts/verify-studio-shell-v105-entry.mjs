@@ -2,23 +2,31 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
-const packageRoot = fs.existsSync(path.join(root, 'src/entry-v39.js')) && fs.existsSync(path.join(root, 'public/studio/studio-information-architecture-v65-1.js'));
+const packageRoot = fs.existsSync(path.join(root, 'src/entry-v40.js')) && fs.existsSync(path.join(root, 'public/studio/studio-information-architecture-v65-1.js'));
 const prefix = packageRoot ? '' : 'neptune-tv-media-cloudflare/';
 const wranglerPath = path.join(root, 'wrangler.jsonc');
 const wrangler = fs.readFileSync(wranglerPath, 'utf8');
 const mainMatch = wrangler.match(/"main"\s*:\s*"([^"]+)"/u);
 if (!mainMatch) throw new Error('wrangler.jsonc: main entry is missing');
 
-const expectedEntry = packageRoot ? 'src/entry-v39.js' : 'neptune-tv-media-cloudflare/src/entry-v39.js';
+const expectedEntry = packageRoot ? 'src/entry-v40.js' : 'neptune-tv-media-cloudflare/src/entry-v40.js';
 const activeEntry = mainMatch[1];
 if (activeEntry !== expectedEntry) {
-  throw new Error(`Studio v115 is not active through v39: wrangler main is ${activeEntry}, expected ${expectedEntry}`);
+  throw new Error(`Studio v115 is not active through v40: wrangler main is ${activeEntry}, expected ${expectedEntry}`);
 }
 
-const entry39Path = path.join(root, activeEntry);
+const entry40 = fs.readFileSync(path.join(root, activeEntry), 'utf8');
+if (!entry40.includes("from './entry-v39.js'")) {
+  throw new Error('Active v40 entry must preserve the complete v39 WebTV and client runtime');
+}
+if (!entry40.includes('neptune-webtv-playback-20260815-v119.5') || !entry40.includes('worker-src') || !entry40.includes('blob:')) {
+  throw new Error('Active v40 entry must keep the Hls.js Web Worker CSP playback fix');
+}
+
+const entry39Path = path.join(root, `${prefix}src/entry-v39.js`);
 const entry39 = fs.readFileSync(entry39Path, 'utf8');
 if (!entry39.includes("from './entry-v38.js'")) {
-  throw new Error('Active v39 entry must preserve the complete v38 client experience and Studio runtime');
+  throw new Error('Preserved v39 entry must preserve the complete v38 client experience and Studio runtime');
 }
 
 const entry38Path = path.join(root, `${prefix}src/entry-v38.js`);
@@ -27,7 +35,7 @@ if (!entry38.includes("from './entry-v37.js'")) {
   throw new Error('Preserved v38 entry must preserve the complete v37 Studio runtime');
 }
 if (!entry38.includes('neptune-client-experience-20260814-v118.2')) {
-  throw new Error('Active v39 chain must preserve the v118.2 client experience from v38');
+  throw new Error('Active v40 chain must preserve the v118.2 client experience from v38');
 }
 
 const entry37Path = path.join(root, `${prefix}src/entry-v37.js`);
@@ -85,4 +93,4 @@ for (const marker of [
   if (!catalogueLoader.includes(marker)) throw new Error(`Catalogue bootstrap safety is missing: ${marker}`);
 }
 
-console.log('Studio v115 active entry verified: v39 preserves v38 client experience, v37/v36 canonical 3-tab shell, Réglages auth gate, Catalogue v108 bootstrap and v115 runtime recovery.');
+console.log('Studio v115 active entry verified: v40 preserves v39/v38 client experience, v37/v36 canonical 3-tab shell, Réglages auth gate, Catalogue v108 bootstrap, v115 runtime recovery and WebTV HLS playback CSP.');

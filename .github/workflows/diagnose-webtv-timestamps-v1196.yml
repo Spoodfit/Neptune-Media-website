@@ -17,7 +17,7 @@ jobs:
       BASE: https://tv.neptunebusiness.com
     steps:
       - uses: actions/checkout@v4
-      - name: Trace DTS across the current HLS window
+      - name: Trace audio and video DTS across the current HLS window
         shell: bash
         run: |
           set -euo pipefail
@@ -33,22 +33,44 @@ jobs:
           import json, subprocess, pathlib
           root=pathlib.Path('/tmp/webtv-ts')
           rows=[]
-          previous_last=None
-          backwards=[]
+          failures=[]
+          previous={'video':None,'audio':None}
           for name in root.joinpath('segments.txt').read_text().splitlines():
               path=root/name
-              raw=subprocess.check_output(['ffprobe','-v','error','-select_streams','v:0','-show_entries','packet=dts_time,pts_time,flags','-of','json',str(path)],text=True)
-              packets=json.loads(raw).get('packets') or []
-              dts=[float(p['dts_time']) for p in packets if p.get('dts_time') not in (None,'N/A')]
-              pts=[float(p['pts_time']) for p in packets if p.get('pts_time') not in (None,'N/A')]
-              within=sum(1 for a,b in zip(dts,dts[1:]) if b<=a)
-              first=dts[0] if dts else None; last=dts[-1] if dts else None
-              cross=previous_last is not None and first is not None and first<=previous_last
-              if cross: backwards.append((name,previous_last,first))
-              rows.append({'segment':name,'video_first_dts':first,'video_last_dts':last,'video_first_pts':pts[0] if pts else None,'video_last_pts':pts[-1] if pts else None,'packets':len(dts),'non_increasing_inside':within,'backwards_from_previous':cross})
-              if last is not None: previous_last=last
+              row={'segment':name}
+              for kind,selector in [('video','v:0'),('audio','a:0')]:
+                  raw=subprocess.check_output(['ffprobe','-v','error','-select_streams',selector,'-show_entries','packet=dts_time,pts_time,duration_time,flags','-of','json',str(path)],text=True)
+                  packets=json.loads(raw).get('packets') or []
+                  dts=[float(p['dts_time']) for p in packets if p.get('dts_time') not in (None,'N/A')]
+                  pts=[float(p['pts_time']) for p in packets if p.get('pts_time') not in (None,'N/A')]
+                  durations=[float(p['duration_time']) for p in packets if p.get('duration_time') not in (None,'N/A')]
+                  inside=sum(1 for a,b in zip(dts,dts[1:]) if b<=a)
+                  first=dts[0] if dts else None
+                  last=dts[-1] if dts else None
+                  end=(last+(durations[-1] if durations else 0)) if last is not None else None
+                  cross=previous[kind] is not None and first is not None and first<previous[kind]-0.00001
+                  row.update({
+                      f'{kind}_first_dts':first,
+                      f'{kind}_last_dts':last,
+                      f'{kind}_end_dts':end,
+                      f'{kind}_first_pts':pts[0] if pts else None,
+                      f'{kind}_last_pts':pts[-1] if pts else None,
+                      f'{kind}_packets':len(dts),
+                      f'{kind}_non_increasing_inside':inside,
+                      f'{kind}_backwards_from_previous':cross,
+                  })
+                  if inside: failures.append(f'{name}:{kind}:inside={inside}')
+                  if cross: failures.append(f'{name}:{kind}:previous_end={previous[kind]} first={first}')
+                  if end is not None: previous[kind]=end
+              if row.get('video_first_dts') is not None and row.get('audio_first_dts') is not None:
+                  row['av_start_delta']=row['audio_first_dts']-row['video_first_dts']
+              if row.get('video_end_dts') is not None and row.get('audio_end_dts') is not None:
+                  row['av_end_delta']=row['audio_end_dts']-row['video_end_dts']
+              rows.append(row)
           print(json.dumps(rows,indent=2))
-          print('BACKWARDS',json.dumps(backwards))
-          if any(r['non_increasing_inside'] for r in rows): raise SystemExit('non-monotonic DTS inside a segment')
-          if backwards: raise SystemExit('DTS goes backwards between HLS segments')
+          print('FAILURES',json.dumps(failures,indent=2))
+          max_start=max((abs(r.get('av_start_delta',0)) for r in rows),default=0)
+          max_end=max((abs(r.get('av_end_delta',0)) for r in rows),default=0)
+          print('MAX_AV_START_DELTA',max_start,'MAX_AV_END_DELTA',max_end)
+          if failures: raise SystemExit('non-monotonic audio/video DTS detected')
           PY

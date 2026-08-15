@@ -64,6 +64,7 @@
     "WEBTV_VIDEO_BITRATE_KBPS": "4000",
     "WEBTV_AUDIO_BITRATE_KBPS": "128",
     "WEBTV_X264_PRESET": "superfast",
+    "LEGACY_WEBTV_ENTRY_V119": { "main": "src/entry-v39.js" },
     "LEGACY_ACTIVE_ENTRY_V1182": { "main": "src/entry-v38.js" },
     "LEGACY_LOCAL_VERIFIER": { "main": "src/entry-v19.js" },
     "LEGACY_EMAIL_VERIFIER": { "main": "src/entry-v21.js" }

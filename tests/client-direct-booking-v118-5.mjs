@@ -4,21 +4,30 @@ import fs from 'node:fs/promises';
 const base=(process.env.DASHBOARD_BASE_URL||'http://127.0.0.1:4173').replace(/\/$/u,'');
 const sourceRoot='neptune-tv-media-cloudflare';
 
-const [catalogJs,catalogCss,entry,bridge,store,wrangler]=await Promise.all([
+const [catalogJs,catalogCss,entry,bridge,store,wrangler,pointerFix]=await Promise.all([
   fs.readFile(`${sourceRoot}/public/espace-client/client-visual-coherence-v118-2.js`,'utf8'),
   fs.readFile(`${sourceRoot}/public/espace-client/client-visual-coherence-v118-2.css`,'utf8'),
   fs.readFile(`${sourceRoot}/src/entry-v38.js`,'utf8'),
   fs.readFile(`${sourceRoot}/src/portal-client-direct-booking-v118-5.js`,'utf8'),
   fs.readFile(`${sourceRoot}/src/store-v29.js`,'utf8'),
   fs.readFile(`${sourceRoot}/wrangler.jsonc`,'utf8'),
+  fs.readFile(`${sourceRoot}/public/espace-client/client-catalog-interaction-v118-6.js`,'utf8'),
 ]);
 
 expect(catalogJs.includes("new URL('/espace-client/reserver/'"),'les cartes doivent ouvrir la réservation client');
 expect(catalogJs.includes('cc-v118-catalog-card-link'),'la carte complète doit être une cible interactive unique');
-expect(!catalogJs.includes('<article class="format-card cc-v118-catalog-card"'),'l’ancien conteneur article à liens multiples doit être retiré');
-expect(!catalogJs.includes('href="${esc(href)}">Choisir'),'le CTA ne doit plus créer un second lien imbriqué');
+expect(!catalogJs.includes('<article class="format-card cc-v118-catalog-card"'),'l’ancien conteneur article à liens multiples doit être retiré du renderer visuel');
+expect(!catalogJs.includes('href="${esc(href)}">Choisir'),'le CTA ne doit plus créer un second lien imbriqué dans le renderer visuel');
 expect(catalogCss.includes('a.cc-v118-catalog-card-link.active'),'le vieux state .active doit être neutralisé');
 expect(catalogCss.includes('@media(hover:hover) and (pointer:fine)'),'le hover doit être limité aux pointeurs qui le supportent');
+expect(entry.includes("const CATALOG_INTERACTION_RELEASE='neptune-client-catalog-interaction-20260815-v118.6'"),'le runtime doit annoncer la correction v118.6');
+expect(entry.includes("'/espace-client/client-catalog-interaction-v118-6.js?v=1'"),'le correctif de concurrence catalogue doit être injecté en dernier');
+expect(entry.includes('clientCatalogInteraction:CATALOG_INTERACTION_RELEASE'),'le release endpoint doit exposer la version du correctif catalogue');
+expect(pointerFix.includes("classList.remove('format-card','active')"),'les cartes modernes doivent être isolées des anciens états format-card/active');
+expect(pointerFix.includes("querySelectorAll('article.cc-v118-catalog-card').forEach(upgradeLegacyCard)"),'un ancien renderer concurrent doit être migré automatiquement');
+expect(pointerFix.includes("attributeFilter:['class','aria-current']"),'le correctif doit surveiller le retour d’un état sélectionné legacy');
+expect(pointerFix.includes('.cc-v1186-format-card>*{pointer-events:none}'),'les descendants ne doivent plus créer de zones de clic concurrentes');
+expect(pointerFix.includes("url.pathname='/espace-client/reserver/'"),'les anciennes cartes /reserver doivent être ramenées vers la réservation authentifiée');
 expect(entry.includes("'/api/client/reservation/prepare-payment'"),'le runtime client v38 doit exposer la préparation de paiement authentifiée');
 expect(entry.includes('isSameOrigin(request)'),'la route de paiement doit vérifier la même origine');
 expect(entry.includes('clientToken(request)'),'la route de paiement doit dériver le client depuis sa session');
@@ -30,6 +39,8 @@ expect(wrangler.includes('"main": "src/entry-v39.js"'),'entry-v39 doit rester l�
 const browser=await chromium.launch({headless:true});
 const payloads=[];
 try{
+  await validateCatalogPointerRace(browser,pointerFix);
+
   for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
     const context=await browser.newContext({viewport});
     const page=await context.newPage();
@@ -74,7 +85,50 @@ for(const body of payloads){
   expect(!('email' in body)&&!('clientId' in body)&&!('fullName' in body),'l’identité ne doit jamais venir du navigateur');
 }
 
-console.log('Réservation client directe v118.5 validée : carte unique, session de confiance, créneau et paiement sans tunnel contact.');
+console.log('Réservation client directe v118.6 validée : concurrence des renderers neutralisée, carte unique stable à la souris/tactile et paiement sans tunnel contact.');
+
+async function validateCatalogPointerRace(browser,pointerFix){
+  const context=await browser.newContext({viewport:{width:1280,height:900}});
+  const page=await context.newPage();
+  await page.route('**/api/client/session',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({authenticated:true,client:{id:'client-race',email:'lea@example.com',fullName:'Léa Martin'},orders:[]})}));
+  await page.goto(`${base}/espace-client/?catalog_pointer_race=1`,{waitUntil:'domcontentloaded'});
+  await page.waitForSelector('.formats-panel .format-grid');
+  await page.evaluate(()=>{
+    const grid=document.querySelector('.formats-panel .format-grid');
+    grid.innerHTML=`<article class="format-card cc-v118-catalog-card active" aria-current="true">
+      <a class="cc-v118-catalog-visual" href="/reserver?city=toulouse&format=hors-norme"><span>NEPTUNE</span><i>Toulouse</i></a>
+      <div class="cc-v118-catalog-copy"><span>ÉMISSION</span><strong>Hors Norme</strong><p>Interview signature.</p></div>
+      <footer><b>Dès 890 €</b><a href="/reserver?city=toulouse&format=hors-norme">Choisir <span>→</span></a></footer>
+    </article>`;
+  });
+  await page.addScriptTag({content:pointerFix});
+  await page.waitForSelector('a.cc-v1186-format-card[data-v1186-owner="true"]');
+  await page.waitForTimeout(80);
+
+  const card=page.locator('a.cc-v1186-format-card').first();
+  expect(await page.locator('article.cc-v118-catalog-card').count()===0,'le renderer legacy doit être remplacé');
+  expect(await card.locator('a').count()===0,'aucun lien imbriqué ne doit rester dans la carte');
+  expect(!(await card.evaluate(node=>node.classList.contains('format-card'))),'la classe legacy format-card doit être retirée');
+  expect(!(await card.evaluate(node=>node.classList.contains('active'))),'la classe legacy active doit être retirée');
+  expect(!(await card.evaluate(node=>node.hasAttribute('aria-current'))),'aria-current ne doit pas transformer la carte en sélection persistante');
+  expect((await card.getAttribute('href'))==='/espace-client/reserver/?city=toulouse&format=hors-norme','la destination doit utiliser le parcours authentifié');
+
+  await card.evaluate(node=>{node.classList.add('format-card','active');node.setAttribute('aria-current','true');});
+  await page.waitForTimeout(80);
+  expect(!(await card.evaluate(node=>node.classList.contains('format-card'))),'le MutationObserver doit retirer format-card si un ancien script la réinjecte');
+  expect(!(await card.evaluate(node=>node.classList.contains('active'))),'le MutationObserver doit retirer active si un ancien script la réinjecte');
+  expect(!(await card.evaluate(node=>node.hasAttribute('aria-current'))),'le MutationObserver doit retirer aria-current réinjecté');
+
+  await card.hover();
+  const hovered=await card.evaluate(node=>({cursor:getComputedStyle(node).cursor,transform:getComputedStyle(node).transform,border:getComputedStyle(node).borderTopColor}));
+  expect(hovered.cursor==='pointer','la carte doit conserver un curseur pointer');
+  expect(!(await card.evaluate(node=>node.classList.contains('active'))),'le hover ne doit jamais devenir une sélection persistante');
+  await page.mouse.move(3,3);
+  await page.waitForTimeout(80);
+  expect(!(await card.evaluate(node=>node.classList.contains('active'))),'aucun état sélectionné ne doit rester après sortie de souris');
+  expect(await card.locator(':scope > *').evaluateAll(nodes=>nodes.every(node=>getComputedStyle(node).pointerEvents==='none')),'les descendants doivent laisser la carte entière gérer le clic');
+  await context.close();
+}
 
 function nextWeekday(){
   const date=new Date();date.setDate(date.getDate()+3);date.setHours(12,0,0,0);

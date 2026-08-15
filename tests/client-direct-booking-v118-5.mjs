@@ -126,9 +126,11 @@ async function validateCatalogPointerRace(browser,pointerFix,hoverCss){
   expect(!(await card.evaluate(node=>node.classList.contains('active'))),'le MutationObserver doit retirer active si un ancien script la réinjecte');
   expect(!(await card.evaluate(node=>node.hasAttribute('aria-current'))),'le MutationObserver doit retirer aria-current réinjecté');
 
+  await card.scrollIntoViewIfNeeded();
+  await page.waitForTimeout(80);
   const before=await card.boundingBox();
   expect(Boolean(before),'la carte doit avoir une géométrie mesurable avant hover');
-  await card.hover();
+  await page.mouse.move(before.x+before.width/2,before.y+Math.min(before.height/2,120));
   await page.waitForTimeout(180);
   const during=await card.boundingBox();
   const hovered=await card.evaluate(node=>({

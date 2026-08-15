@@ -5,6 +5,13 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/diagnose-streaming-production.yml'
+  pull_request:
+    paths:
+      - 'neptune-tv-media-cloudflare/src/webtv-control-v118.js'
+      - 'neptune-tv-media-cloudflare/src/entry-v39.js'
+      - 'neptune-tv-media-cloudflare/containers/webtv/**'
+      - 'neptune-tv-media-cloudflare/wrangler.jsonc'
+      - '.github/workflows/diagnose-streaming-production.yml'
   workflow_run:
     workflows: ["Deploy Neptune Media to Cloudflare"]
     types: [completed]
@@ -14,7 +21,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: neptune-streaming-production-diagnostic
+  group: neptune-streaming-production-diagnostic-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -51,8 +58,10 @@ jobs:
           echo "LIVE_JS_STATUS=$(fetch live "$PUBLIC_URL/live-channel.js")" >> "$GITHUB_ENV"
           echo "DIRECT_STATUS=$(fetch direct "$PUBLIC_URL/direct/")" >> "$GITHUB_ENV"
           echo "WEBTV_STATE_STATUS=$(fetch webtv_state "$PUBLIC_URL/api/public/webtv/state")" >> "$GITHUB_ENV"
+          echo "HLS_MANIFEST_STATUS=$(fetch hls_manifest "$PUBLIC_URL/direct/live/index.m3u8")" >> "$GITHUB_ENV"
           echo "TV_DIRECT_STATUS=$(fetch tv_direct "$OFFICIAL_TV/direct/")" >> "$GITHUB_ENV"
           echo "TV_WEBTV_STATE_STATUS=$(fetch tv_webtv_state "$OFFICIAL_TV/api/public/webtv/state")" >> "$GITHUB_ENV"
+          echo "TV_HLS_MANIFEST_STATUS=$(fetch tv_hls_manifest "$OFFICIAL_TV/direct/live/index.m3u8")" >> "$GITHUB_ENV"
           echo "MEDIA_DIRECT_STATUS=$(fetch_follow media_direct "$MEDIA_SITE/direct/")" >> "$GITHUB_ENV"
           echo "EMISSIONS_STATUS=$(fetch emissions "$PUBLIC_URL/emissions/")" >> "$GITHUB_ENV"
           echo "HEALTH_STATUS=$(fetch health "$PUBLIC_URL/api/health")" >> "$GITHUB_ENV"
@@ -94,6 +103,14 @@ jobs:
                   return False
               stream = state.get('stream')
               return isinstance(stream, dict) and stream.get('protocol') == 'hls' and stream.get('manifestUrl') == '/direct/live/index.m3u8' and stream.get('watchUrl') == '/direct/'
+          def encoder_healthy(state):
+              if not isinstance(state, dict):
+                  return False
+              encoder = state.get('encoder')
+              return isinstance(encoder, dict) and encoder.get('status') in {'streaming','live','running'} and not encoder.get('lastError')
+          def manifest_live(name):
+              body=text(name)
+              return body.startswith('#EXTM3U') and '#EXTINF:' in body and '.ts' in body
 
           webtv = json_body('webtv_state')
           tv_webtv = json_body('tv_webtv_state')
@@ -113,10 +130,16 @@ jobs:
               'direct_public_state_binding': has('direct', '/api/public/webtv/state') and has('direct', '/direct/live/index.m3u8'),
               'webtv_state_200': status('WEBTV_STATE_STATUS') == '200',
               'webtv_state_native_hls': native_hls(webtv),
+              'webtv_encoder_healthy': encoder_healthy(webtv),
+              'hls_manifest_200': status('HLS_MANIFEST_STATUS') == '200',
+              'hls_manifest_live': manifest_live('hls_manifest'),
               'official_tv_direct_200': status('TV_DIRECT_STATUS') == '200',
               'official_tv_direct_native_player': has('tv_direct', 'id="player"') and has('tv_direct', 'id="scheduleList"'),
               'official_tv_webtv_state_200': status('TV_WEBTV_STATE_STATUS') == '200',
               'official_tv_webtv_state_native_hls': native_hls(tv_webtv),
+              'official_tv_encoder_healthy': encoder_healthy(tv_webtv),
+              'official_tv_hls_manifest_200': status('TV_HLS_MANIFEST_STATUS') == '200',
+              'official_tv_hls_manifest_live': manifest_live('tv_hls_manifest'),
               'emissions_200': status('EMISSIONS_STATUS') == '200',
               'emissions_streaming_shell': has('emissions', 'data-public-ux="streaming-v3"'),
               'health_200': status('HEALTH_STATUS') == '200',
@@ -143,7 +166,14 @@ jobs:
               'checked_at': datetime.now(timezone.utc).isoformat(),
               'ready': all(checks.values()),
               'webtv_release': webtv.get('release') if isinstance(webtv, dict) else None,
+              'webtv_enabled': webtv.get('enabled') if isinstance(webtv, dict) else None,
+              'webtv_encoder': webtv.get('encoder') if isinstance(webtv, dict) else None,
               'official_tv_webtv_release': tv_webtv.get('release') if isinstance(tv_webtv, dict) else None,
+              'official_tv_encoder': tv_webtv.get('encoder') if isinstance(tv_webtv, dict) else None,
+              'manifest_status': status('HLS_MANIFEST_STATUS'),
+              'manifest_preview': text('hls_manifest')[:1200],
+              'official_tv_manifest_status': status('TV_HLS_MANIFEST_STATUS'),
+              'official_tv_manifest_preview': text('tv_hls_manifest')[:1200],
               'media_direct': {
                   'status': status('MEDIA_DIRECT_STATUS'),
                   'native_neptune_direct': has('media_direct', 'id="player"') and has('media_direct', '/api/public/webtv/state'),
@@ -151,6 +181,14 @@ jobs:
               'checks': checks,
           }
           Path('streaming-production-diagnostic.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps({
+              'enabled': report['webtv_enabled'],
+              'encoder': report['webtv_encoder'],
+              'manifest_status': report['manifest_status'],
+              'manifest_preview': report['manifest_preview'],
+              'official_tv_encoder': report['official_tv_encoder'],
+              'official_tv_manifest_status': report['official_tv_manifest_status'],
+          }, ensure_ascii=False, indent=2))
           failed = [name for name, ok in checks.items() if not ok]
           if failed:
               raise SystemExit('production contracts failed: ' + ', '.join(failed))

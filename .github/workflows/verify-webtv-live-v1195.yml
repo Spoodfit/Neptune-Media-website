@@ -1,0 +1,168 @@
+name: Verify WebTV Live V119.5
+
+on:
+  pull_request:
+    paths:
+      - 'neptune-tv-media-cloudflare/src/webtv-control-v118.js'
+      - 'neptune-tv-media-cloudflare/src/entry-v39.js'
+      - 'neptune-tv-media-cloudflare/src/entry-v40.js'
+      - 'neptune-tv-media-cloudflare/containers/webtv/**'
+      - 'neptune-tv-media-cloudflare/wrangler.jsonc'
+      - '.github/workflows/diagnose-streaming-production.yml'
+      - '.github/workflows/verify-webtv-live-v1195.yml'
+  workflow_run:
+    workflows: ["Deploy Neptune Media to Cloudflare"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: neptune-webtv-live-v1195-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-contract:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify playback CSP release contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q '"main": "src/entry-v40.js"' neptune-tv-media-cloudflare/wrangler.jsonc
+          grep -q "neptune-webtv-playback-20260815-v119.5" neptune-tv-media-cloudflare/src/entry-v40.js
+          grep -q "worker-src" neptune-tv-media-cloudflare/src/entry-v40.js
+          grep -q "blob:" neptune-tv-media-cloudflare/src/entry-v40.js
+          grep -q "child-src" neptune-tv-media-cloudflare/src/entry-v40.js
+
+  live-probe:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        base:
+          - https://neptune-media-webtv.neptunebusinessclub.workers.dev
+          - https://tv.neptunebusiness.com
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe state, manifest and actual MPEG-TS segment
+        shell: bash
+        env:
+          BASE: ${{ matrix.base }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/webtv
+          curl -fsS --retry 2 --retry-delay 1 "$BASE/api/public/webtv/state" -o /tmp/webtv/state.json
+          cat /tmp/webtv/state.json
+          python3 - <<'PY'
+          import json
+          s=json.load(open('/tmp/webtv/state.json'))
+          e=s.get('encoder') or {}
+          assert s.get('enabled') is True, s
+          assert e.get('status') in ('streaming','live','running'), e
+          assert not e.get('lastError'), e
+          PY
+          curl -fsS --retry 2 --retry-delay 1 -D /tmp/webtv/manifest.headers "$BASE/direct/live/index.m3u8" -o /tmp/webtv/index.m3u8
+          cat /tmp/webtv/manifest.headers
+          cat /tmp/webtv/index.m3u8
+          grep -q '^#EXTM3U' /tmp/webtv/index.m3u8
+          segment="$(grep -E '^segment-[0-9]+\.ts$' /tmp/webtv/index.m3u8 | tail -1)"
+          test -n "$segment"
+          code="$(curl -sS --retry 2 --retry-delay 1 -D /tmp/webtv/segment.headers -o /tmp/webtv/segment.ts -w '%{http_code}' "$BASE/direct/live/$segment")"
+          echo "SEGMENT=$segment STATUS=$code BYTES=$(wc -c </tmp/webtv/segment.ts)"
+          cat /tmp/webtv/segment.headers
+          test "$code" = 200
+          test "$(wc -c </tmp/webtv/segment.ts)" -gt 10000
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('/tmp/webtv/segment.ts').read_bytes()
+          assert len(p)>10000
+          assert p[0]==0x47, p[:16]
+          hits=sum(1 for i in range(0,min(len(p),188*20),188) if p[i:i+1]==b'G')
+          assert hits>=10, hits
+          print('segment MPEG-TS valide',len(p),'bytes',hits,'sync packets')
+          PY
+
+  browser-playback:
+    if: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      BASE: https://tv.neptunebusiness.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install browser probe
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify direct playback and Studio-style same-origin iframe
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { chromium } from 'playwright';
+          const base=process.env.BASE;
+          const browser=await chromium.launch({headless:true,args:['--autoplay-policy=no-user-gesture-required']});
+          const context=await browser.newContext({viewport:{width:1365,height:900}});
+          const page=await context.newPage();
+          const log=[];
+          page.on('console',m=>log.push(`console:${m.type()}:${m.text()}`));
+          page.on('pageerror',e=>log.push(`pageerror:${e.message}`));
+          page.on('requestfailed',r=>log.push(`requestfailed:${r.url()}:${r.failure()?.errorText||''}`));
+          page.on('response',r=>{if(/direct\/live|hls\.js/.test(r.url()))log.push(`response:${r.status()}:${r.url()}`)});
+
+          async function inspect(frame,label){
+            await frame.waitForSelector('#player',{timeout:20000});
+            await frame.waitForTimeout(12000);
+            const state=await frame.evaluate(()=>{
+              const v=document.querySelector('#player');
+              const s=document.querySelector('#playerState');
+              return {
+                readyState:v?.readyState,
+                networkState:v?.networkState,
+                currentTime:v?.currentTime,
+                paused:v?.paused,
+                muted:v?.muted,
+                error:v?.error?{code:v.error.code,message:v.error.message}:null,
+                stateHidden:s?.hidden,
+                stateText:s?.innerText,
+                hls:typeof window.Hls,
+                hlsSupported:Boolean(window.Hls?.isSupported?.()),
+              };
+            });
+            console.log(label,JSON.stringify(state,null,2));
+            if(!(state.currentTime>0.5)||state.readyState<2||state.error||state.stateHidden!==true){
+              console.log(log.join('\n'));
+              throw new Error(`${label} playback failed: ${JSON.stringify(state)}`);
+            }
+          }
+
+          await page.goto(`${base}/direct/?probe=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:60000});
+          await inspect(page,'standalone');
+
+          await page.goto(`${base}/?probe=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:60000});
+          await page.evaluate(()=>{document.body.innerHTML='<iframe id="probe" src="/direct/?embed=1" allow="autoplay; fullscreen" style="width:900px;height:520px"></iframe>';});
+          const handle=await page.waitForSelector('#probe',{timeout:10000});
+          const frame=await handle.contentFrame();
+          if(!frame)throw new Error('iframe unavailable');
+          await inspect(frame,'same-origin-iframe');
+
+          const header=await page.request.get(`${base}/direct/?probe=header-${Date.now()}`);
+          const csp=header.headers()['content-security-policy']||'';
+          const release=header.headers()['x-neptune-webtv-playback']||'';
+          console.log('CSP',csp);
+          console.log('PLAYBACK_RELEASE',release);
+          if(!/worker-src[^;]*blob:/.test(csp))throw new Error(`worker-src blob missing: ${csp}`);
+          if(release!=='neptune-webtv-playback-20260815-v119.5')throw new Error(`unexpected playback release: ${release}`);
+
+          console.log(log.join('\n'));
+          await browser.close();
+          NODE

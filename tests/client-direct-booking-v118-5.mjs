@@ -4,11 +4,12 @@ import fs from 'node:fs/promises';
 const base=(process.env.DASHBOARD_BASE_URL||'http://127.0.0.1:4173').replace(/\/$/u,'');
 const sourceRoot='neptune-tv-media-cloudflare';
 
-const [catalogJs,catalogCss,entry,bridge,wrangler]=await Promise.all([
+const [catalogJs,catalogCss,entry,bridge,store,wrangler]=await Promise.all([
   fs.readFile(`${sourceRoot}/public/espace-client/client-visual-coherence-v118-2.js`,'utf8'),
   fs.readFile(`${sourceRoot}/public/espace-client/client-visual-coherence-v118-2.css`,'utf8'),
-  fs.readFile(`${sourceRoot}/src/entry-v40.js`,'utf8'),
+  fs.readFile(`${sourceRoot}/src/entry-v38.js`,'utf8'),
   fs.readFile(`${sourceRoot}/src/portal-client-direct-booking-v118-5.js`,'utf8'),
+  fs.readFile(`${sourceRoot}/src/store-v29.js`,'utf8'),
   fs.readFile(`${sourceRoot}/wrangler.jsonc`,'utf8'),
 ]);
 
@@ -18,12 +19,13 @@ expect(!catalogJs.includes('<article class="format-card cc-v118-catalog-card"'),
 expect(!catalogJs.includes('href="${esc(href)}">Choisir'),'le CTA ne doit plus créer un second lien imbriqué');
 expect(catalogCss.includes('a.cc-v118-catalog-card-link.active'),'le vieux state .active doit être neutralisé');
 expect(catalogCss.includes('@media(hover:hover) and (pointer:fine)'),'le hover doit être limité aux pointeurs qui le supportent');
-expect(entry.includes("'/api/client/reservation/prepare-payment'"),'le Worker doit exposer la préparation de paiement authentifiée');
+expect(entry.includes("'/api/client/reservation/prepare-payment'"),'le runtime client v38 doit exposer la préparation de paiement authentifiée');
 expect(entry.includes('isSameOrigin(request)'),'la route de paiement doit vérifier la même origine');
 expect(entry.includes('clientToken(request)'),'la route de paiement doit dériver le client depuis sa session');
+expect(store.includes('/portal/client-direct-booking-v1185/prepare-payment'),'le store canonique v29 doit router la réservation authentifiée');
 expect(bridge.includes('requireClient(store'),'le store doit valider la session avant de préparer une réservation');
 expect(!bridge.includes('raw.email'),'le pont de réservation ne doit jamais faire confiance à un email fourni par le navigateur');
-expect(wrangler.includes('"main": "src/entry-v40.js"'),'v40 doit être l’entrée Worker active');
+expect(wrangler.includes('"main": "src/entry-v39.js"'),'entry-v39 doit rester l’entrée Worker canonique');
 
 const browser=await chromium.launch({headless:true});
 const payloads=[];

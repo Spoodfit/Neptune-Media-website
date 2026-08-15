@@ -5,17 +5,42 @@ on:
     paths:
       - 'neptune-tv-media-cloudflare/src/webtv-control-v118.js'
       - 'neptune-tv-media-cloudflare/src/entry-v39.js'
+      - 'neptune-tv-media-cloudflare/src/entry-v40.js'
       - 'neptune-tv-media-cloudflare/containers/webtv/**'
       - 'neptune-tv-media-cloudflare/wrangler.jsonc'
       - '.github/workflows/diagnose-streaming-production.yml'
       - '.github/workflows/verify-webtv-live-v1195.yml'
+  workflow_run:
+    workflows: ["Deploy Neptune Media to Cloudflare"]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: neptune-webtv-live-v1195-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  source-contract:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify playback CSP release contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q '"main": "src/entry-v40.js"' neptune-tv-media-cloudflare/wrangler.jsonc
+          grep -q "neptune-webtv-playback-20260815-v119.5" neptune-tv-media-cloudflare/src/entry-v40.js
+          grep -q "worker-src" neptune-tv-media-cloudflare/src/entry-v40.js
+          grep -q "blob:" neptune-tv-media-cloudflare/src/entry-v40.js
+          grep -q "child-src" neptune-tv-media-cloudflare/src/entry-v40.js
+
   live-probe:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     strategy:
@@ -64,6 +89,7 @@ jobs:
           PY
 
   browser-playback:
+    if: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -113,7 +139,7 @@ jobs:
               };
             });
             console.log(label,JSON.stringify(state,null,2));
-            if(!(state.currentTime>0.5)||state.readyState<2||state.error){
+            if(!(state.currentTime>0.5)||state.readyState<2||state.error||state.stateHidden!==true){
               console.log(log.join('\n'));
               throw new Error(`${label} playback failed: ${JSON.stringify(state)}`);
             }
@@ -128,6 +154,14 @@ jobs:
           const frame=await handle.contentFrame();
           if(!frame)throw new Error('iframe unavailable');
           await inspect(frame,'same-origin-iframe');
+
+          const header=await page.request.get(`${base}/direct/?probe=header-${Date.now()}`);
+          const csp=header.headers()['content-security-policy']||'';
+          const release=header.headers()['x-neptune-webtv-playback']||'';
+          console.log('CSP',csp);
+          console.log('PLAYBACK_RELEASE',release);
+          if(!/worker-src[^;]*blob:/.test(csp))throw new Error(`worker-src blob missing: ${csp}`);
+          if(release!=='neptune-webtv-playback-20260815-v119.5')throw new Error(`unexpected playback release: ${release}`);
 
           console.log(log.join('\n'));
           await browser.close();

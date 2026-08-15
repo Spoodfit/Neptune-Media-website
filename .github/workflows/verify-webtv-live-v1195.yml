@@ -81,8 +81,8 @@ jobs:
       - name: Verify direct playback and Studio-style same-origin iframe
         shell: bash
         run: |
-          node <<'NODE'
-          const { chromium } = require('playwright');
+          node --input-type=module <<'NODE'
+          import { chromium } from 'playwright';
           const base=process.env.BASE;
           const browser=await chromium.launch({headless:true,args:['--autoplay-policy=no-user-gesture-required']});
           const context=await browser.newContext({viewport:{width:1365,height:900}});

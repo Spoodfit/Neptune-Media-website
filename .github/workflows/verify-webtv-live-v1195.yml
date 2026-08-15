@@ -57,9 +57,78 @@ jobs:
           from pathlib import Path
           p=Path('/tmp/webtv/segment.ts').read_bytes()
           assert len(p)>10000
-          # MPEG-TS packets are 188 bytes and start with sync byte 0x47.
           assert p[0]==0x47, p[:16]
           hits=sum(1 for i in range(0,min(len(p),188*20),188) if p[i:i+1]==b'G')
           assert hits>=10, hits
           print('segment MPEG-TS valide',len(p),'bytes',hits,'sync packets')
           PY
+
+  browser-playback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      BASE: https://tv.neptunebusiness.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install browser probe
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify direct playback and Studio-style same-origin iframe
+        shell: bash
+        run: |
+          node <<'NODE'
+          const { chromium } = require('playwright');
+          const base=process.env.BASE;
+          const browser=await chromium.launch({headless:true,args:['--autoplay-policy=no-user-gesture-required']});
+          const context=await browser.newContext({viewport:{width:1365,height:900}});
+          const page=await context.newPage();
+          const log=[];
+          page.on('console',m=>log.push(`console:${m.type()}:${m.text()}`));
+          page.on('pageerror',e=>log.push(`pageerror:${e.message}`));
+          page.on('requestfailed',r=>log.push(`requestfailed:${r.url()}:${r.failure()?.errorText||''}`));
+          page.on('response',r=>{if(/direct\/live|hls\.js/.test(r.url()))log.push(`response:${r.status()}:${r.url()}`)});
+
+          async function inspect(frame,label){
+            await frame.waitForSelector('#player',{timeout:20000});
+            await frame.waitForTimeout(12000);
+            const state=await frame.evaluate(()=>{
+              const v=document.querySelector('#player');
+              const s=document.querySelector('#playerState');
+              return {
+                readyState:v?.readyState,
+                networkState:v?.networkState,
+                currentTime:v?.currentTime,
+                paused:v?.paused,
+                muted:v?.muted,
+                error:v?.error?{code:v.error.code,message:v.error.message}:null,
+                stateHidden:s?.hidden,
+                stateText:s?.innerText,
+                hls:typeof window.Hls,
+                hlsSupported:Boolean(window.Hls?.isSupported?.()),
+              };
+            });
+            console.log(label,JSON.stringify(state,null,2));
+            if(!(state.currentTime>0.5)||state.readyState<2||state.error){
+              console.log(log.join('\n'));
+              throw new Error(`${label} playback failed: ${JSON.stringify(state)}`);
+            }
+          }
+
+          await page.goto(`${base}/direct/?probe=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:60000});
+          await inspect(page,'standalone');
+
+          await page.goto(`${base}/?probe=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:60000});
+          await page.evaluate(()=>{document.body.innerHTML='<iframe id="probe" src="/direct/?embed=1" allow="autoplay; fullscreen" style="width:900px;height:520px"></iframe>';});
+          const handle=await page.waitForSelector('#probe',{timeout:10000});
+          const frame=await handle.contentFrame();
+          if(!frame)throw new Error('iframe unavailable');
+          await inspect(frame,'same-origin-iframe');
+
+          console.log(log.join('\n'));
+          await browser.close();
+          NODE

@@ -39,6 +39,7 @@ jobs:
           echo "JS_STATUS=$(fetch js "$PUBLIC_URL/ux-aida.js")" >> "$GITHUB_ENV"
           echo "LIVE_JS_STATUS=$(fetch live "$PUBLIC_URL/live-channel.js")" >> "$GITHUB_ENV"
           echo "DIRECT_STATUS=$(fetch direct "$PUBLIC_URL/direct/")" >> "$GITHUB_ENV"
+          echo "WEBTV_STATE_STATUS=$(fetch webtv_state "$PUBLIC_URL/api/public/webtv/state")" >> "$GITHUB_ENV"
           echo "EMISSIONS_STATUS=$(fetch emissions "$PUBLIC_URL/emissions/")" >> "$GITHUB_ENV"
           echo "HEALTH_STATUS=$(fetch health "$PUBLIC_URL/api/health")" >> "$GITHUB_ENV"
           echo "ROBOTS_STATUS=$(fetch robots "$PUBLIC_URL/robots.txt")" >> "$GITHUB_ENV"
@@ -69,6 +70,16 @@ jobs:
               return needle in text(name, suffix)
           def status(name):
               return os.environ.get(name, '')
+          def json_body(name):
+              try:
+                  return json.loads(text(name))
+              except Exception:
+                  return {}
+
+          webtv = json_body('webtv_state')
+          stream = webtv.get('stream') if isinstance(webtv, dict) else {}
+          if not isinstance(stream, dict):
+              stream = {}
 
           checks = {
               'home_200': status('HOME_STATUS') == '200',
@@ -81,7 +92,10 @@ jobs:
               'watch_progress_contract': has('js', 'neptune_watch_progress_v2'),
               'live_js_200': status('LIVE_JS_STATUS') == '200',
               'direct_200': status('DIRECT_STATUS') == '200',
-              'direct_streaming_shell': has('direct', 'data-public-ux="streaming-v3"'),
+              'direct_native_player': has('direct', 'id="player"') and has('direct', 'id="scheduleList"'),
+              'direct_public_state_binding': has('direct', '/api/public/webtv/state') and has('direct', '/direct/live/index.m3u8'),
+              'webtv_state_200': status('WEBTV_STATE_STATUS') == '200',
+              'webtv_state_native_hls': stream.get('protocol') == 'hls' and stream.get('manifestUrl') == '/direct/live/index.m3u8' and stream.get('watchUrl') == '/direct/',
               'emissions_200': status('EMISSIONS_STATUS') == '200',
               'emissions_streaming_shell': has('emissions', 'data-public-ux="streaming-v3"'),
               'health_200': status('HEALTH_STATUS') == '200',
@@ -107,6 +121,7 @@ jobs:
           report = {
               'checked_at': datetime.now(timezone.utc).isoformat(),
               'ready': all(checks.values()),
+              'webtv_release': webtv.get('release') if isinstance(webtv, dict) else None,
               'checks': checks,
           }
           Path('streaming-production-diagnostic.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')

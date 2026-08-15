@@ -1,0 +1,54 @@
+name: Diagnose WebTV Timestamps V119.6
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/diagnose-webtv-timestamps-v1196.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  timestamps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BASE: https://tv.neptunebusiness.com
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trace DTS across the current HLS window
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v ffprobe >/dev/null || { sudo apt-get update >/dev/null; sudo apt-get install -y ffmpeg >/dev/null; }
+          mkdir -p /tmp/webtv-ts
+          curl -fsS "$BASE/direct/live/index.m3u8" -o /tmp/webtv-ts/index.m3u8
+          cat /tmp/webtv-ts/index.m3u8
+          grep -E '^segment-[0-9]+\.ts$' /tmp/webtv-ts/index.m3u8 > /tmp/webtv-ts/segments.txt
+          while read -r segment; do
+            curl -fsS "$BASE/direct/live/$segment" -o "/tmp/webtv-ts/$segment"
+          done < /tmp/webtv-ts/segments.txt
+          python3 - <<'PY'
+          import json, subprocess, pathlib
+          root=pathlib.Path('/tmp/webtv-ts')
+          rows=[]
+          previous_last=None
+          backwards=[]
+          for name in root.joinpath('segments.txt').read_text().splitlines():
+              path=root/name
+              raw=subprocess.check_output(['ffprobe','-v','error','-select_streams','v:0','-show_entries','packet=dts_time,pts_time,flags','-of','json',str(path)],text=True)
+              packets=json.loads(raw).get('packets') or []
+              dts=[float(p['dts_time']) for p in packets if p.get('dts_time') not in (None,'N/A')]
+              pts=[float(p['pts_time']) for p in packets if p.get('pts_time') not in (None,'N/A')]
+              within=sum(1 for a,b in zip(dts,dts[1:]) if b<=a)
+              first=dts[0] if dts else None; last=dts[-1] if dts else None
+              cross=previous_last is not None and first is not None and first<=previous_last
+              if cross: backwards.append((name,previous_last,first))
+              rows.append({'segment':name,'video_first_dts':first,'video_last_dts':last,'video_first_pts':pts[0] if pts else None,'video_last_pts':pts[-1] if pts else None,'packets':len(dts),'non_increasing_inside':within,'backwards_from_previous':cross})
+              if last is not None: previous_last=last
+          print(json.dumps(rows,indent=2))
+          print('BACKWARDS',json.dumps(backwards))
+          if any(r['non_increasing_inside'] for r in rows): raise SystemExit('non-monotonic DTS inside a segment')
+          if backwards: raise SystemExit('DTS goes backwards between HLS segments')
+          PY

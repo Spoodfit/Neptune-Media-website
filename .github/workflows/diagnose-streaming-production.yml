@@ -1,6 +1,10 @@
 name: Diagnose streaming production
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diagnose-streaming-production.yml'
   workflow_run:
     workflows: ["Deploy Neptune Media to Cloudflare"]
     types: [completed]

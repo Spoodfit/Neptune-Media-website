@@ -1,0 +1,41 @@
+name: Verify Production Cockpit V120
+
+on:
+  pull_request:
+    paths:
+      - 'neptune-tv-media-cloudflare/src/**'
+      - 'neptune-tv-media-cloudflare/public/studio/**'
+      - 'neptune-tv-media-cloudflare/scripts/verify-production-cockpit-v120.mjs'
+      - '.github/workflows/verify-production-cockpit-v120.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-production-v120:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: neptune-tv-media-cloudflare
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify JavaScript syntax
+        run: |
+          node --check src/portal-production-v120.js
+          node --check src/portal-production-offer-sync-v120.js
+          node --check src/store-v29.js
+          node --check src/portal-http-utils.js
+          node --check src/entry-v39.js
+          node --check public/studio/studio-information-architecture-v65-1.js
+          node --check public/studio/production-cockpit-v120.js
+      - name: Verify v120 production contract
+        run: node scripts/verify-production-cockpit-v120.mjs
+      - name: Build Worker
+        run: |
+          npm ci
+          npm run check

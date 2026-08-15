@@ -6,17 +6,18 @@ export {StudioStore,WebTvEncoder};
 
 const BASE_CLIENT_EXPERIENCE='neptune-client-experience-20260814-v118.2';
 const RELEASE='neptune-client-experience-20260814-v118.4';
+const DIRECT_BOOKING_RELEASE='neptune-client-direct-reservation-20260815-v118.5';
 const CLIENT_CSS='/espace-client/client-experience-v117.css?v=1';
 const CLIENT_JS='/espace-client/client-experience-v117.js?v=1';
 const COMMAND_CSS='/espace-client/client-command-center-v118.css?v=1';
 const CATALOG_RAIL_CSS='/espace-client/client-catalog-rail-v118.css?v=1';
-const VISUAL_CSS='/espace-client/client-visual-coherence-v118-2.css?v=1';
+const VISUAL_CSS='/espace-client/client-visual-coherence-v118-2.css?v=2';
 const POLISH_CSS='/espace-client/client-ux-polish-v118-3.css?v=1';
 const UX_V1184_CSS='/espace-client/client-ux-v118-4.css?v=1';
 const COMMAND_JS='/espace-client/client-command-center-v118-1.js?v=1';
 const PREPARATION_CONTEXT_JS='/espace-client/client-preparation-context-v118.js?v=3';
 const PASSAGE_JS='/espace-client/client-passage-deeplink-v118.js?v=1';
-const VISUAL_JS='/espace-client/client-visual-coherence-v118-2.js?v=1';
+const VISUAL_JS='/espace-client/client-visual-coherence-v118-2.js?v=2';
 const UX_V1184_JS='/espace-client/client-ux-v118-4.js?v=1';
 const CALENDAR_CHROME_JS='/espace-client/client-calendar-chrome-v118-4-1.js?v=1';
 
@@ -25,6 +26,9 @@ export default{
     const url=new URL(request.url);
     if(request.method==='POST'&&url.pathname==='/api/client/content-calendar/reuse'){
       return fastGroundedReuse(request,env);
+    }
+    if(request.method==='POST'&&url.pathname==='/api/client/reservation/prepare-payment'){
+      return prepareDirectBookingPayment(request,env);
     }
     let response=await base.fetch(request,env,ctx);
     if(request.method==='GET'&&url.pathname==='/api/public/release'&&response.ok){
@@ -64,6 +68,17 @@ async function fastGroundedReuse(request,env){
   return json(result,response.status);
 }
 
+async function prepareDirectBookingPayment(request,env){
+  if(!isSameOrigin(request))return json({error:'origin_forbidden'},403);
+  const token=clientToken(request);
+  if(!token)return json({error:'unauthorized'},401);
+  const payload=await request.json().catch(()=>({}));
+  const studio=env.STUDIO.get(env.STUDIO.idFromName('neptune-media-main'));
+  const response=await callStore(studio,'/portal/client-direct-booking-v1185/prepare-payment',{token,payload});
+  const result=await response.json().catch(()=>({}));
+  return json(result,response.status);
+}
+
 function isClientDocument(path){
   return path==='/espace-client'||path==='/espace-client/'||path==='/espace-client/index.html'||path.startsWith('/espace-client/videos')||path.startsWith('/espace-client/calendrier');
 }
@@ -87,7 +102,7 @@ async function injectClientExperience(response,pathname=''){
 
 async function augmentRelease(response){
   const current=await response.json().catch(()=>({}));
-  return new Response(JSON.stringify({...current,clientExperience:RELEASE,clientExperienceBase:BASE_CLIENT_EXPERIENCE,clientCommandCenter:'compact-selection-persistent-collapsible-stage-details-v118.4',clientPreparation:'step-local-reading-ack-v118',clientPreparationBridge:'v77-state-context-bridge-v118.3.1',clientCatalogVisuals:'studio-synced-v118',clientCatalogLayout:'city-first-horizontal-rail-v118.2',clientVisualCoherence:'icon-halo-selected-stage-v118.4',clientUxPolish:'stable-stage-hitboxes-preloaded-preparation-compact-support-v118.3',clientLibraryLayout:'full-width-responsive-long-short-workspaces-v118.4',clientContentPlanning:'week-month-grounded-video-identity-no-blocking-ai-v118.4',clientCalendarChrome:'persistent-publication-planner-copy-v118.4.1',clientContentReuse:'instant-grounded-file-identity-no-ai-wait-v118.4',clientLoadingStates:'skeleton-error-retry-reduced-motion-v117'}),{
+  return new Response(JSON.stringify({...current,clientExperience:RELEASE,clientExperienceBase:BASE_CLIENT_EXPERIENCE,clientCommandCenter:'compact-selection-persistent-collapsible-stage-details-v118.4',clientPreparation:'step-local-reading-ack-v118',clientPreparationBridge:'v77-state-context-bridge-v118.3.1',clientCatalogVisuals:'studio-synced-v118',clientCatalogLayout:'city-first-horizontal-rail-v118.2',clientVisualCoherence:'icon-halo-selected-stage-v118.4',clientUxPolish:'stable-stage-hitboxes-preloaded-preparation-compact-support-v118.3',clientLibraryLayout:'full-width-responsive-long-short-workspaces-v118.4',clientContentPlanning:'week-month-grounded-video-identity-no-blocking-ai-v118.4',clientCalendarChrome:'persistent-publication-planner-copy-v118.4.1',clientContentReuse:'instant-grounded-file-identity-no-ai-wait-v118.4',clientDirectBooking:DIRECT_BOOKING_RELEASE,clientCatalogInteraction:'single-target-hover-focus-v118.5',clientLoadingStates:'skeleton-error-retry-reduced-motion-v117'}),{
     status:response.status,
     headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'},
   });

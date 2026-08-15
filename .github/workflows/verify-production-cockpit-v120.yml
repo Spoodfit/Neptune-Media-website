@@ -23,7 +23,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '22'
+          registry-url: https://registry.npmjs.org
       - name: Verify JavaScript syntax
         run: |
           node --check src/portal-production-v120.js
@@ -35,7 +36,7 @@ jobs:
           node --check public/studio/production-cockpit-v120.js
       - name: Verify v120 production contract
         run: node scripts/verify-production-cockpit-v120.mjs
-      - name: Build Worker
-        run: |
-          npm ci
-          npm run check
+      - name: Install active worker dependencies
+        run: npm install --package-lock=false --registry=https://registry.npmjs.org --ignore-scripts --no-audit --no-fund
+      - name: Validate active Cloudflare Worker
+        run: npm run verify

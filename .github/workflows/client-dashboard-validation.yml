@@ -6,8 +6,8 @@ on:
     paths:
       - 'neptune-tv-media-cloudflare/public/espace-client/**'
       - 'neptune-tv-media-cloudflare/public/assets/media-dialog-safety-v50.js'
-      - 'neptune-tv-media-cloudflare/src/entry-v40.js'
-      - 'neptune-tv-media-cloudflare/src/store-v30.js'
+      - 'neptune-tv-media-cloudflare/src/entry-v38.js'
+      - 'neptune-tv-media-cloudflare/src/store-v29.js'
       - 'neptune-tv-media-cloudflare/src/portal-client-direct-booking-v118-5.js'
       - 'neptune-tv-media-cloudflare/wrangler.jsonc'
       - 'tests/client-dashboard-visual.mjs'

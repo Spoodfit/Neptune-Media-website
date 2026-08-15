@@ -14,6 +14,7 @@ import {
   startTunnelProspectV98,
   tunnelProspectContextV98,
 } from './portal-sales-tunnel-v98.js';
+import { prepareClientDirectBookingV1185 } from './portal-client-direct-booking-v118-5.js';
 
 const STUDIO_EMAIL='contact@neptunebusiness.com';
 const RESET_WINDOW_MS=15*60*1000;
@@ -43,6 +44,7 @@ export class StudioStore extends LegacyStore {
       }
     }
 
+    if(method==='POST'&&url.pathname==='/portal/client-direct-booking-v1185/prepare-payment')return prepareClientDirectBookingV1185(this,await body());
     if(url.pathname==='/portal/sales-tunnel-v96/catalog'&&method==='GET')return publicSalesCatalogV98(this);
     if(url.pathname==='/portal/sales-tunnel-v96/prospect-start'&&method==='POST')return startTunnelProspectV98(this,await body());
     if(url.pathname==='/portal/sales-tunnel-v96/prospect-context'&&method==='POST')return tunnelProspectContextV98(this,await body());

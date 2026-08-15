@@ -1,0 +1,65 @@
+name: Verify WebTV Live V119.5
+
+on:
+  pull_request:
+    paths:
+      - 'neptune-tv-media-cloudflare/src/webtv-control-v118.js'
+      - 'neptune-tv-media-cloudflare/src/entry-v39.js'
+      - 'neptune-tv-media-cloudflare/containers/webtv/**'
+      - 'neptune-tv-media-cloudflare/wrangler.jsonc'
+      - '.github/workflows/diagnose-streaming-production.yml'
+      - '.github/workflows/verify-webtv-live-v1195.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      matrix:
+        base:
+          - https://neptune-media-webtv.neptunebusinessclub.workers.dev
+          - https://tv.neptunebusiness.com
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe state, manifest and actual MPEG-TS segment
+        shell: bash
+        env:
+          BASE: ${{ matrix.base }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/webtv
+          curl -fsS --retry 2 --retry-delay 1 "$BASE/api/public/webtv/state" -o /tmp/webtv/state.json
+          cat /tmp/webtv/state.json
+          python3 - <<'PY'
+          import json
+          s=json.load(open('/tmp/webtv/state.json'))
+          e=s.get('encoder') or {}
+          assert s.get('enabled') is True, s
+          assert e.get('status') in ('streaming','live','running'), e
+          assert not e.get('lastError'), e
+          PY
+          curl -fsS --retry 2 --retry-delay 1 -D /tmp/webtv/manifest.headers "$BASE/direct/live/index.m3u8" -o /tmp/webtv/index.m3u8
+          cat /tmp/webtv/manifest.headers
+          cat /tmp/webtv/index.m3u8
+          grep -q '^#EXTM3U' /tmp/webtv/index.m3u8
+          segment="$(grep -E '^segment-[0-9]+\.ts$' /tmp/webtv/index.m3u8 | tail -1)"
+          test -n "$segment"
+          code="$(curl -sS --retry 2 --retry-delay 1 -D /tmp/webtv/segment.headers -o /tmp/webtv/segment.ts -w '%{http_code}' "$BASE/direct/live/$segment")"
+          echo "SEGMENT=$segment STATUS=$code BYTES=$(wc -c </tmp/webtv/segment.ts)"
+          cat /tmp/webtv/segment.headers
+          test "$code" = 200
+          test "$(wc -c </tmp/webtv/segment.ts)" -gt 10000
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('/tmp/webtv/segment.ts').read_bytes()
+          assert len(p)>10000
+          # MPEG-TS packets are 188 bytes and start with sync byte 0x47.
+          assert p[0]==0x47, p[:16]
+          hits=sum(1 for i in range(0,min(len(p),188*20),188) if p[i:i+1]==b'G')
+          assert hits>=10, hits
+          print('segment MPEG-TS valide',len(p),'bytes',hits,'sync packets')
+          PY

@@ -1,4 +1,4 @@
-const RELEASE='neptune-client-visual-coherence-20260815-v118.5';
+const RELEASE='neptune-client-visual-coherence-20260815-v118.7';
 const CATALOG_API='/api/reservation/catalog-v96';
 const ROOT=document.documentElement;
 let catalog=null;
@@ -152,7 +152,7 @@ function catalogCard({city,format,price}){
   if(format.slug)url.searchParams.set('format',format.slug);
   const href=url.pathname+url.search;
   const label=`Réserver ${format.name||'ce format'} à ${city.name||'Neptune Media'}`;
-  return `<a class="format-card cc-v118-catalog-card cc-v118-catalog-card-link" data-v1182-city-card="${esc(cityKey(city))}" href="${esc(href)}" aria-label="${esc(label)}"><div class="cc-v118-catalog-visual">${img?`<img src="${esc(img)}" alt="" loading="lazy" decoding="async">`:'<span>NEPTUNE</span>'}<i>${esc(city.name||'Neptune Media')}</i></div><div class="cc-v118-catalog-copy"><span>${esc(format.concept||'NEPTUNE MEDIA')}</span><strong>${esc(format.name||'Format Neptune Media')}</strong>${format.durationLabel?`<small>${esc(format.durationLabel)}</small>`:''}<p>${esc(short(format.description||'Format Neptune Media disponible à la réservation.',130))}</p></div><footer><b>${price?`Dès ${money(price)}`:'Voir les offres'}</b><span class="cc-v118-catalog-cta">Choisir <span>→</span></span></footer></a>`;
+  return `<a class="cc-v118-catalog-card cc-v118-catalog-card-link" data-v1182-city-card="${esc(cityKey(city))}" href="${esc(href)}" aria-label="${esc(label)}"><div class="cc-v118-catalog-visual">${img?`<img src="${esc(img)}" alt="" loading="lazy" decoding="async">`:'<span>NEPTUNE</span>'}<i>${esc(city.name||'Neptune Media')}</i></div><div class="cc-v118-catalog-copy"><span>${esc(format.concept||'NEPTUNE MEDIA')}</span><strong>${esc(format.name||'Format Neptune Media')}</strong>${format.durationLabel?`<small>${esc(format.durationLabel)}</small>`:''}<p>${esc(short(format.description||'Format Neptune Media disponible à la réservation.',130))}</p></div><footer><b>${price?`Dès ${money(price)}`:'Voir les offres'}</b><span class="cc-v118-catalog-cta">Choisir <span>→</span></span></footer></a>`;
 }
 
 function safeImage(value){

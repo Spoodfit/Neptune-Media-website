@@ -29,10 +29,12 @@ const server=http.createServer(async(req,res)=>{
       const revisionChanged=!previous||previous.revision!==next.revision;
       const nativeChanged=!previous||encodingFingerprint(previous)!==encodingFingerprint(next);
       const youtubeChanged=!previous||youtubeFingerprint(previous)!==youtubeFingerprint(next);
+      const programChanged=!previous||programFingerprint(previous)!==programFingerprint(next);
+      const youtubeOnlyChange=Boolean(previous&&youtubeChanged&&!nativeChanged&&!programChanged);
       config=next;state.revision=next.revision;state.lastError=null;touch();
       if(nativeChanged){restartAll('native_transport_changed');}
       else{
-        if(revisionChanged||next.forceRestart)restartPlayout(next.forceRestart?'manual_restart':'playlist_changed');else ensurePlayout(playoutToken);
+        if((revisionChanged||next.forceRestart)&&!youtubeOnlyChange)restartPlayout(next.forceRestart?'manual_restart':'playlist_changed');else ensurePlayout(playoutToken);
         ensureNative(nativeToken);
         if(youtubeChanged||next.forceRestart)restartYoutube('youtube_configuration_changed');else ensureYoutube(youtubeToken);
       }
@@ -104,6 +106,7 @@ function probeHasAudio(url){if(audioCache.has(url))return Promise.resolve(audioC
 function youtubeTarget(cfg){const base=String(cfg.output.youtube.ingestUrl||'').replace(/\/+$/u,''),key=String(cfg.output.youtube.streamKey||'').trim();if(!base.startsWith('rtmps://')||!key)throw new Error('youtube_output_invalid');return `${base}/${encodeURIComponent(key)}`;}
 function validateConfig(raw){if(!raw||raw.enabled!==true)throw new Error('webtv_disabled');if(!Array.isArray(raw.playlist)||!raw.playlist.length)throw new Error('playlist_empty');const e=raw.encoding||{},youtube=raw.output?.youtube||{};return {enabled:true,revision:String(raw.revision||Date.now()),forceRestart:raw.forceRestart===true,playlist:raw.playlist.slice(0,250).map(item=>({id:String(item.id||'').slice(0,100),title:String(item.title||'Programme Neptune').slice(0,180),type:String(item.type||'episode').slice(0,30),mediaUrl:requireHttps(item.mediaUrl),durationSeconds:Number(item.durationSeconds||0)})).filter(item=>item.mediaUrl),fallback:{title:String(raw.fallback?.title||'Neptune Media').slice(0,180),mediaUrl:optionalHttps(raw.fallback?.mediaUrl)},output:{provider:'neptune',protocol:'hls',youtube:{enabled:youtube.enabled===true,ingestUrl:String(youtube.ingestUrl||'').trim(),streamKey:String(youtube.streamKey||'').trim()}},encoding:{width:bounded(e.width,1280,640,1920),height:bounded(e.height,720,360,1080),fps:bounded(e.fps,30,24,60),videoBitrateKbps:bounded(e.videoBitrateKbps,4000,1500,12000),audioBitrateKbps:bounded(e.audioBitrateKbps,128,96,320),preset:['ultrafast','superfast','veryfast','faster','fast'].includes(e.preset)?e.preset:'superfast'}};}
 function encodingFingerprint(cfg){return JSON.stringify(cfg?.encoding||{});}
+function programFingerprint(cfg){return JSON.stringify({playlist:cfg?.playlist||[],fallback:cfg?.fallback||{}});}
 function youtubeFingerprint(cfg){return JSON.stringify({enabled:Boolean(cfg?.output?.youtube?.enabled),ingestUrl:cfg?.output?.youtube?.ingestUrl||'',streamKey:Boolean(cfg?.output?.youtube?.streamKey)});}
 function requireHttps(value){const raw=String(value||'').trim();if(!raw)return'';const url=new URL(raw);if(url.protocol!=='https:')throw new Error('media_url_forbidden');return url.toString();}
 function optionalHttps(value){try{return requireHttps(value);}catch{return'';}}

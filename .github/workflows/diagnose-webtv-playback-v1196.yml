@@ -1,0 +1,111 @@
+name: Diagnose WebTV Playback V119.6
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/diagnose-webtv-playback-v1196.yml'
+      - 'neptune-tv-media-cloudflare/src/entry-v39.js'
+      - 'neptune-tv-media-cloudflare/src/entry-v40.js'
+      - 'neptune-tv-media-cloudflare/containers/webtv/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  playback-diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      BASE: https://tv.neptunebusiness.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Inspect live transport codecs
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v ffprobe >/dev/null || { sudo apt-get update; sudo apt-get install -y ffmpeg; }
+          mkdir -p /tmp/webtv-v1196
+          curl -fsS "$BASE/direct/live/index.m3u8" -o /tmp/webtv-v1196/index.m3u8
+          cat /tmp/webtv-v1196/index.m3u8
+          segment="$(grep -E '^segment-[0-9]+\.ts$' /tmp/webtv-v1196/index.m3u8 | tail -1)"
+          test -n "$segment"
+          curl -fsS "$BASE/direct/live/$segment" -o /tmp/webtv-v1196/segment.ts
+          ffprobe -v error -show_streams -show_format -of json /tmp/webtv-v1196/segment.ts | tee /tmp/webtv-v1196/ffprobe.json
+          python3 - <<'PY'
+          import json
+          p=json.load(open('/tmp/webtv-v1196/ffprobe.json'))
+          streams=p.get('streams') or []
+          video=next((s for s in streams if s.get('codec_type')=='video'),None)
+          audio=next((s for s in streams if s.get('codec_type')=='audio'),None)
+          assert video, streams
+          assert video.get('codec_name')=='h264', video
+          assert audio and audio.get('codec_name')=='aac', audio
+          print('VIDEO', {k:video.get(k) for k in ('codec_name','profile','level','pix_fmt','width','height','r_frame_rate','start_time')})
+          print('AUDIO', {k:audio.get(k) for k in ('codec_name','profile','sample_rate','channels','channel_layout','start_time')})
+          PY
+      - name: Install Playwright
+        shell: bash
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+          google-chrome --version || true
+      - name: Instrument Hls.js in real Chrome
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { chromium } from 'playwright';
+          const base=process.env.BASE;
+          const browser=await chromium.launch({headless:true,channel:'chrome',args:['--autoplay-policy=no-user-gesture-required']});
+
+          async function run(label,forceMainThread=false){
+            const context=await browser.newContext({viewport:{width:1365,height:900}});
+            const page=await context.newPage();
+            const logs=[];
+            page.on('console',m=>logs.push(`${m.type()}:${m.text()}`));
+            page.on('pageerror',e=>logs.push(`pageerror:${e.message}`));
+            page.on('requestfailed',r=>logs.push(`requestfailed:${r.url()}:${r.failure()?.errorText||''}`));
+            await page.route('https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js',async route=>{
+              const response=await route.fetch();
+              const body=await response.text();
+              const hook=`\n;(()=>{const O=window.Hls;if(!O)return;function W(cfg){const next=Object.assign({},cfg||{}${forceMainThread?',{enableWorker:false}':''});const h=new O(next);window.__neptuneProbeHls=h;h.on(O.Events.ERROR,(_,d)=>console.error('[HLS_ERROR]',JSON.stringify({type:d?.type,details:d?.details,fatal:d?.fatal,reason:d?.reason,error:d?.error?.message,bufferInfo:d?.bufferInfo})));for(const ev of [O.Events.MEDIA_ATTACHED,O.Events.MANIFEST_PARSED,O.Events.FRAG_LOADED,O.Events.BUFFER_APPENDED,O.Events.BUFFER_EOS])h.on(ev,(_,d)=>console.log('[HLS_EVENT]',ev,JSON.stringify({sn:d?.frag?.sn,start:d?.frag?.start,duration:d?.frag?.duration,parent:d?.parent})));return h;}Object.setPrototypeOf(W,O);W.prototype=O.prototype;Object.assign(W,O);window.Hls=W;})();`;
+              await route.fulfill({response,body:body+hook});
+            });
+            await page.goto(`${base}/direct/?diag=${label}-${Date.now()}`,{waitUntil:'domcontentloaded',timeout:60000});
+            await page.waitForSelector('#player');
+            await page.waitForTimeout(12000);
+            const state=await page.evaluate(()=>{
+              const v=document.querySelector('#player');
+              const h=window.__neptuneProbeHls;
+              const mse=typeof MediaSource!=='undefined';
+              const types=mse?[
+                'video/mp4; codecs="avc1.42E01E"',
+                'video/mp4; codecs="avc1.4D401F"',
+                'video/mp4; codecs="avc1.640028"',
+                'audio/mp4; codecs="mp4a.40.2"',
+                'video/mp2t; codecs="avc1.42E01E,mp4a.40.2"'
+              ].reduce((o,t)=>(o[t]=MediaSource.isTypeSupported(t),o),{}):{};
+              return {
+                readyState:v?.readyState,networkState:v?.networkState,currentTime:v?.currentTime,paused:v?.paused,error:v?.error?{code:v.error.code,message:v.error.message}:null,
+                buffered:v?.buffered?.length?[v.buffered.start(0),v.buffered.end(v.buffered.length-1)]:[],
+                src:v?.src,currentSrc:v?.currentSrc,mse,types,
+                hlsMediaAttached:Boolean(h?.media),hlsLevels:h?.levels?.length,hlsCurrentLevel:h?.currentLevel,hlsLoadLevel:h?.loadLevel,
+              };
+            });
+            console.log(`=== ${label} ===`);
+            console.log(JSON.stringify(state,null,2));
+            console.log(logs.join('\n'));
+            await context.close();
+            return state;
+          }
+
+          const normal=await run('worker',false);
+          const mainThread=await run('main-thread',true);
+          await browser.close();
+          if(mainThread.currentTime<=0.5||mainThread.readyState<2)process.exitCode=2;
+          if(normal.currentTime<=0.5||normal.readyState<2)process.exitCode=3;
+          NODE

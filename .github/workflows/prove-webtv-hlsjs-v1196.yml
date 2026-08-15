@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - '.github/workflows/prove-webtv-hlsjs-v1196.yml'
+      - 'neptune-tv-media-cloudflare/src/entry-v40.js'
   workflow_dispatch:
 
 permissions:
@@ -12,7 +13,7 @@ permissions:
 jobs:
   hlsjs:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 6
     env:
       MANIFEST: https://tv.neptunebusiness.com/direct/live/index.m3u8
     steps:
@@ -20,16 +21,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install browser probe
+      - name: Install Playwright client
         run: |
           npm init -y >/dev/null 2>&1
-          npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps chromium
+          npm install --no-save playwright-core@1.55.0
+          google-chrome --version
       - name: Play Neptune HLS through Hls.js in real Chrome
         shell: bash
         run: |
           node --input-type=module <<'NODE'
-          import { chromium } from 'playwright';
+          import { chromium } from 'playwright-core';
           const manifest=process.env.MANIFEST;
           const browser=await chromium.launch({headless:true,channel:'chrome',args:['--autoplay-policy=no-user-gesture-required']});
           const page=await browser.newPage({viewport:{width:1280,height:720}});

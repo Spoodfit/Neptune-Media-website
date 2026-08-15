@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="fr" data-client-direct-booking="v118.5">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#081d4e">
+  <title>Réserver mon passage · Neptune Media</title>
+  <link rel="icon" href="/assets/logo-neptune.svg">
+  <link rel="stylesheet" href="/espace-client/reserver/client-booking-v118-5.css?v=1">
+</head>
+<body>
+  <header class="client-booking-header">
+    <a class="booking-brand" href="/espace-client/" aria-label="Neptune Media, accueil client">
+      <img src="/assets/logo-neptune.svg" alt="">
+      <span><b>Neptune</b><small>Media</small></span>
+    </a>
+    <nav class="booking-nav" aria-label="Navigation de l’espace client">
+      <a href="/espace-client/">Accueil</a>
+      <a href="/espace-client/videos/">Contenus</a>
+      <a href="/espace-client/calendrier/">Publications</a>
+      <a href="/espace-client/?panel=account">Compte</a>
+      <button id="logoutButton" type="button" aria-label="Se déconnecter" title="Se déconnecter">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4"/><path d="m14 16 4-4-4-4M18 12H9"/></svg>
+      </button>
+    </nav>
+  </header>
+
+  <main class="booking-shell">
+    <a class="booking-back" href="/espace-client/#formatsTitle">← Changer de format</a>
+    <section class="booking-intro">
+      <div>
+        <p class="booking-eyebrow">NOUVEAU PASSAGE</p>
+        <h1>Réserver mon prochain passage</h1>
+        <p>Votre compte est déjà identifié. Choisissez simplement votre configuration, votre préférence de passage puis poursuivez vers le paiement.</p>
+      </div>
+      <ol class="booking-progress" aria-label="Étapes de réservation">
+        <li class="done"><span>1</span><b>Format</b></li>
+        <li class="active"><span>2</span><b>Créneau</b></li>
+        <li><span>3</span><b>Paiement</b></li>
+      </ol>
+    </section>
+
+    <section id="bookingLoading" class="booking-loading" aria-live="polite">
+      <div></div><div></div><div></div>
+      <p>Préparation de votre réservation…</p>
+    </section>
+
+    <section id="bookingError" class="booking-error" hidden role="alert">
+      <strong>Impossible d’ouvrir cette réservation.</strong>
+      <p id="bookingErrorText">Revenez à l’accueil et choisissez à nouveau votre format.</p>
+      <a href="/espace-client/">Retour à l’accueil</a>
+    </section>
+
+    <form id="bookingForm" class="booking-layout" hidden novalidate>
+      <div class="booking-main">
+        <section class="booking-card selected-format" aria-labelledby="selectedFormatTitle">
+          <div id="formatVisual" class="selected-format-visual"></div>
+          <div class="selected-format-copy">
+            <span id="cityLabel" class="booking-kicker"></span>
+            <h2 id="selectedFormatTitle">Votre format</h2>
+            <p id="formatDescription"></p>
+            <div class="selected-format-meta"><span id="formatDuration"></span><strong id="formatPrice"></strong></div>
+          </div>
+          <span class="selected-format-check" aria-label="Format sélectionné">✓</span>
+        </section>
+
+        <section id="configurationSection" class="booking-card booking-section" hidden>
+          <header><span class="booking-step-number">1</span><div><p class="booking-kicker">CONFIGURATION</p><h2>Choisissez votre ambiance</h2><p>Cette configuration sera transmise au studio avec votre réservation.</p></div></header>
+          <div id="configurationChoices" class="configuration-grid" role="radiogroup" aria-label="Configuration du plateau"></div>
+        </section>
+
+        <section class="booking-card booking-section">
+          <header><span class="booking-step-number">2</span><div><p class="booking-kicker">DATE DE PASSAGE</p><h2>Quand souhaitez-vous venir ?</h2><p>Choisissez un jour puis votre préférence de créneau. Neptune confirme ensuite l’horaire précis.</p></div></header>
+          <div class="date-field">
+            <label for="requestedDate">Jour souhaité</label>
+            <input id="requestedDate" name="requestedDate" type="date" required>
+            <small>Les passages sont proposés les jours ouvrés.</small>
+          </div>
+          <fieldset class="daypart-fieldset">
+            <legend>Préférence de créneau</legend>
+            <div class="daypart-grid">
+              <label><input type="radio" name="requestedDaypart" value="morning"><span><b>Matin</b><small>Je préfère passer le matin</small></span></label>
+              <label><input type="radio" name="requestedDaypart" value="afternoon"><span><b>Après-midi</b><small>Je préfère passer l’après-midi</small></span></label>
+              <label><input type="radio" name="requestedDaypart" value="flexible"><span><b>Flexible</b><small>Je m’adapte au meilleur créneau</small></span></label>
+            </div>
+          </fieldset>
+          <p id="slotError" class="field-error" hidden></p>
+        </section>
+      </div>
+
+      <aside class="booking-summary booking-card">
+        <p class="booking-kicker">VOTRE RÉSERVATION</p>
+        <h2 id="summaryFormat">Passage Neptune Media</h2>
+        <dl>
+          <div><dt>Ville</dt><dd id="summaryCity">—</dd></div>
+          <div><dt>Format</dt><dd id="summaryFormatLine">—</dd></div>
+          <div id="summaryConfigurationRow" hidden><dt>Configuration</dt><dd id="summaryConfiguration">—</dd></div>
+          <div><dt>Date</dt><dd id="summaryDate">À choisir</dd></div>
+          <div><dt>Créneau</dt><dd id="summaryDaypart">À choisir</dd></div>
+        </dl>
+        <div class="summary-total"><span>Total</span><strong id="summaryPrice">—</strong></div>
+        <button id="paymentButton" class="payment-button" type="submit">
+          <span>Continuer vers le paiement</span><b>→</b>
+        </button>
+        <p class="payment-note"><span>✓</span> Paiement sécurisé. Votre passage est rattaché automatiquement à cet espace client.</p>
+        <p id="submitError" class="submit-error" hidden></p>
+      </aside>
+    </form>
+  </main>
+
+  <script type="module" src="/espace-client/reserver/client-booking-v118-5.js?v=1"></script>
+</body>
+</html>

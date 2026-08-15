@@ -50,8 +50,10 @@ try{
 
     const date=nextWeekday();
     await page.locator('#requestedDate').fill(date);
-    await page.locator('[name="configurationChoice"][value="Canapé"]').check();
-    await page.locator('[name="requestedDaypart"][value="afternoon"]').check();
+    await page.locator('.configuration-choice').filter({hasText:'Canapé'}).click();
+    await page.locator('.daypart-grid label').filter({hasText:'Après-midi'}).click();
+    expect(await page.locator('[name="configurationChoice"][value="Canapé"]').isChecked(),'la carte Canapé doit sélectionner le radio associé');
+    expect(await page.locator('[name="requestedDaypart"][value="afternoon"]').isChecked(),'la carte Après-midi doit sélectionner le créneau associé');
     const overflow=await page.evaluate(()=>Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth);
     expect(overflow<=3,`aucun overflow global attendu (${viewport.width}px): ${overflow}px`);
 

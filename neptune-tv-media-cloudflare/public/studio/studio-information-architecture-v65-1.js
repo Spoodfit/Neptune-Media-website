@@ -149,6 +149,7 @@
 
   function primaryRoute(kind) {
     if (kind === 'clients') return 'clients';
+    if (kind === 'production') return 'production';
     if (kind === 'webtv') return 'diffusion';
     if (kind === 'advanced') return groupForTab(requestedTab());
     return '';
@@ -184,7 +185,9 @@
       <div class="neptune-studio-status"><i></i><span>Studio synchronisé</span></div>
       <nav class="neptune-studio-nav" aria-label="Navigation principale du Studio">
         ${link('clients', '/studio/clients', '◎', 'Parcours clients')}
+        ${link('production', '/studio/advanced.html#production', '▦', 'Production')}
         ${link('diffusion', '/studio/webtv.html', '▶', 'Diffusion')}
+        ${link('finances', '/studio/advanced.html#finances', '€', 'Finances')}
         ${link('settings', '/studio/advanced.html#programs', '⚙', 'Réglages')}
       </nav>
       <button class="neptune-studio-account" id="neptuneStudioLogout" type="button" aria-label="Se déconnecter du Studio">
@@ -232,9 +235,10 @@
     nav?.addEventListener('click', (event) => {
       const item = event.target.closest('[data-studio-route]');
       if (!item || kind !== 'advanced') return;
-      if (item.dataset.studioRoute === 'settings') {
+      const route=item.dataset.studioRoute;
+      if (route === 'production' || route === 'finances' || route === 'settings') {
         event.preventDefault();
-        advanced?.activate('programs');
+        advanced?.activate(route === 'settings' ? 'programs' : route);
       }
     });
   }
@@ -242,10 +246,12 @@
   function prepareAdvanced(ui, legacy) {
     const controls = legacy?.controls || new Map();
     const groups = {
+      production: [['production', 'Production']],
       diffusion: [['webtv', 'Web TV'], ['episodes', 'Programme'], ['ads', 'Publicités'], ['insights', 'Audience']],
-      settings: [['programs', 'Catalogue Media'], ['finances', 'Finances'], ['users', 'Équipe'], ['audit', 'Journal'], ['settings', 'Général']],
+      finances: [['finances', 'Finances']],
+      settings: [['programs', 'Catalogue Media'], ['users', 'Équipe'], ['audit', 'Journal'], ['settings', 'Général']],
     };
-    const allowed = new Set([...groups.diffusion, ...groups.settings].map(([id]) => id));
+    const allowed = new Set([...groups.diffusion, ...groups.finances, ...groups.settings].map(([id]) => id));
     const context = document.createElement('nav');
     context.className = 'studio-context-nav-v65';
     context.setAttribute('aria-label', 'Navigation de la section');
@@ -256,6 +262,12 @@
     const render = () => {
       const group = groupForTab(activeTab);
       setPrimaryActive(ui.nav, group);
+      if(group==='production'){
+        context.hidden=true;
+        context.innerHTML='';
+        return;
+      }
+      context.hidden=false;
       context.innerHTML = groups[group].map(([id, label]) => {
         const original = controls.get(id);
         const unavailable = id !== 'webtv' && (!original || original.hidden);
@@ -270,11 +282,19 @@
       if (tab === 'dashboard') { location.href = '/studio/clients'; return; }
       if (tab === 'webtv') { location.href = '/studio/webtv.html'; return; }
       if (tab === 'ai') { location.href = '/studio/video-ai.html'; return; }
+      if (tab === 'production') {
+        activeTab='production';
+        if(location.hash!=='#production')history.replaceState({},'',`${location.pathname}${location.search}#production`);
+        render();
+        window.dispatchEvent(new CustomEvent('neptune:production-v120'));
+        return;
+      }
       const resolved = normalizeRequestedTab(tab);
       const original = controls.get(resolved);
       if (!original || original.hidden || activating) return;
       activating = true;
       activeTab = resolved;
+      if(location.hash!==`#${resolved}`)history.replaceState({},'',`${location.pathname}${location.search}#${resolved}`);
       original.click();
       render();
       queueMicrotask(() => { activating = false; });
@@ -306,10 +326,15 @@
 
   function requestedTab() { return decodeURIComponent(location.hash.slice(1)).trim() || 'episodes'; }
   function normalizeRequestedTab(tab) {
-    if (['episodes', 'programs', 'ads', 'insights', 'finances', 'users', 'audit', 'settings'].includes(tab)) return tab;
+    if (['production', 'episodes', 'programs', 'ads', 'insights', 'finances', 'users', 'audit', 'settings'].includes(tab)) return tab;
     return 'episodes';
   }
-  function groupForTab(tab) { return ['programs', 'finances', 'users', 'audit', 'settings'].includes(tab) ? 'settings' : 'diffusion'; }
+  function groupForTab(tab) {
+    if(tab==='production')return 'production';
+    if(tab==='finances')return 'finances';
+    if(['programs','users','audit','settings'].includes(tab))return 'settings';
+    return 'diffusion';
+  }
 
   function bindLogout(account) {
     if (!account) return;

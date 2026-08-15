@@ -145,8 +145,7 @@ body.studio-shell-v105 #studioLegacyTabControlsV105 {
 }
 
 /* Legacy navigation owners remain available to their business modules but cannot surface another sidebar. */
-body.studio-shell-v105 .studio-nav-three-items-v76,
-body.studio-shell-v105 [data-studio-route="production"] {
+body.studio-shell-v105 .studio-nav-three-items-v76 {
   display: none !important;
 }
 

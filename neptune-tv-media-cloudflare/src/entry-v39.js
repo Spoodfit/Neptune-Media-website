@@ -4,6 +4,7 @@ import {WebTvEncoder,WEBTV_V118_RELEASE,handleWebTvV118,maintainWebTvV118,public
 export {StudioStore,WebTvEncoder};
 
 const RELEASE='neptune-media-native-webtv-20260814-v119';
+const PRODUCTION_RELEASE='neptune-production-cockpit-20260815-v120';
 const WIZARD_JS='/studio/client-passage-wizard-v118.js?v=2';
 const WIZARD_CSS='/studio/client-passage-wizard-v118.css?v=2';
 const WEBTV_NATIVE_JS='/studio/webtv-native-v118.js?v=2';
@@ -21,6 +22,7 @@ export default{
     let response=await base.fetch(request,env,ctx);
     if(request.method==='GET'&&url.pathname==='/api/public/release'&&response.ok)response=await augmentRelease(response);
     if(request.method==='GET'&&response.ok&&(response.headers.get('Content-Type')||'').includes('text/html')){
+      if(isStudioDocument(url.pathname))response=await publishStudioV120Assets(response);
       if(isClients(url.pathname))response=await injectClientWizard(response);
       else if(isWebTvStudio(url.pathname))response=await injectWebTvNative(response);
     }
@@ -31,6 +33,14 @@ export default{
     if(typeof base.scheduled==='function')return base.scheduled(controller,env,ctx);
   },
 };
+
+async function publishStudioV120Assets(response){
+  let body=await response.text();
+  body=body.replace('/studio/studio-information-architecture-v65-1.js?v=107','/studio/studio-information-architecture-v65-1.js?v=108');
+  body=body.replace('/studio/studio-shell-v105.css?v=3','/studio/studio-shell-v105.css?v=4');
+  const headers=rewritten(response);headers.set('X-Neptune-Production-Cockpit',PRODUCTION_RELEASE);
+  return new Response(body,{status:response.status,statusText:response.statusText,headers});
+}
 
 async function injectClientWizard(response){
   let body=await response.text();
@@ -62,7 +72,7 @@ function directJs(){return `(()=>{const video=document.getElementById('player'),
 
 async function augmentRelease(response){
   const current=await response.json().catch(()=>({}));
-  return new Response(JSON.stringify({...current,nativeWebTv:RELEASE,webTvControlRoom:WEBTV_V118_RELEASE,webTvBroadcastEngine:'neptune-native-hls-with-optional-youtube-rtmps',webTvPublicDirect:'/direct/',clientPassageWizard:'catalog-driven-step-by-step-v118'}),{status:response.status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Neptune-Release':RELEASE}});
+  return new Response(JSON.stringify({...current,nativeWebTv:RELEASE,webTvControlRoom:WEBTV_V118_RELEASE,webTvBroadcastEngine:'neptune-native-hls-with-optional-youtube-rtmps',webTvPublicDirect:'/direct/',clientPassageWizard:'catalog-driven-step-by-step-v118',productionCockpit:PRODUCTION_RELEASE}),{status:response.status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Neptune-Release':RELEASE}});
 }
 function publicResponse(data){return new Response(JSON.stringify(data),{status:200,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Access-Control-Allow-Origin':'*','X-Neptune-WebTV':WEBTV_V118_RELEASE}});}
 function rewritten(response){const headers=new Headers(response.headers);for(const name of ['Content-Length','Content-Encoding','ETag','Last-Modified'])headers.delete(name);headers.set('Cache-Control','private, no-store, max-age=0');return headers;}
@@ -70,3 +80,4 @@ function allowFrame(headers,source){const csp=headers.get('Content-Security-Poli
 function removeAsset(body,type,path){const escaped=path.replace(/[.*+?^${}()|[\]\\]/gu,'\\$&');return type==='link'?body.replace(new RegExp(`<link\\b[^>]*href=["'][^"']*${escaped}[^"']*["'][^>]*>\\s*`,'giu'),''):body.replace(new RegExp(`<script\\b[^>]*src=["'][^"']*${escaped}[^"']*["'][^>]*>\\s*<\\/script>\\s*`,'giu'),'');}
 function isClients(path){return path==='/studio/clients'||path==='/studio/clients/'||path==='/studio/clients.html';}
 function isWebTvStudio(path){return path==='/studio/webtv'||path==='/studio/webtv/'||path==='/studio/webtv.html';}
+function isStudioDocument(path){return isClients(path)||isWebTvStudio(path)||path==='/studio/advanced'||path==='/studio/advanced/'||path==='/studio/advanced.html'||path==='/studio/video-ai'||path==='/studio/video-ai/'||path==='/studio/video-ai.html';}

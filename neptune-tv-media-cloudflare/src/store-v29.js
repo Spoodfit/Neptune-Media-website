@@ -19,6 +19,7 @@ import {
   handleProductionActionV120,
   reconcileSupplierPaymentFromSnapshotV120,
 } from './portal-production-v120.js';
+import { ensureProductionOfferSyncV120 } from './portal-production-offer-sync-v120.js';
 
 const STUDIO_EMAIL='contact@neptunebusiness.com';
 const RESET_WINDOW_MS=15*60*1000;
@@ -61,6 +62,7 @@ export class StudioStore extends LegacyStore {
     if(method==='POST'&&url.pathname==='/portal/media-catalog-v98/supplier-save')return saveMediaSupplierV98(this,await body());
     if(method==='POST'&&url.pathname==='/portal/media-catalog-v98/city-save')return saveMediaCityV98(this,await body());
     if(method==='POST'&&url.pathname==='/portal/media-catalog-v98/family-save'){
+      ensureProductionOfferSyncV120(this);
       const raw=await body(),payload=raw?.payload&&typeof raw.payload==='object'?raw.payload:raw;
       if(String(payload.catalogAction||'').startsWith('production_'))return handleProductionActionV120(this,raw);
       if(!payload.catalogAction&&!payload.supplierRateId&&payload.cityId&&payload.formatId&&payload.supplierId){

@@ -1,0 +1,60 @@
+name: Verify Neptune V118 Final
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-v118.yml'
+      - 'wrangler.jsonc'
+      - 'neptune-tv-media-cloudflare/wrangler.jsonc'
+      - 'neptune-tv-media-cloudflare/src/entry-v38.js'
+      - 'neptune-tv-media-cloudflare/src/webtv-control-v118.js'
+      - 'neptune-tv-media-cloudflare/containers/webtv/**'
+      - 'neptune-tv-media-cloudflare/public/studio/webtv-native-v118.js'
+      - 'neptune-tv-media-cloudflare/public/studio/client-passage-wizard-v118.js'
+      - 'neptune-tv-media-cloudflare/public/studio/client-passage-wizard-v118.css'
+      - 'neptune-tv-media-cloudflare/scripts/verify-v118-final.mjs'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-v118.yml'
+      - 'wrangler.jsonc'
+      - 'neptune-tv-media-cloudflare/wrangler.jsonc'
+      - 'neptune-tv-media-cloudflare/src/entry-v38.js'
+      - 'neptune-tv-media-cloudflare/src/webtv-control-v118.js'
+      - 'neptune-tv-media-cloudflare/containers/webtv/**'
+      - 'neptune-tv-media-cloudflare/public/studio/webtv-native-v118.js'
+      - 'neptune-tv-media-cloudflare/public/studio/client-passage-wizard-v118.js'
+      - 'neptune-tv-media-cloudflare/public/studio/client-passage-wizard-v118.css'
+      - 'neptune-tv-media-cloudflare/scripts/verify-v118-final.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-v118:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate v118 JavaScript syntax
+        working-directory: neptune-tv-media-cloudflare
+        run: |
+          node --check src/entry-v38.js
+          node --check src/webtv-control-v118.js
+          node --check containers/webtv/encoder-v118.mjs
+          node --check public/studio/webtv-native-v118.js
+          node --check public/studio/client-passage-wizard-v118.js
+          node --check scripts/verify-v118-final.mjs
+
+      - name: Verify v118 contracts
+        working-directory: neptune-tv-media-cloudflare
+        run: node scripts/verify-v118-final.mjs

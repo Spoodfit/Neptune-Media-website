@@ -1,0 +1,57 @@
+name: Prove WebTV Hls.js V119.6
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/prove-webtv-hlsjs-v1196.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hlsjs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      MANIFEST: https://tv.neptunebusiness.com/direct/live/index.m3u8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install browser probe
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Play Neptune HLS through Hls.js in real Chrome
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { chromium } from 'playwright';
+          const manifest=process.env.MANIFEST;
+          const browser=await chromium.launch({headless:true,channel:'chrome',args:['--autoplay-policy=no-user-gesture-required']});
+          const page=await browser.newPage({viewport:{width:1280,height:720}});
+          const logs=[];
+          page.on('console',m=>logs.push(`${m.type()}:${m.text()}`));
+          page.on('pageerror',e=>logs.push(`pageerror:${e.message}`));
+          page.on('requestfailed',r=>logs.push(`requestfailed:${r.url()}:${r.failure()?.errorText||''}`));
+          await page.setContent(`<!doctype html><meta charset="utf-8"><video id="v" autoplay muted playsinline controls></video><script src="https://cdn.jsdelivr.net/npm/hls.js@1.6.16/dist/hls.min.js"></script>`);
+          await page.waitForFunction(()=>window.Hls&&window.Hls.isSupported(),null,{timeout:20000});
+          await page.evaluate(manifest=>{
+            const v=document.querySelector('#v');
+            const h=new Hls({liveSyncDurationCount:3,liveMaxLatencyDurationCount:8,maxBufferLength:20});
+            window.__h=h;
+            h.on(Hls.Events.ERROR,(_,d)=>console.error('[HLS_ERROR]',JSON.stringify({type:d?.type,details:d?.details,fatal:d?.fatal,reason:d?.reason,error:d?.error?.message})));
+            h.loadSource(manifest);
+            h.attachMedia(v);
+            h.on(Hls.Events.MANIFEST_PARSED,()=>v.play().catch(e=>console.error('[PLAY_ERROR]',e.message)));
+          },manifest);
+          await page.waitForTimeout(12000);
+          const state=await page.evaluate(()=>{const v=document.querySelector('#v'),h=window.__h;return {readyState:v.readyState,networkState:v.networkState,currentTime:v.currentTime,paused:v.paused,error:v.error?{code:v.error.code,message:v.error.message}:null,src:v.src,currentSrc:v.currentSrc,buffered:v.buffered.length?[v.buffered.start(0),v.buffered.end(v.buffered.length-1)]:[],hlsMediaAttached:Boolean(h?.media),levels:h?.levels?.length};});
+          console.log(JSON.stringify(state,null,2));
+          console.log(logs.join('\n'));
+          await browser.close();
+          if(state.readyState<2||state.currentTime<=0.5||state.paused||state.error||!state.hlsMediaAttached)process.exit(1);
+          NODE

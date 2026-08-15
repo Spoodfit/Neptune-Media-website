@@ -14,6 +14,11 @@ import {
   startTunnelProspectV98,
   tunnelProspectContextV98,
 } from './portal-sales-tunnel-v98.js';
+import {
+  captureOrderSupplierSnapshotV120,
+  handleProductionActionV120,
+  reconcileSupplierPaymentFromSnapshotV120,
+} from './portal-production-v120.js';
 
 const STUDIO_EMAIL='contact@neptunebusiness.com';
 const RESET_WINDOW_MS=15*60*1000;
@@ -57,6 +62,7 @@ export class StudioStore extends LegacyStore {
     if(method==='POST'&&url.pathname==='/portal/media-catalog-v98/city-save')return saveMediaCityV98(this,await body());
     if(method==='POST'&&url.pathname==='/portal/media-catalog-v98/family-save'){
       const raw=await body(),payload=raw?.payload&&typeof raw.payload==='object'?raw.payload:raw;
+      if(String(payload.catalogAction||'').startsWith('production_'))return handleProductionActionV120(this,raw);
       if(!payload.catalogAction&&!payload.supplierRateId&&payload.cityId&&payload.formatId&&payload.supplierId){
         let mapped=null;
         try{
@@ -71,6 +77,28 @@ export class StudioStore extends LegacyStore {
       return saveMediaOfferFamilyV98(this,raw?.payload?{...raw,payload}:payload);
     }
     if(method==='POST'&&url.pathname==='/portal/media-catalog-v98/configuration-visual-save')return saveMediaConfigurationVisualV98(this,await body());
+
+    if(method==='POST'&&url.pathname==='/portal/admin-upsert'){
+      const raw=await body();
+      const response=await super.fetch(request);
+      if(!response.ok)return response;
+      const result=await response.clone().json().catch(()=>({}));
+      if(!result.orderId)return response;
+      const snapshot=captureOrderSupplierSnapshotV120(this,result.orderId,raw?.payload||{});
+      if(!snapshot)return response;
+      if(snapshot.ok===false)return json({...result,supplierSnapshotWarning:snapshot.error});
+      return json({...result,supplierSnapshot:snapshot});
+    }
+    if(method==='POST'&&url.pathname==='/portal/admin-update'){
+      const raw=await body();
+      const response=await super.fetch(request);
+      if(response.ok){
+        const result=await response.clone().json().catch(()=>({}));
+        const orderId=result.orderId||raw?.payload?.orderId||'';
+        if(orderId)reconcileSupplierPaymentFromSnapshotV120(this,orderId);
+      }
+      return response;
+    }
     return super.fetch(request);
   }
 

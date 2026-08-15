@@ -1,4 +1,4 @@
-name: Verify WebTV Live V119.5
+name: Verify WebTV Live V119.6
 
 on:
   pull_request:
@@ -19,7 +19,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: neptune-webtv-live-v1195-${{ github.event_name }}-${{ github.ref }}
+  group: neptune-webtv-live-v1196-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -29,15 +29,18 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - name: Verify playback CSP release contract
+      - name: Verify playback compatibility contract
         shell: bash
         run: |
           set -euo pipefail
           grep -q '"main": "src/entry-v40.js"' neptune-tv-media-cloudflare/wrangler.jsonc
           grep -q "neptune-webtv-playback-20260815-v119.5" neptune-tv-media-cloudflare/src/entry-v40.js
+          grep -q "neptune-webtv-player-selection-20260815-v119.6" neptune-tv-media-cloudflare/src/entry-v40.js
           grep -q "worker-src" neptune-tv-media-cloudflare/src/entry-v40.js
           grep -q "blob:" neptune-tv-media-cloudflare/src/entry-v40.js
           grep -q "child-src" neptune-tv-media-cloudflare/src/entry-v40.js
+          grep -Fq "if((!window.Hls||!window.Hls.isSupported())&&video.canPlayType('application/vnd.apple.mpegurl'))" neptune-tv-media-cloudflare/src/entry-v40.js
+          grep -q "body.replace(NATIVE_FIRST,HLS_FIRST)" neptune-tv-media-cloudflare/src/entry-v40.js
 
   live-probe:
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
@@ -91,7 +94,7 @@ jobs:
   browser-playback:
     if: ${{ github.event_name != 'pull_request' && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 10
     env:
       BASE: https://tv.neptunebusiness.com
     steps:
@@ -99,18 +102,18 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install browser probe
+      - name: Install Playwright client
         run: |
           npm init -y >/dev/null 2>&1
-          npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps chromium
-      - name: Verify direct playback and Studio-style same-origin iframe
+          npm install --no-save playwright-core@1.55.0
+          google-chrome --version
+      - name: Verify Hls.js playback standalone and in Studio-style iframe
         shell: bash
         run: |
           node --input-type=module <<'NODE'
-          import { chromium } from 'playwright';
+          import { chromium } from 'playwright-core';
           const base=process.env.BASE;
-          const browser=await chromium.launch({headless:true,args:['--autoplay-policy=no-user-gesture-required']});
+          const browser=await chromium.launch({headless:true,channel:'chrome',args:['--autoplay-policy=no-user-gesture-required']});
           const context=await browser.newContext({viewport:{width:1365,height:900}});
           const page=await context.newPage();
           const log=[];
@@ -134,14 +137,14 @@ jobs:
                 error:v?.error?{code:v.error.code,message:v.error.message}:null,
                 stateHidden:s?.hidden,
                 stateText:s?.innerText,
-                hls:typeof window.Hls,
+                currentSrc:v?.currentSrc||'',
                 hlsSupported:Boolean(window.Hls?.isSupported?.()),
               };
             });
             console.log(label,JSON.stringify(state,null,2));
-            if(!(state.currentTime>0.5)||state.readyState<2||state.error||state.stateHidden!==true){
+            if(!(state.currentTime>0.5)||state.readyState<2||state.paused||state.error||state.stateHidden!==true||!state.hlsSupported||!state.currentSrc.startsWith('blob:')){
               console.log(log.join('\n'));
-              throw new Error(`${label} playback failed: ${JSON.stringify(state)}`);
+              throw new Error(`${label} Hls.js playback failed: ${JSON.stringify(state)}`);
             }
           }
 
@@ -156,12 +159,16 @@ jobs:
           await inspect(frame,'same-origin-iframe');
 
           const header=await page.request.get(`${base}/direct/?probe=header-${Date.now()}`);
-          const csp=header.headers()['content-security-policy']||'';
-          const release=header.headers()['x-neptune-webtv-playback']||'';
+          const headers=header.headers();
+          const csp=headers['content-security-policy']||'';
+          const playback=headers['x-neptune-webtv-playback']||'';
+          const player=headers['x-neptune-webtv-player']||'';
           console.log('CSP',csp);
-          console.log('PLAYBACK_RELEASE',release);
+          console.log('PLAYBACK_RELEASE',playback);
+          console.log('PLAYER_RELEASE',player);
           if(!/worker-src[^;]*blob:/.test(csp))throw new Error(`worker-src blob missing: ${csp}`);
-          if(release!=='neptune-webtv-playback-20260815-v119.5')throw new Error(`unexpected playback release: ${release}`);
+          if(playback!=='neptune-webtv-playback-20260815-v119.5')throw new Error(`unexpected playback release: ${playback}`);
+          if(player!=='neptune-webtv-player-selection-20260815-v119.6')throw new Error(`unexpected player release: ${player}`);
 
           console.log(log.join('\n'));
           await browser.close();

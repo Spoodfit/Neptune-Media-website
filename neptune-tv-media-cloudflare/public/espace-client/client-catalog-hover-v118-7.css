@@ -1,0 +1,49 @@
+/* Neptune Media — client catalogue hover stability v118.7
+ * Hover must never move or resize the hit target. Visual feedback is limited
+ * to paint-only properties so pointer enter/leave cannot oscillate at edges.
+ */
+html .dashboard-v37 .formats-panel .cc-v118-catalog-card,
+html .dashboard-v37 .formats-panel a.cc-v118-catalog-card-link,
+html .dashboard-v37 .formats-panel .format-card.cc-v118-catalog-card{
+  transform:none!important;
+  transition:border-color .12s ease,box-shadow .12s ease,background-color .12s ease!important;
+  will-change:auto!important;
+}
+
+html .dashboard-v37 .formats-panel .cc-v118-catalog-card:hover,
+html .dashboard-v37 .formats-panel a.cc-v118-catalog-card-link:hover,
+html .dashboard-v37 .formats-panel .format-card.cc-v118-catalog-card:hover{
+  transform:none!important;
+  border-color:rgba(111,84,239,.34)!important;
+  background:#fff!important;
+  box-shadow:0 16px 34px rgba(26,41,82,.09)!important;
+}
+
+html .dashboard-v37 .formats-panel .cc-v118-catalog-card:active,
+html .dashboard-v37 .formats-panel a.cc-v118-catalog-card-link:active{
+  transform:none!important;
+}
+
+html .dashboard-v37 .formats-panel .cc-v118-catalog-card .cc-v118-catalog-visual img,
+html .dashboard-v37 .formats-panel .cc-v118-catalog-card:hover .cc-v118-catalog-visual img,
+html .dashboard-v37 .formats-panel a.cc-v118-catalog-card-link .cc-v118-catalog-visual img,
+html .dashboard-v37 .formats-panel a.cc-v118-catalog-card-link:hover .cc-v118-catalog-visual img{
+  transform:none!important;
+  transition:none!important;
+}
+
+html .dashboard-v37 .formats-panel .format-card.cc-v118-catalog-card.active,
+html .dashboard-v37 .formats-panel a.cc-v118-catalog-card-link.active{
+  transform:none!important;
+  background:#fff!important;
+  border-color:rgba(26,52,92,.13)!important;
+  box-shadow:0 12px 30px rgba(11,31,68,.055)!important;
+}
+
+@media(prefers-reduced-motion:reduce){
+  html .dashboard-v37 .formats-panel .cc-v118-catalog-card,
+  html .dashboard-v37 .formats-panel .cc-v118-catalog-card .cc-v118-catalog-visual img{
+    transition:none!important;
+    transform:none!important;
+  }
+}

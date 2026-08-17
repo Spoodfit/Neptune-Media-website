@@ -1,4 +1,4 @@
-name: Verify WebTV Live V119.6
+name: Verify WebTV Live V119.7
 
 on:
   pull_request:
@@ -19,7 +19,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: neptune-webtv-live-v1196-${{ github.event_name }}-${{ github.ref }}
+  group: neptune-webtv-live-v1197-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -29,18 +29,23 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - name: Verify playback compatibility contract
+      - name: Verify playback and container readiness contract
         shell: bash
         run: |
           set -euo pipefail
           grep -q '"main": "src/entry-v40.js"' neptune-tv-media-cloudflare/wrangler.jsonc
           grep -q "neptune-webtv-playback-20260815-v119.5" neptune-tv-media-cloudflare/src/entry-v40.js
           grep -q "neptune-webtv-player-selection-20260815-v119.6" neptune-tv-media-cloudflare/src/entry-v40.js
+          grep -q "neptune-webtv-container-readiness-20260817-v119.7" neptune-tv-media-cloudflare/src/entry-v40.js
           grep -q "worker-src" neptune-tv-media-cloudflare/src/entry-v40.js
           grep -q "blob:" neptune-tv-media-cloudflare/src/entry-v40.js
           grep -q "child-src" neptune-tv-media-cloudflare/src/entry-v40.js
           grep -Fq "if((!window.Hls||!window.Hls.isSupported())&&video.canPlayType('application/vnd.apple.mpegurl'))" neptune-tv-media-cloudflare/src/entry-v40.js
           grep -q "body.replace(NATIVE_FIRST,HLS_FIRST)" neptune-tv-media-cloudflare/src/entry-v40.js
+          grep -q "getContainer(env.WEBTV_ENCODER,WEBTV_INSTANCE)" neptune-tv-media-cloudflare/src/entry-v40.js
+          grep -q "startAndWaitForPorts" neptune-tv-media-cloudflare/src/entry-v40.js
+          grep -q "maintainWebTvV118(env)" neptune-tv-media-cloudflare/src/entry-v40.js
+          grep -q "retryableLiveResponse" neptune-tv-media-cloudflare/src/entry-v40.js
 
   live-probe:
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
@@ -53,7 +58,7 @@ jobs:
           - https://tv.neptunebusiness.com
     steps:
       - uses: actions/checkout@v4
-      - name: Probe state, manifest and actual MPEG-TS segment
+      - name: Probe state, repeated manifests and actual MPEG-TS segment
         shell: bash
         env:
           BASE: ${{ matrix.base }}
@@ -70,10 +75,19 @@ jobs:
           assert e.get('status') in ('streaming','live','running'), e
           assert not e.get('lastError'), e
           PY
-          curl -fsS --retry 2 --retry-delay 1 -D /tmp/webtv/manifest.headers "$BASE/direct/live/index.m3u8" -o /tmp/webtv/index.m3u8
+          for attempt in 1 2 3 4 5 6; do
+            curl -fsS --retry 2 --retry-delay 1 -D "/tmp/webtv/manifest-$attempt.headers" "$BASE/direct/live/index.m3u8" -o "/tmp/webtv/index-$attempt.m3u8"
+            grep -q '^#EXTM3U' "/tmp/webtv/index-$attempt.m3u8"
+            echo "manifest attempt $attempt OK"
+            sleep 1
+          done
+          cp /tmp/webtv/index-6.m3u8 /tmp/webtv/index.m3u8
+          cp /tmp/webtv/manifest-6.headers /tmp/webtv/manifest.headers
           cat /tmp/webtv/manifest.headers
           cat /tmp/webtv/index.m3u8
-          grep -q '^#EXTM3U' /tmp/webtv/index.m3u8
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_run" ]; then
+            grep -qi '^x-neptune-webtv-readiness: neptune-webtv-container-readiness-20260817-v119.7' /tmp/webtv/manifest.headers
+          fi
           segment="$(grep -E '^segment-[0-9]+\.ts$' /tmp/webtv/index.m3u8 | tail -1)"
           test -n "$segment"
           code="$(curl -sS --retry 2 --retry-delay 1 -D /tmp/webtv/segment.headers -o /tmp/webtv/segment.ts -w '%{http_code}' "$BASE/direct/live/$segment")"
@@ -122,10 +136,8 @@ jobs:
           page.on('requestfailed',r=>log.push(`requestfailed:${r.url()}:${r.failure()?.errorText||''}`));
           page.on('response',r=>{if(/direct\/live|hls\.js/.test(r.url()))log.push(`response:${r.status()}:${r.url()}`)});
 
-          async function inspect(frame,label){
-            await frame.waitForSelector('#player',{timeout:20000});
-            await frame.waitForTimeout(12000);
-            const state=await frame.evaluate(()=>{
+          async function readState(frame){
+            return frame.evaluate(()=>{
               const v=document.querySelector('#player');
               const s=document.querySelector('#playerState');
               return {
@@ -141,6 +153,17 @@ jobs:
                 hlsSupported:Boolean(window.Hls?.isSupported?.()),
               };
             });
+          }
+
+          async function inspect(frame,label){
+            await frame.waitForSelector('#player',{timeout:20000});
+            const deadline=Date.now()+45000;
+            let state=await readState(frame);
+            while(Date.now()<deadline){
+              if(state.currentTime>0.5&&state.readyState>=2&&!state.paused&&!state.error&&state.stateHidden===true&&state.hlsSupported&&state.currentSrc.startsWith('blob:'))break;
+              await frame.waitForTimeout(1000);
+              state=await readState(frame);
+            }
             console.log(label,JSON.stringify(state,null,2));
             if(!(state.currentTime>0.5)||state.readyState<2||state.paused||state.error||state.stateHidden!==true||!state.hlsSupported||!state.currentSrc.startsWith('blob:')){
               console.log(log.join('\n'));
@@ -163,12 +186,15 @@ jobs:
           const csp=headers['content-security-policy']||'';
           const playback=headers['x-neptune-webtv-playback']||'';
           const player=headers['x-neptune-webtv-player']||'';
+          const readiness=headers['x-neptune-webtv-readiness']||'';
           console.log('CSP',csp);
           console.log('PLAYBACK_RELEASE',playback);
           console.log('PLAYER_RELEASE',player);
+          console.log('READINESS_RELEASE',readiness);
           if(!/worker-src[^;]*blob:/.test(csp))throw new Error(`worker-src blob missing: ${csp}`);
           if(playback!=='neptune-webtv-playback-20260815-v119.5')throw new Error(`unexpected playback release: ${playback}`);
           if(player!=='neptune-webtv-player-selection-20260815-v119.6')throw new Error(`unexpected player release: ${player}`);
+          if(readiness!=='neptune-webtv-container-readiness-20260817-v119.7')throw new Error(`unexpected readiness release: ${readiness}`);
 
           console.log(log.join('\n'));
           await browser.close();

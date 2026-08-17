@@ -3,6 +3,7 @@ import {ensureSalesTunnelV96Schema} from './portal-sales-tunnel-v96.js';
 
 export const SUPPLIER_INTEGRITY_V121_RELEASE='neptune-supplier-cost-integrity-20260817-v121';
 const META_KEY='supplier_cost_integrity_v121';
+const FILMED_STATUSES="'filmed','videos_pending','videos_received','editing','approval','delivered','completed'";
 
 export function ensureSupplierPaymentIntegrityV121(store){
   if(store.supplierPaymentIntegrityV121Ready)return;
@@ -44,6 +45,19 @@ export function ensureSupplierPaymentIntegrityV121(store){
       WHERE id=NEW.id;
     END;
 
+    CREATE TRIGGER IF NOT EXISTS portal_supplier_finance_create_due_insert_v121
+    AFTER INSERT ON portal_supplier_finance_v95
+    WHEN NEW.gross_cents>0
+      AND EXISTS(SELECT 1 FROM portal_orders o WHERE o.id=NEW.order_id AND o.status IN (${FILMED_STATUSES}))
+      AND NOT EXISTS(SELECT 1 FROM portal_supplier_payments p WHERE p.order_id=NEW.order_id)
+    BEGIN
+      INSERT INTO portal_supplier_payments(id,order_id,supplier_name,amount_total,currency,status,due_at,paid_at,created_at,updated_at)
+      SELECT lower(hex(randomblob(16))),NEW.order_id,COALESCE(s.name,'Fournisseur studio'),NEW.gross_cents,'eur','due',
+             COALESCE(o.filming_at,o.updated_at,NEW.updated_at),NULL,NEW.updated_at,NEW.updated_at
+      FROM portal_orders o LEFT JOIN portal_media_suppliers_v95 s ON s.id=NEW.supplier_id
+      WHERE o.id=NEW.order_id;
+    END;
+
     CREATE TRIGGER IF NOT EXISTS portal_supplier_finance_reconcile_insert_v121
     AFTER INSERT ON portal_supplier_finance_v95
     WHEN NEW.gross_cents>0
@@ -55,6 +69,19 @@ export function ensureSupplierPaymentIntegrityV121(store){
           updated_at=NEW.updated_at
       WHERE order_id=NEW.order_id AND status<>'paid'
         AND (amount_total<>NEW.gross_cents OR currency<>'eur' OR supplier_name<>COALESCE((SELECT name FROM portal_media_suppliers_v95 WHERE id=NEW.supplier_id),supplier_name));
+    END;
+
+    CREATE TRIGGER IF NOT EXISTS portal_supplier_finance_create_due_update_v121
+    AFTER UPDATE OF gross_cents,supplier_id ON portal_supplier_finance_v95
+    WHEN NEW.gross_cents>0
+      AND EXISTS(SELECT 1 FROM portal_orders o WHERE o.id=NEW.order_id AND o.status IN (${FILMED_STATUSES}))
+      AND NOT EXISTS(SELECT 1 FROM portal_supplier_payments p WHERE p.order_id=NEW.order_id)
+    BEGIN
+      INSERT INTO portal_supplier_payments(id,order_id,supplier_name,amount_total,currency,status,due_at,paid_at,created_at,updated_at)
+      SELECT lower(hex(randomblob(16))),NEW.order_id,COALESCE(s.name,'Fournisseur studio'),NEW.gross_cents,'eur','due',
+             COALESCE(o.filming_at,o.updated_at,NEW.updated_at),NULL,NEW.updated_at,NEW.updated_at
+      FROM portal_orders o LEFT JOIN portal_media_suppliers_v95 s ON s.id=NEW.supplier_id
+      WHERE o.id=NEW.order_id;
     END;
 
     CREATE TRIGGER IF NOT EXISTS portal_supplier_finance_reconcile_update_v121

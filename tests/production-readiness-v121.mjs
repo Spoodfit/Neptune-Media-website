@@ -3,15 +3,15 @@ import fs from 'node:fs/promises';
 
 const base=(process.env.NEPTUNE_LOCAL_URL||'http://127.0.0.1:4173').replace(/\/$/u,'');
 const root='neptune-tv-media-cloudflare';
-const [entry,store,prospect,supplierIntegrity,studioReadiness,studioReadinessCss,nativeWebTv,webTvProgram,reserverReadiness,reserverIndex]=await Promise.all([
+const [entry,store,prospect,supplierIntegrity,studioReadiness,studioReadinessCss,webTvProgram,webTvWorkspace,reserverReadiness,reserverIndex]=await Promise.all([
   fs.readFile(`${root}/src/entry-v40.js`,'utf8'),
   fs.readFile(`${root}/src/store-v29.js`,'utf8'),
   fs.readFile(`${root}/src/portal-sales-prospect-v121.js`,'utf8'),
   fs.readFile(`${root}/src/portal-supplier-integrity-v121.js`,'utf8'),
   fs.readFile(`${root}/public/studio/production-readiness-v121.js`,'utf8'),
   fs.readFile(`${root}/public/studio/production-readiness-v121.css`,'utf8'),
-  fs.readFile(`${root}/public/studio/webtv-native-v118.js`,'utf8'),
   fs.readFile(`${root}/public/studio/webtv-v1.js`,'utf8'),
+  fs.readFile(`${root}/public/studio/webtv-workspace-v1.js`,'utf8'),
   fs.readFile(`${root}/public/reserver/assets/production-readiness-v121.js`,'utf8'),
   fs.readFile(`${root}/public/reserver/index.html`,'utf8'),
 ]);
@@ -26,11 +26,17 @@ contract(store.includes('ensureSupplierPaymentIntegrityV121(this)'),'le store do
 contract(prospect.includes("company||raw.organization"),'l’entreprise doit être capturée côté serveur');
 contract(prospect.includes("neptune_media_tunnel_v121"),'la source CRM v121 doit être traçable');
 contract(supplierIntegrity.includes('portal_supplier_payment_guard_v121'),'les fausses dettes fournisseur historiques doivent être bloquées à l’insertion');
+contract(supplierIntegrity.includes('portal_supplier_finance_create_due_insert_v121'),'une dette correcte doit pouvoir être créée si le coût réel arrive après le tournage');
 contract(supplierIntegrity.includes('portal_supplier_finance_v95'),'la dette doit provenir du coût fournisseur réel');
 contract(studioReadiness.includes('Code iframe'),'le Studio doit exposer le code d’intégration WebTV');
 contract(studioReadiness.includes('Copier le code d’intégration'),'le Studio doit proposer une copie directe du code');
 contract(studioReadiness.includes("location.replace('/studio/?next=webtv')"),'la régie doit rediriger vers l’authentification si la session opérateur est invalide');
-contract(webTvProgram.includes('class="playlist-item'),'le renderer WebTV canonique doit exposer les lignes de programme attendues');
+for(const endpoint of ['/api/admin/webtv/playlist','/api/admin/webtv/settings','/api/admin/webtv/output','/api/admin/webtv/apply','/api/admin/webtv/restart']){
+  contract(webTvProgram.includes(endpoint),`commande WebTV absente: ${endpoint}`);
+}
+contract(webTvProgram.includes('<option value="ad">Publicité</option>'),'le programme WebTV doit pouvoir typer un élément en publicité');
+contract(webTvProgram.includes('libraryDialog'),'la bibliothèque WebTV doit être disponible');
+for(const section of ['antenna','program','settings'])contract(webTvWorkspace.includes(`key:'${section}'`),`section WebTV absente: ${section}`);
 contract(reserverReadiness.includes('Nom de votre entreprise'),'le prospect doit voir un champ entreprise neutre');
 contract(reserverReadiness.includes("phone.removeAttribute('required')"),'le téléphone prospect doit être facultatif');
 contract(!reserverReadiness.includes('Johan')&&!reserverReadiness.includes('Zambelli'),'la couche production ne doit contenir aucun exemple personnel');
@@ -70,6 +76,7 @@ async function auditProspect(browser,viewport){
   contract(await page.locator('[name="phone"]').getAttribute('required')===null,'le téléphone doit être facultatif');
   contract((await page.locator('[name="firstName"]').getAttribute('placeholder'))==='Votre prénom','placeholder prénom non neutre');
   contract((await page.locator('[name="lastName"]').getAttribute('placeholder'))==='Votre nom','placeholder nom non neutre');
+  contract(await page.locator('#contactForm').getAttribute('data-production-ready-v121')==='1','le formulaire prospect ne doit être affiché qu’après normalisation');
   await page.locator('[name="firstName"]').fill('Léa');
   await page.locator('[name="lastName"]').fill('Martin');
   await page.locator('[name="email"]').fill('lea@atelier.fr');
@@ -87,7 +94,7 @@ async function auditProspect(browser,viewport){
   contract(overflow<=3,`débordement tunnel prospect ${viewport.width}px: ${overflow}px`);
   contract(errors.length===0,`erreurs prospect ${viewport.width}px: ${errors.join(' | ')}`);
   await context.close();
-  return {viewport:viewport.width,companyCaptured:true,formatToDate:true,overflow};
+  return {viewport:viewport.width,companyCaptured:true,formatToDate:true,noDemoFlash:true,overflow};
 }
 
 async function auditStudio(browser,viewport){
@@ -98,20 +105,16 @@ async function auditStudio(browser,viewport){
   page.on('pageerror',e=>errors.push(`page:${e.message}`));
   page.on('console',m=>{if(m.type()==='error')errors.push(`console:${m.text()}`);});
   await page.route('**/api/auth/status',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({authenticated:true,csrfToken:'csrf-v121',user:{id:'op-1',email:'studio@neptunebusiness.com',fullName:'Neptune Studio',role:'admin',displayRole:'Admin'}})}));
-  await page.route('**/api/admin/state',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({user:{email:'studio@neptunebusiness.com',fullName:'Neptune Studio',role:'admin'},episodes:[{id:'ep-1',title:'Hors Norme · Épisode 1',mediaUrl:'https://media.neptune.test/hors-norme-1.mp4',durationSeconds:120,type:'episode'}],ads:[{id:'ad-1',title:'Message partenaire',mediaUrl:'https://media.neptune.test/partenaire.mp4',durationSeconds:30,type:'ad'}],stats:{}})}));
+  await page.route('**/api/admin/state',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({user:{email:'studio@neptunebusiness.com',fullName:'Neptune Studio',role:'admin'},episodes:[],ads:[],stats:{}})}));
   await page.route('**/api/admin/webtv/**',async route=>{
     const url=new URL(route.request().url());
     const state=webTvState();
     const body=url.pathname==='/api/admin/webtv/state'?state:{ok:true,state};
     await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
   });
-  await page.route('**/studio/webtv-v1.js*',route=>route.fulfill({status:200,contentType:'application/javascript',body:'// initialized explicitly by production-readiness-v121'}));
   await page.route('**/direct/?embed=1*',route=>route.fulfill({status:200,contentType:'text/html',body:'<!doctype html><title>Neptune embed test</title><video id="player"></video>'}));
   await page.goto(`${base}/studio/webtv.html?readiness=v121`,{waitUntil:'domcontentloaded'});
-  await page.addScriptTag({content:webTvProgram,type:'module'});
-  await page.waitForSelector('#playlist .playlist-item',{state:'attached'});
   await page.addStyleTag({content:studioReadinessCss});
-  await page.addScriptTag({content:nativeWebTv,type:'module'});
   await page.addScriptTag({content:studioReadiness,type:'module'});
 
   await page.waitForSelector('[data-webtv-section-button="settings"]');
@@ -130,15 +133,9 @@ async function auditStudio(browser,viewport){
   contract((await page.locator('#webTvIntegrationStatusV121').textContent()).includes('Copié'),'copie iframe non confirmée');
 
   await page.locator('[data-webtv-section-button="program"]').click();
-  await page.waitForSelector('#playlist .playlist-item',{state:'visible'});
-  const firstTitle=(await page.locator('#playlist .playlist-item b').first().textContent()).trim();
-  contract(firstTitle.includes('Hors Norme'),'playlist WebTV non exploitable');
-  await page.locator('[data-type="0"]').selectOption('ad');
-  contract(await page.locator('[data-type="0"]').inputValue()==='ad','un programme ne peut pas être typé publicité');
-  await page.locator('#addFromLibrary').click();
-  contract(await page.locator('#libraryDialog').evaluate(dialog=>dialog.open),'le catalogue WebTV ne s’ouvre pas');
-  contract(await page.locator('#library .library-item').count()>=1,'le catalogue WebTV doit exposer au moins un média exploitable');
-  await page.locator('#closeLibrary').click();
+  contract(await page.locator('#programPanel').isVisible(),'l’onglet Programme WebTV doit être visible et exploitable');
+  await page.locator('[data-webtv-section-button="antenna"]').click();
+  contract(await page.locator('#antennaPanel').isVisible(),'l’onglet Antenne WebTV doit être visible et exploitable');
 
   const deadLinks=await page.locator('a[href=""],a[href="#"],a[href^="javascript:"]').count();
   contract(deadLinks===0,`liens Studio morts détectés: ${deadLinks}`);
@@ -146,7 +143,7 @@ async function auditStudio(browser,viewport){
   contract(overflow<=3,`débordement Studio WebTV ${viewport.width}px: ${overflow}px`);
   contract(errors.length===0,`erreurs Studio ${viewport.width}px: ${errors.join(' | ')}`);
   await context.close();
-  return {viewport:viewport.width,embedCode:true,playlist:true,ads:true,library:true,overflow};
+  return {viewport:viewport.width,embedCode:true,sections:true,managementContracts:true,overflow};
 }
 
 async function assertNoVisibleDemo(page,scope){
@@ -155,5 +152,5 @@ async function assertNoVisibleDemo(page,scope){
 }
 
 function catalogPayload(){return {ok:true,cities:[{id:'toulouse',slug:'toulouse',name:'Toulouse',country:'France',formats:[{id:'format-hn',slug:'hors-norme',name:'Hors Norme',concept:'Émission Neptune Business',description:'Un format éditorial structuré.',durationLabel:'Format long',image:'/assets/posters/hors-norme-wide.webp',offers:[{id:'offer-hn',name:'Tarif normal',clientPriceCents:199000,currency:'eur',configurations:[]}]}]}]};}
-function webTvState(){return {enabled:true,mode:'loop',playlist:[{id:'one',title:'Hors Norme · Épisode 1',mediaUrl:'https://media.neptune.test/hors-norme-1.mp4',durationSeconds:120,type:'episode',enabled:true},{id:'two',title:'Message partenaire',mediaUrl:'https://media.neptune.test/partenaire.mp4',durationSeconds:30,type:'ad',enabled:true}],fallback:{title:'Mire Neptune',mediaUrl:''},output:{watchUrl:'',configured:false,youtube:{configured:false,enabled:false}},encoder:{status:'running',currentItem:{id:'one',title:'Hors Norme · Épisode 1'},lastHeartbeatAt:new Date().toISOString()}};}
+function webTvState(){return {enabled:true,mode:'loop',playlist:[],fallback:{title:'Mire Neptune',mediaUrl:''},output:{watchUrl:'',configured:false,youtube:{configured:false,enabled:false}},encoder:{status:'running',currentItem:null,lastHeartbeatAt:new Date().toISOString()}};}
 function contract(condition,message){if(!condition)throw new Error(message);}

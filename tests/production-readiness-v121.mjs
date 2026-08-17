@@ -39,7 +39,9 @@ contract(webTvProgram.includes("control.fallback.mediaUrl"),'la régie doit gér
 contract(webTvProgram.includes("control.output={...(control.output||{}),watchUrl"),'la régie doit gérer la sortie de diffusion');
 contract(webTvProgram.includes("['episode','Émission'],['jingle','Jingle'],['ad','Publicité']"),'le programme WebTV doit pouvoir typer un élément en publicité');
 contract(webTvProgram.includes('libraryDialog'),'la bibliothèque WebTV doit être disponible');
-for(const section of ['antenna','program','settings'])contract(webTvWorkspace.includes(`key:'${section}'`),`section WebTV absente: ${section}`);
+contract(webTvWorkspace.includes("['antenna','Antenne'"),'section WebTV absente: Antenne');
+contract(webTvWorkspace.includes("['program','Programme'"),'section WebTV absente: Programme');
+contract(webTvWorkspace.includes("['settings','Configuration'"),'section WebTV absente: Configuration');
 contract(reserverReadiness.includes('Nom de votre entreprise'),'le prospect doit voir un champ entreprise neutre');
 contract(reserverReadiness.includes("phone.removeAttribute('required')"),'le téléphone prospect doit être facultatif');
 contract(!reserverReadiness.includes('Johan')&&!reserverReadiness.includes('Zambelli'),'la couche production ne doit contenir aucun exemple personnel');

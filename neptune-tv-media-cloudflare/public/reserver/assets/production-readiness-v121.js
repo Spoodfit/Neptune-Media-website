@@ -1,5 +1,7 @@
 const RELEASE='neptune-prospect-production-readiness-20260817-v121';
 const COMPANY_STORAGE='neptune_media_company_v121';
+const LEAD_COPY='Renseignez vos coordonnées professionnelles pour accéder aux formats réellement disponibles dans votre ville.';
+const LEGAL_COPY='En continuant, vous acceptez que Neptune Media utilise ces coordonnées uniquement pour gérer votre demande de passage et votre suivi client.';
 document.documentElement.dataset.prospectProductionReadinessV121='1';
 document.documentElement.dataset.prospectProductionReadinessRelease=RELEASE;
 
@@ -39,21 +41,21 @@ function normalizeContact(){
   const grid=form.querySelector('.form-grid');
   if(!grid)return false;
   const lead=form.previousElementSibling;
-  if(lead?.classList.contains('lead'))lead.textContent='Renseignez vos coordonnées professionnelles pour accéder aux formats réellement disponibles dans votre ville.';
+  if(lead?.classList.contains('lead')&&lead.textContent!==LEAD_COPY)lead.textContent=LEAD_COPY;
 
   const first=form.querySelector('[name="firstName"]');
   const last=form.querySelector('[name="lastName"]');
   const email=form.querySelector('[name="email"]');
   const phone=form.querySelector('[name="phone"]');
-  if(first)first.placeholder='Votre prénom';
-  if(last)last.placeholder='Votre nom';
-  if(email)email.placeholder='vous@entreprise.fr';
+  if(first&&first.placeholder!=='Votre prénom')first.placeholder='Votre prénom';
+  if(last&&last.placeholder!=='Votre nom')last.placeholder='Votre nom';
+  if(email&&email.placeholder!=='vous@entreprise.fr')email.placeholder='vous@entreprise.fr';
   if(phone){
-    phone.placeholder='06 00 00 00 00';
-    phone.autocomplete='tel';
-    phone.removeAttribute('required');
+    if(phone.placeholder!=='06 00 00 00 00')phone.placeholder='06 00 00 00 00';
+    if(phone.autocomplete!=='tel')phone.autocomplete='tel';
+    if(phone.hasAttribute('required'))phone.removeAttribute('required');
     const phoneLabel=phone.closest('label')?.querySelector('span');
-    if(phoneLabel)phoneLabel.textContent='Téléphone (facultatif)';
+    if(phoneLabel&&phoneLabel.textContent!=='Téléphone (facultatif)')phoneLabel.textContent='Téléphone (facultatif)';
   }
 
   if(!form.querySelector('[name="company"]')){
@@ -64,7 +66,7 @@ function normalizeContact(){
     if(emailLabel)emailLabel.after(label);else grid.append(label);
   }
   const legal=form.querySelector('.legal-note');
-  if(legal)legal.textContent='En continuant, vous acceptez que Neptune Media utilise ces coordonnées uniquement pour gérer votre demande de passage et votre suivi client.';
+  if(legal&&legal.textContent!==LEGAL_COPY)legal.textContent=LEGAL_COPY;
   return true;
 }
 function resolveUrl(input){try{return new URL(typeof input==='string'?input:input?.url||'',location.origin);}catch{return null;}}

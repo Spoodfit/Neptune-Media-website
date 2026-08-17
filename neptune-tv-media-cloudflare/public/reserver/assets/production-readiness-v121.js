@@ -4,6 +4,7 @@ const LEAD_COPY='Renseignez vos coordonnées professionnelles pour accéder aux 
 const LEGAL_COPY='En continuant, vous acceptez que Neptune Media utilise ces coordonnées uniquement pour gérer votre demande de passage et votre suivi client.';
 document.documentElement.dataset.prospectProductionReadinessV121='1';
 document.documentElement.dataset.prospectProductionReadinessRelease=RELEASE;
+installGuardStyle();
 
 const nativeFetch=window.fetch.bind(window);
 window.fetch=async(input,init={})=>{
@@ -32,7 +33,7 @@ function boot(){
   const timer=setInterval(()=>{
     attempts+=1;
     normalizeContact();
-    if(document.querySelector('#contactForm [name="company"]')||attempts>=100)clearInterval(timer);
+    if(document.querySelector('#contactForm [data-production-ready-v121="1"]')||attempts>=100)clearInterval(timer);
   },50);
 }
 function normalizeContact(){
@@ -65,7 +66,15 @@ function normalizeContact(){
   }
   const legal=form.querySelector('.legal-note');
   if(legal&&legal.textContent!==LEGAL_COPY)legal.textContent=LEGAL_COPY;
+  if(form.dataset.productionReadyV121!=='1')form.dataset.productionReadyV121='1';
   return true;
+}
+function installGuardStyle(){
+  if(document.querySelector('style[data-prospect-readiness-v121]'))return;
+  const style=document.createElement('style');
+  style.dataset.prospectReadinessV121='';
+  style.textContent='html[data-prospect-production-readiness-v121="1"] #contactForm:not([data-production-ready-v121="1"]){visibility:hidden!important}';
+  document.head.append(style);
 }
 function resolveUrl(input){try{return new URL(typeof input==='string'?input:input?.url||'',location.origin);}catch{return null;}}
 function parseJson(value){try{return JSON.parse(String(value||'{}'));}catch{return{};}}

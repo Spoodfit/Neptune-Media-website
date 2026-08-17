@@ -31,10 +31,13 @@ contract(supplierIntegrity.includes('portal_supplier_finance_v95'),'la dette doi
 contract(studioReadiness.includes('Code iframe'),'le Studio doit exposer le code d’intégration WebTV');
 contract(studioReadiness.includes('Copier le code d’intégration'),'le Studio doit proposer une copie directe du code');
 contract(studioReadiness.includes("location.replace('/studio/?next=webtv')"),'la régie doit rediriger vers l’authentification si la session opérateur est invalide');
-for(const endpoint of ['/api/admin/webtv/playlist','/api/admin/webtv/settings','/api/admin/webtv/output','/api/admin/webtv/apply','/api/admin/webtv/restart']){
-  contract(webTvProgram.includes(endpoint),`commande WebTV absente: ${endpoint}`);
-}
-contract(webTvProgram.includes('<option value="ad">Publicité</option>'),'le programme WebTV doit pouvoir typer un élément en publicité');
+contract(webTvProgram.includes("api('/api/admin/webtv/state',{},false)"),'la régie doit charger l’état WebTV canonique');
+contract(webTvProgram.includes("api('/api/admin/webtv/state',{method:'PUT'"),'la régie doit enregistrer l’état complet de l’antenne');
+contract(webTvProgram.includes("api('/api/admin/webtv/encoder',{method:'POST'"),'la régie doit pouvoir redémarrer l’encodeur');
+contract(webTvProgram.includes("control.playlist.push"),'la régie doit pouvoir ajouter des médias à la playlist');
+contract(webTvProgram.includes("control.fallback.mediaUrl"),'la régie doit gérer un média de secours');
+contract(webTvProgram.includes("control.output={...(control.output||{}),watchUrl"),'la régie doit gérer la sortie de diffusion');
+contract(webTvProgram.includes("['episode','Émission'],['jingle','Jingle'],['ad','Publicité']"),'le programme WebTV doit pouvoir typer un élément en publicité');
 contract(webTvProgram.includes('libraryDialog'),'la bibliothèque WebTV doit être disponible');
 for(const section of ['antenna','program','settings'])contract(webTvWorkspace.includes(`key:'${section}'`),`section WebTV absente: ${section}`);
 contract(reserverReadiness.includes('Nom de votre entreprise'),'le prospect doit voir un champ entreprise neutre');

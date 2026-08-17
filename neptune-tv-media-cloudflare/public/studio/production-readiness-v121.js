@@ -11,7 +11,10 @@ function start(){
 
 function boot(){
   normalizeVisibleCopy();
-  if(isWebTv())installWebTvIntegration();
+  if(isWebTv()){
+    guardWebTvSession();
+    installWebTvIntegration();
+  }
   new MutationObserver(()=>{
     normalizeVisibleCopy();
     if(isWebTv())installWebTvIntegration();
@@ -20,12 +23,29 @@ function boot(){
 
 function isWebTv(){return ['/studio/webtv','/studio/webtv/','/studio/webtv.html'].includes(location.pathname);}
 
+async function guardWebTvSession(){
+  try{
+    const response=await fetch('/api/auth/status',{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
+    const data=await response.json().catch(()=>({}));
+    if(!response.ok||data.authenticated===false||!['admin','editor'].includes(String(data.user?.role||'')))throw new Error('studio_forbidden');
+    document.documentElement.dataset.studioSessionVerifiedV121='1';
+  }catch{
+    if(location.pathname!=='/studio/'&&location.pathname!=='/studio')location.replace('/studio/?next=webtv');
+  }
+}
+
 function normalizeVisibleCopy(){
   for(const node of document.querySelectorAll('p')){
     const text=String(node.textContent||'').trim();
     if(text.includes('Une dette fournisseur de 720 € TTC est créée automatiquement')){
       node.textContent='Le montant fournisseur provient du coût réellement enregistré pour le passage. Aucun forfait générique n’est appliqué.';
       node.dataset.supplierIntegrityCopy='v121';
+    }
+  }
+  for(const button of document.querySelectorAll('button')){
+    if(/Marquer les\s+720\s*€\s+comme payés/iu.test(String(button.textContent||''))){
+      button.textContent='Marquer comme payé';
+      button.dataset.supplierIntegrityCopy='v121';
     }
   }
 }
@@ -91,5 +111,5 @@ function status(text,error=false){
   const node=document.getElementById('webTvIntegrationStatusV121');
   if(node){node.textContent=text;node.dataset.error=error?'true':'false';}
 }
-function escapeHtml(value){return String(value??'').replace(/[&<>"']/gu,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function escapeHtml(value){return String(value??'').replace(/[&<>"']/gu,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));}
 function escapeAttr(value){return escapeHtml(value);}

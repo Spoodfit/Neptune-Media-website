@@ -1,0 +1,80 @@
+name: Verify WebTV Production Embed V119.7.1
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/verify-webtv-prod-embed-v11971.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  production-embed-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      BASE: https://tv.neptunebusiness.com
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright client
+        run: |
+          npm init -y >/dev/null 2>&1
+          npm install --no-save playwright-core@1.55.0
+          google-chrome --version
+      - name: Verify exact Studio WebTV embed in production
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import { chromium } from 'playwright-core';
+          const base=process.env.BASE;
+          const browser=await chromium.launch({headless:true,channel:'chrome',args:['--autoplay-policy=no-user-gesture-required']});
+          const context=await browser.newContext({viewport:{width:1365,height:900}});
+          const page=await context.newPage();
+          const log=[];
+          page.on('console',m=>log.push(`console:${m.type()}:${m.text()}`));
+          page.on('pageerror',e=>log.push(`pageerror:${e.message}`));
+          page.on('requestfailed',r=>log.push(`requestfailed:${r.url()}:${r.failure()?.errorText||''}`));
+          page.on('response',r=>{if(/direct\/live|hls\.js/.test(r.url()))log.push(`response:${r.status()}:${r.url()}`)});
+
+          const response=await page.goto(`${base}/direct/?embed=1&probe=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:60000});
+          if(!response?.ok())throw new Error(`Studio embed HTTP ${response?.status()}`);
+          await page.waitForSelector('#player',{state:'attached',timeout:20000});
+
+          const read=()=>page.evaluate(()=>{
+            const v=document.querySelector('#player');
+            const s=document.querySelector('#playerState');
+            return {
+              readyState:v?.readyState,
+              currentTime:v?.currentTime,
+              paused:v?.paused,
+              error:v?.error?{code:v.error.code,message:v.error.message}:null,
+              overlayHidden:s?.hidden,
+              currentSrc:v?.currentSrc||'',
+              hlsSupported:Boolean(window.Hls?.isSupported?.()),
+            };
+          });
+
+          const deadline=Date.now()+45000;
+          let state=await read();
+          while(Date.now()<deadline){
+            if(state.currentTime>0.5&&state.readyState>=2&&!state.paused&&!state.error&&state.overlayHidden===true&&state.hlsSupported&&state.currentSrc.startsWith('blob:'))break;
+            await page.waitForTimeout(1000);
+            state=await read();
+          }
+          console.log('STUDIO_EMBED_STATE',JSON.stringify(state,null,2));
+          console.log(log.join('\n'));
+          if(!(state.currentTime>0.5)||state.readyState<2||state.paused||state.error||state.overlayHidden!==true||!state.hlsSupported||!state.currentSrc.startsWith('blob:'))throw new Error(`Studio embed playback failed: ${JSON.stringify(state)}`);
+
+          const headers=response.headers();
+          const csp=headers['content-security-policy']||'';
+          const xfo=(headers['x-frame-options']||'').toUpperCase();
+          if(!/frame-ancestors[^;]*'self'/.test(csp))throw new Error(`frame-ancestors self missing: ${csp}`);
+          if(!/worker-src[^;]*blob:/.test(csp))throw new Error(`worker-src blob missing: ${csp}`);
+          if(xfo!=='SAMEORIGIN')throw new Error(`unexpected X-Frame-Options: ${xfo}`);
+          if(headers['x-neptune-webtv-readiness']!=='neptune-webtv-container-readiness-20260817-v119.7')throw new Error('v119.7 readiness marker missing');
+          await browser.close();
+          NODE

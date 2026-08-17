@@ -138,9 +138,9 @@ async function auditStudio(browser,viewport){
   contract((await page.locator('#webTvIntegrationStatusV121').textContent()).includes('Copié'),'copie iframe non confirmée');
 
   await page.locator('[data-webtv-section-button="program"]').click();
-  contract(await page.locator('#programPanel').isVisible(),'l’onglet Programme WebTV doit être visible et exploitable');
+  contract(await page.locator('[data-webtv-section-panel="program"]').isVisible(),'l’onglet Programme WebTV doit être visible et exploitable');
   await page.locator('[data-webtv-section-button="antenna"]').click();
-  contract(await page.locator('#antennaPanel').isVisible(),'l’onglet Antenne WebTV doit être visible et exploitable');
+  contract(await page.locator('[data-webtv-section-panel="antenna"]').isVisible(),'l’onglet Antenne WebTV doit être visible et exploitable');
 
   const deadLinks=await page.locator('a[href=""],a[href="#"],a[href^="javascript:"]').count();
   contract(deadLinks===0,`liens Studio morts détectés: ${deadLinks}`);

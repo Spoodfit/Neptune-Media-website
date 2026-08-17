@@ -104,9 +104,12 @@ async function auditStudio(browser,viewport){
   await page.addStyleTag({content:studioReadinessCss});
   await page.addScriptTag({content:nativeWebTv,type:'module'});
   await page.addScriptTag({content:studioReadiness,type:'module'});
-  await page.waitForSelector('#webTvIntegrationV121');
-  await page.waitForTimeout(100);
-  await assertNoVisibleDemo(page,'Studio WebTV');
+
+  await page.waitForSelector('[data-webtv-section-button="settings"]');
+  await page.locator('[data-webtv-section-button="settings"]').click();
+  await page.waitForSelector('#webTvIntegrationV121',{state:'visible'});
+  await page.waitForTimeout(80);
+  await assertNoVisibleDemo(page,'Studio WebTV configuration');
   const embed=await page.locator('#webTvCopy_embed').inputValue();
   const publicLink=await page.locator('#webTvCopy_public').inputValue();
   const iframe=await page.locator('#webTvEmbedCodeV121').inputValue();
@@ -117,7 +120,8 @@ async function auditStudio(browser,viewport){
   await page.waitForTimeout(50);
   contract((await page.locator('#webTvIntegrationStatusV121').textContent()).includes('Copié'),'copie iframe non confirmée');
 
-  await page.waitForSelector('.playlist-item');
+  await page.locator('[data-webtv-section-button="program"]').click();
+  await page.waitForSelector('.playlist-item',{state:'visible'});
   const firstTitle=(await page.locator('.playlist-item b').first().textContent()).trim();
   contract(firstTitle.includes('Hors Norme'),'playlist WebTV non exploitable');
   await page.locator('[data-type="0"]').selectOption('ad');

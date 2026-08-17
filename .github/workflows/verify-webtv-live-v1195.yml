@@ -1,4 +1,4 @@
-name: Verify WebTV Live V119.7
+name: Verify WebTV Live V119.7.1
 
 on:
   pull_request:
@@ -6,6 +6,7 @@ on:
       - 'neptune-tv-media-cloudflare/src/webtv-control-v118.js'
       - 'neptune-tv-media-cloudflare/src/entry-v39.js'
       - 'neptune-tv-media-cloudflare/src/entry-v40.js'
+      - 'neptune-tv-media-cloudflare/public/studio/webtv-native-v118.js'
       - 'neptune-tv-media-cloudflare/containers/webtv/**'
       - 'neptune-tv-media-cloudflare/wrangler.jsonc'
       - '.github/workflows/diagnose-streaming-production.yml'
@@ -19,7 +20,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: neptune-webtv-live-v1197-${{ github.event_name }}-${{ github.ref }}
+  group: neptune-webtv-live-v11971-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -29,7 +30,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - name: Verify playback and container readiness contract
+      - name: Verify playback, readiness and Studio embed contract
         shell: bash
         run: |
           set -euo pipefail
@@ -46,6 +47,8 @@ jobs:
           grep -q "startAndWaitForPorts" neptune-tv-media-cloudflare/src/entry-v40.js
           grep -q "maintainWebTvV118(env)" neptune-tv-media-cloudflare/src/entry-v40.js
           grep -q "retryableLiveResponse" neptune-tv-media-cloudflare/src/entry-v40.js
+          grep -Fq 'src="/direct/?embed=1"' neptune-tv-media-cloudflare/public/studio/webtv-native-v118.js
+          grep -Fq 'allow="autoplay; fullscreen"' neptune-tv-media-cloudflare/public/studio/webtv-native-v118.js
 
   live-probe:
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
@@ -121,7 +124,7 @@ jobs:
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright-core@1.55.0
           google-chrome --version
-      - name: Verify Hls.js playback standalone and in Studio-style iframe
+      - name: Verify Hls.js playback standalone and on exact Studio embed URL
         shell: bash
         run: |
           node --input-type=module <<'NODE'
@@ -136,8 +139,8 @@ jobs:
           page.on('requestfailed',r=>log.push(`requestfailed:${r.url()}:${r.failure()?.errorText||''}`));
           page.on('response',r=>{if(/direct\/live|hls\.js/.test(r.url()))log.push(`response:${r.status()}:${r.url()}`)});
 
-          async function readState(frame){
-            return frame.evaluate(()=>{
+          async function readState(target){
+            return target.evaluate(()=>{
               const v=document.querySelector('#player');
               const s=document.querySelector('#playerState');
               return {
@@ -155,14 +158,14 @@ jobs:
             });
           }
 
-          async function inspect(frame,label){
-            await frame.waitForSelector('#player',{timeout:20000});
+          async function inspect(target,label){
+            await target.waitForSelector('#player',{state:'attached',timeout:20000});
             const deadline=Date.now()+45000;
-            let state=await readState(frame);
+            let state=await readState(target);
             while(Date.now()<deadline){
               if(state.currentTime>0.5&&state.readyState>=2&&!state.paused&&!state.error&&state.stateHidden===true&&state.hlsSupported&&state.currentSrc.startsWith('blob:'))break;
-              await frame.waitForTimeout(1000);
-              state=await readState(frame);
+              await target.waitForTimeout(1000);
+              state=await readState(target);
             }
             console.log(label,JSON.stringify(state,null,2));
             if(!(state.currentTime>0.5)||state.readyState<2||state.paused||state.error||state.stateHidden!==true||!state.hlsSupported||!state.currentSrc.startsWith('blob:')){
@@ -171,27 +174,28 @@ jobs:
             }
           }
 
-          await page.goto(`${base}/direct/?probe=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:60000});
+          const standaloneResponse=await page.goto(`${base}/direct/?probe=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:60000});
+          if(!standaloneResponse?.ok())throw new Error(`standalone direct HTTP ${standaloneResponse?.status()}`);
           await inspect(page,'standalone');
 
-          await page.goto(`${base}/?probe=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:60000});
-          await page.evaluate(()=>{document.body.innerHTML='<iframe id="probe" src="/direct/?embed=1" allow="autoplay; fullscreen" style="width:900px;height:520px"></iframe>';});
-          const handle=await page.waitForSelector('#probe',{timeout:10000});
-          const frame=await handle.contentFrame();
-          if(!frame)throw new Error('iframe unavailable');
-          await inspect(frame,'same-origin-iframe');
+          const embedResponse=await page.goto(`${base}/direct/?embed=1&probe=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:60000});
+          if(!embedResponse?.ok())throw new Error(`Studio embed direct HTTP ${embedResponse?.status()}`);
+          await inspect(page,'studio-embed-document');
 
-          const header=await page.request.get(`${base}/direct/?probe=header-${Date.now()}`);
-          const headers=header.headers();
+          const headers=embedResponse.headers();
           const csp=headers['content-security-policy']||'';
+          const xfo=(headers['x-frame-options']||'').toUpperCase();
           const playback=headers['x-neptune-webtv-playback']||'';
           const player=headers['x-neptune-webtv-player']||'';
           const readiness=headers['x-neptune-webtv-readiness']||'';
           console.log('CSP',csp);
+          console.log('X_FRAME_OPTIONS',xfo);
           console.log('PLAYBACK_RELEASE',playback);
           console.log('PLAYER_RELEASE',player);
           console.log('READINESS_RELEASE',readiness);
           if(!/worker-src[^;]*blob:/.test(csp))throw new Error(`worker-src blob missing: ${csp}`);
+          if(!/frame-ancestors[^;]*'self'/.test(csp))throw new Error(`same-origin frame permission missing: ${csp}`);
+          if(xfo!=='SAMEORIGIN')throw new Error(`unexpected X-Frame-Options: ${xfo}`);
           if(playback!=='neptune-webtv-playback-20260815-v119.5')throw new Error(`unexpected playback release: ${playback}`);
           if(player!=='neptune-webtv-player-selection-20260815-v119.6')throw new Error(`unexpected player release: ${player}`);
           if(readiness!=='neptune-webtv-container-readiness-20260817-v119.7')throw new Error(`unexpected readiness release: ${readiness}`);

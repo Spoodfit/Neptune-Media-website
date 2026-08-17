@@ -111,5 +111,5 @@ function status(text,error=false){
   const node=document.getElementById('webTvIntegrationStatusV121');
   if(node){node.textContent=text;node.dataset.error=error?'true':'false';}
 }
-function escapeHtml(value){return String(value??'').replace(/[&<>"']/gu,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));}
+function escapeHtml(value){return String(value??'').replace(/[&<>"']/gu,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function escapeAttr(value){return escapeHtml(value);}

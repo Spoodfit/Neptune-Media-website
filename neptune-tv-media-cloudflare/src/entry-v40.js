@@ -7,6 +7,10 @@ export {StudioStore,WebTvEncoder};
 const PLAYBACK_RELEASE='neptune-webtv-playback-20260815-v119.5';
 const PLAYER_SELECTION_RELEASE='neptune-webtv-player-selection-20260815-v119.6';
 const CONTAINER_READINESS_RELEASE='neptune-webtv-container-readiness-20260817-v119.7';
+const WEBTV_EMBED_RELEASE='neptune-webtv-external-embed-20260817-v121';
+const PRODUCTION_READINESS_RELEASE='neptune-production-readiness-20260817-v121';
+const STUDIO_READINESS_JS='/studio/production-readiness-v121.js?v=1';
+const STUDIO_READINESS_CSS='/studio/production-readiness-v121.css?v=1';
 const WEBTV_INSTANCE='neptune-webtv-primary';
 const NATIVE_FIRST="if(video.canPlayType('application/vnd.apple.mpegurl'))";
 const HLS_FIRST="if((!window.Hls||!window.Hls.isSupported())&&video.canPlayType('application/vnd.apple.mpegurl'))";
@@ -15,9 +19,12 @@ export default{
   async fetch(request,env,ctx){
     const url=new URL(request.url);
     if(request.method==='GET'&&isLiveAsset(url.pathname))return resilientLiveFetch(request,env,ctx,url.pathname);
-    const response=await base.fetch(request,env,ctx);
-    if(request.method==='GET'&&url.pathname==='/direct/'&&response.ok)return normalizeDirectPlayback(response);
+    let response=await base.fetch(request,env,ctx);
+    if(request.method==='GET'&&url.pathname==='/direct/'&&response.ok)return normalizeDirectPlayback(response,url);
     if(request.method==='GET'&&url.pathname==='/api/public/release'&&response.ok)return augmentRelease(response);
+    if(request.method==='GET'&&response.ok&&isStudioDocument(url.pathname)&&(response.headers.get('Content-Type')||'').includes('text/html')){
+      response=await injectStudioReadiness(response);
+    }
     return response;
   },
   async scheduled(controller,env,ctx){
@@ -69,9 +76,10 @@ function markLiveResponse(response,retries){
 }
 
 function isLiveAsset(pathname){return /^\/direct\/live\/(?:index\.m3u8|segment-\d+\.ts)$/u.test(pathname);}
+function isStudioDocument(pathname){return pathname==='/studio'||pathname==='/studio/'||pathname.startsWith('/studio/');}
 function sleep(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
 
-async function normalizeDirectPlayback(response){
+async function normalizeDirectPlayback(response,url){
   let body=await response.text();
   if(body.includes(NATIVE_FIRST))body=body.replace(NATIVE_FIRST,HLS_FIRST);
   const headers=new Headers(response.headers);
@@ -82,11 +90,34 @@ async function normalizeDirectPlayback(response){
     .filter(Boolean);
   upsertDirective(directives,'worker-src',["'self'",'blob:']);
   upsertDirective(directives,'child-src',["'self'",'blob:']);
+  const embed=url.searchParams.get('embed')==='1';
+  if(embed){
+    headers.delete('X-Frame-Options');
+    upsertDirective(directives,'frame-ancestors',["'self'",'https:']);
+    headers.set('Cross-Origin-Resource-Policy','cross-origin');
+    headers.set('X-Neptune-WebTV-Embed',WEBTV_EMBED_RELEASE);
+  }else{
+    headers.set('X-Frame-Options','SAMEORIGIN');
+    upsertDirective(directives,'frame-ancestors',["'self'"]);
+  }
   headers.set('Content-Security-Policy',directives.join('; '));
   headers.set('Cache-Control','no-store, max-age=0');
   headers.set('X-Neptune-WebTV-Playback',PLAYBACK_RELEASE);
   headers.set('X-Neptune-WebTV-Player',PLAYER_SELECTION_RELEASE);
   headers.set('X-Neptune-WebTV-Readiness',CONTAINER_READINESS_RELEASE);
+  return new Response(body,{status:response.status,statusText:response.statusText,headers});
+}
+
+async function injectStudioReadiness(response){
+  let body=await response.text();
+  body=removeAsset(body,'link',STUDIO_READINESS_CSS.split('?')[0]);
+  body=removeAsset(body,'script',STUDIO_READINESS_JS.split('?')[0]);
+  body=body.replace('</head>',`<link rel="stylesheet" href="${STUDIO_READINESS_CSS}"></head>`);
+  body=body.replace('</body>',`<script type="module" src="${STUDIO_READINESS_JS}"></script></body>`);
+  const headers=new Headers(response.headers);
+  for(const name of ['Content-Length','Content-Encoding','ETag','Last-Modified'])headers.delete(name);
+  headers.set('Cache-Control','private, no-store, max-age=0');
+  headers.set('X-Neptune-Production-Readiness',PRODUCTION_READINESS_RELEASE);
   return new Response(body,{status:response.status,statusText:response.statusText,headers});
 }
 
@@ -107,5 +138,14 @@ async function augmentRelease(response){
   headers.set('X-Neptune-WebTV-Playback',PLAYBACK_RELEASE);
   headers.set('X-Neptune-WebTV-Player',PLAYER_SELECTION_RELEASE);
   headers.set('X-Neptune-WebTV-Readiness',CONTAINER_READINESS_RELEASE);
-  return new Response(JSON.stringify({...current,webTvPlayback:PLAYBACK_RELEASE,webTvPlayerSelection:PLAYER_SELECTION_RELEASE,webTvContainerReadiness:CONTAINER_READINESS_RELEASE}),{status:response.status,statusText:response.statusText,headers});
+  headers.set('X-Neptune-WebTV-Embed',WEBTV_EMBED_RELEASE);
+  headers.set('X-Neptune-Production-Readiness',PRODUCTION_READINESS_RELEASE);
+  return new Response(JSON.stringify({...current,webTvPlayback:PLAYBACK_RELEASE,webTvPlayerSelection:PLAYER_SELECTION_RELEASE,webTvContainerReadiness:CONTAINER_READINESS_RELEASE,webTvExternalEmbed:WEBTV_EMBED_RELEASE,productionReadiness:PRODUCTION_READINESS_RELEASE}),{status:response.status,statusText:response.statusText,headers});
+}
+
+function removeAsset(body,type,path){
+  const escaped=path.replace(/[.*+?^${}()|[\]\\]/gu,'\\$&');
+  return type==='link'
+    ?body.replace(new RegExp(`<link\\b[^>]*href=["'][^"']*${escaped}[^"']*["'][^>]*>\\s*`,'giu'),'')
+    :body.replace(new RegExp(`<script\\b[^>]*src=["'][^"']*${escaped}[^"']*["'][^>]*>\\s*<\\/script>\\s*`,'giu'),'');
 }

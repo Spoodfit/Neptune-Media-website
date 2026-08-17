@@ -26,12 +26,18 @@ function boot(){
   if(!host)return;
   normalizeContact();
   new MutationObserver(normalizeContact).observe(host,{childList:true,subtree:true});
+  let attempts=0;
+  const timer=setInterval(()=>{
+    attempts+=1;
+    normalizeContact();
+    if(document.querySelector('#contactForm [name="company"]')||attempts>=100)clearInterval(timer);
+  },50);
 }
 function normalizeContact(){
   const form=document.getElementById('contactForm');
-  if(!form)return;
+  if(!form)return false;
   const grid=form.querySelector('.form-grid');
-  if(!grid)return;
+  if(!grid)return false;
   const lead=form.previousElementSibling;
   if(lead?.classList.contains('lead'))lead.textContent='Renseignez vos coordonnées professionnelles pour accéder aux formats réellement disponibles dans votre ville.';
 
@@ -55,10 +61,11 @@ function normalizeContact(){
     label.className='field';
     label.innerHTML=`<span>Entreprise</span><input name="company" type="text" value="${escapeAttr(localStorage.getItem(COMPANY_STORAGE)||'')}" placeholder="Nom de votre entreprise" required autocomplete="organization">`;
     const emailLabel=email?.closest('label');
-    emailLabel?.after(label);
+    if(emailLabel)emailLabel.after(label);else grid.append(label);
   }
   const legal=form.querySelector('.legal-note');
   if(legal)legal.textContent='En continuant, vous acceptez que Neptune Media utilise ces coordonnées uniquement pour gérer votre demande de passage et votre suivi client.';
+  return true;
 }
 function resolveUrl(input){try{return new URL(typeof input==='string'?input:input?.url||'',location.origin);}catch{return null;}}
 function parseJson(value){try{return JSON.parse(String(value||'{}'));}catch{return{};}}

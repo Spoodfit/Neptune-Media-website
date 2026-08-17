@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 
 const base=(process.env.NEPTUNE_LOCAL_URL||'http://127.0.0.1:4173').replace(/\/$/u,'');
 const root='neptune-tv-media-cloudflare';
-const [entry,store,prospect,supplierIntegrity,studioReadiness,studioReadinessCss,nativeWebTv,reserverReadiness,reserverIndex]=await Promise.all([
+const [entry,store,prospect,supplierIntegrity,studioReadiness,studioReadinessCss,nativeWebTv,webTvProgram,reserverReadiness,reserverIndex]=await Promise.all([
   fs.readFile(`${root}/src/entry-v40.js`,'utf8'),
   fs.readFile(`${root}/src/store-v29.js`,'utf8'),
   fs.readFile(`${root}/src/portal-sales-prospect-v121.js`,'utf8'),
@@ -11,6 +11,7 @@ const [entry,store,prospect,supplierIntegrity,studioReadiness,studioReadinessCss
   fs.readFile(`${root}/public/studio/production-readiness-v121.js`,'utf8'),
   fs.readFile(`${root}/public/studio/production-readiness-v121.css`,'utf8'),
   fs.readFile(`${root}/public/studio/webtv-native-v118.js`,'utf8'),
+  fs.readFile(`${root}/public/studio/webtv-v1.js`,'utf8'),
   fs.readFile(`${root}/public/reserver/assets/production-readiness-v121.js`,'utf8'),
   fs.readFile(`${root}/public/reserver/index.html`,'utf8'),
 ]);
@@ -29,6 +30,7 @@ contract(supplierIntegrity.includes('portal_supplier_finance_v95'),'la dette doi
 contract(studioReadiness.includes('Code iframe'),'le Studio doit exposer le code d’intégration WebTV');
 contract(studioReadiness.includes('Copier le code d’intégration'),'le Studio doit proposer une copie directe du code');
 contract(studioReadiness.includes("location.replace('/studio/?next=webtv')"),'la régie doit rediriger vers l’authentification si la session opérateur est invalide');
+contract(webTvProgram.includes('class="playlist-item'),'le renderer WebTV canonique doit exposer les lignes de programme attendues');
 contract(reserverReadiness.includes('Nom de votre entreprise'),'le prospect doit voir un champ entreprise neutre');
 contract(reserverReadiness.includes("phone.removeAttribute('required')"),'le téléphone prospect doit être facultatif');
 contract(!reserverReadiness.includes('Johan')&&!reserverReadiness.includes('Zambelli'),'la couche production ne doit contenir aucun exemple personnel');
@@ -103,8 +105,11 @@ async function auditStudio(browser,viewport){
     const body=url.pathname==='/api/admin/webtv/state'?state:{ok:true,state};
     await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
   });
+  await page.route('**/studio/webtv-v1.js*',route=>route.fulfill({status:200,contentType:'application/javascript',body:'// initialized explicitly by production-readiness-v121'}));
   await page.route('**/direct/?embed=1*',route=>route.fulfill({status:200,contentType:'text/html',body:'<!doctype html><title>Neptune embed test</title><video id="player"></video>'}));
   await page.goto(`${base}/studio/webtv.html?readiness=v121`,{waitUntil:'domcontentloaded'});
+  await page.addScriptTag({content:webTvProgram,type:'module'});
+  await page.waitForSelector('#playlist .playlist-item',{state:'attached'});
   await page.addStyleTag({content:studioReadinessCss});
   await page.addScriptTag({content:nativeWebTv,type:'module'});
   await page.addScriptTag({content:studioReadiness,type:'module'});

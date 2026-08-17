@@ -54,8 +54,6 @@ function normalizeContact(){
     if(phone.placeholder!=='06 00 00 00 00')phone.placeholder='06 00 00 00 00';
     if(phone.autocomplete!=='tel')phone.autocomplete='tel';
     if(phone.hasAttribute('required'))phone.removeAttribute('required');
-    const phoneLabel=phone.closest('label')?.querySelector('span');
-    if(phoneLabel&&phoneLabel.textContent!=='Téléphone (facultatif)')phoneLabel.textContent='Téléphone (facultatif)';
   }
 
   if(!form.querySelector('[name="company"]')){

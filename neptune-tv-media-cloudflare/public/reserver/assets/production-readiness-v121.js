@@ -1,0 +1,81 @@
+const RELEASE='neptune-prospect-production-readiness-20260817-v121';
+const COMPANY_STORAGE='neptune_media_company_v121';
+const LEAD_COPY='Renseignez vos coordonnées professionnelles pour accéder aux formats réellement disponibles dans votre ville.';
+const LEGAL_COPY='En continuant, vous acceptez que Neptune Media utilise ces coordonnées uniquement pour gérer votre demande de passage et votre suivi client.';
+document.documentElement.dataset.prospectProductionReadinessV121='1';
+document.documentElement.dataset.prospectProductionReadinessRelease=RELEASE;
+installGuardStyle();
+
+const nativeFetch=window.fetch.bind(window);
+window.fetch=async(input,init={})=>{
+  const url=resolveUrl(input);
+  if(url?.pathname==='/api/reservation/prospect/start'&&String(init.method||'GET').toUpperCase()==='POST'){
+    const payload=parseJson(init.body);
+    const company=String(document.querySelector('#contactForm [name="company"]')?.value||localStorage.getItem(COMPANY_STORAGE)||'').trim();
+    if(company){payload.company=company;localStorage.setItem(COMPANY_STORAGE,company);}
+    init={...init,body:JSON.stringify(payload)};
+  }
+  return nativeFetch(input,init);
+};
+
+start();
+
+function start(){
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});
+  else boot();
+}
+function boot(){
+  const host=document.getElementById('app-content');
+  if(!host)return;
+  normalizeContact();
+  new MutationObserver(normalizeContact).observe(host,{childList:true,subtree:true});
+  let attempts=0;
+  const timer=setInterval(()=>{
+    attempts+=1;
+    normalizeContact();
+    if(document.querySelector('#contactForm [data-production-ready-v121="1"]')||attempts>=100)clearInterval(timer);
+  },50);
+}
+function normalizeContact(){
+  const form=document.getElementById('contactForm');
+  if(!form)return false;
+  const grid=form.querySelector('.form-grid');
+  if(!grid)return false;
+  const lead=form.previousElementSibling;
+  if(lead?.classList.contains('lead')&&lead.textContent!==LEAD_COPY)lead.textContent=LEAD_COPY;
+
+  const first=form.querySelector('[name="firstName"]');
+  const last=form.querySelector('[name="lastName"]');
+  const email=form.querySelector('[name="email"]');
+  const phone=form.querySelector('[name="phone"]');
+  if(first&&first.placeholder!=='Votre prénom')first.placeholder='Votre prénom';
+  if(last&&last.placeholder!=='Votre nom')last.placeholder='Votre nom';
+  if(email&&email.placeholder!=='vous@entreprise.fr')email.placeholder='vous@entreprise.fr';
+  if(phone){
+    if(phone.placeholder!=='06 00 00 00 00')phone.placeholder='06 00 00 00 00';
+    if(phone.autocomplete!=='tel')phone.autocomplete='tel';
+    if(phone.hasAttribute('required'))phone.removeAttribute('required');
+  }
+
+  if(!form.querySelector('[name="company"]')){
+    const label=document.createElement('label');
+    label.className='field';
+    label.innerHTML=`<span>Entreprise</span><input name="company" type="text" value="${escapeAttr(localStorage.getItem(COMPANY_STORAGE)||'')}" placeholder="Nom de votre entreprise" required autocomplete="organization">`;
+    const emailLabel=email?.closest('label');
+    if(emailLabel)emailLabel.after(label);else grid.append(label);
+  }
+  const legal=form.querySelector('.legal-note');
+  if(legal&&legal.textContent!==LEGAL_COPY)legal.textContent=LEGAL_COPY;
+  if(form.dataset.productionReadyV121!=='1')form.dataset.productionReadyV121='1';
+  return true;
+}
+function installGuardStyle(){
+  if(document.querySelector('style[data-prospect-readiness-v121]'))return;
+  const style=document.createElement('style');
+  style.dataset.prospectReadinessV121='';
+  style.textContent='html[data-prospect-production-readiness-v121="1"] #contactForm:not([data-production-ready-v121="1"]){visibility:hidden!important}';
+  document.head.append(style);
+}
+function resolveUrl(input){try{return new URL(typeof input==='string'?input:input?.url||'',location.origin);}catch{return null;}}
+function parseJson(value){try{return JSON.parse(String(value||'{}'));}catch{return{};}}
+function escapeAttr(value){return String(value??'').replace(/[&<>"']/gu,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}

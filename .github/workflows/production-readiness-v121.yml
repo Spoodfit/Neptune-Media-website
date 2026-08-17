@@ -1,0 +1,87 @@
+name: Production Readiness V121
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'neptune-tv-media-cloudflare/src/**'
+      - 'neptune-tv-media-cloudflare/public/studio/**'
+      - 'neptune-tv-media-cloudflare/public/reserver/**'
+      - 'neptune-tv-media-cloudflare/public/espace-client/**'
+      - 'tests/production-readiness-v121.mjs'
+      - '.github/workflows/production-readiness-v121.yml'
+      - 'wrangler.jsonc'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  production-readiness:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate production-readiness source syntax
+        run: |
+          node --check neptune-tv-media-cloudflare/src/entry-v40.js
+          node --check neptune-tv-media-cloudflare/src/store-v29.js
+          node --check neptune-tv-media-cloudflare/src/portal-sales-prospect-v121.js
+          node --check neptune-tv-media-cloudflare/src/portal-supplier-integrity-v121.js
+          node --check neptune-tv-media-cloudflare/public/studio/production-readiness-v121.js
+          node --check neptune-tv-media-cloudflare/public/reserver/assets/production-readiness-v121.js
+          node --check tests/production-readiness-v121.mjs
+
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Start local application
+        shell: bash
+        run: |
+          python3 -m http.server 4173 --directory neptune-tv-media-cloudflare/public > /tmp/neptune-v121-server.log 2>&1 &
+          echo $! > /tmp/neptune-v121-server.pid
+          for attempt in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:4173/reserver/ >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat /tmp/neptune-v121-server.log
+          exit 1
+
+      - name: Validate role-based journeys and UI
+        env:
+          NEPTUNE_LOCAL_URL: http://127.0.0.1:4173
+        run: node tests/production-readiness-v121.mjs
+
+      - name: Validate active application and Worker bundle
+        run: |
+          npm install --package-lock=false --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org
+          npm run check
+          npx wrangler deploy --config wrangler.jsonc --dry-run --outdir .wrangler-v121-dry-run
+
+      - name: Reject shipped demo markers in production UI additions
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -RniE 'lorem ipsum|bouton démo|mode démo|Johan|Zambelli' \
+            neptune-tv-media-cloudflare/public/reserver/assets/production-readiness-v121.js \
+            neptune-tv-media-cloudflare/public/studio/production-readiness-v121.js
+
+      - name: Upload production-readiness evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-readiness-v121
+          path: |
+            test-results/production-readiness-v121
+            /tmp/neptune-v121-server.log
+          if-no-files-found: warn
+          retention-days: 14

@@ -1,0 +1,126 @@
+name: Production Readiness Live V121
+
+on:
+  workflow_run:
+    workflows: ['Deploy Neptune Media to Cloudflare']
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  certify-production:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      BASE: https://tv.neptunebusiness.com
+      CLIENT_PRODUCTION_URL: https://tv.neptunebusiness.com
+      CLIENT_AUDIT_EMAIL: contact@neptunebusiness.com
+    steps:
+      - name: Checkout deployed source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || 'main' }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Wait for production release and verify contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          ready=0
+          for attempt in $(seq 1 30); do
+            curl -fsS -H 'Cache-Control: no-cache, no-store' "$BASE/api/public/release?v121=$attempt" >/tmp/v121-release.json || true
+            if grep -Fq 'neptune-production-readiness-20260817-v121' /tmp/v121-release.json \
+              && grep -Fq 'neptune-webtv-external-embed-20260817-v121' /tmp/v121-release.json; then
+              ready=1
+              break
+            fi
+            sleep 4
+          done
+          test "$ready" = 1
+
+          curl -fsS -D /tmp/v121-embed.headers -o /tmp/v121-embed.html "$BASE/direct/?embed=1&v121=$(date +%s)"
+          ! grep -iq '^x-frame-options:' /tmp/v121-embed.headers
+          grep -Ei '^content-security-policy:' /tmp/v121-embed.headers | grep -Eq "frame-ancestors[^;]*https:"
+          grep -Fiq 'x-neptune-webtv-embed: neptune-webtv-external-embed-20260817-v121' /tmp/v121-embed.headers
+
+          curl -fsS -D /tmp/v121-direct.headers -o /tmp/v121-direct.html "$BASE/direct/?v121=$(date +%s)"
+          grep -Fiq 'x-frame-options: SAMEORIGIN' /tmp/v121-direct.headers
+
+          curl -fsS "$BASE/reserver/?v121=$(date +%s)" >/tmp/v121-reserver.html
+          grep -Fq '/reserver/assets/production-readiness-v121.js?v=1' /tmp/v121-reserver.html
+          curl -fsS "$BASE/reserver/assets/production-readiness-v121.js?v=1" >/tmp/v121-reserver-readiness.js
+          grep -Fq 'Nom de votre entreprise' /tmp/v121-reserver-readiness.js
+          ! grep -Eiq 'Johan|Zambelli|lorem ipsum|mode démo|bouton démo' /tmp/v121-reserver-readiness.js
+
+          curl -fsS -D /tmp/v121-studio.headers -o /tmp/v121-webtv.html "$BASE/studio/webtv.html?v121=$(date +%s)"
+          grep -Fq '/studio/production-readiness-v121.js?v=1' /tmp/v121-webtv.html
+          grep -Fq '/studio/production-readiness-v121.css?v=1' /tmp/v121-webtv.html
+          grep -Fiq 'x-neptune-production-readiness: neptune-production-readiness-20260817-v121' /tmp/v121-studio.headers
+
+      - name: Verify Studio endpoints reject unauthenticated operator access
+        shell: bash
+        run: |
+          set -euo pipefail
+          status=$(curl -sS -o /tmp/v121-auth-status.json -w '%{http_code}' "$BASE/api/auth/status")
+          test "$status" = 401 || grep -Fq '"authenticated":false' /tmp/v121-auth-status.json
+          status=$(curl -sS -o /tmp/v121-admin-state.json -w '%{http_code}' "$BASE/api/admin/state")
+          test "$status" = 401 || test "$status" = 403
+          status=$(curl -sS -o /tmp/v121-webtv-state.json -w '%{http_code}' "$BASE/api/admin/webtv/state")
+          test "$status" = 401 || test "$status" = 403
+
+      - name: Install Playwright for trusted-client production audit
+        run: |
+          npm install --no-save --no-audit --no-fund playwright@1.55.0
+          npx playwright install --with-deps chromium
+
+      - name: Audit trusted Neptune client with real production data
+        run: node tests/client-production-real-account-audit.mjs
+
+      - name: Verify public prospect UI without creating a lead
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import {chromium} from 'playwright';
+          const base=process.env.BASE;
+          const browser=await chromium.launch({headless:true});
+          try{
+            for(const viewport of [{width:1440,height:1000},{width:390,height:844}]){
+              const context=await browser.newContext({viewport});
+              const page=await context.newPage();
+              const errors=[];
+              page.on('pageerror',e=>errors.push(e.message));
+              await page.goto(`${base}/reserver/?production_readiness=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:60000});
+              await page.waitForSelector('#contactForm [name="company"]',{timeout:20000});
+              const phone=page.locator('#contactForm [name="phone"]');
+              if(await phone.getAttribute('required')!==null)throw new Error('phone should be optional');
+              if((await page.locator('[name="company"]').getAttribute('required'))===null)throw new Error('company should be required');
+              const text=(await page.locator('body').innerText()).toLowerCase();
+              for(const marker of ['johan','zambelli','lorem ipsum','mode démo','bouton démo'])if(text.includes(marker))throw new Error(`demo marker visible: ${marker}`);
+              const overflow=await page.evaluate(()=>Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth);
+              if(overflow>3)throw new Error(`prospect overflow ${viewport.width}px: ${overflow}`);
+              if(errors.length)throw new Error(errors.join(' | '));
+              await context.close();
+            }
+          }finally{await browser.close();}
+          NODE
+
+      - name: Upload production certification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-readiness-live-v121
+          path: |
+            test-results/client-production-real-account-audit
+            /tmp/v121-*.json
+            /tmp/v121-*.headers
+            /tmp/v121-*.html
+            /tmp/v121-reserver-readiness.js
+          if-no-files-found: warn
+          retention-days: 14

@@ -51,7 +51,7 @@ async function run(viewport,label){
   await page.route('**/api/reservation/catalog-v96*',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(catalog)}));
   await page.route('**/api/reservation/prospect/start',async route=>{
     const body=JSON.parse(route.request().postData()||'{}');
-    route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,token,prospectId:'11111111-1111-4111-8111-111111111111',contact:{firstName:body.firstName,lastName:body.lastName,fullName:`${body.firstName} ${body.lastName}`,email:body.email,phone:body.phone}})});
+    route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,token,prospectId:'11111111-1111-4111-8111-111111111111',contact:{firstName:body.firstName,lastName:body.lastName,fullName:`${body.firstName} ${body.lastName}`,company:body.company,email:body.email,phone:body.phone}})});
   });
   await page.route('**/api/reservation/selection-v96',async route=>{
     selectionBody=JSON.parse(route.request().postData()||'{}');
@@ -60,7 +60,7 @@ async function run(viewport,label){
   });
   await page.route('**/api/reservation/prospect/context*',route=>{
     const requestedDate=selectionBody?.requestedDate||'2026-09-10',requestedDaypart=selectionBody?.requestedDaypart||'morning';
-    route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,release:'neptune-sales-tunnel-20260811-v96',enhancementRelease:'neptune-sales-tunnel-20260811-v97',prospectId:'11111111-1111-4111-8111-111111111111',status:paid?'paid':'tunnel_started',orderId:paid?'33333333-3333-4333-8333-333333333333':'',contact:{firstName:'Johan',lastName:'Zambelli',fullName:'Johan Zambelli',email:'contact@example.com',phone:'0612345678'},selection:{city:{id:'toulouse',name:'Toulouse',slug:'toulouse'},format:{id:'hn',name:'Hors Norme',slug:'hors-norme',image:'/assets/posters/hors-norme-wide.webp'},offer:{id:'hn-launch',name:'Prix coûtant · lancement',clientPriceCents:89000,currency:'eur',priceSuffix:'',pricing,configurations},configurationChoice:'Chaise',requestedDate,requestedDaypart,paymentUrl:paid?'':`${paymentBase}?client_reference_id=NPOPP_${opportunityId}`}})});
+    route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,release:'neptune-sales-tunnel-20260811-v96',enhancementRelease:'neptune-sales-tunnel-20260811-v97',prospectId:'11111111-1111-4111-8111-111111111111',status:paid?'paid':'tunnel_started',orderId:paid?'33333333-3333-4333-8333-333333333333':'',contact:{firstName:'Johan',lastName:'Zambelli',fullName:'Johan Zambelli',company:'Atelier Neptune',email:'contact@example.com',phone:'0612345678'},selection:{city:{id:'toulouse',name:'Toulouse',slug:'toulouse'},format:{id:'hn',name:'Hors Norme',slug:'hors-norme',image:'/assets/posters/hors-norme-wide.webp'},offer:{id:'hn-launch',name:'Prix coûtant · lancement',clientPriceCents:89000,currency:'eur',priceSuffix:'',pricing,configurations},configurationChoice:'Chaise',requestedDate,requestedDaypart,paymentUrl:paid?'':`${paymentBase}?client_reference_id=NPOPP_${opportunityId}`}})});
   });
 
   await page.goto(`${base}/reserver/`,{waitUntil:'networkidle'});
@@ -68,6 +68,7 @@ async function run(viewport,label){
   await page.getByLabel('Prénom',{exact:true}).fill('Johan');
   await page.getByLabel('Nom',{exact:true}).fill('Zambelli');
   await page.getByLabel('E-mail',{exact:true}).fill('contact@example.com');
+  await page.getByLabel('Entreprise',{exact:true}).fill('Atelier Neptune');
   await page.getByLabel('Téléphone',{exact:true}).fill('06 12 34 56 78');
   await page.getByRole('button',{name:'Voir les formats disponibles',exact:true}).click();
   await page.getByText('Toulouse',{exact:true}).waitFor();

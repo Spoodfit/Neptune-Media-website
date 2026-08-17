@@ -53,7 +53,8 @@ export function ensureSupplierPaymentIntegrityV121(store){
           amount_total=NEW.gross_cents,
           currency='eur',
           updated_at=NEW.updated_at
-      WHERE order_id=NEW.order_id AND status<>'paid';
+      WHERE order_id=NEW.order_id AND status<>'paid'
+        AND (amount_total<>NEW.gross_cents OR currency<>'eur' OR supplier_name<>COALESCE((SELECT name FROM portal_media_suppliers_v95 WHERE id=NEW.supplier_id),supplier_name));
     END;
 
     CREATE TRIGGER IF NOT EXISTS portal_supplier_finance_reconcile_update_v121
@@ -65,7 +66,8 @@ export function ensureSupplierPaymentIntegrityV121(store){
           amount_total=NEW.gross_cents,
           currency='eur',
           updated_at=NEW.updated_at
-      WHERE order_id=NEW.order_id AND status<>'paid';
+      WHERE order_id=NEW.order_id AND status<>'paid'
+        AND (amount_total<>NEW.gross_cents OR currency<>'eur' OR supplier_name<>COALESCE((SELECT name FROM portal_media_suppliers_v95 WHERE id=NEW.supplier_id),supplier_name));
     END;
   `);
   reconcileDueSupplierPaymentsV121(store);
@@ -88,12 +90,18 @@ export function reconcileDueSupplierPaymentsV121(store){
           ORDER BY f.created_at DESC LIMIT 1
         ),amount_total),
         currency='eur',updated_at=?
-    WHERE status<>'paid' AND EXISTS(
-      SELECT 1 FROM portal_supplier_finance_v95 f
-      WHERE f.order_id=portal_supplier_payments.order_id AND f.gross_cents>0
-    )
+    WHERE status<>'paid'
+      AND EXISTS(SELECT 1 FROM portal_supplier_finance_v95 f WHERE f.order_id=portal_supplier_payments.order_id AND f.gross_cents>0)
+      AND (
+        amount_total<>COALESCE((SELECT f.gross_cents FROM portal_supplier_finance_v95 f WHERE f.order_id=portal_supplier_payments.order_id AND f.gross_cents>0 ORDER BY f.created_at DESC LIMIT 1),amount_total)
+        OR currency<>'eur'
+        OR supplier_name<>COALESCE((SELECT s.name FROM portal_supplier_finance_v95 f JOIN portal_media_suppliers_v95 s ON s.id=f.supplier_id WHERE f.order_id=portal_supplier_payments.order_id AND f.gross_cents>0 ORDER BY f.created_at DESC LIMIT 1),supplier_name)
+      )
   `,now);
-  store.sql.exec(`INSERT INTO meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value`,META_KEY,SUPPLIER_INTEGRITY_V121_RELEASE);
+  const meta=store.sql.exec('SELECT value FROM meta WHERE key=? LIMIT 1',META_KEY).toArray()[0];
+  if(meta?.value!==SUPPLIER_INTEGRITY_V121_RELEASE){
+    store.sql.exec('INSERT INTO meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value',META_KEY,SUPPLIER_INTEGRITY_V121_RELEASE);
+  }
 }
 
 export function supplierIntegritySnapshotV121(store){

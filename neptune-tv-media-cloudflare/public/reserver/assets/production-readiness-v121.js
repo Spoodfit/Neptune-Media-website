@@ -42,7 +42,13 @@ function normalizeContact(){
   if(first)first.placeholder='Votre prénom';
   if(last)last.placeholder='Votre nom';
   if(email)email.placeholder='vous@entreprise.fr';
-  if(phone){phone.placeholder='06 00 00 00 00';phone.autocomplete='tel';}
+  if(phone){
+    phone.placeholder='06 00 00 00 00';
+    phone.autocomplete='tel';
+    phone.removeAttribute('required');
+    const phoneLabel=phone.closest('label')?.querySelector('span');
+    if(phoneLabel)phoneLabel.textContent='Téléphone (facultatif)';
+  }
 
   if(!form.querySelector('[name="company"]')){
     const label=document.createElement('label');

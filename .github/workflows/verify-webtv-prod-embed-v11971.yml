@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 12
     env:
       BASE: https://tv.neptunebusiness.com
-      EXTERNAL_ORIGIN: https://example.com
+      EXTERNAL_ORIGIN: https://embed-probe.neptune-external.test
     steps:
       - uses: actions/setup-node@v4
         with:
@@ -63,9 +63,11 @@ jobs:
             if(!(state.currentTime>0.5)||state.readyState<2||state.paused||state.error||state.overlayHidden!==true)throw new Error(`direct playback failed: ${JSON.stringify(state)}`);
 
             const host=await context.newPage();
-            await host.goto(external,{waitUntil:'domcontentloaded',timeout:30000});
+            await host.route(`${external}/**`,route=>route.fulfill({status:200,contentType:'text/html',body:'<!doctype html><meta charset="utf-8"><title>External Neptune embed probe</title><body></body>'}));
+            await host.goto(`${external}/host`,{waitUntil:'domcontentloaded',timeout:30000});
+            const parentOrigin=await host.evaluate(()=>location.origin);
+            if(parentOrigin!==external)throw new Error(`unexpected external parent origin ${parentOrigin}`);
             await host.evaluate((src)=>{
-              document.body.innerHTML='';
               const frame=document.createElement('iframe');
               frame.id='neptuneExternalEmbed';frame.src=src;frame.allow='autoplay; fullscreen';frame.style.cssText='width:960px;height:540px;border:0';
               document.body.append(frame);

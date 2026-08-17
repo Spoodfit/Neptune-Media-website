@@ -97,8 +97,8 @@ async function auditStudio(browser,viewport){
   page.on('console',m=>{if(m.type()==='error')errors.push(`console:${m.text()}`);});
   await page.route('**/api/auth/status',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({authenticated:true,csrfToken:'csrf-v121',user:{id:'op-1',email:'studio@neptunebusiness.com',fullName:'Neptune Studio',role:'admin',displayRole:'Admin'}})}));
   await page.route('**/api/admin/state',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({user:{email:'studio@neptunebusiness.com',fullName:'Neptune Studio',role:'admin'},episodes:[{id:'ep-1',title:'Hors Norme · Épisode 1',mediaUrl:'/media/hors-norme-1.mp4',durationSeconds:120,type:'episode'}],stats:{}})}));
-  await page.route('**/api/admin/webtv/state',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(webTvState())}));
   await page.route('**/api/admin/webtv/**',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,state:webTvState()})}));
+  await page.route('**/api/admin/webtv/state',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(webTvState())}));
   await page.route('**/direct/?embed=1*',route=>route.fulfill({status:200,contentType:'text/html',body:'<!doctype html><title>Neptune embed test</title><video id="player"></video>'}));
   await page.goto(`${base}/studio/webtv.html?readiness=v121`,{waitUntil:'domcontentloaded'});
   await page.addStyleTag({content:studioReadinessCss});

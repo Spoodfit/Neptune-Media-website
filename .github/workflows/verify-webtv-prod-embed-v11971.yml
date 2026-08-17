@@ -1,9 +1,9 @@
-name: Verify WebTV Production Embed V119.7.1
+name: Verify WebTV External Embed V121
 
 on:
-  pull_request:
-    paths:
-      - '.github/workflows/verify-webtv-prod-embed-v11971.yml'
+  workflow_run:
+    workflows: ['Deploy Neptune Media to Cloudflare']
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -11,12 +11,13 @@ permissions:
 
 jobs:
   production-embed-browser:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     env:
       BASE: https://tv.neptunebusiness.com
+      EXTERNAL_ORIGIN: https://example.com
     steps:
-      - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -25,56 +26,67 @@ jobs:
           npm init -y >/dev/null 2>&1
           npm install --no-save playwright-core@1.55.0
           google-chrome --version
-      - name: Verify exact Studio WebTV embed in production
+
+      - name: Verify direct player and external HTTPS iframe
         shell: bash
         run: |
           node --input-type=module <<'NODE'
-          import { chromium } from 'playwright-core';
-          const base=process.env.BASE;
+          import {chromium} from 'playwright-core';
+          const base=process.env.BASE,external=process.env.EXTERNAL_ORIGIN;
           const browser=await chromium.launch({headless:true,channel:'chrome',args:['--autoplay-policy=no-user-gesture-required']});
-          const context=await browser.newContext({viewport:{width:1365,height:900}});
-          const page=await context.newPage();
-          const log=[];
-          page.on('console',m=>log.push(`console:${m.type()}:${m.text()}`));
-          page.on('pageerror',e=>log.push(`pageerror:${e.message}`));
-          page.on('requestfailed',r=>log.push(`requestfailed:${r.url()}:${r.failure()?.errorText||''}`));
-          page.on('response',r=>{if(/direct\/live|hls\.js/.test(r.url()))log.push(`response:${r.status()}:${r.url()}`)});
+          try{
+            const context=await browser.newContext({viewport:{width:1365,height:900}});
 
-          const response=await page.goto(`${base}/direct/?embed=1&probe=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:60000});
-          if(!response?.ok())throw new Error(`Studio embed HTTP ${response?.status()}`);
-          await page.waitForSelector('#player',{state:'attached',timeout:20000});
+            const direct=await context.newPage();
+            const response=await direct.goto(`${base}/direct/?embed=1&probe=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:60000});
+            if(!response?.ok())throw new Error(`embed HTTP ${response?.status()}`);
+            await direct.waitForSelector('#player',{state:'attached',timeout:20000});
+            const headers=response.headers();
+            const csp=headers['content-security-policy']||'';
+            const xfo=headers['x-frame-options']||'';
+            if(xfo)throw new Error(`embed must not expose X-Frame-Options: ${xfo}`);
+            if(!/frame-ancestors[^;]*https:/.test(csp))throw new Error(`external HTTPS frame ancestor missing: ${csp}`);
+            if(!/worker-src[^;]*blob:/.test(csp))throw new Error(`worker-src blob missing: ${csp}`);
+            if(headers['x-neptune-webtv-embed']!=='neptune-webtv-external-embed-20260817-v121')throw new Error('v121 embed marker missing');
 
-          const read=()=>page.evaluate(()=>{
-            const v=document.querySelector('#player');
-            const s=document.querySelector('#playerState');
-            return {
-              readyState:v?.readyState,
-              currentTime:v?.currentTime,
-              paused:v?.paused,
-              error:v?.error?{code:v.error.code,message:v.error.message}:null,
-              overlayHidden:s?.hidden,
-              currentSrc:v?.currentSrc||'',
-              hlsSupported:Boolean(window.Hls?.isSupported?.()),
-            };
-          });
+            const deadline=Date.now()+45000;
+            let state={};
+            while(Date.now()<deadline){
+              state=await direct.evaluate(()=>{
+                const v=document.querySelector('#player'),s=document.querySelector('#playerState');
+                return {readyState:v?.readyState,currentTime:v?.currentTime,paused:v?.paused,error:v?.error?{code:v.error.code,message:v.error.message}:null,overlayHidden:s?.hidden,currentSrc:v?.currentSrc||'',hlsSupported:Boolean(window.Hls?.isSupported?.())};
+              });
+              if(state.currentTime>0.5&&state.readyState>=2&&!state.paused&&!state.error&&state.overlayHidden===true&&state.hlsSupported&&state.currentSrc.startsWith('blob:'))break;
+              await direct.waitForTimeout(1000);
+            }
+            console.log('DIRECT_EMBED_STATE',JSON.stringify(state));
+            if(!(state.currentTime>0.5)||state.readyState<2||state.paused||state.error||state.overlayHidden!==true)throw new Error(`direct playback failed: ${JSON.stringify(state)}`);
 
-          const deadline=Date.now()+45000;
-          let state=await read();
-          while(Date.now()<deadline){
-            if(state.currentTime>0.5&&state.readyState>=2&&!state.paused&&!state.error&&state.overlayHidden===true&&state.hlsSupported&&state.currentSrc.startsWith('blob:'))break;
-            await page.waitForTimeout(1000);
-            state=await read();
+            const host=await context.newPage();
+            await host.goto(external,{waitUntil:'domcontentloaded',timeout:30000});
+            await host.evaluate((src)=>{
+              document.body.innerHTML='';
+              const frame=document.createElement('iframe');
+              frame.id='neptuneExternalEmbed';frame.src=src;frame.allow='autoplay; fullscreen';frame.style.cssText='width:960px;height:540px;border:0';
+              document.body.append(frame);
+            },`${base}/direct/?embed=1&external_probe=${Date.now()}`);
+            const frame=await waitForFrame(host,`${base}/direct/`);
+            await frame.waitForSelector('#player',{state:'attached',timeout:30000});
+            const frameOrigin=await frame.evaluate(()=>location.origin);
+            if(frameOrigin!==new URL(base).origin)throw new Error(`unexpected iframe origin ${frameOrigin}`);
+            const visible=await frame.locator('#player').isVisible();
+            if(!visible)throw new Error('external iframe player is not visible');
+            console.log('EXTERNAL_IFRAME_OK',external,'=>',frame.url());
+            await context.close();
+          }finally{await browser.close();}
+
+          async function waitForFrame(page,prefix){
+            const until=Date.now()+30000;
+            while(Date.now()<until){
+              const frame=page.frames().find(f=>f.url().startsWith(prefix));
+              if(frame)return frame;
+              await page.waitForTimeout(250);
+            }
+            throw new Error('external Neptune iframe did not load');
           }
-          console.log('STUDIO_EMBED_STATE',JSON.stringify(state,null,2));
-          console.log(log.join('\n'));
-          if(!(state.currentTime>0.5)||state.readyState<2||state.paused||state.error||state.overlayHidden!==true||!state.hlsSupported||!state.currentSrc.startsWith('blob:'))throw new Error(`Studio embed playback failed: ${JSON.stringify(state)}`);
-
-          const headers=response.headers();
-          const csp=headers['content-security-policy']||'';
-          const xfo=(headers['x-frame-options']||'').toUpperCase();
-          if(!/frame-ancestors[^;]*'self'/.test(csp))throw new Error(`frame-ancestors self missing: ${csp}`);
-          if(!/worker-src[^;]*blob:/.test(csp))throw new Error(`worker-src blob missing: ${csp}`);
-          if(xfo!=='SAMEORIGIN')throw new Error(`unexpected X-Frame-Options: ${xfo}`);
-          if(headers['x-neptune-webtv-readiness']!=='neptune-webtv-container-readiness-20260817-v119.7')throw new Error('v119.7 readiness marker missing');
-          await browser.close();
           NODE

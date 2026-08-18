@@ -73,7 +73,10 @@ try{
       await page.waitForFunction(()=>Boolean(document.documentElement.dataset.studioOverviewV122),null,{timeout:20000});
       await page.waitForSelector('.neptune-studio-nav-link',{timeout:20000});
       if(screen.kind!=='webtv')await page.waitForSelector('#app:not([hidden])',{timeout:20000});
-      if(screen.kind==='catalogue')await page.waitForSelector('.c98-page',{timeout:20000});
+      if(screen.kind==='catalogue'){
+        await page.waitForSelector('.c98-page',{timeout:20000});
+        await page.waitForSelector('#studioCatalogGlanceV1221',{timeout:20000});
+      }
       if(screen.kind==='settings')await page.waitForSelector('#studioSettingsOverviewV122:not([hidden])',{timeout:20000});
       if(screen.kind==='webtv')await page.waitForSelector('#webTvCommandV122',{timeout:20000});
       await page.waitForTimeout(500);
@@ -88,8 +91,18 @@ try{
         const overflow=Math.max(root.scrollWidth,body.scrollWidth)-innerWidth;
         const data={kind,nav,active,context,overflow,pageHeight:Math.max(root.scrollHeight,body.scrollHeight),viewportHeight:innerHeight};
         if(kind==='catalogue'){
-          const hero=document.querySelector('.c98-hero'),layout=document.querySelector('.c98-layout');
-          data.catalogue={heroHeight:Math.round(hero?.getBoundingClientRect().height||0),layoutMaxHeight:layout?getComputedStyle(layout).maxHeight:'',bodyMode:body.classList.contains('v122-studio-catalog')};
+          const hero=document.querySelector('.c98-hero');
+          const layout=document.querySelector('.c98-layout')?.getBoundingClientRect();
+          const work=document.querySelector('.c98-work')?.getBoundingClientRect();
+          const preview=document.getElementById('c98Preview');
+          data.catalogue={
+            heroHeight:Math.round(hero?.getBoundingClientRect().height||0),
+            bodyMode:body.classList.contains('v122-studio-catalog'),
+            widthRatio:layout?.width?work.width/layout.width:0,
+            previewDisplay:preview?getComputedStyle(preview).display:'missing',
+            glance:document.querySelectorAll('[data-v122-catalog-tab]').length,
+            tunnel:Boolean(document.querySelector('.c98-hero-actions a[href^="/reserver"]')),
+          };
         }
         if(kind==='settings')data.settings={cards:document.querySelectorAll('.v122-overview-card').length,bodyMode:body.classList.contains('v122-studio-settings'),overviewVisible:visible(document.querySelector('#studioSettingsOverviewV122'))};
         if(kind==='finance')data.finance={bodyMode:body.classList.contains('v122-studio-finance')};
@@ -103,9 +116,12 @@ try{
       assert(metrics.context===0,`${screen.id}/${viewport.id}: ancienne sous-navigation encore visible`);
       assert(metrics.overflow<=3,`${screen.id}/${viewport.id}: overflow ${metrics.overflow}px`);
       if(screen.kind==='catalogue'){
-        assert(metrics.catalogue.bodyMode,`${screen.id}: mode compact absent`);
+        assert(metrics.catalogue.bodyMode,`${screen.id}: mode Catalogue absent`);
         assert(metrics.catalogue.heroHeight>0&&metrics.catalogue.heroHeight<180,`${screen.id}: hero trop haut ${metrics.catalogue.heroHeight}px`);
-        if(viewport.width>1080)assert(metrics.catalogue.layoutMaxHeight!=='none',`${screen.id}: layout catalogue non borné au viewport`);
+        assert(metrics.catalogue.widthRatio>.97,`${screen.id}: zone de travail limitée à ${Math.round(metrics.catalogue.widthRatio*100)}%`);
+        assert(metrics.catalogue.previewDisplay==='none',`${screen.id}: aperçu tunnel permanent encore visible`);
+        assert(metrics.catalogue.glance===5,`${screen.id}: vue d’ensemble ${metrics.catalogue.glance}/5`);
+        assert(metrics.catalogue.tunnel,`${screen.id}: accès au tunnel absent`);
       }
       if(screen.kind==='finance')assert(metrics.finance.bodyMode,'finance: mode compact absent');
       if(screen.kind==='settings'){
@@ -137,5 +153,5 @@ try{
 }finally{await browser.close();}
 
 await writeFile(path.join(outputDir,'report.json'),JSON.stringify({ok:true,reports},null,2));
-console.log('Studio v122 visual audit passed: 5 destinations, compact Catalogue/Finance/Réglage and H24 WebTV control room.');
+console.log('Studio v122 visual audit passed: 5 destinations, Catalogue pleine largeur, Finance/Réglage compacts and H24 WebTV control room.');
 function assert(condition,message){if(!condition)throw new Error(message);}

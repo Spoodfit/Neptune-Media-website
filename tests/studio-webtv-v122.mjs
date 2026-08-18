@@ -20,7 +20,8 @@ const expect=(condition,message)=>{if(!condition)throw new Error(message);checks
 for(const label of ['Parcours clients','Diffusion','Catalogue Média','Finance','Réglage'])expect(overviewJs.includes(label),`navigation v122 contient ${label}`);
 expect(overviewJs.includes('neptune-studio-nav-link'),'navigation v122 conserve le contrat DOM canonique');
 expect(overviewCss.includes('.studio-context-nav-v65{display:none!important}'),'ancienne rangée de sous-onglets masquée');
-expect(overviewCss.includes('max-height:calc(100dvh - 285px)'),'catalogue borné au viewport desktop');
+expect(overviewCss.includes('height:calc(100dvh - 282px)!important')&&overviewCss.includes('overflow:hidden!important'),'catalogue borné au viewport desktop');
+expect(overviewCss.includes('.c115-preview-device{height:clamp(230px,31vh,310px)!important}'),'aperçu tunnel réel compacté dans la console');
 expect(overviewCss.includes('.v122-overview-grid'),'réglages disposent d’une vue d’ensemble compacte');
 expect(advanced.includes('/studio/studio-overview-v122.js?v=1'),'advanced charge v122 à la source');
 

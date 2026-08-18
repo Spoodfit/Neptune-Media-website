@@ -79,7 +79,7 @@ function bindCommandCenter(root,studio,initialControl){
     try{
       const control=await api('/api/admin/webtv/state');
       const result=synchronizeEpisodes(control,usableEpisodes(studio));
-      if(!result.changed){showMessage(message,'Toutes les émissions Cloudflare sont déjà dans la boucle.');return;}
+      if(!result.changed){showMessage(message,'Toutes les émissions Cloudflare sont déjà dans la boucle.');button.disabled=false;button.textContent='Resynchroniser Cloudflare';return;}
       await putControl(result.control);
       showMessage(message,`${result.added} émission${result.added>1?'s':''} ajoutée${result.added>1?'s':''}. Ordre et publicités existants conservés.`);
       setTimeout(()=>location.reload(),700);
@@ -152,7 +152,7 @@ function playlistItem(item,kind){
 function installAudience(studio,control){
   if($('#webTvAudienceV122'))return;
   const panel=$('#programPanel');if(!panel)return;
-  const stats=studio.stats||{};
+  const stats=studio.stats?.webTv||{views:0,watchSeconds:0,bookingClicks:0,uniqueViewers:0,byEpisode:{}};
   const episodes=usableEpisodes(studio);
   const programmedEpisodeIds=new Set();
   for(const item of control.playlist||[]){
@@ -160,13 +160,13 @@ function installAudience(studio,control){
     if(source)programmedEpisodeIds.add(String(source.id));
   }
   const byEpisode=stats.byEpisode||{};
-  let views=0,watch=0,clicks=0;
-  for(const id of programmedEpisodeIds){const row=byEpisode[id]||{};views+=Number(row.views||0);watch+=Number(row.watchSeconds||0);clicks+=Number(row.bookingClicks||0);}
-  if(!programmedEpisodeIds.size){views=Number(stats.views||0);watch=Number(stats.watchSeconds||0);clicks=Number(stats.bookingClicks||0);}
+  let views=0,watch=0,clicks=0,unique=0;
+  for(const id of programmedEpisodeIds){const row=byEpisode[id]||{};views+=Number(row.views||0);watch+=Number(row.watchSeconds||0);clicks+=Number(row.bookingClicks||0);unique+=Number(row.uniqueViewers||0);}
+  if(!programmedEpisodeIds.size){views=Number(stats.views||0);watch=Number(stats.watchSeconds||0);clicks=Number(stats.bookingClicks||0);unique=Number(stats.uniqueViewers||0);}
   const rate=views?Math.round((clicks/views)*1000)/10:0;
   const section=document.createElement('section');
-  section.id='webTvAudienceV122';section.className='v122-tv-audience';
-  section.innerHTML=`<div class="v122-audience-head"><div><p class="eyebrow">AUDIENCE</p><h3>Performance des émissions programmées</h3></div><a href="/studio/advanced.html#insights">Analyse détaillée ↗</a></div><div class="v122-audience-grid">${kpi(views,'Vues','Émissions présentes dans la boucle')}${kpi(formatWatch(watch),'Temps regardé','Cumul des lectures mesurées')}${kpi(clicks,'Clics réservation',`${rate}% des vues`)}${kpi(Number(stats.uniqueViewers||0),'Spectateurs uniques','Audience connue Neptune')}</div>`;
+  section.id='webTvAudienceV122';section.className='v122-tv-audience';section.dataset.scope='webtv';
+  section.innerHTML=`<div class="v122-audience-head"><div><p class="eyebrow">AUDIENCE WEBTV</p><h3>Performance mesurée sur le direct Neptune</h3></div><a href="/studio/advanced.html#insights">Analyse globale ↗</a></div><div class="v122-audience-grid">${kpi(views,'Vues WebTV','Lectures du direct uniquement')}${kpi(formatWatch(watch),'Temps regardé','Temps cumulé sur la WebTV')}${kpi(clicks,'Clics réservation',`${rate}% des vues WebTV`)}${kpi(unique,'Spectateurs uniques','Sessions WebTV distinctes')}</div>`;
   const head=$('.panel-head',panel);if(head)head.after(section);else panel.prepend(section);
 }
 

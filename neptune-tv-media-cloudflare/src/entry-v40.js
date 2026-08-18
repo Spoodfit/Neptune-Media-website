@@ -1,8 +1,8 @@
 import {getContainer} from '@cloudflare/containers';
-import base,{StudioStore,WebTvEncoder} from './entry-v39.js';
+import base,{StudioStore as BaseStudioStore,WebTvEncoder} from './entry-v39.js';
 import {maintainWebTvV118} from './webtv-control-v118.js';
 
-export {StudioStore,WebTvEncoder};
+export {WebTvEncoder};
 
 const PLAYBACK_RELEASE='neptune-webtv-playback-20260815-v119.5';
 const PLAYER_SELECTION_RELEASE='neptune-webtv-player-selection-20260815-v119.6';
@@ -22,6 +22,16 @@ const WEBTV_INSTANCE='neptune-webtv-primary';
 const NATIVE_FIRST="if(video.canPlayType('application/vnd.apple.mpegurl'))";
 const HLS_FIRST="if((!window.Hls||!window.Hls.isSupported())&&video.canPlayType('application/vnd.apple.mpegurl'))";
 
+export class StudioStore extends BaseStudioStore{
+  getStats(){
+    const stats=super.getStats();
+    try{return {...stats,webTv:webTvStats(this.sql)};}catch(error){
+      console.warn('webtv_v122_stats_failed',String(error?.message||error));
+      return {...stats,webTv:emptyWebTvStats()};
+    }
+  }
+}
+
 export default{
   async fetch(request,env,ctx){
     const url=new URL(request.url);
@@ -38,6 +48,55 @@ export default{
     if(typeof base.scheduled==='function')return base.scheduled(controller,env,ctx);
   },
 };
+
+function webTvStats(sql){
+  const totals=sql.exec(`
+    SELECT
+      SUM(CASE WHEN event_name='view' THEN 1 ELSE 0 END) AS views,
+      SUM(CASE WHEN event_name='watch' THEN watch_delta_seconds ELSE 0 END) AS watchSeconds,
+      SUM(CASE WHEN event_name='booking_click' THEN 1 ELSE 0 END) AS bookingClicks,
+      SUM(CASE WHEN event_name='complete' THEN 1 ELSE 0 END) AS completions,
+      COUNT(DISTINCT session_id) AS uniqueViewers
+    FROM video_events WHERE session_id LIKE 'webtv:%'
+  `).one();
+  const byEpisode={};
+  for(const row of sql.exec(`
+    SELECT episode_id AS episodeId,
+      SUM(CASE WHEN event_name='view' THEN 1 ELSE 0 END) AS views,
+      SUM(CASE WHEN event_name='watch' THEN watch_delta_seconds ELSE 0 END) AS watchSeconds,
+      SUM(CASE WHEN event_name='booking_click' THEN 1 ELSE 0 END) AS bookingClicks,
+      SUM(CASE WHEN event_name='complete' THEN 1 ELSE 0 END) AS completions,
+      COUNT(DISTINCT session_id) AS uniqueViewers
+    FROM video_events WHERE session_id LIKE 'webtv:%' GROUP BY episode_id
+  `)){
+    if(row.episodeId)byEpisode[row.episodeId]=metrics(row,['views','watchSeconds','bookingClicks','completions','uniqueViewers']);
+  }
+  const daily=[];
+  for(const row of sql.exec(`
+    SELECT day,
+      SUM(CASE WHEN event_name='view' THEN 1 ELSE 0 END) AS views,
+      SUM(CASE WHEN event_name='watch' THEN watch_delta_seconds ELSE 0 END) AS watchSeconds,
+      SUM(CASE WHEN event_name='booking_click' THEN 1 ELSE 0 END) AS bookingClicks
+    FROM video_events
+    WHERE session_id LIKE 'webtv:%' AND day >= date('now','-29 day')
+    GROUP BY day ORDER BY day ASC
+  `))daily.push({day:row.day,...metrics(row,['views','watchSeconds','bookingClicks'])});
+  const adStats={};
+  for(const row of sql.exec(`
+    SELECT ad_id AS adId,
+      SUM(CASE WHEN event_name='impression' THEN 1 ELSE 0 END) AS impressions,
+      SUM(CASE WHEN event_name='play' THEN 1 ELSE 0 END) AS plays,
+      SUM(CASE WHEN event_name='complete' THEN 1 ELSE 0 END) AS completions,
+      SUM(CASE WHEN event_name='click' THEN 1 ELSE 0 END) AS clicks
+    FROM ad_events WHERE session_id LIKE 'webtv:%' GROUP BY ad_id
+  `)){
+    if(row.adId)adStats[row.adId]=metrics(row,['impressions','plays','completions','clicks']);
+  }
+  return {...metrics(totals,['views','watchSeconds','bookingClicks','completions','uniqueViewers']),byEpisode,daily,adStats};
+}
+
+function metrics(row,keys){const out={};for(const key of keys)out[key]=Number(row?.[key]||0);return out;}
+function emptyWebTvStats(){return{views:0,watchSeconds:0,bookingClicks:0,completions:0,uniqueViewers:0,byEpisode:{},daily:[],adStats:{}};}
 
 async function resilientLiveFetch(request,env,ctx,pathname){
   const manifest=pathname.endsWith('/index.m3u8');

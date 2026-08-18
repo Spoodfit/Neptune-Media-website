@@ -2,7 +2,7 @@ const RELEASE='neptune-studio-catalog-ux-20260819-v122.1';
 const TABS={
   formats:{label:'Formats',summary:'formats'},
   configurations:{label:'Configurations',summary:'configurations'},
-  services:{label:'Prestations fournisseur',summary:'services',legacySelector:'[data-c116-services]'},
+  services:{label:'Prestations',summary:'services',legacySelector:'[data-c116-services]'},
   offers:{label:'Tarifs & offres',summary:'offers'},
   suppliers:{label:'Fournisseurs',summary:'suppliers'},
   cities:{label:'Villes',summary:'cities'},
@@ -53,7 +53,7 @@ function enhance(){
   const hero=page.querySelector('.c98-hero');
   if(hero){
     const eyebrow=hero.querySelector('.c98-eyebrow');
-    const description=hero.querySelector('div:first-child > p:last-child');
+    const description=hero.querySelector('div:first-child p:not(.c98-eyebrow)');
     const sync=hero.querySelector('.c98-sync');
     const tunnel=hero.querySelector('.c98-hero-actions a[href^="/reserver"]');
     if(eyebrow)eyebrow.textContent='CATALOGUE CLIENT';

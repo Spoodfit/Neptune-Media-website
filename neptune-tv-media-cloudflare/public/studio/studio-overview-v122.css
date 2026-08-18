@@ -1,0 +1,82 @@
+html[data-studio-overview-v122]{--v122-gap:12px}
+html[data-studio-overview-v122] .studio-context-nav-v65{display:none!important}
+html[data-studio-overview-v122] .topbar{min-height:76px!important;padding-top:12px!important;padding-bottom:12px!important}
+html[data-studio-overview-v122] .topbar h1{font-size:clamp(1.55rem,2vw,2.05rem)!important;line-height:1!important}
+html[data-studio-overview-v122] .topbar .eyebrow{margin-bottom:5px!important;font-size:.66rem!important}
+html[data-studio-overview-v122] .main{padding-top:18px!important;padding-bottom:22px!important}
+html[data-studio-overview-v122] .v122-nav-link span{font-variant-numeric:tabular-nums}
+
+/* Catalogue : transformer la longue page en console dense, avec scroll interne uniquement où nécessaire. */
+body.v122-studio-catalog .c98-page{gap:10px!important;min-height:calc(100dvh - 116px)}
+body.v122-studio-catalog .c98-hero{min-height:96px!important;padding:17px 20px!important;border-radius:18px!important;align-items:center!important}
+body.v122-studio-catalog .c98-hero h2{font-size:clamp(1.65rem,2.6vw,2.55rem)!important;line-height:1!important}
+body.v122-studio-catalog .c98-hero p:last-child{max-width:850px!important;margin-top:6px!important;font-size:.7rem!important;line-height:1.4!important}
+body.v122-studio-catalog .c98-hero .c98-eyebrow{margin-bottom:4px!important;font-size:.54rem!important}
+body.v122-studio-catalog .c98-tabs{min-height:42px!important;padding:4px!important;border-radius:13px!important}
+body.v122-studio-catalog .c98-tabs button{min-height:32px!important;padding:6px 10px!important;font-size:.65rem!important}
+body.v122-studio-catalog .c98-layout{gap:10px!important;grid-template-columns:minmax(0,1.45fr) minmax(310px,.55fr)!important;max-height:calc(100dvh - 285px);overflow:hidden}
+body.v122-studio-catalog .c98-work{gap:9px!important;min-height:0;overflow:auto;padding-right:4px;scrollbar-width:thin}
+body.v122-studio-catalog .c98-preview{min-height:0;overflow:auto;scrollbar-width:thin}
+body.v122-studio-catalog .c98-preview-sticky{position:relative!important;top:auto!important;gap:8px!important;padding:11px!important;border-radius:15px!important}
+body.v122-studio-catalog .c98-section-head{padding:12px 14px!important;border-radius:14px!important}
+body.v122-studio-catalog .c98-section-head h3{font-size:1rem!important}
+body.v122-studio-catalog .c98-section-head p:last-child{margin-top:3px!important;font-size:.64rem!important;line-height:1.4!important}
+body.v122-studio-catalog .c98-card-grid,body.v122-studio-catalog .c98-config-grid{gap:9px!important}
+body.v122-studio-catalog .c98-entity-card,body.v122-studio-catalog .c98-config-card{border-radius:14px!important}
+body.v122-studio-catalog .c98-entity-card:hover{transform:none!important}
+body.v122-studio-catalog .c98-media{aspect-ratio:16/7.4!important}
+body.v122-studio-catalog .c98-entity-body,body.v122-studio-catalog .c98-config-body{gap:5px!important;padding:10px 11px!important}
+body.v122-studio-catalog .c98-entity-body h4,body.v122-studio-catalog .c98-config-body h4{font-size:.82rem!important}
+body.v122-studio-catalog .c98-entity-body p{font-size:.61rem!important;line-height:1.35!important}
+body.v122-studio-catalog .c98-list{gap:6px!important}
+body.v122-studio-catalog .c98-list-row{padding:10px 12px!important;border-radius:12px!important}
+body.v122-studio-catalog .c98-editor{gap:10px!important;margin:7px 0!important;padding:13px!important;border-radius:15px!important}
+body.v122-studio-catalog .c98-editor-grid{gap:8px!important}
+body.v122-studio-catalog .c98-field{gap:4px!important;font-size:.61rem!important}
+body.v122-studio-catalog .c98-field input,body.v122-studio-catalog .c98-field select,body.v122-studio-catalog .c98-tier input,body.v122-studio-catalog .c98-tier select{min-height:34px!important;padding:6px 8px!important}
+body.v122-studio-catalog .c98-field textarea{min-height:62px!important;padding:7px 8px!important}
+body.v122-studio-catalog .c98-visual-editor{grid-template-columns:135px 1fr!important;gap:9px!important;padding:9px!important}
+body.v122-studio-catalog .c98-tier-grid{gap:7px!important}
+body.v122-studio-catalog .c98-tier{gap:6px!important;padding:9px!important}
+body.v122-studio-catalog .c98-button{min-height:34px!important;padding:7px 10px!important;font-size:.65rem!important;border-radius:9px!important}
+body.v122-studio-catalog .c98-preview-screen{padding:10px!important}
+body.v122-studio-catalog .c98-preview-screen>h4{margin-bottom:8px!important;font-size:1rem!important}
+body.v122-studio-catalog .c98-tunnel-format{min-height:118px!important}
+
+/* Finance et Réglage : densité de console, pas de cartes géantes. */
+body.v122-studio-finance #content,body.v122-studio-settings #content{display:grid;gap:10px!important;align-content:start}
+body.v122-studio-finance #content>section,body.v122-studio-finance #content>.panel,body.v122-studio-finance #content>.card,body.v122-studio-settings #content>section:not(.v122-settings-overview),body.v122-studio-settings #content>.panel{margin:0!important;padding:14px!important;border-radius:15px!important}
+body.v122-studio-finance #content h2,body.v122-studio-finance #content h3,body.v122-studio-settings #content h2,body.v122-studio-settings #content h3{margin-top:0!important}
+body.v122-studio-finance #content table{font-size:.74rem!important}
+body.v122-studio-finance #content th,body.v122-studio-finance #content td{padding:8px 10px!important}
+body.v122-studio-finance #content .metric,body.v122-studio-finance #content .stat,body.v122-studio-finance #content .kpi{min-height:0!important;padding:12px!important}
+
+.v122-settings-overview{display:grid;gap:12px;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important}
+.v122-overview-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;padding:14px 16px;border:1px solid #dfe5ef;border-radius:15px;background:#fff;box-shadow:0 5px 16px rgba(16,24,40,.045)}
+.v122-overview-head h2{margin:0!important;color:#101828;font-size:1.15rem!important;letter-spacing:-.025em}
+.v122-overview-head p:last-child{margin:5px 0 0;color:#667085;font-size:.71rem;line-height:1.4}
+.v122-kicker{margin:0 0 4px;color:#6653dc;font-size:.58rem;font-weight:900;letter-spacing:.15em;text-transform:uppercase}
+.v122-overview-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.v122-overview-card{min-width:0;display:grid;grid-template-columns:36px 1fr auto;align-items:center;gap:10px;min-height:116px;padding:14px;border:1px solid #dfe5ef;border-radius:15px;background:#fff;box-shadow:0 5px 16px rgba(16,24,40,.045);text-align:left;cursor:pointer;color:#101828}
+.v122-overview-card:hover{border-color:#b9b0ff;box-shadow:0 8px 22px rgba(83,68,198,.09)}
+.v122-overview-card .v122-card-icon{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;background:#f0efff;font-size:1rem}
+.v122-overview-card small{display:block;color:#6653dc;font-size:.55rem;font-weight:900;letter-spacing:.12em}
+.v122-overview-card strong{display:block;margin-top:3px;font-size:.86rem}
+.v122-overview-card p{margin:4px 0 0;color:#667085;font-size:.64rem;line-height:1.35}
+.v122-overview-card>b{color:#5d4bd7;font-size:.65rem;white-space:nowrap}
+.v122-overview-loading{padding:20px;border:1px dashed #cfd6e4;border-radius:14px;background:#fff;color:#667085;font-size:.72rem;text-align:center}
+.v122-settings-back{width:max-content;min-height:34px;padding:7px 11px;border:1px solid #d7dce7;border-radius:10px;background:#fff;color:#4b5565;font-weight:800;cursor:pointer}
+
+@media(max-width:1080px){
+  body.v122-studio-catalog .c98-layout{grid-template-columns:1fr!important;max-height:none!important;overflow:visible!important}
+  body.v122-studio-catalog .c98-work,body.v122-studio-catalog .c98-preview{overflow:visible!important}
+  .v122-overview-grid{grid-template-columns:1fr}
+}
+@media(max-width:720px){
+  html[data-studio-overview-v122] .main{padding-top:12px!important}
+  body.v122-studio-catalog .c98-hero{min-height:0!important;padding:15px!important;align-items:flex-start!important}
+  body.v122-studio-catalog .c98-hero-actions{width:100%}
+  body.v122-studio-catalog .c98-card-grid,body.v122-studio-catalog .c98-config-grid{grid-template-columns:1fr!important}
+  .v122-overview-card{grid-template-columns:34px 1fr;min-height:96px}
+  .v122-overview-card>b{grid-column:2}
+}

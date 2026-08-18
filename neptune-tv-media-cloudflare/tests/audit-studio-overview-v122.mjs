@@ -31,7 +31,7 @@ const webTvState={
   fallback:{title:'Neptune Media',mediaUrl:''},
   encoder:{status:'streaming',lastHeartbeatAt:new Date().toISOString(),lastError:null,currentItem:{id:'episode-1',title:'Les secrets des clubs d’affaires',type:'episode',startedAt:new Date().toISOString()}},
 };
-const catalogContext={ok:true,formats:[],suppliers:[],cities:[],families:[],configurationVisuals:[],offers:[]};
+const catalogContext={ok:true,formats:[],suppliers:[],cities:[],families:[],configurationVisuals:[],offers:[],services:[],supplierRates:[],rateUnits:[],durationOptions:[]};
 const publishedCatalog={ok:true,formats:[],cities:[],offers:[],suppliers:[],pricing:{}};
 const portal={clients:[],orders:[],supplierPayments:[],refundRequests:[],deletionRequests:[],finance:adminState.finance};
 const screens=[
@@ -76,6 +76,8 @@ try{
       if(screen.kind==='catalogue'){
         await page.waitForSelector('.c98-page',{timeout:20000});
         await page.waitForSelector('#studioCatalogGlanceV1221',{timeout:20000});
+        await page.waitForSelector('[data-c116-services]',{state:'attached',timeout:20000});
+        await page.waitForSelector('.c116-preview-panel',{state:'attached',timeout:20000});
       }
       if(screen.kind==='settings')await page.waitForSelector('#studioSettingsOverviewV122:not([hidden])',{timeout:20000});
       if(screen.kind==='webtv')await page.waitForSelector('#webTvCommandV122',{timeout:20000});
@@ -95,11 +97,15 @@ try{
           const layout=document.querySelector('.c98-layout')?.getBoundingClientRect();
           const work=document.querySelector('.c98-work')?.getBoundingClientRect();
           const preview=document.getElementById('c98Preview');
+          const previewPanel=document.querySelector('.c116-preview-panel');
+          const oldTabs=document.querySelector('.c98-tabs');
           data.catalogue={
             heroHeight:Math.round(hero?.getBoundingClientRect().height||0),
             bodyMode:body.classList.contains('v122-studio-catalog'),
             widthRatio:layout?.width?work.width/layout.width:0,
             previewDisplay:preview?getComputedStyle(preview).display:'missing',
+            previewPanelDisplay:previewPanel?getComputedStyle(previewPanel).display:'missing',
+            oldTabsDisplay:oldTabs?getComputedStyle(oldTabs).display:'missing',
             glance:document.querySelectorAll('[data-v122-catalog-tab]').length,
             tunnel:Boolean(document.querySelector('.c98-hero-actions a[href^="/reserver"]')),
           };
@@ -120,7 +126,9 @@ try{
         assert(metrics.catalogue.heroHeight>0&&metrics.catalogue.heroHeight<180,`${screen.id}: hero trop haut ${metrics.catalogue.heroHeight}px`);
         assert(metrics.catalogue.widthRatio>.97,`${screen.id}: zone de travail limitée à ${Math.round(metrics.catalogue.widthRatio*100)}%`);
         assert(metrics.catalogue.previewDisplay==='none',`${screen.id}: aperçu tunnel permanent encore visible`);
-        assert(metrics.catalogue.glance===5,`${screen.id}: vue d’ensemble ${metrics.catalogue.glance}/5`);
+        assert(metrics.catalogue.previewPanelDisplay==='none',`${screen.id}: ancien aperçu repliable encore visible`);
+        assert(metrics.catalogue.oldTabsDisplay==='none',`${screen.id}: ancienne navigation Catalogue encore visible`);
+        assert(metrics.catalogue.glance===6,`${screen.id}: vue d’ensemble ${metrics.catalogue.glance}/6`);
         assert(metrics.catalogue.tunnel,`${screen.id}: accès au tunnel absent`);
       }
       if(screen.kind==='finance')assert(metrics.finance.bodyMode,'finance: mode compact absent');
@@ -153,5 +161,5 @@ try{
 }finally{await browser.close();}
 
 await writeFile(path.join(outputDir,'report.json'),JSON.stringify({ok:true,reports},null,2));
-console.log('Studio v122 visual audit passed: 5 destinations, Catalogue pleine largeur, Finance/Réglage compacts and H24 WebTV control room.');
+console.log('Studio v122 visual audit passed: 5 destinations, Catalogue pleine largeur à navigation unique, Finance/Réglage compacts and H24 WebTV control room.');
 function assert(condition,message){if(!condition)throw new Error(message);}

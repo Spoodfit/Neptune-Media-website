@@ -20,12 +20,17 @@ const family={
   ],
   format:{id:'format-hors-norme',slug:'hors-norme',name:'Hors Norme',concept:'Interview signature',description:'Le concept Hors Norme.',durationLabel:'60 min',image:'/assets/posters/hors-norme-wide.webp',active:true},
 };
+const service={id:'service-1',cityId:'city-toulouse',cityName:'Toulouse',supplierId:'supplier-recbox',supplierName:'RecBox',formatId:'format-hors-norme',formatName:'Hors Norme',active:true,preparationUrl:'https://example.com/preparation'};
 const catalogContext={
   ok:true,
   formats:[family.format],
   suppliers:[{id:'supplier-recbox',name:'RecBox',active:true,defaultNetCents:60000,vatRateBps:2000}],
   cities:[{id:'city-toulouse',slug:'toulouse',name:'Toulouse',country:'France',active:true,publicOrder:10}],
   families:[family],
+  services:[service],
+  supplierRates:[],
+  rateUnits:[],
+  durationOptions:[],
 };
 const publicCatalog={
   ok:true,
@@ -66,6 +71,8 @@ try{
   await page.waitForSelector('.c98-page',{timeout});
   await page.waitForFunction(()=>document.getElementById('content')?.dataset.c98==='ready',null,{timeout});
   await page.waitForSelector('#studioCatalogGlanceV1221',{timeout});
+  await page.waitForSelector('[data-c116-services]',{state:'attached',timeout});
+  await page.waitForSelector('.c116-preview-panel',{state:'attached',timeout});
 
   await page.getByRole('link',{name:'Finance',exact:true}).click();
   await page.waitForFunction(()=>location.hash==='#finances'&&!document.querySelector('.c98-page'),null,{timeout});
@@ -74,34 +81,41 @@ try{
   await page.waitForSelector('.c98-page',{timeout});
   await page.waitForFunction(()=>document.getElementById('content')?.dataset.c98==='ready',null,{timeout});
   await page.waitForSelector('#studioCatalogGlanceV1221',{timeout});
+  await page.waitForSelector('[data-c116-services]',{state:'attached',timeout});
+  await page.waitForSelector('.c116-preview-panel',{state:'attached',timeout});
   assert(!(await page.locator('#content').getByText('Organisez les formats éditoriaux de la chaîne.').count()),'Retour Catalogue affiche encore le gestionnaire legacy');
 
   const dimensions=await page.evaluate(()=>{
     const layout=document.querySelector('.c98-layout')?.getBoundingClientRect();
     const work=document.querySelector('.c98-work')?.getBoundingClientRect();
     const preview=document.getElementById('c98Preview');
-    const content=document.getElementById('content')?.getBoundingClientRect();
+    const previewPanel=document.querySelector('.c116-preview-panel');
+    const oldTabs=document.querySelector('.c98-tabs');
     return {
       layoutWidth:layout?.width||0,
       workWidth:work?.width||0,
-      contentWidth:content?.width||0,
       previewDisplay:preview?getComputedStyle(preview).display:'missing',
+      previewPanelDisplay:previewPanel?getComputedStyle(previewPanel).display:'missing',
+      oldTabsDisplay:oldTabs?getComputedStyle(oldTabs).display:'missing',
       pageOverflow:document.documentElement.scrollWidth-document.documentElement.clientWidth,
     };
   });
   assert(dimensions.layoutWidth>0&&dimensions.workWidth/dimensions.layoutWidth>.97,`Catalogue n’utilise pas toute la largeur: ${JSON.stringify(dimensions)}`);
   assert(dimensions.previewDisplay==='none','Aperçu tunnel permanent encore visible');
+  assert(dimensions.previewPanelDisplay==='none','Ancien aperçu tunnel repliable encore visible');
+  assert(dimensions.oldTabsDisplay==='none','Ancienne deuxième navigation Catalogue encore visible');
   assert(dimensions.pageOverflow<=1,`Débordement horizontal Catalogue: ${dimensions.pageOverflow}px`);
-  assert(await page.locator('[data-v122-catalog-tab]').count()===5,'Vue d’ensemble Catalogue incomplète');
+  assert(await page.locator('[data-v122-catalog-tab]').count()===6,'Vue d’ensemble Catalogue incomplète');
   assert(await page.getByRole('link',{name:'Voir le tunnel de réservation côté client'}).count()===1,'Bouton tunnel client absent');
   await page.waitForFunction(()=>document.querySelector('[data-v122-catalog-value="formats"]')?.textContent.includes('1 actif'),null,{timeout});
+  await page.waitForFunction(()=>document.querySelector('[data-v122-catalog-value="services"]')?.textContent.includes('1 active'),null,{timeout});
 
   await page.locator('[data-v122-catalog-tab="configurations"]').click();
   await page.waitForSelector('[data-c99-config-manager]',{timeout});
   await page.waitForSelector('.c99-config-card',{timeout});
   const cardLabels=await page.locator('.c99-config-card h4').allTextContents();
   assert(JSON.stringify(cardLabels)===JSON.stringify(['Canapé','Chaise']),`Ordre des configurations altéré: ${JSON.stringify(cardLabels)}`);
-  assert((await page.locator('[data-v122-catalog-tab="configurations"]').getAttribute('aria-current'))==='true','Raccourci actif non synchronisé avec la section');
+  assert((await page.locator('[data-v122-catalog-tab="configurations"]').getAttribute('aria-current'))==='page','Raccourci actif non synchronisé avec la section');
 
   /* La prévisualisation historique reste synchronisée en arrière-plan pour préserver
      le contrat v109, mais elle ne participe plus au layout. */
@@ -125,6 +139,10 @@ try{
   const after=await frame.evaluate(()=>localStorage.getItem('neptune_media_reservation_v96'));
   assert(before===after,'Aperçu Studio a modifié le localStorage d’une réservation client');
 
+  await page.locator('[data-v122-catalog-tab="services"]').click();
+  await page.waitForFunction(()=>document.getElementById('c98Work')?.textContent.includes('Prestations fournisseurs'),null,{timeout});
+  assert((await page.locator('[data-v122-catalog-tab="services"]').getAttribute('aria-current'))==='page','Raccourci Prestations non synchronisé avec sa vue');
+
   /* Le bouton d’une offre ouvre désormais directement le tunnel ciblé, au lieu de
      monopoliser une colonne permanente dans le Studio. */
   await page.locator('[data-v122-catalog-tab="offers"]').click();
@@ -140,7 +158,7 @@ try{
   await popup.close();
 
   assert(errors.length===0,`Erreurs navigateur: ${errors.join(' | ')}`);
-  console.log('Catalogue Media v122.1 browser audit: OK — pleine largeur, vue d’ensemble, aperçu permanent masqué, tunnel à la demande et contrats v109 préservés.');
+  console.log('Catalogue Media v122.1 browser audit: OK — pleine largeur, navigation unique à six zones, aperçus historiques invisibles, tunnel à la demande et contrats v109 préservés.');
   await context.close();
 } finally {
   await browser.close();

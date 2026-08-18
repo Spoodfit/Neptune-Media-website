@@ -2,6 +2,7 @@ const RELEASE='neptune-studio-catalog-ux-20260819-v122.1';
 const TABS={
   formats:{label:'Formats',summary:'formats'},
   configurations:{label:'Configurations',summary:'configurations'},
+  services:{label:'Prestations fournisseur',summary:'services',legacySelector:'[data-c116-services]'},
   offers:{label:'Tarifs & offres',summary:'offers'},
   suppliers:{label:'Fournisseurs',summary:'suppliers'},
   cities:{label:'Villes',summary:'cities'},
@@ -56,7 +57,7 @@ function enhance(){
     const sync=hero.querySelector('.c98-sync');
     const tunnel=hero.querySelector('.c98-hero-actions a[href^="/reserver"]');
     if(eyebrow)eyebrow.textContent='CATALOGUE CLIENT';
-    if(description)description.textContent='Gérez ici exactement ce que le client peut réserver : formats, configurations, tarifs, fournisseurs et villes. Les changements sont répercutés dans le tunnel.';
+    if(description)description.textContent='Gérez ce que le client peut réserver. Chaque modification est synchronisée avec le tunnel.';
     if(sync)sync.childNodes[sync.childNodes.length-1].textContent=' Tunnel synchronisé';
     if(tunnel){
       tunnel.textContent='Voir le tunnel client ↗';
@@ -86,7 +87,7 @@ function installGlance(page,tabs){
     glance=document.createElement('section');
     glance.id='studioCatalogGlanceV1221';
     glance.className='v122-catalog-glance';
-    glance.setAttribute('aria-label','Vue d’ensemble et raccourcis du catalogue');
+    glance.setAttribute('aria-label','Vue d’ensemble et navigation du catalogue');
     glance.innerHTML=Object.entries(TABS).map(([key,config])=>`<button type="button" data-v122-catalog-tab="${key}"><small>${config.label}</small><strong data-v122-catalog-value="${config.summary}">—</strong><b aria-hidden="true">→</b></button>`).join('');
     tabs.before(glance);
     scheduleSnapshot(0,true);
@@ -94,11 +95,12 @@ function installGlance(page,tabs){
 }
 
 function updateGlanceSelection(page=document){
-  const activeTab=page.querySelector('[data-c98-tab].is-active')?.dataset.c98Tab||'formats';
+  const servicesActive=page.querySelector('[data-c116-services].is-active');
+  const activeTab=servicesActive?'services':page.querySelector('[data-c98-tab].is-active')?.dataset.c98Tab||'formats';
   page.querySelectorAll('[data-v122-catalog-tab]').forEach(button=>{
     const selected=button.dataset.v122CatalogTab===activeTab;
     button.classList.toggle('is-active',selected);
-    if(selected)button.setAttribute('aria-current','true');else button.removeAttribute('aria-current');
+    if(selected)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');
   });
 }
 
@@ -106,9 +108,8 @@ function handleClick(event){
   if(!active())return;
   const shortcut=event.target.closest('[data-v122-catalog-tab]');
   if(shortcut){
-    const target=document.querySelector(`[data-c98-tab="${shortcut.dataset.v122CatalogTab}"]`);
-    target?.click();
-    target?.focus({preventScroll:true});
+    event.preventDefault();
+    activateShortcut(shortcut.dataset.v122CatalogTab,shortcut);
     return;
   }
 
@@ -117,6 +118,33 @@ function handleClick(event){
     const params=new URLSearchParams({catalog_preview:'studio',catalog_view:'format',catalog_family:preview.dataset.preview});
     window.open(`/reserver?${params}`,'_blank','noopener');
   }
+}
+
+function activateShortcut(key,shortcut){
+  if(key==='services'){
+    activateServices(shortcut,0);
+    return;
+  }
+  const target=document.querySelector(`[data-c98-tab="${key}"]`);
+  target?.click();
+  target?.focus({preventScroll:true});
+  queueMicrotask(()=>updateGlanceSelection());
+}
+
+function activateServices(shortcut,attempt){
+  const target=document.querySelector(TABS.services.legacySelector);
+  if(target){
+    delete shortcut.dataset.loading;
+    target.click();
+    queueMicrotask(()=>updateGlanceSelection());
+    return;
+  }
+  if(attempt>=15){
+    delete shortcut.dataset.loading;
+    return;
+  }
+  shortcut.dataset.loading='true';
+  setTimeout(()=>activateServices(shortcut,attempt+1),80);
 }
 
 function scheduleSnapshot(delay=0,force=false){
@@ -141,12 +169,14 @@ async function loadSnapshot(force=false){
     const context=await response.json();
     const formats=array(context.formats);
     const families=array(context.families);
+    const services=array(context.services);
     const suppliers=array(context.suppliers);
     const cities=array(context.cities);
     const configurations=families.reduce((sum,family)=>sum+array(family.configurationVisuals).length,0);
     const values={
       formats:countLabel(formats.filter(item=>item.active!==false).length,'actif','actifs'),
       configurations:countLabel(configurations,'choix','choix'),
+      services:countLabel(services.filter(item=>item.active!==false).length,'active','actives'),
       offers:countLabel(families.filter(item=>item.active!==false).length,'publiée','publiées'),
       suppliers:countLabel(suppliers.filter(item=>item.active!==false).length,'actif','actifs'),
       cities:countLabel(cities.filter(item=>item.active!==false).length,'active','actives'),

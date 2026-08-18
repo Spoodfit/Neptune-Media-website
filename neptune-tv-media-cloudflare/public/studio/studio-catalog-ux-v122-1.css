@@ -13,31 +13,33 @@ body.v122-studio-catalog #content .c98-page{
 }
 
 body.v122-studio-catalog #content .c98-page .c98-hero{
-  min-height:112px!important;
+  display:grid!important;
+  min-height:104px!important;
   height:auto!important;
-  max-height:none!important;
-  padding:16px 20px!important;
+  max-height:132px!important;
+  padding:14px 18px!important;
   border-radius:18px!important;
   grid-template-columns:minmax(0,1fr) auto!important;
   align-items:center!important;
+  gap:12px!important;
 }
 body.v122-studio-catalog .c98-hero h2{
-  font-size:clamp(1.7rem,2.25vw,2.35rem)!important;
+  font-size:clamp(1.65rem,2.15vw,2.25rem)!important;
   line-height:.98!important;
 }
 body.v122-studio-catalog .c98-hero p:last-child{
   display:block!important;
-  max-width:880px!important;
-  margin-top:6px!important;
+  max-width:760px!important;
+  margin-top:5px!important;
   overflow:visible!important;
   color:rgba(255,255,255,.74)!important;
-  font-size:.72rem!important;
-  line-height:1.42!important;
+  font-size:.7rem!important;
+  line-height:1.38!important;
   -webkit-line-clamp:unset!important;
 }
 body.v122-studio-catalog .c98-hero .c98-eyebrow{
-  margin-bottom:4px!important;
-  font-size:.55rem!important;
+  margin-bottom:3px!important;
+  font-size:.54rem!important;
 }
 body.v122-studio-catalog .c98-hero-actions{
   justify-content:flex-end!important;
@@ -53,10 +55,10 @@ body.v122-studio-catalog .c98-hero-actions .c98-button{
   font-size:.69rem!important;
 }
 
-/* Vue d'ensemble : cinq raccourcis opérationnels, chacun mène à sa zone. */
+/* Navigation opérationnelle unique : six raccourcis qui résument et ouvrent chaque zone. */
 body.v122-studio-catalog .v122-catalog-glance{
   display:grid;
-  grid-template-columns:repeat(5,minmax(0,1fr));
+  grid-template-columns:repeat(6,minmax(0,1fr));
   gap:8px;
 }
 body.v122-studio-catalog .v122-catalog-glance button{
@@ -91,9 +93,9 @@ body.v122-studio-catalog .v122-catalog-glance small{
   grid-area:label;
   overflow:hidden;
   color:#667085;
-  font-size:.57rem;
+  font-size:.55rem;
   font-weight:900;
-  letter-spacing:.08em;
+  letter-spacing:.075em;
   text-overflow:ellipsis;
   text-transform:uppercase;
   white-space:nowrap;
@@ -102,7 +104,7 @@ body.v122-studio-catalog .v122-catalog-glance strong{
   grid-area:value;
   overflow:hidden;
   color:#101828;
-  font-size:.78rem;
+  font-size:.77rem;
   line-height:1.15;
   text-overflow:ellipsis;
   white-space:nowrap;
@@ -113,26 +115,14 @@ body.v122-studio-catalog .v122-catalog-glance b{
   font-size:.82rem;
 }
 
-/* Navigation métier lisible d'un coup d'œil sur desktop. */
+/* L’ancienne navigation métier reste dans le DOM pour les runtimes historiques,
+   mais la synthèse ci-dessus est désormais l’unique navigation visible. */
 body.v122-studio-catalog .c98-tabs{
-  display:grid!important;
-  grid-template-columns:repeat(5,minmax(0,1fr))!important;
-  gap:5px!important;
-  min-height:46px!important;
-  padding:4px!important;
-  overflow:visible!important;
-  border-radius:13px!important;
-}
-body.v122-studio-catalog .c98-tabs button{
-  width:100%!important;
-  min-height:36px!important;
-  padding:7px 10px!important;
-  font-size:.7rem!important;
-  white-space:nowrap!important;
+  display:none!important;
 }
 
-/* La gestion prend 100 % de la zone utile. L'aperçu historique reste dans le DOM
-   pour la synchronisation v109, mais ne consomme plus ni largeur ni hauteur. */
+/* La gestion prend 100 % de la zone utile. Les aperçus historiques restent montés
+   techniquement pour v109/v115/v116, sans occuper l’interface. */
 body.v122-studio-catalog #content .c98-page .c98-layout{
   display:block!important;
   width:100%!important;
@@ -149,7 +139,8 @@ body.v122-studio-catalog .c98-work{
   padding-right:0!important;
 }
 body.v122-studio-catalog #c98Preview,
-body.v122-studio-catalog .c98-preview{
+body.v122-studio-catalog .c98-preview,
+body.v122-studio-catalog .c116-preview-panel{
   display:none!important;
 }
 
@@ -267,32 +258,33 @@ body.v122-studio-catalog .c98-family-picker{
   padding:10px 12px!important;
 }
 
+@media (max-width:1100px){
+  body.v122-studio-catalog .v122-catalog-glance{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+}
+
 @media (max-width:900px){
   body.v122-studio-catalog .content{padding:14px 14px 34px!important}
   body.v122-studio-catalog #content .c98-page .c98-hero{
+    display:grid!important;
     grid-template-columns:1fr!important;
-    gap:10px!important;
-    padding:15px!important;
+    max-height:none!important;
+    min-height:0!important;
+    gap:8px!important;
+    padding:13px 15px!important;
   }
   body.v122-studio-catalog .c98-hero-actions{justify-content:flex-start!important}
   body.v122-studio-catalog .v122-catalog-glance{
-    grid-template-columns:repeat(5,minmax(145px,1fr));
+    grid-template-columns:repeat(6,minmax(145px,1fr));
     overflow-x:auto;
     padding-bottom:2px;
     scrollbar-width:thin;
   }
-  body.v122-studio-catalog .c98-tabs{
-    display:flex!important;
-    overflow-x:auto!important;
-    scrollbar-width:none;
-  }
-  body.v122-studio-catalog .c98-tabs button{
-    width:auto!important;
-    min-width:132px!important;
-  }
 }
 
 @media (max-width:640px){
+  body.v122-studio-catalog .c98-hero p:last-child{display:none!important}
   body.v122-studio-catalog .c98-hero-actions .c98-sync{display:none!important}
   body.v122-studio-catalog .c98-hero-actions .c98-button{width:100%!important}
   body.v122-studio-catalog .c98-section-head{

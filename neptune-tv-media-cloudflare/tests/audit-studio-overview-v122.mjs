@@ -51,6 +51,7 @@ try{
       const context=await browser.newContext({viewport:{width:viewport.width,height:viewport.height},serviceWorkers:'block'});
       await context.route('**/*',async route=>{
         const url=new URL(route.request().url());
+        if(url.hostname==='media.example')return route.fulfill({status:204,body:''});
         if(!url.pathname.startsWith('/api/'))return route.continue();
         let body={ok:true};
         if(url.pathname==='/api/auth/status')body={authenticated:true,csrfToken:'test-csrf',user:adminState.user};

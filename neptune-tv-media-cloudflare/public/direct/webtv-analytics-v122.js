@@ -74,8 +74,8 @@ function matchAd(item,ads){
 }
 function normalize(value){return String(value||'').trim().toLocaleLowerCase('fr-FR');}
 function position(){return Math.max(0,Math.round(Number(video?.currentTime||0)));}
-function sessionId(){let value=sessionStorage.getItem(SESSION_KEY);if(!value){value=crypto.randomUUID();sessionStorage.setItem(SESSION_KEY,value);}return value;}
-function device(){return{width:innerWidth,height:innerHeight,touch:navigator.maxTouchPoints>0,embedded:window.self!==window.top,userAgent:navigator.userAgent.slice(0,220)};}
+function sessionId(){let value=sessionStorage.getItem(SESSION_KEY);if(!value){value=`webtv:${crypto.randomUUID()}`;sessionStorage.setItem(SESSION_KEY,value);}else if(!value.startsWith('webtv:')){value=`webtv:${value}`;sessionStorage.setItem(SESSION_KEY,value);}return value;}
+function device(){return{surface:'webtv',width:innerWidth,height:innerHeight,touch:navigator.maxTouchPoints>0,embedded:window.self!==window.top,userAgent:navigator.userAgent.slice(0,220)};}
 function trackVideo(event,positionSeconds=0,delta=0){
   if(!currentEpisode?.id)return;
   send('/api/track',{event,episodeId:String(currentEpisode.id),sessionId:sessionId(),position:positionSeconds,delta,referrer:document.referrer||'',device:device()});

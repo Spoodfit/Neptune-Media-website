@@ -65,6 +65,7 @@ try{
   await page.waitForSelector('#app:not([hidden])',{timeout});
   await page.waitForSelector('.c98-page',{timeout});
   await page.waitForFunction(()=>document.getElementById('content')?.dataset.c98==='ready',null,{timeout});
+  await page.waitForSelector('#studioCatalogGlanceV1221',{timeout});
 
   await page.getByRole('link',{name:'Finance',exact:true}).click();
   await page.waitForFunction(()=>location.hash==='#finances'&&!document.querySelector('.c98-page'),null,{timeout});
@@ -72,14 +73,38 @@ try{
   await page.waitForFunction(()=>location.hash==='#programs',null,{timeout});
   await page.waitForSelector('.c98-page',{timeout});
   await page.waitForFunction(()=>document.getElementById('content')?.dataset.c98==='ready',null,{timeout});
+  await page.waitForSelector('#studioCatalogGlanceV1221',{timeout});
   assert(!(await page.locator('#content').getByText('Organisez les formats éditoriaux de la chaîne.').count()),'Retour Catalogue affiche encore le gestionnaire legacy');
 
-  await page.locator('[data-c98-tab="configurations"]').click();
+  const dimensions=await page.evaluate(()=>{
+    const layout=document.querySelector('.c98-layout')?.getBoundingClientRect();
+    const work=document.querySelector('.c98-work')?.getBoundingClientRect();
+    const preview=document.getElementById('c98Preview');
+    const content=document.getElementById('content')?.getBoundingClientRect();
+    return {
+      layoutWidth:layout?.width||0,
+      workWidth:work?.width||0,
+      contentWidth:content?.width||0,
+      previewDisplay:preview?getComputedStyle(preview).display:'missing',
+      pageOverflow:document.documentElement.scrollWidth-document.documentElement.clientWidth,
+    };
+  });
+  assert(dimensions.layoutWidth>0&&dimensions.workWidth/dimensions.layoutWidth>.97,`Catalogue n’utilise pas toute la largeur: ${JSON.stringify(dimensions)}`);
+  assert(dimensions.previewDisplay==='none','Aperçu tunnel permanent encore visible');
+  assert(dimensions.pageOverflow<=1,`Débordement horizontal Catalogue: ${dimensions.pageOverflow}px`);
+  assert(await page.locator('[data-v122-catalog-tab]').count()===5,'Vue d’ensemble Catalogue incomplète');
+  assert(await page.getByRole('link',{name:'Voir le tunnel de réservation côté client'}).count()===1,'Bouton tunnel client absent');
+  await page.waitForFunction(()=>document.querySelector('[data-v122-catalog-value="formats"]')?.textContent.includes('1 actif'),null,{timeout});
+
+  await page.locator('[data-v122-catalog-tab="configurations"]').click();
   await page.waitForSelector('[data-c99-config-manager]',{timeout});
   await page.waitForSelector('.c99-config-card',{timeout});
   const cardLabels=await page.locator('.c99-config-card h4').allTextContents();
   assert(JSON.stringify(cardLabels)===JSON.stringify(['Canapé','Chaise']),`Ordre des configurations altéré: ${JSON.stringify(cardLabels)}`);
+  assert((await page.locator('[data-v122-catalog-tab="configurations"]').getAttribute('aria-current'))==='true','Raccourci actif non synchronisé avec la section');
 
+  /* La prévisualisation historique reste synchronisée en arrière-plan pour préserver
+     le contrat v109, mais elle ne participe plus au layout. */
   await page.waitForFunction(()=>document.getElementById('c98Preview')?.dataset.catalogPreviewOwner==='v109',null,{timeout});
   assert(await page.locator('#c98Preview iframe').count()===1,'Plusieurs iframes de prévisualisation coexistent');
   const iframe=page.locator('#c98Preview iframe[data-catalog-preview-v109]');
@@ -90,24 +115,32 @@ try{
   },null,{timeout});
   const src=await iframe.getAttribute('src');
   assert(src.includes(`catalog_family=${encodeURIComponent(familyKey)}`),`Aperçu non ciblé sur la famille: ${src}`);
-
-  const tunnel=page.frameLocator('#c98Preview iframe[data-catalog-preview-v109]');
-  await tunnel.locator('.configuration-grid').waitFor({state:'visible',timeout});
-  assert(await tunnel.getByText('Quel univers souhaitez-vous ?').isVisible(),'Aperçu réel non ouvert sur l’écran Configuration');
-  assert(await tunnel.getByText('DESCRIPTION CLIENT CANAPÉ PERSONNALISÉE').isVisible(),'Description configurée dans Studio ignorée par le tunnel');
-
   const iframeHandle=await iframe.elementHandle();
   const frame=await iframeHandle?.contentFrame();
   assert(frame&&frame.url().includes('catalog_preview=studio'),'Iframe stable non naviguée vers le tunnel Studio');
+  await frame.waitForSelector('.configuration-grid',{state:'attached',timeout});
+  assert((await frame.getByText('DESCRIPTION CLIENT CANAPÉ PERSONNALISÉE').count())>0,'Description configurée dans Studio ignorée par le tunnel');
   const before=await frame.evaluate(()=>localStorage.getItem('neptune_media_reservation_v96'));
-  await tunnel.locator('[data-configuration="Canapé"]').click();
-  await tunnel.locator('.configuration-grid').waitFor({state:'visible',timeout});
+  await frame.evaluate(()=>document.querySelector('[data-configuration="Canapé"]')?.click());
   const after=await frame.evaluate(()=>localStorage.getItem('neptune_media_reservation_v96'));
   assert(before===after,'Aperçu Studio a modifié le localStorage d’une réservation client');
-  assert(await tunnel.getByText('Quel univers souhaitez-vous ?').isVisible(),'Cliquer dans l’aperçu Studio fait avancer vers un vrai paiement/créneau');
+
+  /* Le bouton d’une offre ouvre désormais directement le tunnel ciblé, au lieu de
+     monopoliser une colonne permanente dans le Studio. */
+  await page.locator('[data-v122-catalog-tab="offers"]').click();
+  await page.waitForSelector('[data-preview]',{timeout});
+  const popupPromise=page.waitForEvent('popup',{timeout});
+  await page.locator('[data-preview]').first().click();
+  const popup=await popupPromise;
+  await popup.waitForLoadState('domcontentloaded',{timeout});
+  const popupUrl=new URL(popup.url());
+  assert(popupUrl.pathname==='/reserver','Prévisualisation à la demande n’ouvre pas le tunnel');
+  assert(popupUrl.searchParams.get('catalog_preview')==='studio','Mode aperçu Studio absent du tunnel ouvert');
+  assert(popupUrl.searchParams.get('catalog_family')===familyKey,'Offre ciblée perdue dans le tunnel ouvert');
+  await popup.close();
 
   assert(errors.length===0,`Erreurs navigateur: ${errors.join(' | ')}`);
-  console.log('Catalogue Media v109 browser audit: OK — navigation V122, ordre, iframe unique, aperçu ciblé, description client et isolation localStorage.');
+  console.log('Catalogue Media v122.1 browser audit: OK — pleine largeur, vue d’ensemble, aperçu permanent masqué, tunnel à la demande et contrats v109 préservés.');
   await context.close();
 } finally {
   await browser.close();

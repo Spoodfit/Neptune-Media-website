@@ -13,6 +13,7 @@ boot();
 
 function boot(){
   document.body.dataset.studioCatalogUx=RELEASE;
+  ensureCascadeOrder();
   enhance();
   new MutationObserver(()=>scheduleEnhance()).observe(document.body,{subtree:true,childList:true});
   window.addEventListener('hashchange',scheduleEnhance);
@@ -22,10 +23,20 @@ function boot(){
   },true);
 }
 
+function ensureCascadeOrder(){
+  const link=[...document.querySelectorAll('link[rel="stylesheet"]')].find(node=>node.href.includes('/studio/studio-catalog-ux-v122-1.css'));
+  if(!link||link.dataset.catalogCascadeV1221==='last')return;
+  link.dataset.catalogCascadeV1221='last';
+  document.head.append(link);
+}
+
 let enhanceTimer=0;
 function scheduleEnhance(){
   clearTimeout(enhanceTimer);
-  enhanceTimer=setTimeout(enhance,35);
+  enhanceTimer=setTimeout(()=>{
+    ensureCascadeOrder();
+    enhance();
+  },35);
 }
 
 function active(){

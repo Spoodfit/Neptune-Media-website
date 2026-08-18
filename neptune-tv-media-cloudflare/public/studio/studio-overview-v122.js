@@ -11,7 +11,7 @@ function boot(){
   applyMode();
   window.addEventListener('hashchange',()=>{settingsDetailTab='';installNavigation();applyMode();});
   const observer=new MutationObserver(()=>scheduleRefresh());
-  observer.observe(document.documentElement,{subtree:true,childList:true});
+  observer.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
   let timer=0;
   function scheduleRefresh(){
     clearTimeout(timer);

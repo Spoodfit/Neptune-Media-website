@@ -1,6 +1,7 @@
 const RELEASE='neptune-studio-overview-20260818-v122';
 const $=(selector,root=document)=>root.querySelector(selector);
 const $$=(selector,root=document)=>[...root.querySelectorAll(selector)];
+let settingsDetailTab='';
 
 boot();
 
@@ -8,7 +9,7 @@ function boot(){
   document.documentElement.dataset.studioOverviewV122=RELEASE;
   installNavigation();
   applyMode();
-  window.addEventListener('hashchange',()=>{installNavigation();applyMode();});
+  window.addEventListener('hashchange',()=>{settingsDetailTab='';installNavigation();applyMode();});
   const observer=new MutationObserver(()=>scheduleRefresh());
   observer.observe(document.documentElement,{subtree:true,childList:true});
   let timer=0;
@@ -28,26 +29,27 @@ function installNavigation(){
   nav.setAttribute('aria-label','Navigation principale du Studio');
   nav.innerHTML=[
     navLink('/studio/clients','◎','Parcours clients','clients'),
-    navLink('/studio/webtv.html','▶','Diffusion','webtv'),
-    navLink('/studio/advanced.html#programs','▦','Catalogue Média','programs'),
-    navLink('/studio/advanced.html#finances','€','Finance','finances'),
+    navLink('/studio/webtv.html','▶','Diffusion','diffusion'),
+    navLink('/studio/advanced.html#programs','▦','Catalogue Média','catalogue'),
+    navLink('/studio/advanced.html#finances','€','Finance','finance'),
     navLink('/studio/advanced.html#settings','⚙','Réglage','settings'),
   ].join('');
   updateActiveNavigation(nav);
 }
 
 function navLink(href,icon,label,key){
-  return `<a class="studio-nav-link v122-nav-link" href="${href}" data-v122-route="${key}"><span>${icon}</span><strong>${label}</strong></a>`;
+  return `<a class="neptune-studio-nav-link studio-nav-link v122-nav-link" href="${href}" data-studio-route="${key}" data-v122-route="${key}"><span class="neptune-studio-nav-icon" aria-hidden="true">${icon}</span><strong>${label}</strong></a>`;
 }
 
 function activeRoute(){
   const path=location.pathname;
   if(path.includes('/studio/clients'))return'clients';
-  if(path.includes('/studio/webtv'))return'webtv';
+  if(path.includes('/studio/webtv'))return'diffusion';
   if(path.includes('/studio/advanced')){
     const hash=(location.hash||'#programs').slice(1);
-    if(hash==='programs')return'programs';
-    if(hash==='finances')return'finances';
+    if(hash==='programs')return'catalogue';
+    if(hash==='finances')return'finance';
+    if(['episodes','ads','insights','webtv'].includes(hash))return'diffusion';
     return'settings';
   }
   return'';
@@ -70,10 +72,11 @@ function applyMode(){
   const hash=(location.hash||'#programs').slice(1);
   if(hash==='programs')body.classList.add('v122-studio-catalog');
   else if(hash==='finances')body.classList.add('v122-studio-finance');
-  else{
+  else if(['users','audit','settings'].includes(hash)){
     body.classList.add('v122-studio-settings');
-    if(hash!=='settings')body.classList.add('v122-studio-settings-detail');
-    installSettingsOverview(hash);
+    const detail=hash!=='settings'||Boolean(settingsDetailTab);
+    if(detail)body.classList.add('v122-studio-settings-detail');
+    installSettingsOverview(hash,detail);
   }
   normalizeHeading(hash);
 }
@@ -81,12 +84,11 @@ function applyMode(){
 function normalizeHeading(hash){
   const h1=$('.topbar h1,.neptune-studio-main h1');
   if(!h1)return;
-  if(hash==='programs')h1.textContent='Catalogue Média';
-  else if(hash==='finances')h1.textContent='Finance';
-  else h1.textContent='Réglage';
+  const desired=hash==='programs'?'Catalogue Média':hash==='finances'?'Finance':['users','audit','settings'].includes(hash)?'Réglage':'';
+  if(desired&&h1.textContent!==desired)h1.textContent=desired;
 }
 
-async function installSettingsOverview(hash){
+async function installSettingsOverview(hash,detail=false){
   const content=$('#content');
   if(!content)return;
   let overview=$('#studioSettingsOverviewV122');
@@ -106,8 +108,8 @@ async function installSettingsOverview(hash){
       bindSettingsActions(overview);
     }
   }
-  overview.hidden=hash!=='settings';
-  installSettingsBack(hash,content);
+  overview.hidden=hash!=='settings'||detail;
+  installSettingsBack(hash,content,detail);
 }
 
 function settingsMarkup(state){
@@ -129,13 +131,19 @@ function bindSettingsActions(root){
 
 function openLegacySettings(tab){
   const button=$(`#studioLegacyTabControlsV105 [data-tab="${tab}"]`)||$(`[data-tab="${tab}"]`);
-  if(button){button.click();return;}
-  location.hash=`#${tab}`;
+  if(tab==='settings'){
+    settingsDetailTab='settings';
+    button?.click();
+    applyMode();
+    return;
+  }
+  if(location.hash!==`#${tab}`)location.hash=`#${tab}`;
+  button?.click();
 }
 
-function installSettingsBack(hash,content){
+function installSettingsBack(hash,content,detail=false){
   let back=$('#studioSettingsBackV122');
-  if(hash==='settings'){
+  if(hash==='settings'&&!detail){
     if(back)back.remove();
     return;
   }
@@ -145,7 +153,10 @@ function installSettingsBack(hash,content){
     back.type='button';
     back.className='v122-settings-back';
     back.textContent='← Vue Réglage';
-    back.addEventListener('click',()=>{location.hash='#settings';});
+    back.addEventListener('click',()=>{
+      settingsDetailTab='';
+      if(location.hash!=='#settings')location.hash='#settings';else applyMode();
+    });
     content.prepend(back);
   }
 }

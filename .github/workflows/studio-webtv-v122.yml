@@ -1,0 +1,45 @@
+name: Validate Studio WebTV V122
+
+on:
+  pull_request:
+    paths:
+      - 'neptune-tv-media-cloudflare/public/studio/**'
+      - 'neptune-tv-media-cloudflare/public/direct/**'
+      - 'neptune-tv-media-cloudflare/src/entry-v40.js'
+      - 'neptune-tv-media-cloudflare/wrangler.jsonc'
+      - 'tests/studio-webtv-v122.mjs'
+      - '.github/workflows/studio-webtv-v122.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'neptune-tv-media-cloudflare/public/studio/**'
+      - 'neptune-tv-media-cloudflare/public/direct/**'
+      - 'neptune-tv-media-cloudflare/src/entry-v40.js'
+      - 'tests/studio-webtv-v122.mjs'
+      - '.github/workflows/studio-webtv-v122.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  validate-studio-webtv-v122:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate v122 JavaScript syntax
+        run: |
+          node --check neptune-tv-media-cloudflare/public/studio/studio-overview-v122.js
+          node --check neptune-tv-media-cloudflare/public/studio/webtv-control-room-v122.js
+          node --check neptune-tv-media-cloudflare/public/direct/webtv-analytics-v122.js
+          node --check neptune-tv-media-cloudflare/src/entry-v40.js
+      - name: Validate Studio and WebTV contracts
+        run: node tests/studio-webtv-v122.mjs
+      - name: Validate active Worker bundle
+        working-directory: neptune-tv-media-cloudflare
+        run: |
+          npm ci
+          npm run check

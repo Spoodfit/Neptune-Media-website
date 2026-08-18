@@ -1,19 +1,36 @@
 import {getContainer} from '@cloudflare/containers';
-import base,{StudioStore,WebTvEncoder} from './entry-v39.js';
+import base,{StudioStore as BaseStudioStore,WebTvEncoder} from './entry-v39.js';
 import {maintainWebTvV118} from './webtv-control-v118.js';
 
-export {StudioStore,WebTvEncoder};
+export {WebTvEncoder};
 
 const PLAYBACK_RELEASE='neptune-webtv-playback-20260815-v119.5';
 const PLAYER_SELECTION_RELEASE='neptune-webtv-player-selection-20260815-v119.6';
 const CONTAINER_READINESS_RELEASE='neptune-webtv-container-readiness-20260817-v119.7';
 const WEBTV_EMBED_RELEASE='neptune-webtv-external-embed-20260817-v121';
 const PRODUCTION_READINESS_RELEASE='neptune-production-readiness-20260817-v121';
+const STUDIO_V122_RELEASE='neptune-studio-webtv-20260818-v122';
+const WEBTV_ANALYTICS_RELEASE='neptune-webtv-analytics-20260818-v122';
 const STUDIO_READINESS_JS='/studio/production-readiness-v121.js?v=1';
 const STUDIO_READINESS_CSS='/studio/production-readiness-v121.css?v=1';
+const STUDIO_OVERVIEW_JS='/studio/studio-overview-v122.js?v=1';
+const STUDIO_OVERVIEW_CSS='/studio/studio-overview-v122.css?v=1';
+const WEBTV_CONTROL_JS='/studio/webtv-control-room-v122.js?v=1';
+const WEBTV_CONTROL_CSS='/studio/webtv-control-room-v122.css?v=1';
+const WEBTV_ANALYTICS_JS='/direct/webtv-analytics-v122.js?v=1';
 const WEBTV_INSTANCE='neptune-webtv-primary';
 const NATIVE_FIRST="if(video.canPlayType('application/vnd.apple.mpegurl'))";
 const HLS_FIRST="if((!window.Hls||!window.Hls.isSupported())&&video.canPlayType('application/vnd.apple.mpegurl'))";
+
+export class StudioStore extends BaseStudioStore{
+  getStats(){
+    const stats=super.getStats();
+    try{return {...stats,webTv:webTvStats(this.sql)};}catch(error){
+      console.warn('webtv_v122_stats_failed',String(error?.message||error));
+      return {...stats,webTv:emptyWebTvStats()};
+    }
+  }
+}
 
 export default{
   async fetch(request,env,ctx){
@@ -31,6 +48,55 @@ export default{
     if(typeof base.scheduled==='function')return base.scheduled(controller,env,ctx);
   },
 };
+
+function webTvStats(sql){
+  const totals=sql.exec(`
+    SELECT
+      SUM(CASE WHEN event_name='view' THEN 1 ELSE 0 END) AS views,
+      SUM(CASE WHEN event_name='watch' THEN watch_delta_seconds ELSE 0 END) AS watchSeconds,
+      SUM(CASE WHEN event_name='booking_click' THEN 1 ELSE 0 END) AS bookingClicks,
+      SUM(CASE WHEN event_name='complete' THEN 1 ELSE 0 END) AS completions,
+      COUNT(DISTINCT session_id) AS uniqueViewers
+    FROM video_events WHERE session_id LIKE 'webtv:%'
+  `).one();
+  const byEpisode={};
+  for(const row of sql.exec(`
+    SELECT episode_id AS episodeId,
+      SUM(CASE WHEN event_name='view' THEN 1 ELSE 0 END) AS views,
+      SUM(CASE WHEN event_name='watch' THEN watch_delta_seconds ELSE 0 END) AS watchSeconds,
+      SUM(CASE WHEN event_name='booking_click' THEN 1 ELSE 0 END) AS bookingClicks,
+      SUM(CASE WHEN event_name='complete' THEN 1 ELSE 0 END) AS completions,
+      COUNT(DISTINCT session_id) AS uniqueViewers
+    FROM video_events WHERE session_id LIKE 'webtv:%' GROUP BY episode_id
+  `)){
+    if(row.episodeId)byEpisode[row.episodeId]=metrics(row,['views','watchSeconds','bookingClicks','completions','uniqueViewers']);
+  }
+  const daily=[];
+  for(const row of sql.exec(`
+    SELECT day,
+      SUM(CASE WHEN event_name='view' THEN 1 ELSE 0 END) AS views,
+      SUM(CASE WHEN event_name='watch' THEN watch_delta_seconds ELSE 0 END) AS watchSeconds,
+      SUM(CASE WHEN event_name='booking_click' THEN 1 ELSE 0 END) AS bookingClicks
+    FROM video_events
+    WHERE session_id LIKE 'webtv:%' AND day >= date('now','-29 day')
+    GROUP BY day ORDER BY day ASC
+  `))daily.push({day:row.day,...metrics(row,['views','watchSeconds','bookingClicks'])});
+  const adStats={};
+  for(const row of sql.exec(`
+    SELECT ad_id AS adId,
+      SUM(CASE WHEN event_name='impression' THEN 1 ELSE 0 END) AS impressions,
+      SUM(CASE WHEN event_name='play' THEN 1 ELSE 0 END) AS plays,
+      SUM(CASE WHEN event_name='complete' THEN 1 ELSE 0 END) AS completions,
+      SUM(CASE WHEN event_name='click' THEN 1 ELSE 0 END) AS clicks
+    FROM ad_events WHERE session_id LIKE 'webtv:%' GROUP BY ad_id
+  `)){
+    if(row.adId)adStats[row.adId]=metrics(row,['impressions','plays','completions','clicks']);
+  }
+  return {...metrics(totals,['views','watchSeconds','bookingClicks','completions','uniqueViewers']),byEpisode,daily,adStats};
+}
+
+function metrics(row,keys){const out={};for(const key of keys)out[key]=Number(row?.[key]||0);return out;}
+function emptyWebTvStats(){return{views:0,watchSeconds:0,bookingClicks:0,completions:0,uniqueViewers:0,byEpisode:{},daily:[],adStats:{}};}
 
 async function resilientLiveFetch(request,env,ctx,pathname){
   const manifest=pathname.endsWith('/index.m3u8');
@@ -82,6 +148,8 @@ function sleep(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
 async function normalizeDirectPlayback(response,url){
   let body=await response.text();
   if(body.includes(NATIVE_FIRST))body=body.replace(NATIVE_FIRST,HLS_FIRST);
+  body=removeAsset(body,'script',WEBTV_ANALYTICS_JS.split('?')[0]);
+  body=body.replace('</body>',`<script type="module" src="${WEBTV_ANALYTICS_JS}"></script></body>`);
   const headers=new Headers(response.headers);
   for(const name of ['Content-Length','Content-Encoding','ETag','Last-Modified'])headers.delete(name);
   const directives=(headers.get('Content-Security-Policy')||"default-src 'self'")
@@ -105,19 +173,21 @@ async function normalizeDirectPlayback(response,url){
   headers.set('X-Neptune-WebTV-Playback',PLAYBACK_RELEASE);
   headers.set('X-Neptune-WebTV-Player',PLAYER_SELECTION_RELEASE);
   headers.set('X-Neptune-WebTV-Readiness',CONTAINER_READINESS_RELEASE);
+  headers.set('X-Neptune-WebTV-Analytics',WEBTV_ANALYTICS_RELEASE);
   return new Response(body,{status:response.status,statusText:response.statusText,headers});
 }
 
 async function injectStudioReadiness(response){
   let body=await response.text();
-  body=removeAsset(body,'link',STUDIO_READINESS_CSS.split('?')[0]);
-  body=removeAsset(body,'script',STUDIO_READINESS_JS.split('?')[0]);
-  body=body.replace('</head>',`<link rel="stylesheet" href="${STUDIO_READINESS_CSS}"></head>`);
-  body=body.replace('</body>',`<script type="module" src="${STUDIO_READINESS_JS}"></script></body>`);
+  for(const asset of [STUDIO_READINESS_CSS,STUDIO_OVERVIEW_CSS,WEBTV_CONTROL_CSS])body=removeAsset(body,'link',asset.split('?')[0]);
+  for(const asset of [STUDIO_READINESS_JS,STUDIO_OVERVIEW_JS,WEBTV_CONTROL_JS])body=removeAsset(body,'script',asset.split('?')[0]);
+  body=body.replace('</head>',`<link rel="stylesheet" href="${STUDIO_READINESS_CSS}"><link rel="stylesheet" href="${STUDIO_OVERVIEW_CSS}"><link rel="stylesheet" href="${WEBTV_CONTROL_CSS}"></head>`);
+  body=body.replace('</body>',`<script type="module" src="${STUDIO_READINESS_JS}"></script><script type="module" src="${STUDIO_OVERVIEW_JS}"></script><script type="module" src="${WEBTV_CONTROL_JS}"></script></body>`);
   const headers=new Headers(response.headers);
   for(const name of ['Content-Length','Content-Encoding','ETag','Last-Modified'])headers.delete(name);
   headers.set('Cache-Control','private, no-store, max-age=0');
   headers.set('X-Neptune-Production-Readiness',PRODUCTION_READINESS_RELEASE);
+  headers.set('X-Neptune-Studio-WebTV',STUDIO_V122_RELEASE);
   return new Response(body,{status:response.status,statusText:response.statusText,headers});
 }
 
@@ -140,7 +210,9 @@ async function augmentRelease(response){
   headers.set('X-Neptune-WebTV-Readiness',CONTAINER_READINESS_RELEASE);
   headers.set('X-Neptune-WebTV-Embed',WEBTV_EMBED_RELEASE);
   headers.set('X-Neptune-Production-Readiness',PRODUCTION_READINESS_RELEASE);
-  return new Response(JSON.stringify({...current,webTvPlayback:PLAYBACK_RELEASE,webTvPlayerSelection:PLAYER_SELECTION_RELEASE,webTvContainerReadiness:CONTAINER_READINESS_RELEASE,webTvExternalEmbed:WEBTV_EMBED_RELEASE,productionReadiness:PRODUCTION_READINESS_RELEASE}),{status:response.status,statusText:response.statusText,headers});
+  headers.set('X-Neptune-Studio-WebTV',STUDIO_V122_RELEASE);
+  headers.set('X-Neptune-WebTV-Analytics',WEBTV_ANALYTICS_RELEASE);
+  return new Response(JSON.stringify({...current,webTvPlayback:PLAYBACK_RELEASE,webTvPlayerSelection:PLAYER_SELECTION_RELEASE,webTvContainerReadiness:CONTAINER_READINESS_RELEASE,webTvExternalEmbed:WEBTV_EMBED_RELEASE,productionReadiness:PRODUCTION_READINESS_RELEASE,studioWebTv:STUDIO_V122_RELEASE,webTvAnalytics:WEBTV_ANALYTICS_RELEASE}),{status:response.status,statusText:response.statusText,headers});
 }
 
 function removeAsset(body,type,path){

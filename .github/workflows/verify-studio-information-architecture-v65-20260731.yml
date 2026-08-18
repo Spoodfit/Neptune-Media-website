@@ -22,6 +22,10 @@ on:
       - 'neptune-tv-media-cloudflare/public/studio/advanced.html'
       - 'neptune-tv-media-cloudflare/public/studio/studio-information-architecture-v65.css'
       - 'neptune-tv-media-cloudflare/public/studio/studio-information-architecture-v65-1.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-overview-v122.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-overview-v122.css'
+      - 'neptune-tv-media-cloudflare/public/studio/webtv-control-room-v122.js'
+      - 'neptune-tv-media-cloudflare/public/studio/webtv-control-room-v122.css'
       - 'neptune-tv-media-cloudflare/public/studio/studio-shell-v105.css'
       - 'neptune-tv-media-cloudflare/scripts/verify-studio-information-architecture-v65.mjs'
       - 'neptune-tv-media-cloudflare/scripts/verify-studio-unified.mjs'
@@ -29,6 +33,7 @@ on:
       - 'neptune-tv-media-cloudflare/scripts/verify-studio-shell-v105-entry.mjs'
       - 'neptune-tv-media-cloudflare/scripts/verify-studio-runtime-regressions-v115.mjs'
       - 'neptune-tv-media-cloudflare/tests/audit-studio-information-architecture-v65.mjs'
+      - 'neptune-tv-media-cloudflare/tests/audit-studio-overview-v122.mjs'
       - 'neptune-tv-media-cloudflare/tests/audit-media-catalog-v109.mjs'
       - 'neptune-tv-media-cloudflare/tests/audit-studio-runtime-v115.mjs'
   push:
@@ -56,6 +61,10 @@ on:
       - 'neptune-tv-media-cloudflare/public/studio/advanced.html'
       - 'neptune-tv-media-cloudflare/public/studio/studio-information-architecture-v65.css'
       - 'neptune-tv-media-cloudflare/public/studio/studio-information-architecture-v65-1.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-overview-v122.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-overview-v122.css'
+      - 'neptune-tv-media-cloudflare/public/studio/webtv-control-room-v122.js'
+      - 'neptune-tv-media-cloudflare/public/studio/webtv-control-room-v122.css'
       - 'neptune-tv-media-cloudflare/public/studio/studio-shell-v105.css'
       - 'neptune-tv-media-cloudflare/scripts/verify-studio-information-architecture-v65.mjs'
       - 'neptune-tv-media-cloudflare/scripts/verify-studio-unified.mjs'
@@ -63,6 +72,7 @@ on:
       - 'neptune-tv-media-cloudflare/scripts/verify-studio-shell-v105-entry.mjs'
       - 'neptune-tv-media-cloudflare/scripts/verify-studio-runtime-regressions-v115.mjs'
       - 'neptune-tv-media-cloudflare/tests/audit-studio-information-architecture-v65.mjs'
+      - 'neptune-tv-media-cloudflare/tests/audit-studio-overview-v122.mjs'
       - 'neptune-tv-media-cloudflare/tests/audit-media-catalog-v109.mjs'
       - 'neptune-tv-media-cloudflare/tests/audit-studio-runtime-v115.mjs'
   workflow_dispatch:
@@ -99,7 +109,10 @@ jobs:
           node --check public/studio/media-catalog-loader-v104.js
           node --check public/studio/media-catalog-runtime-fix-v115.js
           node --check public/studio/studio-information-architecture-v65-1.js
+          node --check public/studio/studio-overview-v122.js
+          node --check public/studio/webtv-control-room-v122.js
           node --check tests/audit-studio-information-architecture-v65.mjs
+          node --check tests/audit-studio-overview-v122.mjs
           node --check tests/audit-media-catalog-v109.mjs
           node --check tests/audit-studio-runtime-v115.mjs
           node scripts/verify-studio-information-architecture-v65.mjs
@@ -139,11 +152,11 @@ jobs:
             exit 1
           fi
 
-      - name: Audit Studio v105 canonical sidebar
+      - name: Audit current Studio canonical sidebar
         env:
           STUDIO_BASE_URL: http://127.0.0.1:8787
           OUTPUT_DIR: test-results/studio-information-architecture-v105
-        run: node neptune-tv-media-cloudflare/tests/audit-studio-information-architecture-v65.mjs
+        run: node neptune-tv-media-cloudflare/tests/audit-studio-overview-v122.mjs
 
       - name: Audit Catalogue Media v109 regressions
         env:

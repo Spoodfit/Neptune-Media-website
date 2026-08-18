@@ -66,9 +66,10 @@ try{
   await page.waitForSelector('.c98-page',{timeout});
   await page.waitForFunction(()=>document.getElementById('content')?.dataset.c98==='ready',null,{timeout});
 
-  await page.getByRole('button',{name:'Finances'}).click();
-  await page.waitForFunction(()=>!document.querySelector('.c98-page'),null,{timeout});
-  await page.getByRole('button',{name:'Catalogue Media'}).click();
+  await page.getByRole('link',{name:'Finance',exact:true}).click();
+  await page.waitForFunction(()=>location.hash==='#finances'&&!document.querySelector('.c98-page'),null,{timeout});
+  await page.getByRole('link',{name:'Catalogue Média',exact:true}).click();
+  await page.waitForFunction(()=>location.hash==='#programs',null,{timeout});
   await page.waitForSelector('.c98-page',{timeout});
   await page.waitForFunction(()=>document.getElementById('content')?.dataset.c98==='ready',null,{timeout});
   assert(!(await page.locator('#content').getByText('Organisez les formats éditoriaux de la chaîne.').count()),'Retour Catalogue affiche encore le gestionnaire legacy');
@@ -106,7 +107,7 @@ try{
   assert(await tunnel.getByText('Quel univers souhaitez-vous ?').isVisible(),'Cliquer dans l’aperçu Studio fait avancer vers un vrai paiement/créneau');
 
   assert(errors.length===0,`Erreurs navigateur: ${errors.join(' | ')}`);
-  console.log('Catalogue Media v109 browser audit: OK — retour onglet, ordre, iframe unique, aperçu ciblé, description client et isolation localStorage.');
+  console.log('Catalogue Media v109 browser audit: OK — navigation V122, ordre, iframe unique, aperçu ciblé, description client et isolation localStorage.');
   await context.close();
 } finally {
   await browser.close();

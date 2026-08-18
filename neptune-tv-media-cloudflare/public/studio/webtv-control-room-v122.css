@@ -1,0 +1,44 @@
+html[data-web-tv-control-room-v122] .main{padding-top:16px!important}
+html[data-web-tv-control-room-v122] .hero{min-height:0!important;padding:18px 20px!important;border-radius:18px!important}
+html[data-web-tv-control-room-v122] .hero h2{font-size:clamp(1.55rem,2.6vw,2.45rem)!important;line-height:1!important}
+html[data-web-tv-control-room-v122] .hero p:last-child{margin-top:7px!important;font-size:.72rem!important}
+html[data-web-tv-control-room-v122] .antenna-monitor{margin-top:12px!important}
+html[data-web-tv-control-room-v122] .metrics{margin:10px 0!important;gap:8px!important}
+html[data-web-tv-control-room-v122] .metrics article{min-height:78px!important;padding:12px 14px!important}
+html[data-web-tv-control-room-v122] .layout{gap:12px!important}
+html[data-web-tv-control-room-v122] .panel{border-radius:16px!important}
+html[data-web-tv-control-room-v122] .panel-head{padding:14px 16px!important}
+html[data-web-tv-control-room-v122] .playlist-item{padding:10px!important;gap:10px!important}
+html[data-web-tv-control-room-v122] .settings-card{padding:14px!important}
+
+.v122-tv-command{display:grid;gap:11px;margin:12px 0;padding:15px;border:1px solid #d9e1ee;border-radius:18px;background:linear-gradient(145deg,#fff,#f7f9ff);box-shadow:0 10px 28px rgba(20,38,80,.07)}
+.v122-tv-command *{box-sizing:border-box}
+.v122-tv-head{display:flex;align-items:center;justify-content:space-between;gap:20px}
+.v122-tv-head h2{margin:2px 0 0;color:#101828;font-size:1.22rem;letter-spacing:-.03em}
+.v122-tv-head p:last-child{max-width:760px;margin:5px 0 0;color:#667085;font-size:.69rem;line-height:1.42}
+.v122-tv-live{flex:0 0 auto;display:flex;align-items:center;gap:9px;min-width:128px;padding:9px 11px;border:1px solid #e2e7ef;border-radius:13px;background:#fff}
+.v122-tv-live>i{width:9px;height:9px;border-radius:50%;background:#98a2b3}
+.v122-tv-live.is-live{border-color:#b7ead5;background:#f1fbf6}.v122-tv-live.is-live>i{background:#22c98a;box-shadow:0 0 14px rgba(34,201,138,.58)}
+.v122-tv-live small{display:block;color:#98a2b3;font-size:.49rem;font-weight:900;letter-spacing:.11em}.v122-tv-live strong{display:block;margin-top:2px;color:#101828;font-size:.72rem}
+.v122-tv-kpis,.v122-audience-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.v122-tv-kpis article,.v122-audience-grid article{min-width:0;padding:10px 12px;border:1px solid #e1e6ef;border-radius:12px;background:#fff}
+.v122-tv-kpis b,.v122-audience-grid b{display:block;color:#101828;font-size:1.05rem;letter-spacing:-.03em}.v122-tv-kpis span,.v122-audience-grid span{display:block;margin-top:2px;color:#344054;font-size:.62rem;font-weight:820}.v122-tv-kpis small,.v122-audience-grid small{display:block;margin-top:3px;color:#98a2b3;font-size:.55rem;line-height:1.3}
+.v122-tv-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.v122-primary,.v122-secondary,.v122-source-head button,.v122-source-card button{min-height:34px;display:inline-flex;align-items:center;justify-content:center;padding:7px 10px;border-radius:9px;font:inherit;font-size:.64rem;font-weight:850;cursor:pointer;text-decoration:none}
+.v122-primary{border:0;background:linear-gradient(112deg,#2970ff,#7a5af8 52%,#ee46bc);color:#fff;box-shadow:0 8px 20px rgba(83,68,198,.17)}
+.v122-secondary,.v122-source-head button,.v122-source-card button{border:1px solid #d6dce7;background:#fff;color:#344054}
+.v122-primary:disabled,.v122-secondary:disabled,.v122-source-card button:disabled{opacity:.55;cursor:default}
+.v122-tv-source{display:grid;gap:8px;padding-top:9px;border-top:1px solid #e7eaf1}
+.v122-source-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.v122-source-head>div{display:flex;align-items:baseline;gap:8px}.v122-source-head strong{font-size:.74rem}.v122-source-head span{color:#98a2b3;font-size:.59rem}
+.v122-source-rail{display:flex;gap:8px;overflow-x:auto;padding-bottom:3px;scrollbar-width:thin;scroll-snap-type:x proximity}
+.v122-source-card{flex:0 0 245px;display:grid;grid-template-columns:58px minmax(0,1fr);gap:8px;align-items:center;padding:8px;border:1px solid #e1e6ef;border-radius:12px;background:#fff;scroll-snap-align:start}
+.v122-source-visual{grid-row:1/3;width:58px;aspect-ratio:16/10;display:grid;place-items:center;overflow:hidden;border-radius:8px;background:#081630;color:#fff}.v122-source-visual img{width:100%;height:100%;object-fit:cover}
+.v122-source-card>div:nth-child(2){min-width:0}.v122-source-card small{display:block;color:#6653dc;font-size:.48rem;font-weight:900;letter-spacing:.09em}.v122-source-card strong{display:block;margin-top:2px;overflow:hidden;color:#101828;font-size:.66rem;text-overflow:ellipsis;white-space:nowrap}.v122-source-card span{display:block;margin-top:2px;color:#98a2b3;font-size:.53rem}.v122-source-card button{grid-column:2;width:max-content;min-height:27px;padding:4px 7px;font-size:.55rem}
+.v122-source-empty{padding:14px;color:#667085;font-size:.66rem}
+.v122-tv-message{padding:8px 10px;border:1px solid #b7ead5;border-radius:10px;background:#f1fbf6;color:#087a4b;font-size:.62rem;font-weight:760}.v122-tv-message.is-error{border-color:#f3c1bd;background:#fff7f6;color:#b42318}
+.v122-tv-audience{display:grid;gap:9px;margin:0 14px 12px;padding:11px;border:1px solid #e1e6ef;border-radius:13px;background:#f8faff}
+.v122-audience-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.v122-audience-head h3{margin:1px 0 0!important;font-size:.88rem!important}.v122-audience-head a{color:#5c4ad1;font-size:.6rem;font-weight:850;text-decoration:none}
+
+@media(max-width:1100px){.v122-tv-kpis,.v122-audience-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.v122-tv-head{align-items:flex-start}.v122-tv-live{min-width:115px}}
+@media(max-width:700px){.v122-tv-command{padding:12px;border-radius:15px}.v122-tv-head{display:grid}.v122-tv-live{width:100%}.v122-tv-kpis,.v122-audience-grid{grid-template-columns:1fr 1fr}.v122-tv-actions>*{flex:1 1 calc(50% - 7px)}.v122-source-head{align-items:flex-start}.v122-source-head>div{display:grid;gap:2px}.v122-source-card{flex-basis:225px}.v122-tv-audience{margin:0 10px 10px}.v122-audience-head{align-items:flex-start}}
+@media(max-width:420px){.v122-tv-kpis,.v122-audience-grid{grid-template-columns:1fr}.v122-tv-actions>*{flex-basis:100%}}

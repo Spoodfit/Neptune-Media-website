@@ -7,6 +7,7 @@ const TABS={
   suppliers:{label:'Fournisseurs',summary:'suppliers'},
   cities:{label:'Villes',summary:'cities'},
 };
+const HERO_DESCRIPTION='Gérez ce que le client peut réserver. Chaque modification est synchronisée avec le tunnel.';
 let snapshotTimer=0;
 let snapshotLoading=false;
 
@@ -15,6 +16,7 @@ boot();
 function boot(){
   document.body.dataset.studioCatalogUx=RELEASE;
   ensureCascadeOrder();
+  ensureHeroStyle();
   enhance();
   new MutationObserver(()=>scheduleEnhance()).observe(document.body,{subtree:true,childList:true});
   window.addEventListener('hashchange',scheduleEnhance);
@@ -31,11 +33,20 @@ function ensureCascadeOrder(){
   document.head.append(link);
 }
 
+function ensureHeroStyle(){
+  if(document.getElementById('studioCatalogHeroCopyV1221Style'))return;
+  const style=document.createElement('style');
+  style.id='studioCatalogHeroCopyV1221Style';
+  style.textContent=`body.v122-studio-catalog .v122-catalog-legacy-description{display:none!important}body.v122-studio-catalog .v122-catalog-description{display:block!important;max-width:760px!important;margin:5px 0 0!important;color:rgba(255,255,255,.74)!important;font-size:.7rem!important;line-height:1.38!important}@media(max-width:640px){body.v122-studio-catalog .v122-catalog-description{display:none!important}}`;
+  document.head.append(style);
+}
+
 let enhanceTimer=0;
 function scheduleEnhance(){
   clearTimeout(enhanceTimer);
   enhanceTimer=setTimeout(()=>{
     ensureCascadeOrder();
+    ensureHeroStyle();
     enhance();
   },35);
 }
@@ -53,11 +64,10 @@ function enhance(){
   const hero=page.querySelector('.c98-hero');
   if(hero){
     const eyebrow=hero.querySelector('.c98-eyebrow');
-    const description=hero.querySelector('div:first-child p:not(.c98-eyebrow)');
     const sync=hero.querySelector('.c98-sync');
     const tunnel=hero.querySelector('.c98-hero-actions a[href^="/reserver"]');
     if(eyebrow)eyebrow.textContent='CATALOGUE CLIENT';
-    if(description)description.textContent='Gérez ce que le client peut réserver. Chaque modification est synchronisée avec le tunnel.';
+    ensureHeroDescription(hero);
     if(sync)sync.childNodes[sync.childNodes.length-1].textContent=' Tunnel synchronisé';
     if(tunnel){
       tunnel.textContent='Voir le tunnel client ↗';
@@ -79,6 +89,21 @@ function enhance(){
     button.textContent='Voir dans le tunnel ↗';
     button.title='Ouvrir cette offre dans le tunnel client';
   });
+}
+
+function ensureHeroDescription(hero){
+  const copy=hero.firstElementChild;
+  if(!copy)return;
+  const legacy=[...copy.querySelectorAll('p:not(.c98-eyebrow):not(.v122-catalog-description)')];
+  legacy.forEach(node=>node.classList.add('v122-catalog-legacy-description'));
+  let description=copy.querySelector('.v122-catalog-description');
+  if(!description){
+    description=document.createElement('p');
+    description.className='v122-catalog-description';
+    const anchor=legacy[0]||null;
+    copy.insertBefore(description,anchor);
+  }
+  if(description.textContent!==HERO_DESCRIPTION)description.textContent=HERO_DESCRIPTION;
 }
 
 function installGlance(page,tabs){

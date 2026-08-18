@@ -41,5 +41,5 @@ jobs:
       - name: Validate active Worker bundle
         working-directory: neptune-tv-media-cloudflare
         run: |
-          npm ci
+          npm install --package-lock=false --ignore-scripts --no-audit --no-fund
           npm run check

@@ -50,6 +50,7 @@ body.v122-studio-finance #content h2,body.v122-studio-finance #content h3,body.v
 body.v122-studio-finance #content table{font-size:.74rem!important}
 body.v122-studio-finance #content th,body.v122-studio-finance #content td{padding:8px 10px!important}
 body.v122-studio-finance #content .metric,body.v122-studio-finance #content .stat,body.v122-studio-finance #content .kpi{min-height:0!important;padding:12px!important}
+body.v122-studio-settings:not(.v122-studio-settings-detail) #content>:not(.v122-settings-overview){display:none!important}
 
 .v122-settings-overview{display:grid;gap:12px;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important}
 .v122-overview-head{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;padding:14px 16px;border:1px solid #dfe5ef;border-radius:15px;background:#fff;box-shadow:0 5px 16px rgba(16,24,40,.045)}

@@ -21,11 +21,15 @@ const expect=(condition,message)=>{if(!condition)throw new Error(message);checks
 
 for(const label of ['Parcours clients','Diffusion','Catalogue Média','Finance','Réglage'])expect(overviewJs.includes(label),`navigation v122 contient ${label}`);
 expect(overviewJs.includes('neptune-studio-nav-link'),'navigation v122 conserve le contrat DOM canonique');
+expect(!overviewJs.includes('data-studio-route="${key}"'),'navigation v122 n’est plus pilotable par l’ancien contrôleur de routes');
 expect(overviewCss.includes('.studio-context-nav-v65{display:none!important}'),'ancienne rangée de sous-onglets masquée');
 expect(catalogUxCss.includes('body.v122-studio-catalog .content')&&catalogUxCss.includes('width:100%!important'),'Catalogue Média utilise toute la largeur disponible');
 expect(catalogUxCss.includes('#content .c98-page .c98-layout')&&catalogUxCss.includes('display:block!important'),'ancienne grille Catalogue + aperçu remplacée par un espace de travail pleine largeur');
 expect(catalogUxCss.includes('#c98Preview')&&catalogUxCss.includes('display:none!important'),'aperçu tunnel permanent masqué de la console');
-expect(catalogUxCss.includes('.v122-catalog-glance')&&catalogUxCss.includes('grid-template-columns:repeat(5'),'vue d’ensemble Catalogue en cinq raccourcis');
+expect(catalogUxCss.includes('.c116-preview-panel')&&catalogUxCss.includes('display:none!important'),'aperçu tunnel repliable historique masqué de la console');
+expect(catalogUxCss.includes('.c98-tabs')&&catalogUxCss.includes('display:none!important'),'ancienne deuxième navigation Catalogue masquée');
+expect(catalogUxCss.includes('.v122-catalog-glance')&&catalogUxCss.includes('grid-template-columns:repeat(6'),'vue d’ensemble Catalogue en six raccourcis métier');
+expect(catalogUxJs.includes("services:{label:'Prestations fournisseur'")&&catalogUxJs.includes('[data-c116-services]'),'prestations fournisseur intégrées à la navigation unique');
 expect(catalogUxJs.includes('Voir le tunnel client ↗'),'accès tunnel client explicite depuis le Catalogue');
 expect(catalogUxJs.includes('Voir dans le tunnel ↗')&&catalogUxJs.includes('catalog_family'),'prévisualisation ciblée d’une offre ouvre le tunnel à la demande');
 expect(catalogUxJs.includes('/api/admin/media-catalog-v98/context'),'synthèse Catalogue utilise la source de vérité Studio');

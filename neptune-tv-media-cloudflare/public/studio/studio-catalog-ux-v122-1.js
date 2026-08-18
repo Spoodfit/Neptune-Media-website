@@ -95,7 +95,10 @@ function ensureHeroDescription(hero){
   const copy=hero.firstElementChild;
   if(!copy)return;
   const legacy=[...copy.querySelectorAll('p:not(.c98-eyebrow):not(.v122-catalog-description)')];
-  legacy.forEach(node=>node.classList.add('v122-catalog-legacy-description'));
+  legacy.forEach(node=>{
+    node.classList.add('v122-catalog-legacy-description');
+    node.style.setProperty('display','none','important');
+  });
   let description=copy.querySelector('.v122-catalog-description');
   if(!description){
     description=document.createElement('p');

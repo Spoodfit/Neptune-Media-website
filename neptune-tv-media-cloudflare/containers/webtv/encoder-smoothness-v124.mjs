@@ -7,7 +7,7 @@ const replacements=[
   {
     name:'hls segmentation',
     from:"'-hls_time','4','-hls_list_size','10','-hls_delete_threshold','3','-hls_flags','delete_segments+append_list+independent_segments+program_date_time+omit_endlist','-hls_segment_filename',join(HLS_DIR,'segment-%08d.ts')",
-    to:"'-hls_time','2','-hls_list_size','15','-hls_delete_threshold','5','-hls_start_number_source','epoch','-hls_flags','delete_segments+independent_segments+program_date_time+omit_endlist+temp_file','-hls_segment_filename',join(HLS_DIR,'segment-%010d.ts')",
+    to:"'-hls_time','3','-hls_list_size','12','-hls_delete_threshold','4','-hls_start_number_source','epoch','-hls_flags','delete_segments+independent_segments+program_date_time+omit_endlist+temp_file','-hls_segment_filename',join(HLS_DIR,'segment-%010d.ts')",
   },
   {
     name:'segment cache policy',

@@ -4,7 +4,9 @@ on:
   pull_request:
     paths:
       - 'neptune-tv-media-cloudflare/src/entry-v40.js'
+      - 'neptune-tv-media-cloudflare/public/studio/advanced.html'
       - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-runtime-v130.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-visibility-v130-1.js'
       - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-ux-v122-1.css'
       - 'neptune-tv-media-cloudflare/tests/audit-catalog-runtime-v130.mjs'
       - '.github/workflows/verify-catalog-runtime-v130.yml'
@@ -34,6 +36,7 @@ jobs:
         run: |
           node --check neptune-tv-media-cloudflare/src/entry-v40.js
           node --check neptune-tv-media-cloudflare/public/studio/studio-catalog-runtime-v130.js
+          node --check neptune-tv-media-cloudflare/public/studio/studio-catalog-visibility-v130-1.js
           node --check neptune-tv-media-cloudflare/tests/audit-catalog-runtime-v130.mjs
 
       - name: Start active Cloudflare Worker
@@ -58,6 +61,7 @@ jobs:
           fi
           grep -Fqi 'x-neptune-catalog-runtime: neptune-studio-catalog-marketplace-20260820-v130-runtime' /tmp/catalog-v130.headers
           grep -Fq '/studio/studio-catalog-runtime-v130.js?v=1' /tmp/catalog-v130.html
+          grep -Fq '/studio/studio-catalog-visibility-v130-1.js?v=1' /tmp/catalog-v130.html
           grep -Fq 'data-neptune-disabled="catalog-v128"' /tmp/catalog-v130.html
 
       - name: Audit Catalogue marketplace through active Worker and system Chrome

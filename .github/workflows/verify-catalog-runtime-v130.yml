@@ -36,11 +36,11 @@ jobs:
           node --check neptune-tv-media-cloudflare/public/studio/studio-catalog-runtime-v130.js
           node --check neptune-tv-media-cloudflare/tests/audit-catalog-runtime-v130.mjs
 
-      - name: Install Playwright
+      - name: Install Playwright Chromium
         working-directory: neptune-tv-media-cloudflare
         run: |
           npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
-          npx playwright install --with-deps chromium
+          npx playwright install chromium
 
       - name: Start active Cloudflare Worker
         shell: bash

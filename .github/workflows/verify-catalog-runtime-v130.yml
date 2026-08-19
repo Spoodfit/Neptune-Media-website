@@ -36,16 +36,15 @@ jobs:
           node --check neptune-tv-media-cloudflare/public/studio/studio-catalog-runtime-v130.js
           node --check neptune-tv-media-cloudflare/tests/audit-catalog-runtime-v130.mjs
 
-      - name: Install Playwright Chromium
+      - name: Install Playwright library
         working-directory: neptune-tv-media-cloudflare
-        run: |
-          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
-          npx playwright install chromium
+        run: npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
 
       - name: Start active Cloudflare Worker
         shell: bash
         run: |
           set -euo pipefail
+          command -v google-chrome || command -v google-chrome-stable
           sed -i 's/"compatibility_date": "2026-07-30"/"compatibility_date": "2026-07-07"/' neptune-tv-media-cloudflare/wrangler.jsonc
           ./neptune-tv-media-cloudflare/node_modules/.bin/wrangler dev --config neptune-tv-media-cloudflare/wrangler.jsonc --local --port 8787 > /tmp/wrangler-catalog-v130.log 2>&1 &
           echo $! > /tmp/wrangler-catalog-v130.pid

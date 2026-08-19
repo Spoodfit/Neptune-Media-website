@@ -46,9 +46,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cp neptune-tv-media-cloudflare/wrangler.jsonc /tmp/wrangler-catalog-v130.jsonc
-          sed -i 's/"compatibility_date": "2026-07-30"/"compatibility_date": "2026-07-07"/' /tmp/wrangler-catalog-v130.jsonc
-          ./neptune-tv-media-cloudflare/node_modules/.bin/wrangler dev --config /tmp/wrangler-catalog-v130.jsonc --local --port 8787 > /tmp/wrangler-catalog-v130.log 2>&1 &
+          sed -i 's/"compatibility_date": "2026-07-30"/"compatibility_date": "2026-07-07"/' neptune-tv-media-cloudflare/wrangler.jsonc
+          ./neptune-tv-media-cloudflare/node_modules/.bin/wrangler dev --config neptune-tv-media-cloudflare/wrangler.jsonc --local --port 8787 > /tmp/wrangler-catalog-v130.log 2>&1 &
           echo $! > /tmp/wrangler-catalog-v130.pid
           ready=0
           for attempt in $(seq 1 60); do

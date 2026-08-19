@@ -21,11 +21,12 @@ function active(){return location.pathname.includes('/studio/advanced')&&(locati
 async function enhance(){
   if(!active()){document.body.classList.remove('v126-studio-catalog','v126-catalog-admin-open');return;}
   const page=$('.c98-page');if(!page)return;
+  const hadShell=Boolean($('#catalogMarketplaceV126'));
   document.body.classList.add('v126-studio-catalog');
   prepareHero(page);
   ensureShell(page);
   if(!state.context&&!state.loading)await refreshContext(true);
-  else render();
+  else if(!hadShell&&state.context)render();
 }
 
 function prepareHero(page){
@@ -62,6 +63,7 @@ function bindShell(shell,admin){
     const create=event.target.closest('[data-v126-new]');if(create){openLegacy('offers',{create:true,cityId:create.dataset.v126New||''});return;}
     const manage=event.target.closest('[data-v126-manage]');if(manage){toggleAdminMenu();return;}
     const area=event.target.closest('[data-v126-area]');if(area){openLegacy(area.dataset.v126Area);return;}
+    if(event.target.closest('[data-v126-retry]'))refreshContext(false);
   });
   admin.addEventListener('click',event=>{if(event.target.closest('[data-v126-back]'))closeLegacy();});
   document.addEventListener('click',event=>{
@@ -143,12 +145,19 @@ function openLegacy(area,{key='',create=false,cityId=''}={}){
   const bar=$('#catalogAdminBarV126');if(bar)bar.hidden=false;
   const title=$('#v126AdminTitle');if(title)title.textContent=adminTitle(area,key,create);
   const tabMap={formats:'formats',configurations:'configurations',offers:'offers',suppliers:'suppliers',cities:'cities'};
-  if(area==='services'){$('[data-c116-services]')?.click();return;}
+  if(area==='services'){activateServices(0);return;}
   const tab=$(`[data-c98-tab="${tabMap[area]||'offers'}"]`);tab?.click();
   setTimeout(()=>{
-    if(area==='offers'&&key){const target=$(`[data-edit-offer="${cssEscape(key)}"]`);target?.click();}
+    if(area==='offers'&&key){const target=$$('[data-edit-offer]').find(button=>button.dataset.editOffer===key);target?.click();}
     if(area==='offers'&&create){$('#newOffer')?.click();setTimeout(()=>{const form=$('#offerForm');if(form&&cityId&&form.cityId)form.cityId.value=cityId;},40);}
   },50);
+}
+
+function activateServices(attempt){
+  const target=$('[data-c116-services]');
+  if(target){target.click();return;}
+  if(attempt>=15)return;
+  setTimeout(()=>activateServices(attempt+1),80);
 }
 
 function closeLegacy(){
@@ -176,10 +185,9 @@ function cities(){return array(state.context?.cities).slice().sort((a,b)=>number
 function cityNameById(id){return cities().find(city=>String(city.id)===String(id))?.name||'Ville';}
 function configurationLabels(family){const raw=[...array(family.configurationOptions),...array(family.configurationVisuals)];const seen=new Set();return raw.map(item=>typeof item==='string'?item:item?.label||item?.name||item?.title||'').map(value=>String(value||'').trim()).filter(value=>value&&!seen.has(value)&&seen.add(value));}
 function previewUrl(key){const params=new URLSearchParams({catalog_preview:'studio',catalog_view:'format',catalog_family:key});return `/reserver?${params}`;}
-function renderError(message){const shell=$('#catalogMarketplaceV126');if(shell)shell.innerHTML=`<div class="v126-empty"><strong>Catalogue indisponible.</strong><span>${escapeHtml(message||'Impossible de charger les offres.')}</span><button class="v126-button" type="button" onclick="location.reload()">Réessayer</button></div>`;}
+function renderError(message){const shell=$('#catalogMarketplaceV126');if(shell)shell.innerHTML=`<div class="v126-empty"><strong>Catalogue indisponible.</strong><span>${escapeHtml(message||'Impossible de charger les offres.')}</span><button class="v126-button" type="button" data-v126-retry>Réessayer</button></div>`;}
 function array(value){return Array.isArray(value)?value:[];}
 function numberOr(...values){for(const value of values){const n=Number(value);if(Number.isFinite(n)&&value!==''&&value!==null&&value!==undefined)return n;}return 0;}
 function money(cents){return new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(Number(cents||0)/100)+' HT';}
-function cssEscape(value){return window.CSS?.escape?CSS.escape(String(value)):String(value).replace(/["\\]/gu,'\\$&');}
 function escapeHtml(value){return String(value??'').replace(/[&<>"']/gu,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));}
 function escapeAttr(value){return escapeHtml(value).replace(/`/gu,'&#096;');}

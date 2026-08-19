@@ -10,6 +10,11 @@ const replacements=[
     to:"import { createReadStream, existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs';",
   },
   {
+    name:'native timestamps',
+    from:"'-fflags','+genpts+discardcorrupt','-use_wallclock_as_timestamps','1','-i',NATIVE_INPUT",
+    to:"'-fflags','+genpts+discardcorrupt','-dts_delta_threshold','0.5','-i',NATIVE_INPUT",
+  },
+  {
     name:'hls segmentation',
     from:"'-hls_time','4','-hls_list_size','10','-hls_delete_threshold','3','-hls_flags','delete_segments+append_list+independent_segments+program_date_time+omit_endlist','-hls_segment_filename',join(HLS_DIR,'segment-%08d.ts')",
     to:"'-hls_time','3','-hls_list_size','12','-hls_delete_threshold','4','-hls_start_number_source','epoch','-hls_flags','delete_segments+independent_segments+program_date_time+omit_endlist+temp_file','-hls_segment_filename',join(HLS_DIR,'segment-%010d.ts')",

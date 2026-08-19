@@ -12,7 +12,7 @@ const catalog={ok:true,formats:[{id:'format-hors-norme',name:'Hors Norme',concep
 const user={id:'admin-1',email:'contact@neptunebusiness.com',fullName:'Neptune Media',role:'admin'};
 const admin={user,programs:[],episodes:[],ads:[],users:[user],audit:[],settings:{},stats:{views:0,watchSeconds:0,uniqueViewers:0,bookingClicks:0,byEpisode:{},conversions:{count:0,revenueCents:0}}};
 
-const browser=await chromium.launch({headless:true});
+const browser=await chromium.launch({headless:true,channel:'chrome'});
 try{
   const context=await browser.newContext({viewport:{width:1440,height:1000},serviceWorkers:'block'});
   await context.route('**/api/**',async route=>{

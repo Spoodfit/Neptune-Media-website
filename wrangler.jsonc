@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "neptune-media-webtv",
-  "main": "neptune-tv-media-cloudflare/src/entry-v40.js",
+  "main": "neptune-tv-media-cloudflare/src/entry-v41.js",
   "compatibility_date": "2026-07-30",
   "workers_dev": true,
   "keep_vars": true,
@@ -61,9 +61,10 @@
     "WEBTV_WIDTH": "1280",
     "WEBTV_HEIGHT": "720",
     "WEBTV_FPS": "30",
-    "WEBTV_VIDEO_BITRATE_KBPS": "4000",
+    "WEBTV_VIDEO_BITRATE_KBPS": "2800",
     "WEBTV_AUDIO_BITRATE_KBPS": "128",
     "WEBTV_X264_PRESET": "superfast",
+    "LEGACY_WEBTV_ENTRY_V119": { "main": "neptune-tv-media-cloudflare/src/entry-v39.js" },
     "LEGACY_ACTIVE_ENTRY_V1182": { "main": "neptune-tv-media-cloudflare/src/entry-v38.js" },
     "LEGACY_LOCAL_VERIFIER": { "main": "neptune-tv-media-cloudflare/src/entry-v19.js" },
     "LEGACY_EMAIL_VERIFIER": { "main": "neptune-tv-media-cloudflare/src/entry-v21.js" }

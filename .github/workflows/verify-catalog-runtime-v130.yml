@@ -1,0 +1,84 @@
+name: Verify Catalogue Runtime V130
+
+on:
+  pull_request:
+    paths:
+      - 'neptune-tv-media-cloudflare/src/entry-v40.js'
+      - 'neptune-tv-media-cloudflare/public/studio/advanced.html'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-runtime-v130.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-visibility-v130-1.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-ux-v122-1.css'
+      - 'neptune-tv-media-cloudflare/tests/audit-catalog-runtime-v130.mjs'
+      - '.github/workflows/verify-catalog-runtime-v130.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-catalog-runtime-v130:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Worker dependencies
+        working-directory: neptune-tv-media-cloudflare
+        run: npm install --package-lock=false --ignore-scripts --no-audit --no-fund
+
+      - name: Validate v130 JavaScript syntax
+        run: |
+          node --check neptune-tv-media-cloudflare/src/entry-v40.js
+          node --check neptune-tv-media-cloudflare/public/studio/studio-catalog-runtime-v130.js
+          node --check neptune-tv-media-cloudflare/public/studio/studio-catalog-visibility-v130-1.js
+          node --check neptune-tv-media-cloudflare/tests/audit-catalog-runtime-v130.mjs
+
+      - name: Start active Cloudflare Worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v google-chrome || command -v google-chrome-stable
+          sed -i 's/"compatibility_date": "2026-07-30"/"compatibility_date": "2026-07-07"/' neptune-tv-media-cloudflare/wrangler.jsonc
+          ./neptune-tv-media-cloudflare/node_modules/.bin/wrangler dev --config neptune-tv-media-cloudflare/wrangler.jsonc --local --port 8787 > /tmp/wrangler-catalog-v130.log 2>&1 &
+          echo $! > /tmp/wrangler-catalog-v130.pid
+          ready=0
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --show-error -D /tmp/catalog-v130.headers http://127.0.0.1:8787/studio/advanced.html > /tmp/catalog-v130.html; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$ready" != 1 ]; then
+            cat /tmp/wrangler-catalog-v130.log
+            exit 1
+          fi
+          grep -Fqi 'x-neptune-catalog-runtime: neptune-studio-catalog-marketplace-20260820-v130-runtime' /tmp/catalog-v130.headers
+          grep -Fq '/studio/studio-catalog-runtime-v130.js?v=1' /tmp/catalog-v130.html
+          grep -Fq '/studio/studio-catalog-visibility-v130-1.js?v=1' /tmp/catalog-v130.html
+          grep -Fq 'data-neptune-disabled="catalog-v128"' /tmp/catalog-v130.html
+
+      - name: Audit Catalogue marketplace through active Worker and system Chrome
+        env:
+          STUDIO_BASE_URL: http://127.0.0.1:8787
+          CATALOG_SCREENSHOT: /tmp/catalog-runtime-v130.png
+        run: node neptune-tv-media-cloudflare/tests/audit-catalog-runtime-v130.mjs
+
+      - name: Upload runtime evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: catalogue-runtime-v130-evidence
+          path: |
+            /tmp/wrangler-catalog-v130.log
+            /tmp/catalog-v130.headers
+            /tmp/catalog-v130.html
+            /tmp/catalog-runtime-v130.png
+          if-no-files-found: warn
+          retention-days: 14

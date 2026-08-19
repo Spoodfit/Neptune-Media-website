@@ -1,0 +1,69 @@
+name: Verify Catalogue V130 Production
+
+on:
+  workflow_run:
+    workflows: ["Deploy Neptune Media to Cloudflare"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-catalog-production-v130:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PUBLIC_URL: https://tv.neptunebusiness.com
+      WORKERS_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
+      CATALOG_RUNTIME_RELEASE: neptune-studio-catalog-marketplace-20260820-v130-runtime
+      CATALOG_VISIBILITY_RELEASE: neptune-studio-catalog-visibility-20260820-v130.2
+    steps:
+      - name: Verify marketplace runtime and visibility guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          verify_domain() {
+            local base="$1"
+            local slug="$2"
+            local dir="/tmp/catalog-production-$slug"
+            mkdir -p "$dir"
+            local ok=0
+            for attempt in $(seq 1 18); do
+              local query="catalog_v130=${GITHUB_SHA:-manual}&attempt=$attempt"
+              curl --fail --silent --show-error -D "$dir/advanced.headers" -H 'Cache-Control: no-cache, no-store' "$base/studio/advanced.html?$query" > "$dir/advanced.html" || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/api/public/release?$query" > "$dir/release.json" || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/studio-catalog-runtime-v130.js?$query" > "$dir/runtime.js" || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/studio-catalog-visibility-v130-1.js?$query" > "$dir/visibility.js" || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/studio-catalog-ux-v122-1.css?$query" > "$dir/marketplace.css" || true
+              if RELEASE_FILE="$dir/release.json" node <<'NODE'
+          const fs=require('node:fs');
+          let data;
+          try{data=JSON.parse(fs.readFileSync(process.env.RELEASE_FILE,'utf8'));}catch{process.exit(1)}
+          if(data.catalogRuntime!==process.env.CATALOG_RUNTIME_RELEASE)process.exit(1);
+          NODE
+              then
+                if grep -Fqi "x-neptune-catalog-runtime: $CATALOG_RUNTIME_RELEASE" "$dir/advanced.headers" \
+                  && grep -Fq '/studio/studio-catalog-runtime-v130.js?v=1' "$dir/advanced.html" \
+                  && grep -Fq '/studio/studio-catalog-visibility-v130-1.js?v=1' "$dir/advanced.html" \
+                  && grep -Fq 'data-neptune-disabled="catalog-v128"' "$dir/advanced.html" \
+                  && grep -Fq "$CATALOG_RUNTIME_RELEASE" "$dir/runtime.js" \
+                  && grep -Fq 'Toutes les villes' "$dir/runtime.js" \
+                  && grep -Fq 'Gérer les données' "$dir/runtime.js" \
+                  && grep -Fq "$CATALOG_VISIBILITY_RELEASE" "$dir/visibility.js" \
+                  && grep -Fq 'forceHidden(layout,!adminOpen)' "$dir/visibility.js" \
+                  && grep -Fq "querySelectorAll('p:not(.c98-eyebrow)')" "$dir/visibility.js" \
+                  && grep -Fq '.v128-offer-grid' "$dir/marketplace.css"; then
+                  ok=1
+                  echo "$base: Catalogue v130.2 production verified on attempt $attempt"
+                  break
+                fi
+              fi
+              sleep 5
+            done
+            test "$ok" = 1
+          }
+          verify_domain "$WORKERS_URL" workers
+          verify_domain "$PUBLIC_URL" public

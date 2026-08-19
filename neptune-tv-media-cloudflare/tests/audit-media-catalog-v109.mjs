@@ -3,6 +3,7 @@ import { chromium } from 'playwright';
 
 const baseURL=process.env.STUDIO_BASE_URL||'http://127.0.0.1:8787';
 const timeout=30000;
+const runtimeRelease='neptune-studio-catalog-marketplace-20260820-v130-runtime';
 const familyKey='city-toulouse|format-hors-norme|supplier-recbox';
 const family={
   key:familyKey,
@@ -39,15 +40,18 @@ try{
 
   const response=await page.goto(`${baseURL}/studio/advanced.html#programs`,{waitUntil:'commit',timeout});
   assert(response?.ok(),`Studio HTTP ${response?.status()}`);
+  assert((await response.headerValue('x-neptune-catalog-runtime'))===runtimeRelease,'Le Worker ne marque pas le runtime Catalogue v130');
   await page.waitForSelector('#app:not([hidden])',{timeout});
   await page.waitForSelector('.c98-page',{timeout});
   await page.waitForFunction(()=>document.getElementById('content')?.dataset.c98==='ready',null,{timeout});
-  await page.waitForSelector('#studioCatalogMarketplaceV128',{timeout});
+  await page.waitForSelector('#studioCatalogMarketplaceV128',{state:'visible',timeout});
   await page.waitForSelector('.v128-offer',{timeout});
+  assert((await page.evaluate(()=>document.body.dataset.studioCatalogRuntime))===runtimeRelease,'Le runtime Catalogue v130 ne s’est pas exécuté');
+  assert(await page.locator('script[data-neptune-disabled="catalog-v128"]').count()===1,'L’ancien runtime Catalogue reste exécutable');
 
   assert(await page.locator('#studioCatalogGlanceV1221').count()===0,'Les six raccourcis legacy sont encore montés');
   assert(await page.locator('[data-v122-catalog-tab]').count()===0,'Ancienne navigation catalogue encore visible');
-  assert(await page.locator('[data-v128-city]').count()===2,'Sélecteur ville marketplace incomplet');
+  assert(await page.locator('[data-v130-city]').count()===2,'Sélecteur ville marketplace incomplet');
   assert((await page.getByText('Toulouse',{exact:true}).count())>=1,'Ville Toulouse absente de la marketplace');
   assert((await page.getByText('Hors Norme',{exact:true}).count())>=1,'Concept Hors Norme absent de la marketplace');
   assert((await page.getByText('RecBox',{exact:true}).count())>=1,'Fournisseur absent de la carte offre');
@@ -64,7 +68,7 @@ try{
   assert(geometry.legacyLayout==='none','Gestion legacy visible dans la marketplace');
   assert(geometry.legacyTabs==='none','Onglets legacy visibles dans la marketplace');
 
-  const search=page.locator('[data-v128-search]');
+  const search=page.locator('[data-v130-search]');
   await search.fill('recbox');
   assert(await page.locator('.v128-offer').count()===1,'Recherche fournisseur ne retrouve pas l’offre');
   await search.fill('ville introuvable');
@@ -97,7 +101,7 @@ try{
   await page.waitForSelector('#studioCatalogMarketplaceV128',{state:'visible',timeout});
 
   assert(errors.length===0,`Erreurs navigateur: ${errors.join(' | ')}`);
-  console.log('Catalogue Media v128 browser audit: OK — marketplace par ville, offre agrégée, recherche, tarifs visibles et administration secondaire.');
+  console.log('Catalogue Media v130 browser audit: OK — runtime Worker actif, marketplace par ville, offre agrégée, recherche, tarifs visibles et administration secondaire.');
   await context.close();
 } finally {await browser.close();}
 

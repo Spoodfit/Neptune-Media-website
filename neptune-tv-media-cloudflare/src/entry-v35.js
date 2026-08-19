@@ -1,11 +1,13 @@
 import base,{StudioStore,WebTvEncoder} from './entry-v34.js';
 import {handleWebTvMediaRequest,isWebTvMediaRoute,WEBTV_MEDIA_RELEASE} from './webtv-media-v1.js';
+import {handleWebTvLibraryV125,isWebTvLibraryV125Route,WEBTV_LIBRARY_V125_RELEASE} from './webtv-library-v125.js';
 
 export {StudioStore,WebTvEncoder};
 
 export default{
   async fetch(request,env,ctx){
     const url=new URL(request.url);
+    if(isWebTvLibraryV125Route(url.pathname))return handleWebTvLibraryV125(request,env,ctx,(probe)=>base.fetch(probe,env,ctx));
     if(isWebTvMediaRoute(url.pathname)){
       if(url.pathname.startsWith('/media/webtv/'))return handleWebTvMediaRequest(request,env,{authenticated:true});
       const auth=await studioAuth(request,env,ctx);
@@ -14,7 +16,7 @@ export default{
     let response=await base.fetch(request,env,ctx);
     if(request.method==='GET'&&url.pathname==='/api/public/release'&&response.ok){
       const data=await response.json().catch(()=>({}));
-      response=new Response(JSON.stringify({...data,webTvMedia:WEBTV_MEDIA_RELEASE}),{status:response.status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
+      response=new Response(JSON.stringify({...data,webTvMedia:WEBTV_MEDIA_RELEASE,webTvLibrary:WEBTV_LIBRARY_V125_RELEASE}),{status:response.status,headers:{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'}});
     }
     return response;
   },

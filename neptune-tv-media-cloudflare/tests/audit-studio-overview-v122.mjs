@@ -115,7 +115,7 @@ try{
             tabs:[...document.querySelectorAll('[data-v125-tab]')].map(x=>x.textContent.trim()),
             activeTabs:[...document.querySelectorAll('[data-v125-tab].active')].map(x=>x.textContent.trim()),
             programRows:document.querySelectorAll('.v125-program-row').length,
-            controls:visible(document.querySelector('#v125MonitorControls')),
+            controlsAttached:Boolean(document.querySelector('#v125MonitorControls')),
             nativeControls:Boolean(video?.controls),
             legacyCommand:visible(document.querySelector('#webTvCommandV122')),
             legacyAudience:visible(document.querySelector('#webTvAudienceV122')),
@@ -150,7 +150,7 @@ try{
         assert(JSON.stringify(metrics.webtv.tabs)===JSON.stringify(['Antenne','Bibliothèque','Configuration','Analyse']),`webtv: onglets ${JSON.stringify(metrics.webtv.tabs)}`);
         assert(metrics.webtv.activeTabs.length===1&&metrics.webtv.activeTabs[0]==='Antenne','webtv: onglet Antenne initial absent');
         assert(metrics.webtv.programRows===2,'webtv: programme v125 incomplet');
-        assert(metrics.webtv.controls,'webtv: contrôles Neptune absents');
+        assert(metrics.webtv.controlsAttached,'webtv: contrôles Neptune non montés');
         assert(metrics.webtv.nativeControls===false,'webtv: contrôles vidéo natifs encore actifs');
         assert(metrics.webtv.legacyCommand===false,'webtv: ancien command center v122 encore visible');
         assert(metrics.webtv.legacyAudience===false,'webtv: ancienne analyse externe encore visible');

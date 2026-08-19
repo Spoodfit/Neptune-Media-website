@@ -19,7 +19,7 @@ const adminState={
   audit:[{id:'audit-1',action:'media.updated',occurredAt:new Date().toISOString()}],
   settings:{},
   finance:{revenueCents:420000,payingClients:2,supplierDueCents:72000,estimatedMarginCents:348000},
-  stats:{views:1240,watchSeconds:54000,uniqueViewers:730,bookingClicks:42,byEpisode:{'episode-1':{views:700,watchSeconds:30000,bookingClicks:30},'episode-2':{views:540,watchSeconds:24000,bookingClicks:12}},conversions:{count:4,revenueCents:420000}},
+  stats:{views:1240,watchSeconds:54000,uniqueViewers:730,bookingClicks:42,byEpisode:{'episode-1':{views:700,watchSeconds:30000,bookingClicks:30},'episode-2':{views:540,watchSeconds:24000,bookingClicks:12}},conversions:{count:4,revenueCents:420000},webTv:{views:1240,watchSeconds:54000,uniqueViewers:730,bookingClicks:42,byEpisode:{'episode-1':{views:700,watchSeconds:30000,bookingClicks:30},'episode-2':{views:540,watchSeconds:24000,bookingClicks:12}},daily:[{day:'2026-08-18',views:50,watchSeconds:2400,bookingClicks:2},{day:'2026-08-19',views:63,watchSeconds:3100,bookingClicks:3}]}},
 };
 const webTvState={
   enabled:true,mode:'loop',
@@ -31,6 +31,10 @@ const webTvState={
   fallback:{title:'Neptune Media',mediaUrl:''},
   encoder:{status:'streaming',lastHeartbeatAt:new Date().toISOString(),lastError:null,currentItem:{id:'episode-1',title:'Les secrets des clubs d’affaires',type:'episode',startedAt:new Date().toISOString()}},
 };
+const webTvLibrary={ok:true,items:[
+  {id:'upload:asset-a.mp4',assetId:'asset-a',title:'Émission Cloudflare A',mediaUrl:'/media/webtv/asset-a.mp4',durationSeconds:1800,size:120000000,contentType:'video/mp4',source:'cloudflare-r2'},
+  {id:'upload:asset-b.mp4',assetId:'asset-b',title:'Émission Cloudflare B',mediaUrl:'/media/webtv/asset-b.mp4',durationSeconds:1500,size:95000000,contentType:'video/mp4',source:'cloudflare-r2'},
+]};
 const catalogContext={ok:true,formats:[],suppliers:[],cities:[],families:[],configurationVisuals:[],offers:[],services:[],supplierRates:[],rateUnits:[],durationOptions:[]};
 const publishedCatalog={ok:true,formats:[],cities:[],offers:[],suppliers:[],pricing:{}};
 const portal={clients:[],orders:[],supplierPayments:[],refundRequests:[],deletionRequests:[],finance:adminState.finance};
@@ -57,6 +61,7 @@ try{
         if(url.pathname==='/api/auth/status')body={authenticated:true,csrfToken:'test-csrf',user:adminState.user};
         else if(url.pathname==='/api/admin/state'||url.pathname==='/api/v1/media/studio/state')body=adminState;
         else if(url.pathname==='/api/admin/webtv/state')body=webTvState;
+        else if(url.pathname==='/api/admin/webtv/library')body=webTvLibrary;
         else if(url.pathname==='/api/admin/clients')body=portal;
         else if(url.pathname==='/api/admin/control-room')body={actions:[],summary:{}};
         else if(url.pathname==='/api/admin/media-catalog-v98/context')body=catalogContext;
@@ -80,7 +85,7 @@ try{
         await page.waitForSelector('.c116-preview-panel',{state:'attached',timeout:20000});
       }
       if(screen.kind==='settings')await page.waitForSelector('#studioSettingsOverviewV122:not([hidden])',{timeout:20000});
-      if(screen.kind==='webtv')await page.waitForSelector('#webTvCommandV122',{timeout:20000});
+      if(screen.kind==='webtv')await page.waitForSelector('#webtvCockpitV125',{state:'visible',timeout:20000});
       await page.waitForTimeout(500);
 
       const metrics=await page.evaluate(kind=>{
@@ -99,20 +104,24 @@ try{
           const preview=document.getElementById('c98Preview');
           const previewPanel=document.querySelector('.c116-preview-panel');
           const oldTabs=document.querySelector('.c98-tabs');
-          data.catalogue={
-            heroHeight:Math.round(hero?.getBoundingClientRect().height||0),
-            bodyMode:body.classList.contains('v122-studio-catalog'),
-            widthRatio:layout?.width?work.width/layout.width:0,
-            previewDisplay:preview?getComputedStyle(preview).display:'missing',
-            previewPanelDisplay:previewPanel?getComputedStyle(previewPanel).display:'missing',
-            oldTabsDisplay:oldTabs?getComputedStyle(oldTabs).display:'missing',
-            glance:document.querySelectorAll('[data-v122-catalog-tab]').length,
-            tunnel:Boolean(document.querySelector('.c98-hero-actions a[href^="/reserver"]')),
-          };
+          data.catalogue={heroHeight:Math.round(hero?.getBoundingClientRect().height||0),bodyMode:body.classList.contains('v122-studio-catalog'),widthRatio:layout?.width?work.width/layout.width:0,previewDisplay:preview?getComputedStyle(preview).display:'missing',previewPanelDisplay:previewPanel?getComputedStyle(previewPanel).display:'missing',oldTabsDisplay:oldTabs?getComputedStyle(oldTabs).display:'missing',glance:document.querySelectorAll('[data-v122-catalog-tab]').length,tunnel:Boolean(document.querySelector('.c98-hero-actions a[href^="/reserver"]'))};
         }
         if(kind==='settings')data.settings={cards:document.querySelectorAll('.v122-overview-card').length,bodyMode:body.classList.contains('v122-studio-settings'),overviewVisible:visible(document.querySelector('#studioSettingsOverviewV122'))};
         if(kind==='finance')data.finance={bodyMode:body.classList.contains('v122-studio-finance')};
-        if(kind==='webtv')data.webtv={command:visible(document.querySelector('#webTvCommandV122')),sourceCards:document.querySelectorAll('.v122-source-card').length,kpis:document.querySelectorAll('.v122-tv-kpis article').length,audience:document.querySelectorAll('.v122-audience-grid article').length,sections:[...document.querySelectorAll('[data-webtv-section-button]')].map(x=>x.textContent.trim())};
+        if(kind==='webtv'){
+          const video=document.querySelector('#antennaPreview');
+          data.webtv={
+            cockpit:visible(document.querySelector('#webtvCockpitV125')),
+            tabs:[...document.querySelectorAll('[data-v125-tab]')].map(x=>x.textContent.trim()),
+            activeTabs:[...document.querySelectorAll('[data-v125-tab].active')].map(x=>x.textContent.trim()),
+            programRows:document.querySelectorAll('.v125-program-row').length,
+            controlsAttached:Boolean(document.querySelector('#v125MonitorControls')),
+            nativeControls:Boolean(video?.controls),
+            legacyCommand:visible(document.querySelector('#webTvCommandV122')),
+            legacyAudience:visible(document.querySelector('#webTvAudienceV122')),
+            libraryRows:document.querySelectorAll('.v125-media-row').length,
+          };
+        }
         return data;
       },screen.kind);
 
@@ -137,11 +146,15 @@ try{
         assert(metrics.settings.cards===3,`settings: ${metrics.settings.cards} cartes au lieu de 3`);
       }
       if(screen.kind==='webtv'){
-        assert(metrics.webtv.command,'webtv: console H24 absente');
-        assert(metrics.webtv.kpis===4,'webtv: KPIs H24 incomplets');
-        assert(metrics.webtv.sourceCards>=2,'webtv: bibliothèque Cloudflare non rendue');
-        assert(metrics.webtv.audience===4,'webtv: statistiques audience absentes');
-        assert(metrics.webtv.sections.length===3,'webtv: espaces Antenne/Programme/Configuration incomplets');
+        assert(metrics.webtv.cockpit,'webtv: cockpit v125 absent');
+        assert(JSON.stringify(metrics.webtv.tabs)===JSON.stringify(['Antenne','Bibliothèque','Configuration','Analyse']),`webtv: onglets ${JSON.stringify(metrics.webtv.tabs)}`);
+        assert(metrics.webtv.activeTabs.length===1&&metrics.webtv.activeTabs[0]==='Antenne','webtv: onglet Antenne initial absent');
+        assert(metrics.webtv.programRows===2,'webtv: programme v125 incomplet');
+        assert(metrics.webtv.controlsAttached,'webtv: contrôles Neptune non montés');
+        assert(metrics.webtv.nativeControls===false,'webtv: contrôles vidéo natifs encore actifs');
+        assert(metrics.webtv.legacyCommand===false,'webtv: ancien command center v122 encore visible');
+        assert(metrics.webtv.legacyAudience===false,'webtv: ancienne analyse externe encore visible');
+        if(viewport.width>1000)assert(metrics.pageHeight<=metrics.viewportHeight+3,`webtv: scroll global desktop ${metrics.pageHeight}px/${metrics.viewportHeight}px`);
       }
       if(viewport.width<=860){
         const toggle=page.locator('#neptuneStudioMenuToggle');
@@ -161,5 +174,5 @@ try{
 }finally{await browser.close();}
 
 await writeFile(path.join(outputDir,'report.json'),JSON.stringify({ok:true,reports},null,2));
-console.log('Studio v122 visual audit passed: 5 destinations, Catalogue pleine largeur à navigation unique, Finance/Réglage compacts and H24 WebTV control room.');
+console.log('Studio visual audit passed: canonical 5-destination shell, full-width Catalogue and compact WebTV v125 cockpit with four internal tabs.');
 function assert(condition,message){if(!condition)throw new Error(message);}

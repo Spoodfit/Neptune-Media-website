@@ -11,7 +11,7 @@ function boot(){
   applyMode();
   window.addEventListener('hashchange',()=>{settingsDetailTab='';installNavigation();applyMode();});
   const observer=new MutationObserver(()=>scheduleRefresh());
-  observer.observe(document.documentElement,{subtree:true,childList:true});
+  observer.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
   let timer=0;
   function scheduleRefresh(){
     clearTimeout(timer);
@@ -38,7 +38,7 @@ function installNavigation(){
 }
 
 function navLink(href,icon,label,key){
-  return `<a class="neptune-studio-nav-link studio-nav-link v122-nav-link" href="${href}" data-studio-route="${key}" data-v122-route="${key}"><span class="neptune-studio-nav-icon" aria-hidden="true">${icon}</span><strong>${label}</strong></a>`;
+  return `<a class="neptune-studio-nav-link studio-nav-link v122-nav-link" href="${href}" data-v122-route="${key}"><span class="neptune-studio-nav-icon" aria-hidden="true">${icon}</span><strong>${label}</strong></a>`;
 }
 
 function activeRoute(){

@@ -36,7 +36,7 @@ jobs:
       STUDIO_OPERATIONS_RELEASE: neptune-studio-client-journey-20260805-v77
       STUDIO_UI_RELEASE: neptune-studio-ui-20260812-v105-three-tab-canonical-shell
       CATALOG_AUDIT_RELEASE: neptune-media-catalog-audit-20260813-v109
-      CATALOG_MARKETPLACE_RELEASE: neptune-studio-catalog-marketplace-20260819-v126
+      CATALOG_MARKETPLACE_RELEASE: neptune-studio-catalog-marketplace-20260820-v128
       SMART_EMAIL_RELEASE: neptune-smart-email-governor-20260806-v84
       HORIZONTAL_JOURNEY_RELEASE: neptune-horizontal-client-journey-20260810-v93
       DRIVE_UPLOAD_RELEASE: neptune-studio-drive-upload-20260811-v94
@@ -63,28 +63,28 @@ jobs:
       - name: Deploy Worker and Studio assets
         run: npx wrangler deploy --config wrangler.jsonc
 
-      - name: Verify Catalogue marketplace v126 on both production domains
+      - name: Verify Catalogue marketplace v128 on both production domains
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p /tmp/neptune-catalog-v126
+          mkdir -p /tmp/neptune-catalog-v128
           verify_catalog_marketplace() {
             local base="$1"
             local slug="$2"
             local ready=0
             for attempt in $(seq 1 24); do
               local query="catalog_marketplace=$GITHUB_SHA&attempt=$attempt"
-              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/advanced.html?$query" > "/tmp/neptune-catalog-v126/$slug-advanced.html" || true
-              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/studio-catalog-marketplace-v126.js?$query" > "/tmp/neptune-catalog-v126/$slug-marketplace.js" || true
-              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/studio-catalog-marketplace-v126.css?$query" > "/tmp/neptune-catalog-v126/$slug-marketplace.css" || true
-              if grep -Fq '/studio/studio-catalog-marketplace-v126.js?v=2' "/tmp/neptune-catalog-v126/$slug-advanced.html" \
-                && grep -Fq '/studio/studio-catalog-marketplace-v126.css?v=2' "/tmp/neptune-catalog-v126/$slug-advanced.html" \
-                && grep -Fq "$CATALOG_MARKETPLACE_RELEASE" "/tmp/neptune-catalog-v126/$slug-marketplace.js" \
-                && grep -Fq 'Toutes les villes' "/tmp/neptune-catalog-v126/$slug-marketplace.js" \
-                && grep -Fq 'Gérer les données' "/tmp/neptune-catalog-v126/$slug-marketplace.js" \
-                && grep -Fq '.v126-offer-grid' "/tmp/neptune-catalog-v126/$slug-marketplace.css"; then
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/advanced.html?$query" > "/tmp/neptune-catalog-v128/$slug-advanced.html" || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/studio-catalog-ux-v122-1.js?$query" > "/tmp/neptune-catalog-v128/$slug-marketplace.js" || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/studio-catalog-ux-v122-1.css?$query" > "/tmp/neptune-catalog-v128/$slug-marketplace.css" || true
+              if grep -Fq '/studio/studio-catalog-ux-v122-1.js?v=4' "/tmp/neptune-catalog-v128/$slug-advanced.html" \
+                && grep -Fq '/studio/studio-catalog-ux-v122-1.css?v=4' "/tmp/neptune-catalog-v128/$slug-advanced.html" \
+                && grep -Fq "$CATALOG_MARKETPLACE_RELEASE" "/tmp/neptune-catalog-v128/$slug-marketplace.js" \
+                && grep -Fq 'Toutes les villes' "/tmp/neptune-catalog-v128/$slug-marketplace.js" \
+                && grep -Fq 'Gérer les données' "/tmp/neptune-catalog-v128/$slug-marketplace.js" \
+                && grep -Fq '.v128-offer-grid' "/tmp/neptune-catalog-v128/$slug-marketplace.css"; then
                 ready=1
-                echo "$base: Catalogue marketplace v126 verified on attempt $attempt."
+                echo "$base: Catalogue marketplace v128 verified on attempt $attempt."
                 break
               fi
               sleep 5

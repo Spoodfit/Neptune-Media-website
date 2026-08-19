@@ -23,19 +23,25 @@ for(const label of ['Parcours clients','Diffusion','Catalogue Média','Finance',
 expect(overviewJs.includes('neptune-studio-nav-link'),'navigation v122 conserve le contrat DOM canonique');
 expect(!overviewJs.includes('data-studio-route="${key}"'),'navigation v122 n’est plus pilotable par l’ancien contrôleur de routes');
 expect(overviewCss.includes('.studio-context-nav-v65{display:none!important}'),'ancienne rangée de sous-onglets masquée');
-expect(catalogUxCss.includes('body.v122-studio-catalog .content')&&catalogUxCss.includes('width:100%!important'),'Catalogue Média utilise toute la largeur disponible');
-expect(catalogUxCss.includes('#content .c98-page .c98-layout')&&catalogUxCss.includes('display:block!important'),'ancienne grille Catalogue + aperçu remplacée par un espace de travail pleine largeur');
+
+expect(catalogUxCss.includes('body.v128-studio-marketplace .content')&&catalogUxCss.includes('width:100%!important'),'Catalogue Média utilise toute la largeur disponible');
+expect(catalogUxCss.includes('#content .c98-layout{display:none!important'),'gestion détaillée masquée par défaut derrière la marketplace');
+expect(catalogUxCss.includes('v128-catalog-admin-open #content .c98-layout{display:block!important'),'gestion détaillée réactivable à la demande');
 expect(catalogUxCss.includes('#c98Preview')&&catalogUxCss.includes('display:none!important'),'aperçu tunnel permanent masqué de la console');
 expect(catalogUxCss.includes('.c116-preview-panel')&&catalogUxCss.includes('display:none!important'),'aperçu tunnel repliable historique masqué de la console');
 expect(catalogUxCss.includes('.c98-tabs')&&catalogUxCss.includes('display:none!important'),'ancienne deuxième navigation Catalogue masquée');
-expect(catalogUxCss.includes('.v122-catalog-glance')&&catalogUxCss.includes('grid-template-columns:repeat(6'),'vue d’ensemble Catalogue en six raccourcis métier');
-expect(catalogUxJs.includes("services:{label:'Prestations'")&&catalogUxJs.includes('[data-c116-services]'),'prestations fournisseur intégrées à la navigation unique');
-expect(catalogUxJs.includes('Voir le tunnel client ↗'),'accès tunnel client explicite depuis le Catalogue');
-expect(catalogUxJs.includes('Voir dans le tunnel ↗')&&catalogUxJs.includes('catalog_family'),'prévisualisation ciblée d’une offre ouvre le tunnel à la demande');
-expect(catalogUxJs.includes('/api/admin/media-catalog-v98/context'),'synthèse Catalogue utilise la source de vérité Studio');
+expect(catalogUxCss.includes('.v128-city-chooser')&&catalogUxCss.includes('.v128-offer-grid'),'marketplace structurée par ville et offres');
+expect(catalogUxJs.includes("const RELEASE='neptune-studio-catalog-marketplace-20260820-v128'"),'release marketplace canonique v128 active');
+expect(catalogUxJs.includes('Toutes les villes'),'ville comme porte d’entrée principale');
+expect(catalogUxJs.includes('Gérer les données ▾'),'administration secondaire disponible à la demande');
+expect(catalogUxJs.includes('Coût fournisseur')&&catalogUxJs.includes("priceCell('Coûtant'")&&catalogUxJs.includes("priceCell('Préférentiel'")&&catalogUxJs.includes("priceCell('Normal'"),'carte offre rapproche coût fournisseur et trois tarifs client');
+expect(catalogUxJs.includes('configurationLabels'),'configurations rapprochées sur chaque offre marketplace');
+expect(catalogUxJs.includes('Voir côté client ↗')&&catalogUxJs.includes('catalog_family'),'prévisualisation ciblée d’une offre ouvre le tunnel à la demande');
+expect(catalogUxJs.includes('/api/admin/media-catalog-v98/context'),'marketplace utilise la source de vérité Studio');
 expect(overviewCss.includes('.v122-overview-grid'),'réglages disposent d’une vue d’ensemble compacte');
 expect(advanced.includes('/studio/studio-overview-v122.js?v=1'),'advanced charge v122 à la source');
-expect(advanced.includes('/studio/studio-catalog-ux-v122-1.css?v=1')&&advanced.includes('/studio/studio-catalog-ux-v122-1.js?v=1'),'advanced charge l’UX Catalogue pleine largeur');
+expect(advanced.includes('/studio/studio-catalog-ux-v122-1.css?v=4')&&advanced.includes('/studio/studio-catalog-ux-v122-1.js?v=4'),'advanced charge la marketplace canonique avec cache-busting v128');
+expect(!advanced.includes('studio-catalog-marketplace-v126'),'ancienne surcouche marketplace v126 retirée du runtime');
 
 for(const contract of ['Synchroniser les émissions','Activer la chaîne H24','Copier le code d’intégration','Bibliothèque Cloudflare','Performance mesurée sur le direct Neptune'])expect(webtvJs.includes(contract),`WebTV contient ${contract}`);
 expect(webtvJs.includes("api('/api/admin/webtv/state'"),'WebTV charge le vrai contrôle Cloudflare');

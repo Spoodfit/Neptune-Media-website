@@ -54,7 +54,7 @@ jobs:
                   && grep -Fq 'Gérer les données' "$dir/runtime.js" \
                   && grep -Fq "$CATALOG_VISIBILITY_RELEASE" "$dir/visibility.js" \
                   && grep -Fq 'forceHidden(layout,!adminOpen)' "$dir/visibility.js" \
-                  && grep -Fq 'Toutes les offres, classées par ville.' "$dir/visibility.js" \
+                  && grep -Fq "querySelectorAll('p:not(.c98-eyebrow)')" "$dir/visibility.js" \
                   && grep -Fq '.v128-offer-grid' "$dir/marketplace.css"; then
                   ok=1
                   echo "$base: Catalogue v130.2 production verified on attempt $attempt"

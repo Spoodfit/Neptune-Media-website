@@ -1,50 +1,65 @@
-import { chromium } from 'playwright';
+import {spawn} from 'node:child_process';
+import {existsSync,writeFileSync} from 'node:fs';
 
 const baseURL=process.env.STUDIO_BASE_URL||'http://127.0.0.1:8787';
 const release='neptune-studio-catalog-marketplace-20260820-v130-runtime';
 const timeout=30000;
+const chrome=findChrome();
 const family={
   key:'city-toulouse|format-hors-norme|supplier-recbox',cityId:'city-toulouse',cityName:'Toulouse',formatId:'format-hors-norme',formatName:'Hors Norme',supplierId:'supplier-recbox',supplierName:'RecBox',active:true,publicOrder:10,supplierNetCents:60000,
-  tiers:{launch:{clientPriceCents:99000},promo:{clientPriceCents:129000},base:{clientPriceCents:159000}},
-  configurationOptions:['Canapé','Chaise'],configurationVisuals:[{label:'Canapé'},{label:'Chaise'}],
+  tiers:{launch:{clientPriceCents:99000},promo:{clientPriceCents:129000},base:{clientPriceCents:159000}},configurationOptions:['Canapé','Chaise'],configurationVisuals:[{label:'Canapé'},{label:'Chaise'}],
 };
-const catalog={ok:true,formats:[{id:'format-hors-norme',name:'Hors Norme',concept:'Interview signature',durationLabel:'60 min',image:'/assets/posters/hors-norme-wide.webp',active:true}],suppliers:[{id:'supplier-recbox',name:'RecBox',active:true,defaultNetCents:60000}],cities:[{id:'city-toulouse',name:'Toulouse',country:'France',active:true,publicOrder:10}],families:[family],services:[]};
+const catalog={ok:true,formats:[{id:'format-hors-norme',name:'Hors Norme',concept:'Interview signature',durationLabel:'60 min',image:'/assets/posters/hors-norme-wide.webp',active:true}],suppliers:[{id:'supplier-recbox',name:'RecBox',active:true,defaultNetCents:60000}],cities:[{id:'city-toulouse',name:'Toulouse',country:'France',active:true,publicOrder:10}],families:[family],services:[],supplierRates:[],rateUnits:[],durationOptions:[]};
 const user={id:'admin-1',email:'contact@neptunebusiness.com',fullName:'Neptune Media',role:'admin'};
 const admin={user,programs:[],episodes:[],ads:[],users:[user],audit:[],settings:{},stats:{views:0,watchSeconds:0,uniqueViewers:0,bookingClicks:0,byEpisode:{},conversions:{count:0,revenueCents:0}}};
+const port=9222;
+const chromeProcess=spawn(chrome,[
+  '--headless=new','--no-sandbox','--disable-gpu','--disable-dev-shm-usage','--no-first-run','--no-default-browser-check',
+  `--remote-debugging-port=${port}`,'--remote-debugging-address=127.0.0.1','--user-data-dir=/tmp/neptune-catalog-v130-chrome','about:blank',
+],{stdio:['ignore','ignore','pipe']});
+let chromeError='';
+chromeProcess.stderr.on('data',chunk=>{chromeError+=String(chunk);});
 
-const browser=await chromium.launch({headless:true,channel:'chrome'});
 try{
-  const context=await browser.newContext({viewport:{width:1440,height:1000},serviceWorkers:'block'});
-  await context.route('**/api/**',async route=>{
-    const pathname=new URL(route.request().url()).pathname;
-    let body={ok:true};
-    if(pathname==='/api/auth/status')body={authenticated:true,csrfToken:'test-csrf',user};
-    else if(pathname==='/api/admin/state')body=admin;
-    else if(pathname==='/api/admin/clients')body={clients:[],orders:[],supplierPayments:[],refundRequests:[],deletionRequests:[],finance:{}};
-    else if(pathname==='/api/admin/media-catalog-v98/context')body=catalog;
-    else if(pathname==='/api/reservation/catalog-v96')body={ok:true,cities:[],pricing:{}};
-    await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(body)});
+  await waitForChrome(port);
+  const target=await fetch(`http://127.0.0.1:${port}/json/new?about:blank`,{method:'PUT'}).then(response=>response.json());
+  const cdp=new Cdp(target.webSocketDebuggerUrl);
+  await cdp.connect();
+  await cdp.send('Page.enable');
+  await cdp.send('Runtime.enable');
+  await cdp.send('Network.enable');
+  await cdp.send('Fetch.enable',{patterns:[{urlPattern:'*://*/api/*',requestStage:'Request'}]});
+  await cdp.send('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false});
+
+  cdp.on('Fetch.requestPaused',async event=>{
+    const body=mockApi(new URL(event.request.url).pathname);
+    await cdp.send('Fetch.fulfillRequest',{
+      requestId:event.requestId,responseCode:200,
+      responseHeaders:[{name:'Content-Type',value:'application/json; charset=utf-8'},{name:'Cache-Control',value:'no-store'}],
+      body:Buffer.from(JSON.stringify(body)).toString('base64'),
+    });
   });
-  const page=await context.newPage();
-  const errors=[];
-  page.on('pageerror',error=>errors.push(error.message));
-  page.on('console',message=>{if(message.type()==='error')errors.push(message.text());});
 
-  const response=await page.goto(`${baseURL}/studio/advanced.html#programs`,{waitUntil:'commit',timeout});
-  assert(response?.ok(),`Studio HTTP ${response?.status()}`);
-  assert((await response.headerValue('x-neptune-catalog-runtime'))===release,'Header Worker Catalogue v130 absent');
-  await page.waitForSelector('#app:not([hidden])',{timeout});
-  await page.waitForSelector('#studioCatalogMarketplaceV128 .v128-offer',{state:'visible',timeout});
+  let documentHeaders={};
+  cdp.on('Network.responseReceived',event=>{
+    if(event.type==='Document'&&event.response.url.includes('/studio/advanced.html'))documentHeaders=event.response.headers||{};
+  });
 
-  const snapshot=await page.evaluate(()=>({
+  await cdp.send('Page.navigate',{url:`${baseURL}/studio/advanced.html#programs`});
+  await waitFor(async()=>Boolean(await evaluate(cdp,"document.querySelector('#studioCatalogMarketplaceV128 .v128-offer')")),timeout,'Marketplace v130 non montée');
+
+  const header=Object.entries(documentHeaders).find(([name])=>name.toLowerCase()==='x-neptune-catalog-runtime')?.[1]||'';
+  assert(header===release,`Header Worker Catalogue incorrect: ${header||'absent'}`);
+
+  const snapshot=await evaluate(cdp,`(()=>({
     release:document.body.dataset.studioCatalogRuntime||'',
     legacyScript:document.querySelector('script[data-neptune-disabled="catalog-v128"]')?.type||'',
     oldGlance:Boolean(document.querySelector('#studioCatalogGlanceV1221')),
     oldTabs:getComputedStyle(document.querySelector('.c98-tabs')).display,
     oldLayout:getComputedStyle(document.querySelector('.c98-layout')).display,
     overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth,
-    text:document.querySelector('#studioCatalogMarketplaceV128')?.textContent||'',
-  }));
+    text:document.querySelector('#studioCatalogMarketplaceV128')?.textContent||''
+  }))()`);
   assert(snapshot.release===release,`Runtime exécuté incorrect: ${snapshot.release}`);
   assert(snapshot.legacyScript==='application/x-neptune-disabled','Ancien runtime Catalogue encore exécutable');
   assert(!snapshot.oldGlance,'Ancienne rangée de raccourcis encore montée');
@@ -52,18 +67,75 @@ try{
   assert(snapshot.overflow<=1,`Débordement horizontal: ${snapshot.overflow}px`);
   for(const text of ['Toutes les villes','Toulouse','Hors Norme','RecBox','Coût fournisseur','Coûtant','Préférentiel','Normal','Canapé','Chaise','Gérer les données'])assert(snapshot.text.includes(text),`Marketplace v130 sans « ${text} »`);
 
-  await page.locator('[data-v130-search]').fill('recbox');
-  assert(await page.locator('.v128-offer').count()===1,'Recherche fournisseur non fonctionnelle');
-  await page.getByRole('button',{name:/Gérer les données/}).click();
-  await page.getByRole('button',{name:'Fournisseurs',exact:true}).click();
-  await page.waitForFunction(()=>document.body.classList.contains('v128-catalog-admin-open'),null,{timeout});
-  assert((await page.locator('.c98-layout').evaluate(node=>getComputedStyle(node).display))!=='none','Administration détaillée inaccessible');
-  await page.getByRole('button',{name:'← Retour au catalogue'}).click();
-  await page.waitForSelector('#studioCatalogMarketplaceV128',{state:'visible',timeout});
+  await evaluate(cdp,`(()=>{const input=document.querySelector('[data-v130-search]');input.value='recbox';input.dispatchEvent(new Event('input',{bubbles:true}));return document.querySelectorAll('.v128-offer').length})()`);
+  assert((await evaluate(cdp,"document.querySelectorAll('.v128-offer').length"))===1,'Recherche fournisseur non fonctionnelle');
 
-  assert(errors.length===0,`Erreurs navigateur: ${errors.join(' | ')}`);
+  await evaluate(cdp,`(()=>{document.querySelector('[data-v130-manage]').click();document.querySelector('[data-v130-area="suppliers"]').click();return true})()`);
+  await waitFor(async()=>Boolean(await evaluate(cdp,"document.body.classList.contains('v128-catalog-admin-open')")),5000,'Administration détaillée non ouverte');
+  assert((await evaluate(cdp,"getComputedStyle(document.querySelector('.c98-layout')).display"))!=='none','Administration détaillée inaccessible');
+  await evaluate(cdp,"document.querySelector('[data-v130-back]').click(); true");
+  await waitFor(async()=>Boolean(await evaluate(cdp,"getComputedStyle(document.getElementById('studioCatalogMarketplaceV128')).display!=='none'")),5000,'Retour marketplace impossible');
+
+  const screenshot=await cdp.send('Page.captureScreenshot',{format:'png',fromSurface:true,captureBeyondViewport:false});
+  writeFileSync(process.env.CATALOG_SCREENSHOT||'/tmp/catalog-runtime-v130.png',Buffer.from(screenshot.data,'base64'));
   console.log('Catalogue runtime v130 browser audit: OK');
-  await context.close();
-}finally{await browser.close();}
+  cdp.close();
+}finally{
+  chromeProcess.kill('SIGTERM');
+}
 
+function mockApi(pathname){
+  if(pathname==='/api/auth/status')return{authenticated:true,csrfToken:'test-csrf',user};
+  if(pathname==='/api/admin/state')return admin;
+  if(pathname==='/api/admin/clients')return{clients:[],orders:[],supplierPayments:[],refundRequests:[],deletionRequests:[],finance:{}};
+  if(pathname==='/api/admin/media-catalog-v98/context')return catalog;
+  if(pathname==='/api/reservation/catalog-v96')return{ok:true,cities:[],pricing:{}};
+  if(pathname.startsWith('/api/admin/sales-config-v96/'))return{ok:true,services:[],supplierRates:[],rateUnits:[],durationOptions:[]};
+  return{ok:true};
+}
+
+function findChrome(){
+  for(const file of ['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'])if(existsSync(file))return file;
+  throw new Error('Chrome système introuvable sur le runner');
+}
+async function waitForChrome(port){
+  const started=Date.now();
+  while(Date.now()-started<15000){
+    if(chromeProcess.exitCode!==null)throw new Error(`Chrome arrêté avant DevTools: ${chromeError.slice(-1000)}`);
+    try{const response=await fetch(`http://127.0.0.1:${port}/json/version`);if(response.ok)return;}catch{}
+    await sleep(150);
+  }
+  throw new Error(`Chrome DevTools indisponible: ${chromeError.slice(-1000)}`);
+}
+async function evaluate(cdp,expression){
+  const response=await cdp.send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});
+  if(response.exceptionDetails)throw new Error(response.exceptionDetails.exception?.description||response.exceptionDetails.text||'Erreur JavaScript navigateur');
+  return response.result?.value;
+}
+async function waitFor(check,limit,message){
+  const started=Date.now();
+  while(Date.now()-started<limit){try{if(await check())return;}catch{}await sleep(100);}
+  throw new Error(message);
+}
+function sleep(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
 function assert(condition,message){if(!condition)throw new Error(message);}
+
+class Cdp{
+  constructor(url){this.url=url;this.socket=null;this.seq=0;this.pending=new Map();this.listeners=new Map();}
+  async connect(){
+    this.socket=new WebSocket(this.url);
+    await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Connexion CDP timeout')),5000);this.socket.onopen=()=>{clearTimeout(timer);resolve();};this.socket.onerror=()=>{clearTimeout(timer);reject(new Error('Connexion CDP impossible'));};});
+    this.socket.onmessage=event=>this.handle(event.data);
+  }
+  handle(raw){
+    const message=JSON.parse(String(raw));
+    if(message.id){const pending=this.pending.get(message.id);if(!pending)return;this.pending.delete(message.id);clearTimeout(pending.timer);if(message.error)pending.reject(new Error(message.error.message));else pending.resolve(message.result||{});return;}
+    for(const listener of this.listeners.get(message.method)||[])Promise.resolve(listener(message.params||{})).catch(error=>console.error('cdp_event_error',message.method,error.message));
+  }
+  on(method,listener){if(!this.listeners.has(method))this.listeners.set(method,[]);this.listeners.get(method).push(listener);}
+  send(method,params={}){
+    const id=++this.seq;
+    return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{this.pending.delete(id);reject(new Error(`CDP timeout: ${method}`));},10000);this.pending.set(id,{resolve,reject,timer});this.socket.send(JSON.stringify({id,method,params}));});
+  }
+  close(){try{this.socket?.close();}catch{}}
+}

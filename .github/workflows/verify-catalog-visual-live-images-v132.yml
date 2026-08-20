@@ -28,6 +28,27 @@ jobs:
         run: npm install --package-lock=false --ignore-scripts --no-audit --no-fund
       - name: Validate audit
         run: node --check neptune-tv-media-cloudflare/tests/audit-catalog-visual-live-images-v132.mjs
+      - name: Copy exact current production images into test origin
+        shell: bash
+        run: |
+          set -euo pipefail
+          production='https://neptune-media-webtv.neptunebusinessclub.workers.dev'
+          curl --fail --silent --show-error --location "$production/api/reservation/catalog-v96" -o /tmp/catalog-live.json
+          python3 - <<'PY' > /tmp/catalog-live-paths.env
+          import json
+          data=json.load(open('/tmp/catalog-live.json'))
+          for city in data.get('cities',[]):
+              for fmt in city.get('formats',[]):
+                  name=(fmt.get('name') or '').lower()
+                  if name=='hors norme': print('HORS='+fmt['image'])
+                  if name=='libre': print('LIBRE='+fmt['image'])
+          PY
+          source /tmp/catalog-live-paths.env
+          test -n "${HORS:-}" && test -n "${LIBRE:-}"
+          mkdir -p neptune-tv-media-cloudflare/public/assets/catalog-v132-live
+          curl --fail --silent --show-error --location "$production$HORS" -o neptune-tv-media-cloudflare/public/assets/catalog-v132-live/hors-norme-production.png
+          curl --fail --silent --show-error --location "$production$LIBRE" -o neptune-tv-media-cloudflare/public/assets/catalog-v132-live/libre-production.png
+          file neptune-tv-media-cloudflare/public/assets/catalog-v132-live/*.png
       - name: Start active Worker
         shell: bash
         run: |

@@ -35,9 +35,10 @@ expect(catalogJs.includes('cityCard(city')&&catalogJs.includes('offerCard(offer)
 expect(catalogJs.includes("structureBlock('◈','Concepts'")&&catalogJs.includes("structureBlock('⬡','Fournisseurs'")&&catalogJs.includes("structureBlock('⇄','Configurations'")&&catalogJs.includes("structureBlock('⌖','Villes'"),'structure réunit les quatre briques du catalogue');
 expect(catalogJs.includes('/api/admin/media-catalog-v98/context'),'v132 réutilise la source de vérité Studio');
 expect(catalogJs.includes('openLegacy')&&catalogJs.includes('← Catalogue'),'édition détaillée reste disponible sans seconde source de vérité');
-expect(entry41.includes("CATALOG_RELEASE='neptune-studio-catalog-visual-20260820-v132'"),'entry-v41 expose la release v132');
-expect(entry41.includes('/studio/studio-catalog-visual-v132.js?v=1')&&entry41.includes('/studio/studio-catalog-visual-v132.css?v=1'),'entry-v41 injecte uniquement les assets visuels v132');
+expect(entry41.includes("CATALOG_VISUAL_RELEASE='neptune-studio-catalog-visual-20260820-v132'"),'entry-v41 expose la release visuelle v132');
+expect(entry41.includes('/studio/studio-catalog-visual-v132.js?v=1')&&entry41.includes('/studio/studio-catalog-visual-v132.css?v=1'),'entry-v41 injecte les assets visuels v132');
 expect(entry41.includes("import base,{StudioStore,WebTvEncoder} from './entry-v40.js'"),'entry-v41 enveloppe v40 sans réécrire la WebTV');
+expect(entry41.includes("CATALOG_COMPAT_RELEASE='neptune-studio-catalog-cockpit-20260820-v131'"),'compatibilité du pipeline v131 conservée sans exécuter son UI');
 expect(overviewCss.includes('.v122-overview-grid'),'réglages disposent d’une vue d’ensemble compacte');
 
 for(const contract of ['Synchroniser les émissions','Activer la chaîne H24','Copier le code d’intégration','Bibliothèque Cloudflare','Performance mesurée sur le direct Neptune'])expect(webtvJs.includes(contract),`WebTV contient ${contract}`);

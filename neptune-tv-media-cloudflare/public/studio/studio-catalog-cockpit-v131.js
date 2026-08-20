@@ -244,7 +244,7 @@ function offerViews(){
     if(!supplierNetCents)issues.push('Coût fournisseur manquant');
     if(!Object.values(tiers).some(tier=>Number(tier?.clientPriceCents||0)>0))issues.push('Tarif client manquant');
     const key=String(family.key||family.id||`${family.cityId||'city'}|${family.formatId||'format'}|${family.supplierId||'supplier'}|${index}`);
-    return {key,cityId:String(family.cityId||''),cityName,formatId:String(family.formatId||''),formatName,concept:format.concept||format.description||family.concept||'',supplierId:String(family.supplierId||''),supplierName,configurations,supplierNetCents,tiers,active,issues,search:[cityName,formatName,supplierName,format.concept,format.description,...configurations].filter(Boolean).join(' ').toLowerCase()};
+    return {key,cityId:String(family.cityId||''),cityName,formatId:String(family.formatId||''),formatName,concept:family.concept||format.concept||format.description||'',supplierId:String(family.supplierId||''),supplierName,configurations,supplierNetCents,tiers,active,issues,search:[cityName,formatName,supplierName,family.concept,format.concept,format.description,...configurations].filter(Boolean).join(' ').toLowerCase()};
   }).sort((a,b)=>String(a.cityName).localeCompare(String(b.cityName),'fr')||String(a.formatName).localeCompare(String(b.formatName),'fr'));
 }
 
@@ -258,7 +258,7 @@ function configSummary(values){if(!values.length)return 'Standard';if(values.len
 function configurationLabels(family){return unique([...(Array.isArray(family.configurationOptions)?family.configurationOptions:[]),...(Array.isArray(family.configurationVisuals)?family.configurationVisuals.map(item=>typeof item==='string'?item:item?.label):[])]).filter(Boolean);}
 function configurationCatalog(){return unique(families().flatMap(configurationLabels)).filter(Boolean).sort((a,b)=>String(a).localeCompare(String(b),'fr'));}
 function cityChip(id,label,count){return `<button type="button" class="v131-city ${state.city===id?'is-active':''}" data-v131-city="${attr(id)}"><span>${html(label)}</span><strong>${count}</strong></button>`;}
-function previewUrl(key){return `/reserver/?catalog_offer=${encodeURIComponent(key)}`;}
+function previewUrl(key){const params=new URLSearchParams({catalog_preview:'studio',catalog_view:'format',catalog_family:key});return `/reserver?${params}`;}
 function adminTitle(area){return({formats:'Concepts',configurations:'Configurations',suppliers:'Fournisseurs',cities:'Villes',offers:'Offres & tarifs',services:'Prestations'})[area]||'Donnée du catalogue';}
 function activateServices(attempt){const target=$('[data-c116-services]');if(target){target.click();return;}if(attempt<20)setTimeout(()=>activateServices(attempt+1),80);}
 function renderError(message){const root=$('#studioCatalogCockpitV131');if(root)root.innerHTML=`<div class="v131-empty"><strong>Catalogue indisponible</strong><span>${html(message)}</span><button class="v131-btn" type="button" onclick="location.reload()">Réessayer</button></div>`;}
@@ -267,7 +267,7 @@ function formats(){return array(state.context?.formats);}
 function suppliers(){return array(state.context?.suppliers);}
 function families(){return array(state.context?.families);}
 function cityNameById(id){return cities().find(city=>String(city.id)===String(id))?.name||'';}
-function money(cents){return new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(Number(cents||0)/100).replace('€','€ HT');}
+function money(cents){return new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(Number(cents||0)/100)+' HT';}
 function array(value){return Array.isArray(value)?value:[];}
 function unique(values){return [...new Set(values.map(value=>String(value||'').trim()).filter(Boolean))];}
 function html(value){return String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));}

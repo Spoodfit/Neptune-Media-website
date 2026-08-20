@@ -1,0 +1,8 @@
+/* Catalogue Média v132.1 — verrou desktop et pictogrammes sûrs. */
+@media (min-width:901px){
+  body.v132-catalog-visual{height:100dvh!important;overflow:hidden!important}
+  body.v132-catalog-visual #app.shell{height:100dvh!important;min-height:0!important;overflow:hidden!important}
+  body.v132-catalog-visual .main{height:100dvh!important;min-height:0!important;overflow:hidden!important}
+}
+.v132-city-overlay>span::first-letter,.v132-city-badge::first-letter{font-size:0;line-height:0}
+.v132-city-overlay>span::before,.v132-city-badge::before{content:"";display:inline-block;width:5px;height:5px;margin-right:5px;border-radius:50%;background:currentColor;vertical-align:middle;opacity:.9}

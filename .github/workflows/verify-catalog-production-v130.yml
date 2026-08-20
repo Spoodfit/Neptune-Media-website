@@ -1,4 +1,4 @@
-name: Verify Catalogue V130 Production
+name: Verify Catalogue Cockpit V131 Production
 
 on:
   workflow_run:
@@ -11,17 +11,16 @@ permissions:
   contents: read
 
 jobs:
-  verify-catalog-production-v130:
+  verify-catalog-production-v131:
     if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 8
     env:
       PUBLIC_URL: https://tv.neptunebusiness.com
       WORKERS_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
-      CATALOG_RUNTIME_RELEASE: neptune-studio-catalog-marketplace-20260820-v130-runtime
-      CATALOG_VISIBILITY_RELEASE: neptune-studio-catalog-visibility-20260820-v130.2
+      CATALOG_RUNTIME_RELEASE: neptune-studio-catalog-cockpit-20260820-v131
     steps:
-      - name: Verify marketplace runtime and visibility guard
+      - name: Verify cockpit runtime on both production domains
         shell: bash
         run: |
           set -euo pipefail
@@ -32,32 +31,26 @@ jobs:
             mkdir -p "$dir"
             local ok=0
             for attempt in $(seq 1 18); do
-              local query="catalog_v130=${GITHUB_SHA:-manual}&attempt=$attempt"
+              local query="catalog_v131=${GITHUB_SHA:-manual}&attempt=$attempt"
               curl --fail --silent --show-error -D "$dir/advanced.headers" -H 'Cache-Control: no-cache, no-store' "$base/studio/advanced.html?$query" > "$dir/advanced.html" || true
               curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/api/public/release?$query" > "$dir/release.json" || true
-              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/studio-catalog-runtime-v130.js?$query" > "$dir/runtime.js" || true
-              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/studio-catalog-visibility-v130-1.js?$query" > "$dir/visibility.js" || true
-              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/studio-catalog-ux-v122-1.css?$query" > "$dir/marketplace.css" || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/studio-catalog-cockpit-v131.js?$query" > "$dir/cockpit.js" || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/studio-catalog-cockpit-v131.css?$query" > "$dir/cockpit.css" || true
               if RELEASE_FILE="$dir/release.json" node <<'NODE'
-          const fs=require('node:fs');
-          let data;
-          try{data=JSON.parse(fs.readFileSync(process.env.RELEASE_FILE,'utf8'));}catch{process.exit(1)}
-          if(data.catalogRuntime!==process.env.CATALOG_RUNTIME_RELEASE)process.exit(1);
+          const fs=require('node:fs');let data;try{data=JSON.parse(fs.readFileSync(process.env.RELEASE_FILE,'utf8'));}catch{process.exit(1)}if(data.catalogRuntime!==process.env.CATALOG_RUNTIME_RELEASE)process.exit(1);
           NODE
               then
                 if grep -Fqi "x-neptune-catalog-runtime: $CATALOG_RUNTIME_RELEASE" "$dir/advanced.headers" \
-                  && grep -Fq '/studio/studio-catalog-runtime-v130.js?v=1' "$dir/advanced.html" \
-                  && grep -Fq '/studio/studio-catalog-visibility-v130-1.js?v=1' "$dir/advanced.html" \
-                  && grep -Fq 'data-neptune-disabled="catalog-v128"' "$dir/advanced.html" \
-                  && grep -Fq "$CATALOG_RUNTIME_RELEASE" "$dir/runtime.js" \
-                  && grep -Fq 'Toutes les villes' "$dir/runtime.js" \
-                  && grep -Fq 'Gérer les données' "$dir/runtime.js" \
-                  && grep -Fq "$CATALOG_VISIBILITY_RELEASE" "$dir/visibility.js" \
-                  && grep -Fq 'forceHidden(layout,!adminOpen)' "$dir/visibility.js" \
-                  && grep -Fq "querySelectorAll('p:not(.c98-eyebrow)')" "$dir/visibility.js" \
-                  && grep -Fq '.v128-offer-grid' "$dir/marketplace.css"; then
+                  && grep -Fq '/studio/studio-catalog-cockpit-v131.js?v=1' "$dir/advanced.html" \
+                  && grep -Fq '/studio/studio-catalog-cockpit-v131.css?v=1' "$dir/advanced.html" \
+                  && ! grep -Fq '/studio/studio-catalog-runtime-v130.js' "$dir/advanced.html" \
+                  && ! grep -Fq '/studio/studio-catalog-visibility-v130-1.js' "$dir/advanced.html" \
+                  && grep -Fq "$CATALOG_RUNTIME_RELEASE" "$dir/cockpit.js" \
+                  && grep -Fq 'Vue d’ensemble' "$dir/cockpit.js" \
+                  && grep -Fq 'Éléments du catalogue' "$dir/cockpit.js" \
+                  && grep -Fq '.v131-table' "$dir/cockpit.css"; then
                   ok=1
-                  echo "$base: Catalogue v130.2 production verified on attempt $attempt"
+                  echo "$base: Catalogue v131 production verified on attempt $attempt"
                   break
                 fi
               fi

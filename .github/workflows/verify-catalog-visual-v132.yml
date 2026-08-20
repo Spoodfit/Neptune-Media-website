@@ -5,7 +5,7 @@ on:
     paths:
       - 'wrangler.jsonc'
       - 'neptune-tv-media-cloudflare/wrangler.jsonc'
-      - 'neptune-tv-media-cloudflare/src/entry-v41.js'
+      - 'neptune-tv-media-cloudflare/src/entry-v40.js'
       - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-visual-v132.js'
       - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-visual-v132.css'
       - 'neptune-tv-media-cloudflare/tests/audit-catalog-visual-v132.mjs'
@@ -31,11 +31,11 @@ jobs:
         run: npm install --package-lock=false --ignore-scripts --no-audit --no-fund
       - name: Validate JavaScript
         run: |
-          node --check neptune-tv-media-cloudflare/src/entry-v41.js
+          node --check neptune-tv-media-cloudflare/src/entry-v40.js
           node --check neptune-tv-media-cloudflare/public/studio/studio-catalog-visual-v132.js
           node --check neptune-tv-media-cloudflare/tests/audit-catalog-visual-v132.mjs
-          grep -Fq '"main": "neptune-tv-media-cloudflare/src/entry-v41.js"' wrangler.jsonc
-          grep -Fq '"main": "src/entry-v41.js"' neptune-tv-media-cloudflare/wrangler.jsonc
+          grep -Fq '"main": "neptune-tv-media-cloudflare/src/entry-v40.js"' wrangler.jsonc
+          grep -Fq '"main": "src/entry-v40.js"' neptune-tv-media-cloudflare/wrangler.jsonc
       - name: Start active Cloudflare Worker
         shell: bash
         run: |

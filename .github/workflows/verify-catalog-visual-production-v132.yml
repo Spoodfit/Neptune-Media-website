@@ -1,0 +1,53 @@
+name: Verify Catalogue Visual V132 Production
+
+on:
+  workflow_run:
+    workflows: ["Deploy Neptune Media to Cloudflare"]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-catalog-visual-v132:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PUBLIC_URL: https://tv.neptunebusiness.com
+      WORKERS_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
+      VISUAL_RELEASE: neptune-studio-catalog-visual-20260820-v132
+    steps:
+      - name: Verify v132 on both production domains
+        shell: bash
+        run: |
+          set -euo pipefail
+          verify_domain() {
+            local base="$1"
+            local ok=0
+            for attempt in $(seq 1 18); do
+              local q="catalog_visual=${GITHUB_SHA:-manual}&attempt=$attempt"
+              curl --fail --silent --show-error -D /tmp/v132.headers -H 'Cache-Control: no-cache, no-store' "$base/studio/advanced.html?$q" > /tmp/v132.html || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/api/public/release?$q" > /tmp/v132-release.json || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/studio-catalog-visual-v132.js?$q" > /tmp/v132.js || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/studio-catalog-visual-v132.css?$q" > /tmp/v132.css || true
+              if grep -Fqi "x-neptune-catalog-visual: $VISUAL_RELEASE" /tmp/v132.headers \
+                && grep -Fq '/studio/studio-catalog-visual-v132.js?v=1' /tmp/v132.html \
+                && grep -Fq '/studio/studio-catalog-visual-v132.css?v=1' /tmp/v132.html \
+                && grep -Fq "$VISUAL_RELEASE" /tmp/v132.js \
+                && grep -Fq 'v132-city-card' /tmp/v132.js \
+                && grep -Fq 'v132-offer-visual' /tmp/v132.css; then
+                if RELEASE_FILE=/tmp/v132-release.json node <<'NODE'
+          const fs=require('node:fs');let data;try{data=JSON.parse(fs.readFileSync(process.env.RELEASE_FILE,'utf8'));}catch{process.exit(1)}
+          if(data.catalogVisual!==process.env.VISUAL_RELEASE)process.exit(1);
+NODE
+                then ok=1;echo "$base: visual catalogue v132 verified on attempt $attempt";break;fi
+              fi
+              sleep 5
+            done
+            test "$ok" = 1
+          }
+          verify_domain "$WORKERS_URL"
+          verify_domain "$PUBLIC_URL"

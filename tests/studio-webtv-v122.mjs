@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 
 const root='neptune-tv-media-cloudflare';
 const read=path=>fs.readFile(`${root}/${path}`,'utf8');
-const [overviewJs,overviewCss,catalogJs,catalogCss,webtvJs,webtvCss,analytics,entry40,entry41,webtv,wrangler]=await Promise.all([
+const [overviewJs,overviewCss,catalogJs,catalogCss,webtvJs,webtvCss,analytics,entry40,webtv,wrangler]=await Promise.all([
   read('public/studio/studio-overview-v122.js'),
   read('public/studio/studio-overview-v122.css'),
   read('public/studio/studio-catalog-visual-v132.js'),
@@ -11,7 +11,6 @@ const [overviewJs,overviewCss,catalogJs,catalogCss,webtvJs,webtvCss,analytics,en
   read('public/studio/webtv-control-room-v122.css'),
   read('public/direct/webtv-analytics-v122.js'),
   read('src/entry-v40.js'),
-  read('src/entry-v41.js'),
   read('public/studio/webtv.html'),
   read('wrangler.jsonc'),
 ]);
@@ -35,10 +34,10 @@ expect(catalogJs.includes('cityCard(city')&&catalogJs.includes('offerCard(offer)
 expect(catalogJs.includes("structureBlock('◈','Concepts'")&&catalogJs.includes("structureBlock('⬡','Fournisseurs'")&&catalogJs.includes("structureBlock('⇄','Configurations'")&&catalogJs.includes("structureBlock('⌖','Villes'"),'structure réunit les quatre briques du catalogue');
 expect(catalogJs.includes('/api/admin/media-catalog-v98/context'),'v132 réutilise la source de vérité Studio');
 expect(catalogJs.includes('openLegacy')&&catalogJs.includes('← Catalogue'),'édition détaillée reste disponible sans seconde source de vérité');
-expect(entry41.includes("CATALOG_VISUAL_RELEASE='neptune-studio-catalog-visual-20260820-v132'"),'entry-v41 expose la release visuelle v132');
-expect(entry41.includes('/studio/studio-catalog-visual-v132.js?v=1')&&entry41.includes('/studio/studio-catalog-visual-v132.css?v=1'),'entry-v41 injecte les assets visuels v132');
-expect(entry41.includes("import base,{StudioStore,WebTvEncoder} from './entry-v40.js'"),'entry-v41 enveloppe v40 sans réécrire la WebTV');
-expect(entry41.includes("CATALOG_COMPAT_RELEASE='neptune-studio-catalog-cockpit-20260820-v131'"),'compatibilité du pipeline v131 conservée sans exécuter son UI');
+expect(entry40.includes("CATALOG_VISUAL_RELEASE='neptune-studio-catalog-visual-20260820-v132'"),'entry-v40 expose la release visuelle v132');
+expect(entry40.includes('/studio/studio-catalog-visual-v132.js?v=1')&&entry40.includes('/studio/studio-catalog-visual-v132.css?v=1'),'entry-v40 injecte les assets visuels v132');
+expect(entry40.includes("CATALOG_RUNTIME_RELEASE='neptune-studio-catalog-cockpit-20260820-v131'"),'compatibilité du pipeline v131 conservée sans réactiver son UI');
+expect(entry40.includes('application/x-neptune-compat'),'ancien cockpit référencé uniquement comme marqueur non exécutable');
 expect(overviewCss.includes('.v122-overview-grid'),'réglages disposent d’une vue d’ensemble compacte');
 
 for(const contract of ['Synchroniser les émissions','Activer la chaîne H24','Copier le code d’intégration','Bibliothèque Cloudflare','Performance mesurée sur le direct Neptune'])expect(webtvJs.includes(contract),`WebTV contient ${contract}`);
@@ -62,6 +61,6 @@ expect(entry40.includes('webTv:webTvStats(this.sql)'),'admin state expose stats.
 expect(entry40.includes("STUDIO_V122_RELEASE='neptune-studio-webtv-20260818-v122'"),'release Studio v122 exposée');
 expect(entry40.includes("WEBTV_ANALYTICS_RELEASE='neptune-webtv-analytics-20260818-v122'"),'release analytics v122 exposée');
 expect(wrangler.includes('"* * * * *"'),'watchdog Cloudflare planifié chaque minute');
-expect(wrangler.includes('"main": "src/entry-v41.js"'),'entry-v41 est le Worker actif et délègue à v40');
+expect(wrangler.includes('"main": "src/entry-v40.js"'),'entry-v40 reste le Worker actif');
 
 console.log(JSON.stringify({ok:true,checks:checks.length},null,2));

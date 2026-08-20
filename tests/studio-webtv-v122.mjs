@@ -2,11 +2,11 @@ import fs from 'node:fs/promises';
 
 const root='neptune-tv-media-cloudflare';
 const read=path=>fs.readFile(`${root}/${path}`,'utf8');
-const [overviewJs,overviewCss,catalogUxJs,catalogUxCss,webtvJs,webtvCss,analytics,entry,advanced,webtv,wrangler]=await Promise.all([
+const [overviewJs,overviewCss,catalogJs,catalogCss,webtvJs,webtvCss,analytics,entry,advanced,webtv,wrangler]=await Promise.all([
   read('public/studio/studio-overview-v122.js'),
   read('public/studio/studio-overview-v122.css'),
-  read('public/studio/studio-catalog-ux-v122-1.js'),
-  read('public/studio/studio-catalog-ux-v122-1.css'),
+  read('public/studio/studio-catalog-cockpit-v131.js'),
+  read('public/studio/studio-catalog-cockpit-v131.css'),
   read('public/studio/webtv-control-room-v122.js'),
   read('public/studio/webtv-control-room-v122.css'),
   read('public/direct/webtv-analytics-v122.js'),
@@ -24,24 +24,20 @@ expect(overviewJs.includes('neptune-studio-nav-link'),'navigation v122 conserve 
 expect(!overviewJs.includes('data-studio-route="${key}"'),'navigation v122 n’est plus pilotable par l’ancien contrôleur de routes');
 expect(overviewCss.includes('.studio-context-nav-v65{display:none!important}'),'ancienne rangée de sous-onglets masquée');
 
-expect(catalogUxCss.includes('body.v128-studio-marketplace .content')&&catalogUxCss.includes('width:100%!important'),'Catalogue Média utilise toute la largeur disponible');
-expect(catalogUxCss.includes('#content .c98-layout{display:none!important'),'gestion détaillée masquée par défaut derrière la marketplace');
-expect(catalogUxCss.includes('v128-catalog-admin-open #content .c98-layout{display:block!important'),'gestion détaillée réactivable à la demande');
-expect(catalogUxCss.includes('#c98Preview')&&catalogUxCss.includes('display:none!important'),'aperçu tunnel permanent masqué de la console');
-expect(catalogUxCss.includes('.c116-preview-panel')&&catalogUxCss.includes('display:none!important'),'aperçu tunnel repliable historique masqué de la console');
-expect(catalogUxCss.includes('.c98-tabs')&&catalogUxCss.includes('display:none!important'),'ancienne deuxième navigation Catalogue masquée');
-expect(catalogUxCss.includes('.v128-city-chooser')&&catalogUxCss.includes('.v128-offer-grid'),'marketplace structurée par ville et offres');
-expect(catalogUxJs.includes("const RELEASE='neptune-studio-catalog-marketplace-20260820-v128'"),'release marketplace canonique v128 active');
-expect(catalogUxJs.includes('Toutes les villes'),'ville comme porte d’entrée principale');
-expect(catalogUxJs.includes('Gérer les données ▾'),'administration secondaire disponible à la demande');
-expect(catalogUxJs.includes('Coût fournisseur')&&catalogUxJs.includes("priceCell('Coûtant'")&&catalogUxJs.includes("priceCell('Préférentiel'")&&catalogUxJs.includes("priceCell('Normal'"),'carte offre rapproche coût fournisseur et trois tarifs client');
-expect(catalogUxJs.includes('configurationLabels'),'configurations rapprochées sur chaque offre marketplace');
-expect(catalogUxJs.includes('Voir côté client ↗')&&catalogUxJs.includes('catalog_family'),'prévisualisation ciblée d’une offre ouvre le tunnel à la demande');
-expect(catalogUxJs.includes('/api/admin/media-catalog-v98/context'),'marketplace utilise la source de vérité Studio');
+expect(catalogCss.includes('body.v131-catalog-cockpit .content')&&catalogCss.includes('overflow:hidden!important'),'Catalogue Média utilise un cockpit desktop sans scroll global');
+expect(catalogCss.includes('#content .c98-layout{display:none!important'),'CRUD historique masqué par défaut');
+expect(catalogCss.includes('v131-admin-open #content .c98-layout{display:block!important'),'CRUD historique réactivable à la demande');
+expect(catalogCss.includes('#content .c98-hero')&&catalogCss.includes('#content .c98-tabs'),'ancien hero et ancienne navigation Catalogue retirés de la vue principale');
+expect(catalogCss.includes('.v131-table')&&catalogCss.includes('.v131-elements-grid'),'cockpit expose vue globale et éléments du catalogue');
+expect(catalogJs.includes("const RELEASE='neptune-studio-catalog-cockpit-20260820-v131'"),'release cockpit v131 active');
+for(const label of ['Vue d’ensemble','Offres','Éléments du catalogue'])expect(catalogJs.includes(label),`cockpit v131 contient ${label}`);
+expect(catalogJs.includes('Ville</th><th>Offre</th><th>Fournisseur')&&catalogJs.includes('<th>Coût</th><th>Prix client</th><th>État</th>'),'vue d’ensemble rapproche les données métier dans une ligne');
+expect(catalogJs.includes("elementCard('formats','Concepts'")&&catalogJs.includes("elementCard('suppliers','Fournisseurs'")&&catalogJs.includes("elementCard('configurations','Configurations'")&&catalogJs.includes("elementCard('cities','Villes'"),'éléments réutilisables regroupés dans une seule vue');
+expect(catalogJs.includes('/api/admin/media-catalog-v98/context'),'cockpit réutilise la source de vérité Studio');
+expect(catalogJs.includes('openLegacy')&&catalogJs.includes('← Retour au catalogue'),'édition détaillée reste disponible sans seconde source de vérité');
+expect(advanced.includes('/studio/studio-catalog-cockpit-v131.css?v=1')&&advanced.includes('/studio/studio-catalog-cockpit-v131.js?v=1'),'advanced charge le cockpit canonique v131');
+expect(!advanced.includes('/studio/studio-catalog-runtime-v130.js')&&!advanced.includes('/studio/studio-catalog-visibility-v130-1.js'),'anciens runtimes v130 retirés du shell statique');
 expect(overviewCss.includes('.v122-overview-grid'),'réglages disposent d’une vue d’ensemble compacte');
-expect(advanced.includes('/studio/studio-overview-v122.js?v=1'),'advanced charge v122 à la source');
-expect(advanced.includes('/studio/studio-catalog-ux-v122-1.css?v=4')&&advanced.includes('/studio/studio-catalog-ux-v122-1.js?v=4'),'advanced charge la marketplace canonique avec cache-busting v128');
-expect(!advanced.includes('studio-catalog-marketplace-v126'),'ancienne surcouche marketplace v126 retirée du runtime');
 
 for(const contract of ['Synchroniser les émissions','Activer la chaîne H24','Copier le code d’intégration','Bibliothèque Cloudflare','Performance mesurée sur le direct Neptune'])expect(webtvJs.includes(contract),`WebTV contient ${contract}`);
 expect(webtvJs.includes("api('/api/admin/webtv/state'"),'WebTV charge le vrai contrôle Cloudflare');
@@ -58,7 +54,7 @@ expect(analytics.includes("'/api/public/catalog'"),'analytics rapproche l’ante
 expect(analytics.includes("send('/api/track'"),'analytics réutilise le moteur Neptune existant');
 expect(analytics.includes('webtv:${crypto.randomUUID()}'),'sessions WebTV identifiables sans nouvelle table');
 
-for(const asset of ['studio-overview-v122.js','studio-overview-v122.css','webtv-control-room-v122.js','webtv-control-room-v122.css','webtv-analytics-v122.js'])expect(entry.includes(asset),`Worker injecte ${asset}`);
+for(const asset of ['studio-overview-v122.js','studio-overview-v122.css','webtv-control-room-v122.js','webtv-control-room-v122.css','webtv-analytics-v122.js','studio-catalog-cockpit-v131.js','studio-catalog-cockpit-v131.css'])expect(entry.includes(asset),`Worker injecte ${asset}`);
 expect(entry.includes("session_id LIKE 'webtv:%'"),'Studio calcule les métriques WebTV sur les sessions dédiées');
 expect(entry.includes('webTv:webTvStats(this.sql)'),'admin state expose stats.webTv sans migration de schéma');
 expect(entry.includes("STUDIO_V122_RELEASE='neptune-studio-webtv-20260818-v122'"),'release Studio v122 exposée');

@@ -1,4 +1,4 @@
-/* Catalogue Média v132.1 — verrou desktop et pictogrammes sûrs. */
+/* Catalogue Média v132.1 — verrou desktop, pictogrammes sûrs et visuels intègres. */
 @media (min-width:901px){
   body.v132-catalog-visual{height:100dvh!important;overflow:hidden!important}
   body.v132-catalog-visual #app.shell{height:100dvh!important;min-height:0!important;overflow:hidden!important}
@@ -6,3 +6,8 @@
 }
 .v132-city-overlay>span::first-letter,.v132-city-badge::first-letter{font-size:0;line-height:0}
 .v132-city-overlay>span::before,.v132-city-badge::before{content:"";display:inline-block;width:5px;height:5px;margin-right:5px;border-radius:50%;background:currentColor;vertical-align:middle;opacity:.9}
+
+/* Le visuel d'une offre est une création éditoriale : on ne le recadre jamais. */
+body.v132-catalog-visual .v132-offer-visual{background:#05091f!important}
+body.v132-catalog-visual .v132-offer-visual>img{object-fit:contain!important;object-position:center center!important;background:#05091f!important}
+body.v132-catalog-visual .v132-offer-visual:after{background:linear-gradient(180deg,rgba(4,10,32,.02),rgba(4,10,32,.03) 62%,rgba(4,10,32,.34))!important}

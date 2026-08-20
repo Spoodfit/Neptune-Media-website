@@ -3,7 +3,7 @@ const API='/api/admin/media-catalog-v98/context';
 const state={context:null,view:'overview',city:'all',query:'',showInactive:false,admin:false,loading:false};
 const $=(selector,root=document)=>root.querySelector(selector);
 const $$=(selector,root=document)=>[...root.querySelectorAll(selector)];
-let mountTimer=0,refreshTimer=0;
+let mountTimer=0,refreshTimer=0,visibilityScheduled=false;
 
 boot();
 
@@ -12,9 +12,10 @@ function boot(){
   document.body.dataset.studioCatalogCockpit=RELEASE;
   scheduleMount(0);
   new MutationObserver(()=>{
-    if(catalogDomReady()&&!$('#studioCatalogCockpitV131'))scheduleMount(35);
-    if(catalogDomReady())enforceVisibility();
-  }).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','hidden','style']});
+    if(!catalogDomReady())return;
+    if(!$('#studioCatalogCockpitV131'))scheduleMount(35);
+    scheduleVisibility();
+  }).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','hidden']});
   window.addEventListener('hashchange',()=>{state.admin=false;state.context=null;state.view='overview';scheduleMount(0);});
   document.addEventListener('click',handleClick,true);
   document.addEventListener('input',handleInput,true);
@@ -24,6 +25,7 @@ function boot(){
 
 function scheduleMount(delay=35){clearTimeout(mountTimer);mountTimer=setTimeout(mount,delay);}
 function scheduleRefresh(delay=0){clearTimeout(refreshTimer);refreshTimer=setTimeout(()=>loadContext(true),delay);}
+function scheduleVisibility(){if(visibilityScheduled)return;visibilityScheduled=true;queueMicrotask(()=>{visibilityScheduled=false;enforceVisibility();});}
 
 function catalogDomReady(){
   const page=$('.c98-page');
@@ -94,16 +96,21 @@ function enforceVisibility(){
   forceHidden(cockpit,state.admin);
   forceHidden(layout,!state.admin);
   if(admin)forceHidden(admin,!state.admin,'flex');
-  page.dataset.catalogVisibility='v131';
+  if(page.dataset.catalogVisibility!=='v131')page.dataset.catalogVisibility='v131';
 }
 
 function forceHidden(node,hidden,visibleDisplay=''){
   if(!node)return;
-  node.hidden=hidden;
-  if(hidden){node.style.setProperty('display','none','important');node.setAttribute('aria-hidden','true');return;}
-  if(visibleDisplay)node.style.setProperty('display',visibleDisplay,'important');
-  else node.style.removeProperty('display');
-  node.removeAttribute('aria-hidden');
+  if(node.hidden!==hidden)node.hidden=hidden;
+  if(hidden){
+    if(node.style.getPropertyValue('display')!=='none'||node.style.getPropertyPriority('display')!=='important')node.style.setProperty('display','none','important');
+    if(node.getAttribute('aria-hidden')!=='true')node.setAttribute('aria-hidden','true');
+    return;
+  }
+  if(visibleDisplay){
+    if(node.style.getPropertyValue('display')!==visibleDisplay||node.style.getPropertyPriority('display')!=='important')node.style.setProperty('display',visibleDisplay,'important');
+  }else if(node.style.getPropertyValue('display'))node.style.removeProperty('display');
+  if(node.hasAttribute('aria-hidden'))node.removeAttribute('aria-hidden');
 }
 
 async function loadContext(force=false){

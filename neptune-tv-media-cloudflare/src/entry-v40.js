@@ -11,7 +11,7 @@ const WEBTV_EMBED_RELEASE='neptune-webtv-external-embed-20260817-v121';
 const PRODUCTION_READINESS_RELEASE='neptune-production-readiness-20260817-v121';
 const STUDIO_V122_RELEASE='neptune-studio-webtv-20260818-v122';
 const WEBTV_ANALYTICS_RELEASE='neptune-webtv-analytics-20260818-v122';
-const CATALOG_RUNTIME_RELEASE='neptune-studio-catalog-marketplace-20260820-v130-runtime';
+const CATALOG_RUNTIME_RELEASE='neptune-studio-catalog-cockpit-20260820-v131';
 const STUDIO_READINESS_JS='/studio/production-readiness-v121.js?v=1';
 const STUDIO_READINESS_CSS='/studio/production-readiness-v121.css?v=1';
 const STUDIO_OVERVIEW_JS='/studio/studio-overview-v122.js?v=1';
@@ -19,9 +19,10 @@ const STUDIO_OVERVIEW_CSS='/studio/studio-overview-v122.css?v=1';
 const WEBTV_CONTROL_JS='/studio/webtv-control-room-v122.js?v=1';
 const WEBTV_CONTROL_CSS='/studio/webtv-control-room-v122.css?v=1';
 const WEBTV_ANALYTICS_JS='/direct/webtv-analytics-v122.js?v=1';
-const CATALOG_RUNTIME_JS='/studio/studio-catalog-runtime-v130.js?v=1';
-const CATALOG_MARKETPLACE_CSS='/studio/studio-catalog-ux-v122-1.css?v=4';
-const LEGACY_CATALOG_JS='/studio/studio-catalog-ux-v122-1.js';
+const CATALOG_RUNTIME_JS='/studio/studio-catalog-cockpit-v131.js?v=1';
+const CATALOG_CSS='/studio/studio-catalog-cockpit-v131.css?v=1';
+const LEGACY_CATALOG_ASSETS=['/studio/studio-catalog-ux-v122-1.js','/studio/studio-catalog-runtime-v130.js','/studio/studio-catalog-visibility-v130-1.js'];
+const LEGACY_CATALOG_CSS=['/studio/studio-catalog-ux-v122-1.css'];
 const WEBTV_INSTANCE='neptune-webtv-primary';
 const NATIVE_FIRST="if(video.canPlayType('application/vnd.apple.mpegurl'))";
 const HLS_FIRST="if((!window.Hls||!window.Hls.isSupported())&&video.canPlayType('application/vnd.apple.mpegurl'))";
@@ -110,18 +111,10 @@ async function resilientLiveFetch(request,env,ctx,pathname){
 
   const container=getContainer(env.WEBTV_ENCODER,WEBTV_INSTANCE);
   try{
-    await container.startAndWaitForPorts({
-      cancellationOptions:{instanceGetTimeoutMS:3000,portReadyTimeoutMS:8000,waitInterval:200},
-    });
-  }catch(error){
-    console.warn('webtv_v1197_container_readiness_failed',String(error?.message||error));
-  }
+    await container.startAndWaitForPorts({cancellationOptions:{instanceGetTimeoutMS:3000,portReadyTimeoutMS:8000,waitInterval:200}});
+  }catch(error){console.warn('webtv_v1197_container_readiness_failed',String(error?.message||error));}
 
-  try{
-    await maintainWebTvV118(env);
-  }catch(error){
-    console.warn('webtv_v1197_state_resync_failed',String(error?.message||error));
-  }
+  try{await maintainWebTvV118(env);}catch(error){console.warn('webtv_v1197_state_resync_failed',String(error?.message||error));}
 
   const delays=manifest?[150,300,600,1200,2000,3000]:[100,200,400,800];
   for(const delay of delays){
@@ -133,18 +126,8 @@ async function resilientLiveFetch(request,env,ctx,pathname){
   return markLiveResponse(response,retries);
 }
 
-function retryableLiveResponse(response,manifest){
-  if([502,503,504].includes(response.status))return true;
-  return manifest&&[404,425].includes(response.status);
-}
-
-function markLiveResponse(response,retries){
-  const headers=new Headers(response.headers);
-  headers.set('X-Neptune-WebTV-Readiness',CONTAINER_READINESS_RELEASE);
-  headers.set('X-Neptune-WebTV-Retries',String(retries));
-  return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
-}
-
+function retryableLiveResponse(response,manifest){if([502,503,504].includes(response.status))return true;return manifest&&[404,425].includes(response.status);}
+function markLiveResponse(response,retries){const headers=new Headers(response.headers);headers.set('X-Neptune-WebTV-Readiness',CONTAINER_READINESS_RELEASE);headers.set('X-Neptune-WebTV-Retries',String(retries));return new Response(response.body,{status:response.status,statusText:response.statusText,headers});}
 function isLiveAsset(pathname){return /^\/direct\/live\/(?:index\.m3u8|segment-\d+\.ts)$/u.test(pathname);}
 function isStudioDocument(pathname){return pathname==='/studio'||pathname==='/studio/'||pathname.startsWith('/studio/');}
 function sleep(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
@@ -156,22 +139,12 @@ async function normalizeDirectPlayback(response,url){
   body=body.replace('</body>',`<script type="module" src="${WEBTV_ANALYTICS_JS}"></script></body>`);
   const headers=new Headers(response.headers);
   for(const name of ['Content-Length','Content-Encoding','ETag','Last-Modified'])headers.delete(name);
-  const directives=(headers.get('Content-Security-Policy')||"default-src 'self'")
-    .split(';')
-    .map(value=>value.trim())
-    .filter(Boolean);
+  const directives=(headers.get('Content-Security-Policy')||"default-src 'self'").split(';').map(value=>value.trim()).filter(Boolean);
   upsertDirective(directives,'worker-src',["'self'",'blob:']);
   upsertDirective(directives,'child-src',["'self'",'blob:']);
   const embed=url.searchParams.get('embed')==='1';
-  if(embed){
-    headers.delete('X-Frame-Options');
-    upsertDirective(directives,'frame-ancestors',["'self'",'https:']);
-    headers.set('Cross-Origin-Resource-Policy','cross-origin');
-    headers.set('X-Neptune-WebTV-Embed',WEBTV_EMBED_RELEASE);
-  }else{
-    headers.set('X-Frame-Options','SAMEORIGIN');
-    upsertDirective(directives,'frame-ancestors',["'self'"]);
-  }
+  if(embed){headers.delete('X-Frame-Options');upsertDirective(directives,'frame-ancestors',["'self'",'https:']);headers.set('Cross-Origin-Resource-Policy','cross-origin');headers.set('X-Neptune-WebTV-Embed',WEBTV_EMBED_RELEASE);}
+  else{headers.set('X-Frame-Options','SAMEORIGIN');upsertDirective(directives,'frame-ancestors',["'self'"]);}
   headers.set('Content-Security-Policy',directives.join('; '));
   headers.set('Cache-Control','no-store, max-age=0');
   headers.set('X-Neptune-WebTV-Playback',PLAYBACK_RELEASE);
@@ -183,10 +156,11 @@ async function normalizeDirectPlayback(response,url){
 
 async function injectStudioReadiness(response){
   let body=await response.text();
-  body=disableModuleAsset(body,LEGACY_CATALOG_JS,'catalog-v128');
-  for(const asset of [STUDIO_READINESS_CSS,STUDIO_OVERVIEW_CSS,WEBTV_CONTROL_CSS,CATALOG_MARKETPLACE_CSS])body=removeAsset(body,'link',asset.split('?')[0]);
+  for(const asset of LEGACY_CATALOG_ASSETS)body=removeAsset(body,'script',asset);
+  for(const asset of LEGACY_CATALOG_CSS)body=removeAsset(body,'link',asset);
+  for(const asset of [STUDIO_READINESS_CSS,STUDIO_OVERVIEW_CSS,WEBTV_CONTROL_CSS,CATALOG_CSS])body=removeAsset(body,'link',asset.split('?')[0]);
   for(const asset of [STUDIO_READINESS_JS,STUDIO_OVERVIEW_JS,WEBTV_CONTROL_JS,CATALOG_RUNTIME_JS])body=removeAsset(body,'script',asset.split('?')[0]);
-  body=body.replace('</head>',`<link rel="stylesheet" href="${STUDIO_READINESS_CSS}"><link rel="stylesheet" href="${STUDIO_OVERVIEW_CSS}"><link rel="stylesheet" href="${WEBTV_CONTROL_CSS}"><link rel="stylesheet" href="${CATALOG_MARKETPLACE_CSS}"></head>`);
+  body=body.replace('</head>',`<link rel="stylesheet" href="${STUDIO_READINESS_CSS}"><link rel="stylesheet" href="${STUDIO_OVERVIEW_CSS}"><link rel="stylesheet" href="${WEBTV_CONTROL_CSS}"><link rel="stylesheet" href="${CATALOG_CSS}"></head>`);
   body=body.replace('</body>',`<script type="module" src="${STUDIO_READINESS_JS}"></script><script type="module" src="${STUDIO_OVERVIEW_JS}"></script><script type="module" src="${WEBTV_CONTROL_JS}"></script><script type="module" src="${CATALOG_RUNTIME_JS}"></script></body>`);
   const headers=new Headers(response.headers);
   for(const name of ['Content-Length','Content-Encoding','ETag','Last-Modified'])headers.delete(name);
@@ -197,13 +171,7 @@ async function injectStudioReadiness(response){
   return new Response(body,{status:response.status,statusText:response.statusText,headers});
 }
 
-function upsertDirective(directives,name,values){
-  const index=directives.findIndex(value=>value===name||value.startsWith(`${name} `));
-  if(index<0){directives.push(`${name} ${values.join(' ')}`);return;}
-  const tokens=directives[index].split(/\s+/u);
-  for(const value of values)if(!tokens.includes(value))tokens.push(value);
-  directives[index]=tokens.join(' ');
-}
+function upsertDirective(directives,name,values){const index=directives.findIndex(value=>value===name||value.startsWith(`${name} `));if(index<0){directives.push(`${name} ${values.join(' ')}`);return;}const tokens=directives[index].split(/\s+/u);for(const value of values)if(!tokens.includes(value))tokens.push(value);directives[index]=tokens.join(' ');}
 
 async function augmentRelease(response){
   const current=await response.json().catch(()=>({}));
@@ -222,14 +190,5 @@ async function augmentRelease(response){
   return new Response(JSON.stringify({...current,webTvPlayback:PLAYBACK_RELEASE,webTvPlayerSelection:PLAYER_SELECTION_RELEASE,webTvContainerReadiness:CONTAINER_READINESS_RELEASE,webTvExternalEmbed:WEBTV_EMBED_RELEASE,productionReadiness:PRODUCTION_READINESS_RELEASE,studioWebTv:STUDIO_V122_RELEASE,webTvAnalytics:WEBTV_ANALYTICS_RELEASE,catalogRuntime:CATALOG_RUNTIME_RELEASE}),{status:response.status,statusText:response.statusText,headers});
 }
 
-function disableModuleAsset(body,path,label){
-  const escaped=path.replace(/[.*+?^${}()|[\]\\]/gu,'\\$&');
-  return body.replace(new RegExp(`<script\\b[^>]*src=["']([^"']*${escaped}[^"']*)["'][^>]*>\\s*<\\/script>\\s*`,'giu'),(_match,src)=>`<script type="application/x-neptune-disabled" data-neptune-disabled="${label}" src="${src}"></script>`);
-}
-
-function removeAsset(body,type,path){
-  const escaped=path.replace(/[.*+?^${}()|[\]\\]/gu,'\\$&');
-  return type==='link'
-    ?body.replace(new RegExp(`<link\\b[^>]*href=["'][^"']*${escaped}[^"']*["'][^>]*>\\s*`,'giu'),'')
-    :body.replace(new RegExp(`<script\\b[^>]*src=["'][^"']*${escaped}[^"']*["'][^>]*>\\s*<\\/script>\\s*`,'giu'),'');
-}
+function disableModuleAsset(body,path,label){const escaped=path.replace(/[.*+?^${}()|[\]\\]/gu,'\\$&');return body.replace(new RegExp(`<script\\b[^>]*src=["']([^"']*${escaped}[^"']*)["'][^>]*>\\s*<\\/script>\\s*`,'giu'),(_match,src)=>`<script type="application/x-neptune-disabled" data-neptune-disabled="${label}" src="${src}"></script>`);}
+function removeAsset(body,type,path){const escaped=path.replace(/[.*+?^${}()|[\]\\]/gu,'\\$&');return type==='link'?body.replace(new RegExp(`<link\\b[^>]*href=["'][^"']*${escaped}[^"']*["'][^>]*>\\s*`,'giu'),''):body.replace(new RegExp(`<script\\b[^>]*src=["'][^"']*${escaped}[^"']*["'][^>]*>\\s*<\\/script>\\s*`,'giu'),'');}

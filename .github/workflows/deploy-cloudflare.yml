@@ -36,7 +36,7 @@ jobs:
       STUDIO_OPERATIONS_RELEASE: neptune-studio-client-journey-20260805-v77
       STUDIO_UI_RELEASE: neptune-studio-ui-20260812-v105-three-tab-canonical-shell
       CATALOG_AUDIT_RELEASE: neptune-media-catalog-audit-20260813-v109
-      CATALOG_RUNTIME_RELEASE: neptune-studio-catalog-marketplace-20260820-v130-runtime
+      CATALOG_RUNTIME_RELEASE: neptune-studio-catalog-cockpit-20260820-v131
       SMART_EMAIL_RELEASE: neptune-smart-email-governor-20260806-v84
       HORIZONTAL_JOURNEY_RELEASE: neptune-horizontal-client-journey-20260810-v93
       DRIVE_UPLOAD_RELEASE: neptune-studio-drive-upload-20260811-v94
@@ -63,38 +63,39 @@ jobs:
       - name: Deploy Worker and Studio assets
         run: npx wrangler deploy --config wrangler.jsonc
 
-      - name: Verify Catalogue runtime v130 on both production domains
+      - name: Verify Catalogue cockpit v131 on both production domains
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p /tmp/neptune-catalog-v130
+          mkdir -p /tmp/neptune-catalog-v131
           verify_catalog_runtime() {
             local base="$1"
             local slug="$2"
             local ready=0
             for attempt in $(seq 1 24); do
               local query="catalog_runtime=$GITHUB_SHA&attempt=$attempt"
-              curl --fail --silent --show-error -D "/tmp/neptune-catalog-v130/$slug-advanced.headers" -H 'Cache-Control: no-cache, no-store' "$base/studio/advanced.html?$query" > "/tmp/neptune-catalog-v130/$slug-advanced.html" || true
-              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/api/public/release?$query" > "/tmp/neptune-catalog-v130/$slug-release.json" || true
-              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/studio-catalog-runtime-v130.js?$query" > "/tmp/neptune-catalog-v130/$slug-runtime.js" || true
-              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/studio-catalog-ux-v122-1.css?$query" > "/tmp/neptune-catalog-v130/$slug-marketplace.css" || true
-              if RELEASE_FILE="/tmp/neptune-catalog-v130/$slug-release.json" node <<'NODE'
+              curl --fail --silent --show-error -D "/tmp/neptune-catalog-v131/$slug-advanced.headers" -H 'Cache-Control: no-cache, no-store' "$base/studio/advanced.html?$query" > "/tmp/neptune-catalog-v131/$slug-advanced.html" || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/api/public/release?$query" > "/tmp/neptune-catalog-v131/$slug-release.json" || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/studio-catalog-cockpit-v131.js?$query" > "/tmp/neptune-catalog-v131/$slug-runtime.js" || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/studio-catalog-cockpit-v131.css?$query" > "/tmp/neptune-catalog-v131/$slug-cockpit.css" || true
+              if RELEASE_FILE="/tmp/neptune-catalog-v131/$slug-release.json" node <<'NODE'
           const fs = require('node:fs');
           let data;
           try { data = JSON.parse(fs.readFileSync(process.env.RELEASE_FILE, 'utf8')); } catch { process.exit(1); }
           if (data.catalogRuntime !== process.env.CATALOG_RUNTIME_RELEASE) process.exit(1);
           NODE
               then
-                if grep -Fqi "x-neptune-catalog-runtime: $CATALOG_RUNTIME_RELEASE" "/tmp/neptune-catalog-v130/$slug-advanced.headers" \
-                  && grep -Fq '/studio/studio-catalog-runtime-v130.js?v=1' "/tmp/neptune-catalog-v130/$slug-advanced.html" \
-                  && grep -Fq 'data-neptune-disabled="catalog-v128"' "/tmp/neptune-catalog-v130/$slug-advanced.html" \
-                  && grep -Fq '/studio/studio-catalog-ux-v122-1.css?v=4' "/tmp/neptune-catalog-v130/$slug-advanced.html" \
-                  && grep -Fq "$CATALOG_RUNTIME_RELEASE" "/tmp/neptune-catalog-v130/$slug-runtime.js" \
-                  && grep -Fq 'Toutes les villes' "/tmp/neptune-catalog-v130/$slug-runtime.js" \
-                  && grep -Fq 'Gérer les données' "/tmp/neptune-catalog-v130/$slug-runtime.js" \
-                  && grep -Fq '.v128-offer-grid' "/tmp/neptune-catalog-v130/$slug-marketplace.css"; then
+                if grep -Fqi "x-neptune-catalog-runtime: $CATALOG_RUNTIME_RELEASE" "/tmp/neptune-catalog-v131/$slug-advanced.headers" \
+                  && grep -Fq '/studio/studio-catalog-cockpit-v131.js?v=1' "/tmp/neptune-catalog-v131/$slug-advanced.html" \
+                  && grep -Fq '/studio/studio-catalog-cockpit-v131.css?v=1' "/tmp/neptune-catalog-v131/$slug-advanced.html" \
+                  && ! grep -Fq '/studio/studio-catalog-runtime-v130.js' "/tmp/neptune-catalog-v131/$slug-advanced.html" \
+                  && ! grep -Fq '/studio/studio-catalog-visibility-v130-1.js' "/tmp/neptune-catalog-v131/$slug-advanced.html" \
+                  && grep -Fq "$CATALOG_RUNTIME_RELEASE" "/tmp/neptune-catalog-v131/$slug-runtime.js" \
+                  && grep -Fq 'Vue d’ensemble' "/tmp/neptune-catalog-v131/$slug-runtime.js" \
+                  && grep -Fq 'Éléments du catalogue' "/tmp/neptune-catalog-v131/$slug-runtime.js" \
+                  && grep -Fq '.v131-table' "/tmp/neptune-catalog-v131/$slug-cockpit.css"; then
                   ready=1
-                  echo "$base: Catalogue runtime v130 verified on attempt $attempt."
+                  echo "$base: Catalogue cockpit v131 verified on attempt $attempt."
                   break
                 fi
               fi

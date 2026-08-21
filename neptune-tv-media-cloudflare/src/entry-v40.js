@@ -1,6 +1,15 @@
 import {getContainer} from '@cloudflare/containers';
 import base,{StudioStore as BaseStudioStore,WebTvEncoder} from './entry-v39.js';
 import {maintainWebTvV118} from './webtv-control-v118.js';
+import {
+  handleStudioOperatingStoreV135,
+  handleStudioOperatingHttpV135,
+  transformStudioOperatingAssetV135,
+  injectStudioOperatingDocumentV135,
+  augmentStudioOperatingReleaseV135,
+  isStudioOperatingAssetV135,
+  isStudioOperationalDocumentV135,
+} from './studio-operating-v135.js';
 
 export {WebTvEncoder};
 
@@ -31,6 +40,11 @@ const NATIVE_FIRST="if(video.canPlayType('application/vnd.apple.mpegurl'))";
 const HLS_FIRST="if((!window.Hls||!window.Hls.isSupported())&&video.canPlayType('application/vnd.apple.mpegurl'))";
 
 export class StudioStore extends BaseStudioStore{
+  async fetch(request){
+    const operating=await handleStudioOperatingStoreV135(this,request);
+    if(operating)return operating;
+    return super.fetch(request);
+  }
   getStats(){
     const stats=super.getStats();
     try{return {...stats,webTv:webTvStats(this.sql)};}catch(error){
@@ -43,12 +57,21 @@ export class StudioStore extends BaseStudioStore{
 export default{
   async fetch(request,env,ctx){
     const url=new URL(request.url);
+    const operating=await handleStudioOperatingHttpV135(request,env);
+    if(operating)return operating;
     if(request.method==='GET'&&isLiveAsset(url.pathname))return resilientLiveFetch(request,env,ctx,url.pathname);
     let response=await base.fetch(request,env,ctx);
+    if(request.method==='GET'&&response.ok&&isStudioOperatingAssetV135(url.pathname)){
+      response=await transformStudioOperatingAssetV135(response,url.pathname);
+    }
     if(request.method==='GET'&&url.pathname==='/direct/'&&response.ok)return normalizeDirectPlayback(response,url);
-    if(request.method==='GET'&&url.pathname==='/api/public/release'&&response.ok)return augmentRelease(response);
+    if(request.method==='GET'&&url.pathname==='/api/public/release'&&response.ok){
+      response=await augmentRelease(response);
+      return augmentStudioOperatingReleaseV135(response);
+    }
     if(request.method==='GET'&&response.ok&&isStudioDocument(url.pathname)&&(response.headers.get('Content-Type')||'').includes('text/html')){
       response=await injectStudioReadiness(response);
+      if(isStudioOperationalDocumentV135(url.pathname))response=await injectStudioOperatingDocumentV135(response,url.pathname);
     }
     return response;
   },

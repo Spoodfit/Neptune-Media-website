@@ -1,0 +1,47 @@
+name: Verify Sales Tunnel Session V134
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'neptune-tv-media-cloudflare/public/reserver/**'
+      - 'neptune-tv-media-cloudflare/tests/sales-tunnel-session-recovery-v134.mjs'
+      - '.github/workflows/verify-sales-tunnel-session-v134.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-session-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate recovery source
+        run: |
+          node --check neptune-tv-media-cloudflare/public/reserver/assets/session-recovery-v134.js
+          node --check neptune-tv-media-cloudflare/public/reserver/assets/app-v96.js
+          node --check neptune-tv-media-cloudflare/tests/sales-tunnel-session-recovery-v134.mjs
+          grep -Fq '/reserver/assets/session-recovery-v134.js?v=1' neptune-tv-media-cloudflare/public/reserver/index.html
+          grep -Fq '/reserver/assets/app-v96.js?v=134' neptune-tv-media-cloudflare/public/reserver/index.html
+      - name: Install Playwright
+        run: |
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium
+      - name: Start reservation frontend
+        run: |
+          python3 -m http.server 4173 --directory neptune-tv-media-cloudflare/public >/tmp/tunnel-session-v134.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            curl --fail --silent http://127.0.0.1:4173/reserver/ >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/tunnel-session-v134.log
+          exit 1
+      - name: Verify expired-token recovery
+        env:
+          LOCAL_BASE_URL: http://127.0.0.1:4173
+        run: node neptune-tv-media-cloudflare/tests/sales-tunnel-session-recovery-v134.mjs

@@ -7,7 +7,7 @@ on:
       - 'neptune-tv-media-cloudflare/src/entry-v40.js'
       - 'neptune-tv-media-cloudflare/src/studio-operating-v135.js'
       - 'neptune-tv-media-cloudflare/public/studio/studio-operating-v135.*'
-      - 'neptune-tv-media-cloudflare/tests/studio-operating-ux-v135.mjs'
+      - 'neptune-tv-media-cloudflare/tests/studio-operating-ux-v135-1.mjs'
       - 'neptune-tv-media-cloudflare/wrangler.jsonc'
       - 'wrangler.jsonc'
       - '.github/workflows/verify-studio-operating-ux-v135.yml'
@@ -30,7 +30,7 @@ jobs:
           node --check neptune-tv-media-cloudflare/src/entry-v40.js
           node --check neptune-tv-media-cloudflare/src/studio-operating-v135.js
           node --check neptune-tv-media-cloudflare/public/studio/studio-operating-v135.js
-          node --check neptune-tv-media-cloudflare/tests/studio-operating-ux-v135.mjs
+          node --check neptune-tv-media-cloudflare/tests/studio-operating-ux-v135-1.mjs
           grep -Fq 'src/entry-v40.js' neptune-tv-media-cloudflare/wrangler.jsonc
           grep -Fq 'neptune-tv-media-cloudflare/src/entry-v40.js' wrangler.jsonc
           grep -Fq "from './studio-operating-v135.js'" neptune-tv-media-cloudflare/src/entry-v40.js
@@ -51,6 +51,6 @@ jobs:
         working-directory: neptune-tv-media-cloudflare
         env:
           LOCAL_BASE_URL: http://127.0.0.1:4173
-        run: node tests/studio-operating-ux-v135.mjs
+        run: node tests/studio-operating-ux-v135-1.mjs
       - name: Dry-run Worker bundle
         run: npx wrangler deploy --config wrangler.jsonc --dry-run --outdir .wrangler-v135-dry-run

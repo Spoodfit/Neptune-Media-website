@@ -1,0 +1,59 @@
+name: Verify Catalogue Hierarchy V133
+
+on:
+  pull_request:
+    paths:
+      - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-hierarchy-v133.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-hierarchy-v133.css'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-hierarchy-guard-v133.css'
+      - 'neptune-tv-media-cloudflare/public/studio/advanced.html'
+      - 'neptune-tv-media-cloudflare/tests/audit-catalog-hierarchy-v133.mjs'
+      - '.github/workflows/verify-catalog-hierarchy-v133.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        working-directory: neptune-tv-media-cloudflare
+        run: npm install --package-lock=false --ignore-scripts --no-audit --no-fund
+      - name: Validate JavaScript
+        run: |
+          node --check neptune-tv-media-cloudflare/public/studio/studio-catalog-hierarchy-v133.js
+          node --check neptune-tv-media-cloudflare/tests/audit-catalog-hierarchy-v133.mjs
+      - name: Start active Worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          sed -i 's/"compatibility_date": "2026-07-30"/"compatibility_date": "2026-07-07"/' neptune-tv-media-cloudflare/wrangler.jsonc
+          ./neptune-tv-media-cloudflare/node_modules/.bin/wrangler dev --config neptune-tv-media-cloudflare/wrangler.jsonc --local --port 8787 > /tmp/wrangler-v133.log 2>&1 &
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:8787/studio/advanced.html >/tmp/v133.html; then exit 0; fi
+            sleep 2
+          done
+          cat /tmp/wrangler-v133.log
+          exit 1
+      - name: Audit hierarchy in Chrome
+        env:
+          STUDIO_BASE_URL: http://127.0.0.1:8787
+          CATALOG_SCREENSHOT: /tmp/catalog-hierarchy-v133.png
+        run: node neptune-tv-media-cloudflare/tests/audit-catalog-hierarchy-v133.mjs
+      - name: Upload screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: catalogue-hierarchy-v133
+          path: |
+            /tmp/catalog-hierarchy-v133.png
+            /tmp/wrangler-v133.log
+          retention-days: 2
+          if-no-files-found: warn

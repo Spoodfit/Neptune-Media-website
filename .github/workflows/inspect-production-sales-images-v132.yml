@@ -1,0 +1,45 @@
+name: Inspect Production Sales Images V132
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/inspect-production-sales-images-v132.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Download exact production format images
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://neptune-media-webtv.neptunebusinessclub.workers.dev'
+          curl --fail --silent --show-error --location "$base/api/reservation/catalog-v96" -o /tmp/catalog.json
+          python3 - <<'PY' > /tmp/paths.env
+          import json
+          d=json.load(open('/tmp/catalog.json'))
+          for city in d.get('cities',[]):
+              for f in city.get('formats',[]):
+                  name=(f.get('name') or '').lower()
+                  if name=='hors norme': print('HORS='+f['image'])
+                  if name=='libre': print('LIBRE='+f['image'])
+          PY
+          source /tmp/paths.env
+          test -n "${HORS:-}" && test -n "${LIBRE:-}"
+          curl --fail --silent --show-error --location "$base$HORS" -o /tmp/hors-norme-production.png
+          curl --fail --silent --show-error --location "$base$LIBRE" -o /tmp/libre-production.png
+          file /tmp/hors-norme-production.png /tmp/libre-production.png
+      - name: Upload exact production images
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-format-images-v132
+          path: |
+            /tmp/hors-norme-production.png
+            /tmp/libre-production.png
+            /tmp/catalog.json
+          retention-days: 2

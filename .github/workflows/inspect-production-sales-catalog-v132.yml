@@ -1,0 +1,45 @@
+name: Inspect Production Sales Catalog V132
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/inspect-production-sales-catalog-v132.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Read production catalog visuals
+        shell: bash
+        run: |
+          set -euo pipefail
+          base='https://neptune-media-webtv.neptunebusinessclub.workers.dev'
+          status=$(curl --silent --show-error --location --output /tmp/sales-catalog.json --write-out '%{http_code}' "$base/api/reservation/catalog-v96")
+          echo "HTTP $status"
+          test "$status" = '200'
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          data=json.loads(Path('/tmp/sales-catalog.json').read_text())
+          rows=[]
+          for city in data.get('cities',[]):
+              for fmt in city.get('formats',[]):
+                  rows.append({'city':city.get('name'),'format':fmt.get('name'),'slug':fmt.get('slug'),'image':fmt.get('image')})
+          Path('/tmp/visuals.json').write_text(json.dumps(rows,ensure_ascii=False,indent=2))
+          print(json.dumps(rows,ensure_ascii=False,indent=2))
+          assert rows, 'no_public_sales_formats'
+          assert all(r.get('image') for r in rows), 'format_without_image'
+          PY
+      - name: Upload live visual references
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-sales-catalog-visuals
+          path: |
+            /tmp/sales-catalog.json
+            /tmp/visuals.json
+          retention-days: 2

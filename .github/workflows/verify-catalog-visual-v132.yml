@@ -1,0 +1,76 @@
+name: Verify Catalogue Visual V132
+
+on:
+  pull_request:
+    paths:
+      - 'wrangler.jsonc'
+      - 'neptune-tv-media-cloudflare/wrangler.jsonc'
+      - 'neptune-tv-media-cloudflare/src/entry-v40.js'
+      - 'neptune-tv-media-cloudflare/public/studio/advanced.html'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-visual-v132.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-visual-v132.css'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-visual-polish-v132-1.css'
+      - 'neptune-tv-media-cloudflare/tests/audit-catalog-visual-v132.mjs'
+      - '.github/workflows/verify-catalog-visual-v132.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-catalog-visual-v132:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Worker dependencies
+        working-directory: neptune-tv-media-cloudflare
+        run: npm install --package-lock=false --ignore-scripts --no-audit --no-fund
+      - name: Validate JavaScript and visual assets
+        run: |
+          node --check neptune-tv-media-cloudflare/src/entry-v40.js
+          node --check neptune-tv-media-cloudflare/public/studio/studio-catalog-visual-v132.js
+          node --check neptune-tv-media-cloudflare/tests/audit-catalog-visual-v132.mjs
+          grep -Fq '"main": "neptune-tv-media-cloudflare/src/entry-v40.js"' wrangler.jsonc
+          grep -Fq '"main": "src/entry-v40.js"' neptune-tv-media-cloudflare/wrangler.jsonc
+          grep -Fq 'studio-catalog-visual-polish-v132-1.css?v=1' neptune-tv-media-cloudflare/public/studio/advanced.html
+          grep -Fq 'body.v132-catalog-visual{height:100dvh!important;overflow:hidden!important}' neptune-tv-media-cloudflare/public/studio/studio-catalog-visual-polish-v132-1.css
+      - name: Start active Cloudflare Worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v google-chrome || command -v google-chrome-stable
+          sed -i 's/"compatibility_date": "2026-07-30"/"compatibility_date": "2026-07-07"/' neptune-tv-media-cloudflare/wrangler.jsonc
+          ./neptune-tv-media-cloudflare/node_modules/.bin/wrangler dev --config neptune-tv-media-cloudflare/wrangler.jsonc --local --port 8787 > /tmp/wrangler-catalog-v132.log 2>&1 &
+          ready=0
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --show-error -D /tmp/catalog-v132.headers http://127.0.0.1:8787/studio/advanced.html > /tmp/catalog-v132.html; then ready=1; break; fi
+            sleep 2
+          done
+          if [ "$ready" != 1 ]; then cat /tmp/wrangler-catalog-v132.log; exit 1; fi
+          grep -Fqi 'x-neptune-catalog-visual: neptune-studio-catalog-visual-20260820-v132' /tmp/catalog-v132.headers
+          grep -Fq '/studio/studio-catalog-visual-v132.js?v=1' /tmp/catalog-v132.html
+          grep -Fq '/studio/studio-catalog-visual-v132.css?v=1' /tmp/catalog-v132.html
+          grep -Fq '/studio/studio-catalog-visual-polish-v132-1.css?v=1' /tmp/catalog-v132.html
+      - name: Audit visual marketplace in Chrome
+        env:
+          STUDIO_BASE_URL: http://127.0.0.1:8787
+          CATALOG_SCREENSHOT: /tmp/catalog-visual-v132.png
+        run: node neptune-tv-media-cloudflare/tests/audit-catalog-visual-v132.mjs
+      - name: Upload visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: catalogue-visual-v132-evidence
+          path: |
+            /tmp/wrangler-catalog-v132.log
+            /tmp/catalog-v132.headers
+            /tmp/catalog-v132.html
+            /tmp/catalog-visual-v132.png
+          if-no-files-found: warn
+          retention-days: 14

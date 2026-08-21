@@ -1,13 +1,11 @@
-name: Verify Catalogue Cockpit V131
+name: Verify Catalogue Compatibility V131
 
 on:
   pull_request:
     paths:
       - 'neptune-tv-media-cloudflare/src/entry-v40.js'
-      - 'neptune-tv-media-cloudflare/public/studio/advanced.html'
       - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-cockpit-v131.js'
       - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-cockpit-v131.css'
-      - 'neptune-tv-media-cloudflare/tests/audit-catalog-cockpit-v131.mjs'
       - '.github/workflows/verify-catalog-runtime-v130.yml'
   workflow_dispatch:
 
@@ -15,9 +13,9 @@ permissions:
   contents: read
 
 jobs:
-  verify-catalog-cockpit-v131:
+  verify-catalog-compat-v131:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 12
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,43 +26,27 @@ jobs:
       - name: Install Worker dependencies
         working-directory: neptune-tv-media-cloudflare
         run: npm install --package-lock=false --ignore-scripts --no-audit --no-fund
-      - name: Validate v131 JavaScript syntax
+      - name: Validate compatibility contract
         run: |
           node --check neptune-tv-media-cloudflare/src/entry-v40.js
-          node --check neptune-tv-media-cloudflare/public/studio/studio-catalog-cockpit-v131.js
-          node --check neptune-tv-media-cloudflare/tests/audit-catalog-cockpit-v131.mjs
+          grep -Fq "CATALOG_RUNTIME_RELEASE='neptune-studio-catalog-cockpit-20260820-v131'" neptune-tv-media-cloudflare/src/entry-v40.js
+          grep -Fq "CATALOG_VISUAL_RELEASE='neptune-studio-catalog-visual-20260820-v132'" neptune-tv-media-cloudflare/src/entry-v40.js
+          grep -Fq 'application/x-neptune-compat' neptune-tv-media-cloudflare/src/entry-v40.js
       - name: Start active Cloudflare Worker
         shell: bash
         run: |
           set -euo pipefail
-          command -v google-chrome || command -v google-chrome-stable
           sed -i 's/"compatibility_date": "2026-07-30"/"compatibility_date": "2026-07-07"/' neptune-tv-media-cloudflare/wrangler.jsonc
-          ./neptune-tv-media-cloudflare/node_modules/.bin/wrangler dev --config neptune-tv-media-cloudflare/wrangler.jsonc --local --port 8787 > /tmp/wrangler-catalog-v131.log 2>&1 &
+          ./neptune-tv-media-cloudflare/node_modules/.bin/wrangler dev --config neptune-tv-media-cloudflare/wrangler.jsonc --local --port 8787 > /tmp/wrangler-catalog-compat.log 2>&1 &
           ready=0
           for attempt in $(seq 1 60); do
-            if curl --fail --silent --show-error -D /tmp/catalog-v131.headers http://127.0.0.1:8787/studio/advanced.html > /tmp/catalog-v131.html; then ready=1; break; fi
+            if curl --fail --silent --show-error -D /tmp/catalog-compat.headers http://127.0.0.1:8787/studio/advanced.html > /tmp/catalog-compat.html; then ready=1; break; fi
             sleep 2
           done
-          if [ "$ready" != 1 ]; then cat /tmp/wrangler-catalog-v131.log; exit 1; fi
-          grep -Fqi 'x-neptune-catalog-runtime: neptune-studio-catalog-cockpit-20260820-v131' /tmp/catalog-v131.headers
-          grep -Fq '/studio/studio-catalog-cockpit-v131.js?v=1' /tmp/catalog-v131.html
-          grep -Fq '/studio/studio-catalog-cockpit-v131.css?v=1' /tmp/catalog-v131.html
-          ! grep -Fq '/studio/studio-catalog-runtime-v130.js' /tmp/catalog-v131.html
-          ! grep -Fq '/studio/studio-catalog-visibility-v130-1.js' /tmp/catalog-v131.html
-      - name: Audit Catalogue cockpit through active Worker and system Chrome
-        env:
-          STUDIO_BASE_URL: http://127.0.0.1:8787
-          CATALOG_SCREENSHOT: /tmp/catalog-cockpit-v131.png
-        run: node neptune-tv-media-cloudflare/tests/audit-catalog-cockpit-v131.mjs
-      - name: Upload runtime evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: catalogue-cockpit-v131-evidence
-          path: |
-            /tmp/wrangler-catalog-v131.log
-            /tmp/catalog-v131.headers
-            /tmp/catalog-v131.html
-            /tmp/catalog-cockpit-v131.png
-          if-no-files-found: warn
-          retention-days: 14
+          if [ "$ready" != 1 ]; then cat /tmp/wrangler-catalog-compat.log; exit 1; fi
+          grep -Fqi 'x-neptune-catalog-runtime: neptune-studio-catalog-cockpit-20260820-v131' /tmp/catalog-compat.headers
+          grep -Fqi 'x-neptune-catalog-visual: neptune-studio-catalog-visual-20260820-v132' /tmp/catalog-compat.headers
+          grep -Fq 'type="application/x-neptune-compat"' /tmp/catalog-compat.html
+          grep -Fq '/studio/studio-catalog-cockpit-v131.js?v=1' /tmp/catalog-compat.html
+          grep -Fq '/studio/studio-catalog-visual-v132.js?v=1' /tmp/catalog-compat.html
+          grep -Fq '/studio/studio-catalog-visual-v132.css?v=1' /tmp/catalog-compat.html

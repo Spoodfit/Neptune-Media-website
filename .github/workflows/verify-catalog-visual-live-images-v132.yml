@@ -1,0 +1,79 @@
+name: Verify Catalogue V132 Live Images
+
+on:
+  pull_request:
+    paths:
+      - 'neptune-tv-media-cloudflare/tests/audit-catalog-visual-live-images-v132.mjs'
+      - '.github/workflows/verify-catalog-visual-live-images-v132.yml'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-visual-v132.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-visual-v132.css'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-visual-polish-v132-1.css'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-live-images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Worker dependencies
+        working-directory: neptune-tv-media-cloudflare
+        run: npm install --package-lock=false --ignore-scripts --no-audit --no-fund
+      - name: Validate audit
+        run: node --check neptune-tv-media-cloudflare/tests/audit-catalog-visual-live-images-v132.mjs
+      - name: Copy exact current production images into test origin
+        shell: bash
+        run: |
+          set -euo pipefail
+          production='https://neptune-media-webtv.neptunebusinessclub.workers.dev'
+          curl --fail --silent --show-error --location "$production/api/reservation/catalog-v96" -o /tmp/catalog-live.json
+          python3 - <<'PY' > /tmp/catalog-live-paths.env
+          import json
+          data=json.load(open('/tmp/catalog-live.json'))
+          for city in data.get('cities',[]):
+              for fmt in city.get('formats',[]):
+                  name=(fmt.get('name') or '').lower()
+                  if name=='hors norme': print('HORS='+fmt['image'])
+                  if name=='libre': print('LIBRE='+fmt['image'])
+          PY
+          source /tmp/catalog-live-paths.env
+          test -n "${HORS:-}" && test -n "${LIBRE:-}"
+          mkdir -p neptune-tv-media-cloudflare/public/assets/catalog-v132-live
+          curl --fail --silent --show-error --location "$production$HORS" -o neptune-tv-media-cloudflare/public/assets/catalog-v132-live/hors-norme-production.png
+          curl --fail --silent --show-error --location "$production$LIBRE" -o neptune-tv-media-cloudflare/public/assets/catalog-v132-live/libre-production.png
+          file neptune-tv-media-cloudflare/public/assets/catalog-v132-live/*.png
+      - name: Start active Worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          sed -i 's/"compatibility_date": "2026-07-30"/"compatibility_date": "2026-07-07"/' neptune-tv-media-cloudflare/wrangler.jsonc
+          ./neptune-tv-media-cloudflare/node_modules/.bin/wrangler dev --config neptune-tv-media-cloudflare/wrangler.jsonc --local --port 8787 > /tmp/wrangler-v132-live-images.log 2>&1 &
+          ready=0
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:8787/studio/advanced.html > /tmp/v132-live-images.html; then ready=1; break; fi
+            sleep 2
+          done
+          if [ "$ready" != 1 ]; then cat /tmp/wrangler-v132-live-images.log; exit 1; fi
+      - name: Render v132 with current production images
+        env:
+          STUDIO_BASE_URL: http://127.0.0.1:8787
+          CATALOG_SCREENSHOT: /tmp/catalog-v132-live-images.png
+        run: node neptune-tv-media-cloudflare/tests/audit-catalog-visual-live-images-v132.mjs
+      - name: Upload verified screen
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: catalogue-v132-live-images
+          path: |
+            /tmp/catalog-v132-live-images.png
+            /tmp/wrangler-v132-live-images.log
+          if-no-files-found: warn
+          retention-days: 2

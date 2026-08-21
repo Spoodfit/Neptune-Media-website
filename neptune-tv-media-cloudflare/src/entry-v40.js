@@ -12,6 +12,7 @@ const PRODUCTION_READINESS_RELEASE='neptune-production-readiness-20260817-v121';
 const STUDIO_V122_RELEASE='neptune-studio-webtv-20260818-v122';
 const WEBTV_ANALYTICS_RELEASE='neptune-webtv-analytics-20260818-v122';
 const CATALOG_RUNTIME_RELEASE='neptune-studio-catalog-cockpit-20260820-v131';
+const CATALOG_VISUAL_RELEASE='neptune-studio-catalog-visual-20260820-v132';
 const STUDIO_READINESS_JS='/studio/production-readiness-v121.js?v=1';
 const STUDIO_READINESS_CSS='/studio/production-readiness-v121.css?v=1';
 const STUDIO_OVERVIEW_JS='/studio/studio-overview-v122.js?v=1';
@@ -19,10 +20,12 @@ const STUDIO_OVERVIEW_CSS='/studio/studio-overview-v122.css?v=1';
 const WEBTV_CONTROL_JS='/studio/webtv-control-room-v122.js?v=1';
 const WEBTV_CONTROL_CSS='/studio/webtv-control-room-v122.css?v=1';
 const WEBTV_ANALYTICS_JS='/direct/webtv-analytics-v122.js?v=1';
-const CATALOG_RUNTIME_JS='/studio/studio-catalog-cockpit-v131.js?v=1';
-const CATALOG_CSS='/studio/studio-catalog-cockpit-v131.css?v=1';
-const LEGACY_CATALOG_ASSETS=['/studio/studio-catalog-ux-v122-1.js','/studio/studio-catalog-runtime-v130.js','/studio/studio-catalog-visibility-v130-1.js'];
-const LEGACY_CATALOG_CSS=['/studio/studio-catalog-ux-v122-1.css'];
+const CATALOG_RUNTIME_JS='/studio/studio-catalog-visual-v132.js?v=1';
+const CATALOG_CSS='/studio/studio-catalog-visual-v132.css?v=1';
+const CATALOG_COMPAT_JS='/studio/studio-catalog-cockpit-v131.js?v=1';
+const CATALOG_COMPAT_CSS='/studio/studio-catalog-cockpit-v131.css?v=1';
+const LEGACY_CATALOG_ASSETS=['/studio/studio-catalog-ux-v122-1.js','/studio/studio-catalog-runtime-v130.js','/studio/studio-catalog-visibility-v130-1.js','/studio/studio-catalog-cockpit-v131.js'];
+const LEGACY_CATALOG_CSS=['/studio/studio-catalog-ux-v122-1.css','/studio/studio-catalog-cockpit-v131.css'];
 const WEBTV_INSTANCE='neptune-webtv-primary';
 const NATIVE_FIRST="if(video.canPlayType('application/vnd.apple.mpegurl'))";
 const HLS_FIRST="if((!window.Hls||!window.Hls.isSupported())&&video.canPlayType('application/vnd.apple.mpegurl'))";
@@ -160,14 +163,15 @@ async function injectStudioReadiness(response){
   for(const asset of LEGACY_CATALOG_CSS)body=removeAsset(body,'link',asset);
   for(const asset of [STUDIO_READINESS_CSS,STUDIO_OVERVIEW_CSS,WEBTV_CONTROL_CSS,CATALOG_CSS])body=removeAsset(body,'link',asset.split('?')[0]);
   for(const asset of [STUDIO_READINESS_JS,STUDIO_OVERVIEW_JS,WEBTV_CONTROL_JS,CATALOG_RUNTIME_JS])body=removeAsset(body,'script',asset.split('?')[0]);
-  body=body.replace('</head>',`<link rel="stylesheet" href="${STUDIO_READINESS_CSS}"><link rel="stylesheet" href="${STUDIO_OVERVIEW_CSS}"><link rel="stylesheet" href="${WEBTV_CONTROL_CSS}"><link rel="stylesheet" href="${CATALOG_CSS}"></head>`);
-  body=body.replace('</body>',`<script type="module" src="${STUDIO_READINESS_JS}"></script><script type="module" src="${STUDIO_OVERVIEW_JS}"></script><script type="module" src="${WEBTV_CONTROL_JS}"></script><script type="module" src="${CATALOG_RUNTIME_JS}"></script></body>`);
+  body=body.replace('</head>',`<link rel="stylesheet" href="${STUDIO_READINESS_CSS}"><link rel="stylesheet" href="${STUDIO_OVERVIEW_CSS}"><link rel="stylesheet" href="${WEBTV_CONTROL_CSS}"><link rel="preload" as="style" data-neptune-compat="v131" href="${CATALOG_COMPAT_CSS}"><link rel="stylesheet" href="${CATALOG_CSS}"></head>`);
+  body=body.replace('</body>',`<script type="module" src="${STUDIO_READINESS_JS}"></script><script type="module" src="${STUDIO_OVERVIEW_JS}"></script><script type="module" src="${WEBTV_CONTROL_JS}"></script><script type="application/x-neptune-compat" data-neptune-compat="v131" src="${CATALOG_COMPAT_JS}"></script><script type="module" src="${CATALOG_RUNTIME_JS}"></script></body>`);
   const headers=new Headers(response.headers);
   for(const name of ['Content-Length','Content-Encoding','ETag','Last-Modified'])headers.delete(name);
   headers.set('Cache-Control','private, no-store, max-age=0');
   headers.set('X-Neptune-Production-Readiness',PRODUCTION_READINESS_RELEASE);
   headers.set('X-Neptune-Studio-WebTV',STUDIO_V122_RELEASE);
   headers.set('X-Neptune-Catalog-Runtime',CATALOG_RUNTIME_RELEASE);
+  headers.set('X-Neptune-Catalog-Visual',CATALOG_VISUAL_RELEASE);
   return new Response(body,{status:response.status,statusText:response.statusText,headers});
 }
 
@@ -187,7 +191,8 @@ async function augmentRelease(response){
   headers.set('X-Neptune-Studio-WebTV',STUDIO_V122_RELEASE);
   headers.set('X-Neptune-WebTV-Analytics',WEBTV_ANALYTICS_RELEASE);
   headers.set('X-Neptune-Catalog-Runtime',CATALOG_RUNTIME_RELEASE);
-  return new Response(JSON.stringify({...current,webTvPlayback:PLAYBACK_RELEASE,webTvPlayerSelection:PLAYER_SELECTION_RELEASE,webTvContainerReadiness:CONTAINER_READINESS_RELEASE,webTvExternalEmbed:WEBTV_EMBED_RELEASE,productionReadiness:PRODUCTION_READINESS_RELEASE,studioWebTv:STUDIO_V122_RELEASE,webTvAnalytics:WEBTV_ANALYTICS_RELEASE,catalogRuntime:CATALOG_RUNTIME_RELEASE}),{status:response.status,statusText:response.statusText,headers});
+  headers.set('X-Neptune-Catalog-Visual',CATALOG_VISUAL_RELEASE);
+  return new Response(JSON.stringify({...current,webTvPlayback:PLAYBACK_RELEASE,webTvPlayerSelection:PLAYER_SELECTION_RELEASE,webTvContainerReadiness:CONTAINER_READINESS_RELEASE,webTvExternalEmbed:WEBTV_EMBED_RELEASE,productionReadiness:PRODUCTION_READINESS_RELEASE,studioWebTv:STUDIO_V122_RELEASE,webTvAnalytics:WEBTV_ANALYTICS_RELEASE,catalogRuntime:CATALOG_RUNTIME_RELEASE,catalogVisual:CATALOG_VISUAL_RELEASE}),{status:response.status,statusText:response.statusText,headers});
 }
 
 function disableModuleAsset(body,path,label){const escaped=path.replace(/[.*+?^${}()|[\]\\]/gu,'\\$&');return body.replace(new RegExp(`<script\\b[^>]*src=["']([^"']*${escaped}[^"']*)["'][^>]*>\\s*<\\/script>\\s*`,'giu'),(_match,src)=>`<script type="application/x-neptune-disabled" data-neptune-disabled="${label}" src="${src}"></script>`);}

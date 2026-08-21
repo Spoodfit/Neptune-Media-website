@@ -1,0 +1,53 @@
+name: Verify Studio Operating UX V135
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'neptune-tv-media-cloudflare/src/entry-v41.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-operating-v135.*'
+      - 'neptune-tv-media-cloudflare/tests/studio-operating-ux-v135.mjs'
+      - 'neptune-tv-media-cloudflare/wrangler.jsonc'
+      - 'wrangler.jsonc'
+      - '.github/workflows/verify-studio-operating-ux-v135.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-studio-operating-ux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate source
+        run: |
+          node --check neptune-tv-media-cloudflare/src/entry-v41.js
+          node --check neptune-tv-media-cloudflare/public/studio/studio-operating-v135.js
+          node --check neptune-tv-media-cloudflare/tests/studio-operating-ux-v135.mjs
+          grep -Fq 'src/entry-v41.js' neptune-tv-media-cloudflare/wrangler.jsonc
+          grep -Fq 'neptune-tv-media-cloudflare/src/entry-v41.js' wrangler.jsonc
+      - name: Install Playwright
+        run: |
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium
+      - name: Start static server
+        run: |
+          python3 -m http.server 4173 --directory neptune-tv-media-cloudflare/public >/tmp/studio-v135.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            curl --fail --silent http://127.0.0.1:4173/studio/clients.html >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/studio-v135.log
+          exit 1
+      - name: Test Studio operating UX v135
+        working-directory: neptune-tv-media-cloudflare
+        env:
+          LOCAL_BASE_URL: http://127.0.0.1:4173
+        run: node tests/studio-operating-ux-v135.mjs
+      - name: Dry-run Worker bundle
+        run: npx wrangler deploy --config wrangler.jsonc --dry-run --outdir .wrangler-v135-dry-run

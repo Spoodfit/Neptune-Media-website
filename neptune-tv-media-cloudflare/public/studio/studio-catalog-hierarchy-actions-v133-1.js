@@ -2,7 +2,8 @@ const API='/api/admin/media-catalog-v98/';
 const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
 let context=null;
 boot();
-function boot(){enhance();new MutationObserver(enhance).observe(document.body,{subtree:true,childList:true});document.addEventListener('click',onClick,true);document.addEventListener('change',onChange,true)}
+function boot(){ensureCatalogHost();enhance();new MutationObserver(()=>{ensureCatalogHost();enhance()}).observe(document.body,{subtree:true,childList:true});document.addEventListener('click',onClick,true);document.addEventListener('change',onChange,true);setTimeout(ensureCatalogHost,700)}
+function ensureCatalogHost(){const active=(location.hash||'').toLowerCase()==='#programs'||String($('#title')?.textContent||'').toLowerCase().includes('catalogue');if(!active)return;const content=$('#content');if(!content)return;let page=$('.c98-page',content);if(!page){page=document.createElement('section');page.className='c98-page';page.dataset.v133FallbackHost='1';content.append(page)}if(!$('.c98-layout',page)){const layout=document.createElement('div');layout.className='c98-layout';layout.dataset.v133FallbackHost='1';page.append(layout)}}
 function enhance(){
   for(const supplier of $$('[data-v133-edit-supplier]')){supplier.textContent='Modifier le fournisseur';supplier.title='Modifier les informations de ce fournisseur'}
   for(const card of $$('.v133-concept')){

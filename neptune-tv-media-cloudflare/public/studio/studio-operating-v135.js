@@ -46,13 +46,19 @@ function installFetchBridge(){
     }
     const response=await nativeFetch(input,next);
     if(response.ok&&url.pathname==='/api/admin/client-order'&&payload?.email&&payload?.phone){
-      try{
-        const csrf=await ensureCsrf();
-        await nativeFetch('/api/admin/contact-profile-v135',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json',Accept:'application/json','X-CSRF-Token':csrf},body:JSON.stringify({email:payload.email,firstName:payload.firstName,lastName:payload.lastName,fullName:payload.fullName,phone:payload.phone,company:payload.company||''})});
-      }catch(error){console.warn('studio_v135_contact_sync_failed',String(error?.message||error));}
+      syncContactProfile(payload).catch(error=>console.warn('studio_v135_contact_sync_failed',String(error?.message||error)));
     }
     return response;
   };
+}
+
+async function syncContactProfile(payload,retry=true){
+  const csrf=await ensureCsrf(!retry);
+  const response=await nativeFetch('/api/admin/contact-profile-v135',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json',Accept:'application/json','X-CSRF-Token':csrf},body:JSON.stringify({email:payload.email,firstName:payload.firstName,lastName:payload.lastName,fullName:payload.fullName,phone:payload.phone,company:payload.company||''})});
+  const data=await response.clone().json().catch(()=>({}));
+  if(!response.ok&&data.error==='csrf_failed'&&retry){sessionStorage.removeItem('neptune_csrf');return syncContactProfile(payload,false);}
+  if(!response.ok)throw new Error(data.error||`http_${response.status}`);
+  return data;
 }
 
 async function ensureCsrf(force=false){
@@ -119,12 +125,15 @@ async function openAgenda(mode='filming'){
   installClientAgenda();agenda.mode=mode==='preparation'?'preparation':'filming';const dialog=$('#studioAgendaDialogV135');if(!dialog)return;
   if(!dialog.open)dialog.showModal();
   $('#v135AgendaGrid').innerHTML='<div class="v135-loading">Chargement de l’agenda…</div>';
-  await loadAgenda();renderAgenda();
+  await loadAgenda();
+  const future=agendaEvents().find(item=>item.date>=new Date());
+  if(future)agenda.month=new Date(future.date.getFullYear(),future.date.getMonth(),1);
+  renderAgenda();
 }
 async function loadAgenda(){if(agenda.loading)return;agenda.loading=true;try{const data=await apiGet('/api/admin/clients');agenda.clients=Array.isArray(data.clients)?data.clients:[];agenda.orders=Array.isArray(data.orders)?data.orders:[];}catch(error){$('#v135AgendaGrid').innerHTML=`<div class="v135-empty is-error">${html(errorLabel(error.message))}</div>`;}finally{agenda.loading=false;}}
 function renderAgenda(){
   const grid=$('#v135AgendaGrid');if(!grid)return;
-  $$('[data-v135-mode]','#studioAgendaDialogV135').forEach(b=>b.classList.toggle('active',b.dataset.v135Mode===agenda.mode));
+  const dialog=$('#studioAgendaDialogV135');$$('[data-v135-mode]',dialog).forEach(b=>b.classList.toggle('active',b.dataset.v135Mode===agenda.mode));
   $('#v135MonthLabel').textContent=new Intl.DateTimeFormat('fr-FR',{month:'long',year:'numeric'}).format(agenda.month);
   const events=agendaEvents();const year=agenda.month.getFullYear(),month=agenda.month.getMonth(),first=new Date(year,month,1),offset=(first.getDay()+6)%7,last=new Date(year,month+1,0).getDate();let cells='';
   for(let i=0;i<offset;i++)cells+='<span class="v135-day is-empty"></span>';
@@ -150,10 +159,10 @@ async function apiGet(url){const response=await nativeFetch(url,{credentials:'sa
 async function apiProtected(url,payload,retry=true){const csrf=await ensureCsrf(!retry);const response=await nativeFetch(url,{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json',Accept:'application/json','X-CSRF-Token':csrf},body:JSON.stringify(payload||{})}),data=await response.json().catch(()=>({}));if(!response.ok&&data.error==='csrf_failed'&&retry){sessionStorage.removeItem('neptune_csrf');return apiProtected(url,payload,false);}if(!response.ok)throw new Error(data.error||`http_${response.status}`);return data;}
 function requestUrl(input){try{return new URL(typeof input==='string'||input instanceof URL?String(input):String(input?.url||''),location.href);}catch{return null;}}
 function value(selector){return String($(selector)?.value||'').trim();}
-function toDateKey(date){const y=date.getFullYear(),m=String(date.getMonth()+1).padStart(2,'0'),d=String(date.getDate()).padStart(2,'0');return`${y}-${m}-${d}`;}
-function prettyDate(key){const d=new Date(`${key}T12:00:00`);return new Intl.DateTimeFormat('fr-FR',{weekday:'long',day:'numeric',month:'long'}).format(d);}
+function toDateKey(date){const y=date.getFullYear(),m=String(date.getMonth()+1).padStart(2,'0'),d=String(date.getDate()).padStart(2,'0');return `${y}-${m}-${d}`;}
 function timeLabel(date){return new Intl.DateTimeFormat('fr-FR',{hour:'2-digit',minute:'2-digit'}).format(date);}
-function cssEscape(value){return window.CSS?.escape?CSS.escape(String(value)):String(value).replace(/["\\]/gu,'\\$&');}
-function errorLabel(code){return({unauthorized:'Reconnectez-vous au Studio.',csrf_failed:'La session de sécurité doit être renouvelée.',calendar_access_missing:'Google Agenda doit être réautorisé.',calendar_permission_required:'Google Agenda doit être réautorisé.',appointment_in_past:'Choisissez une date future.'})[code]||`Impossible de terminer l’opération (${code||'erreur'}).`;}
-function html(value){return String(value??'').replace(/[&<>"']/gu,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]);}
-function attr(value){return html(value);}
+function prettyDate(value){const date=new Date(`${value}T12:00:00`);return Number.isNaN(date.getTime())?'Nouveau rendez-vous':new Intl.DateTimeFormat('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(date);}
+function cssEscape(value){return globalThis.CSS?.escape?CSS.escape(String(value)):String(value).replace(/["\\]/gu,'\\$&');}
+function html(value){return String(value??'').replace(/[&<>"']/gu,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));}
+function attr(value){return html(value).replace(/`/gu,'&#96;');}
+function errorLabel(code){return ({csrf_failed:'La session a été renouvelée. Réessayez.',unauthorized:'Reconnectez-vous au Studio.',calendar_access_missing:'Google Agenda doit être reconnecté.',calendar_permission_required:'Google Agenda doit être réautorisé.',calendar_sync_failed:'La synchronisation Google Agenda a échoué.'})[code]||`Impossible de terminer l’opération (${code||'erreur'}).`;}

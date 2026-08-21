@@ -4,7 +4,8 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'neptune-tv-media-cloudflare/src/entry-v41.js'
+      - 'neptune-tv-media-cloudflare/src/entry-v40.js'
+      - 'neptune-tv-media-cloudflare/src/studio-operating-v135.js'
       - 'neptune-tv-media-cloudflare/public/studio/studio-operating-v135.*'
       - 'neptune-tv-media-cloudflare/tests/studio-operating-ux-v135.mjs'
       - 'neptune-tv-media-cloudflare/wrangler.jsonc'
@@ -26,11 +27,13 @@ jobs:
           node-version: '22'
       - name: Validate source
         run: |
-          node --check neptune-tv-media-cloudflare/src/entry-v41.js
+          node --check neptune-tv-media-cloudflare/src/entry-v40.js
+          node --check neptune-tv-media-cloudflare/src/studio-operating-v135.js
           node --check neptune-tv-media-cloudflare/public/studio/studio-operating-v135.js
           node --check neptune-tv-media-cloudflare/tests/studio-operating-ux-v135.mjs
-          grep -Fq 'src/entry-v41.js' neptune-tv-media-cloudflare/wrangler.jsonc
-          grep -Fq 'neptune-tv-media-cloudflare/src/entry-v41.js' wrangler.jsonc
+          grep -Fq 'src/entry-v40.js' neptune-tv-media-cloudflare/wrangler.jsonc
+          grep -Fq 'neptune-tv-media-cloudflare/src/entry-v40.js' wrangler.jsonc
+          grep -Fq "from './studio-operating-v135.js'" neptune-tv-media-cloudflare/src/entry-v40.js
       - name: Install Playwright
         run: |
           npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0

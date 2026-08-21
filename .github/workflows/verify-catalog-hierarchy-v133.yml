@@ -7,6 +7,7 @@ on:
       - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-hierarchy-actions-v133-1.js'
       - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-hierarchy-v133.css'
       - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-hierarchy-guard-v133.css'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-hierarchy-polish-v133-1.css'
       - 'neptune-tv-media-cloudflare/public/studio/advanced.html'
       - 'neptune-tv-media-cloudflare/tests/audit-catalog-hierarchy-v133.mjs'
       - '.github/workflows/verify-catalog-hierarchy-v133.yml'
@@ -32,6 +33,8 @@ jobs:
           node --check neptune-tv-media-cloudflare/public/studio/studio-catalog-hierarchy-v133.js
           node --check neptune-tv-media-cloudflare/public/studio/studio-catalog-hierarchy-actions-v133-1.js
           node --check neptune-tv-media-cloudflare/tests/audit-catalog-hierarchy-v133.mjs
+          grep -Fq 'studio-catalog-hierarchy-polish-v133-1.css?v=2' neptune-tv-media-cloudflare/public/studio/advanced.html
+          grep -Fq 'studio-catalog-hierarchy-actions-v133-1.js?v=2' neptune-tv-media-cloudflare/public/studio/advanced.html
       - name: Start active Worker
         shell: bash
         run: |

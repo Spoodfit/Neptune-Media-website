@@ -1,0 +1,12 @@
+/* Catalogue v133.1 — densité visuelle et hiérarchie pleine largeur. */
+.v133-concepts:has(> .v133-concept:only-child){grid-template-columns:1fr}
+.v133-concepts:has(> .v133-concept:only-child)>.v133-concept{grid-template-columns:minmax(300px,36%) minmax(0,1fr);min-height:220px}
+.v133-concepts:has(> .v133-concept:only-child) .v133-concept-media{min-height:220px}
+.v133-concepts:has(> .v133-concept:only-child) .v133-formats{grid-template-columns:repeat(4,minmax(0,1fr))}
+.v133-concepts:has(> .v133-concept:only-child) .v133-format,.v133-concepts:has(> .v133-concept:only-child) .v133-format-add{min-height:82px}
+.v133-concepts:has(> .v133-concept:only-child) .v133-format img,.v133-concepts:has(> .v133-concept:only-child) .v133-format>span{height:52px}
+.v133-concept-head>div:first-child{min-width:0;flex:1}
+.v133-concept-head>button{white-space:nowrap}
+.v133-concept-head>.v133-link+.v133-link{margin-left:4px}
+.v133-upload-line{padding:10px;border:1px dashed #d7deea;border-radius:10px;background:#fafbff}
+@media(max-width:900px){.v133-concepts:has(> .v133-concept:only-child)>.v133-concept{grid-template-columns:1fr}.v133-concepts:has(> .v133-concept:only-child) .v133-formats{grid-template-columns:repeat(2,minmax(0,1fr))}}

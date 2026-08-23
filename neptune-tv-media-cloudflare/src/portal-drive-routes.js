@@ -135,10 +135,16 @@ async function processDrivePayload(env, requestUrl, studio, payload) {
   }
 
   // The store intentionally keeps unnotified events for retry. Never flush an old event merely
-  // because another sync happened: the file must also be present and deliverable in THIS scan.
+  // because another sync happened: both the file id and its exact Drive version must be present
+  // and deliverable in THIS scan.
   const currentFileIds = new Set(deliverableFiles.map(driveFileId).filter(Boolean));
+  const currentVersions = new Map(deliverableFiles.map((file) => [driveFileId(file), driveModifiedAt(file)]));
   const pending = Array.isArray(result.pendingEvents) ? result.pendingEvents : [];
-  const events = pending.filter((event) => currentFileIds.has(String(event?.driveFileId || '')));
+  const events = pending.filter((event) => {
+    const fileId = String(event?.driveFileId || '');
+    if (!currentFileIds.has(fileId)) return false;
+    return sameDriveVersion(event?.modifiedAt, currentVersions.get(fileId));
+  });
   const deliveryResult = { ...result, pendingEvents: events };
 
   if (!events.length) {
@@ -205,6 +211,21 @@ function currentDeliverableFiles(payload) {
 
 function driveFileId(file) {
   return String(file?.driveFileId || file?.id || '').trim();
+}
+
+function driveModifiedAt(file) {
+  return normalizeIso(file?.modifiedAt || file?.modifiedTime);
+}
+
+function sameDriveVersion(left, right) {
+  const normalizedLeft = normalizeIso(left);
+  const normalizedRight = normalizeIso(right);
+  return Boolean(normalizedLeft && normalizedRight && normalizedLeft === normalizedRight);
+}
+
+function normalizeIso(value) {
+  const date = new Date(value || '');
+  return Number.isNaN(date.getTime()) ? '' : date.toISOString();
 }
 
 function isStagingUploadName(name) {

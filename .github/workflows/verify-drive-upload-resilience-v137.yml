@@ -1,0 +1,52 @@
+name: Verify Drive Upload Resilience V137
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'neptune-tv-media-cloudflare/src/entry-v41.js'
+      - 'neptune-tv-media-cloudflare/src/drive-upload-resilience-v137.js'
+      - 'neptune-tv-media-cloudflare/src/entry-v32.js'
+      - 'neptune-tv-media-cloudflare/src/portal-drive-routes.js'
+      - 'neptune-tv-media-cloudflare/public/studio/drive-upload-v94.js'
+      - 'neptune-tv-media-cloudflare/tests/drive-upload-resilience-v137.mjs'
+      - 'neptune-tv-media-cloudflare/scripts/verify-studio-drive-upload-v94.mjs'
+      - 'neptune-tv-media-cloudflare/scripts/verify-drive-sync.mjs'
+      - 'neptune-tv-media-cloudflare/wrangler.jsonc'
+      - '.github/workflows/verify-drive-upload-resilience-v137.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'neptune-tv-media-cloudflare/src/entry-v41.js'
+      - 'neptune-tv-media-cloudflare/src/drive-upload-resilience-v137.js'
+      - 'neptune-tv-media-cloudflare/src/entry-v32.js'
+      - 'neptune-tv-media-cloudflare/src/portal-drive-routes.js'
+      - 'neptune-tv-media-cloudflare/public/studio/drive-upload-v94.js'
+      - 'neptune-tv-media-cloudflare/tests/drive-upload-resilience-v137.mjs'
+      - 'neptune-tv-media-cloudflare/scripts/verify-studio-drive-upload-v94.mjs'
+      - 'neptune-tv-media-cloudflare/scripts/verify-drive-sync.mjs'
+      - 'neptune-tv-media-cloudflare/wrangler.jsonc'
+      - '.github/workflows/verify-drive-upload-resilience-v137.yml'
+
+jobs:
+  verify-drive-upload-resilience:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate Worker source syntax
+        working-directory: neptune-tv-media-cloudflare
+        run: |
+          node --check src/drive-upload-resilience-v137.js
+          node --check src/entry-v41.js
+      - name: Verify Drive upload resilience contract
+        working-directory: neptune-tv-media-cloudflare
+        run: node tests/drive-upload-resilience-v137.mjs
+      - name: Verify Drive upload chain
+        working-directory: neptune-tv-media-cloudflare
+        run: node scripts/verify-studio-drive-upload-v94.mjs
+      - name: Verify delivery email safeguards
+        working-directory: neptune-tv-media-cloudflare
+        run: node scripts/verify-drive-sync.mjs

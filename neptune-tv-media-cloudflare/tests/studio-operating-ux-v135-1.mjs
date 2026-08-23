@@ -57,7 +57,8 @@ async function wizardAgenda(){
   assert.equal(await first.inputValue(),'Jean');assert.equal(await last.inputValue(),'Dupont');assert.equal(await phone.inputValue(),'0612345678');assert.equal(await page.locator('#wizardNameV118').inputValue(),'Jean Dupont');
   await page.evaluate(()=>newDialog.close());
   await page.locator('#studioAgendaV135').click();await page.waitForSelector('[data-v135-order="order-v135"]');
-  await page.locator('[data-v135-date="2026-08-28"]').click();
+  assert.equal(await page.locator('[data-v135-order="order-v135"]').count(),1);
+  await page.locator('[data-v135-date="2026-08-27"]').click();
   await page.waitForFunction(()=>!document.querySelector('#studioAgendaDialogV135')?.open&&document.querySelector('#studioAgendaActionV135')?.open);
   await page.getByRole('button',{name:/Nouvelle préparation/}).click();
   assert.match(await page.locator('#v135PreparationOrder').innerText(),/Léa Dupoulin/u);

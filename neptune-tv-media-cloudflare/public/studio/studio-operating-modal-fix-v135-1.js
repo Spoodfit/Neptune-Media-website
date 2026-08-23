@@ -1,23 +1,15 @@
-const RELEASE='neptune-studio-operating-modal-focus-20260823-v135.4';
+const RELEASE='neptune-studio-operating-modal-focus-20260823-v135.5';
 
 document.body.dataset.studioOperatingModalFocus=RELEASE;
 
-document.addEventListener('click',event=>{
-  const raw=event.target;
-  if(!(raw instanceof Element))return;
-  const target=raw;
-  if(target.closest('[data-v135-order]'))return;
-  const trigger=target.closest('[data-v135-date]')||target.closest('[data-v135-create]');
-  if(!trigger)return;
-  if(trigger.dataset.v135ModalReplay==='1'){
-    delete trigger.dataset.v135ModalReplay;
-    return;
-  }
-  const agenda=document.getElementById('studioAgendaDialogV135');
-  if(!agenda?.open)return;
-  event.preventDefault();
-  event.stopImmediatePropagation();
-  trigger.dataset.v135ModalReplay='1';
-  agenda.addEventListener('close',()=>trigger.click(),{once:true});
-  agenda.close();
-},true);
+if(!window.__neptuneStudioDialogFocusV1355){
+  window.__neptuneStudioDialogFocusV1355=true;
+  const nativeShowModal=HTMLDialogElement.prototype.showModal;
+  HTMLDialogElement.prototype.showModal=function studioShowModalV1355(){
+    if(this.id==='studioAgendaActionV135'){
+      const agenda=document.getElementById('studioAgendaDialogV135');
+      if(agenda?.open)agenda.close();
+    }
+    return nativeShowModal.call(this);
+  };
+}

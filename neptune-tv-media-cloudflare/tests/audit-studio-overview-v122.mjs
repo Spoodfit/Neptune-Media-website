@@ -35,8 +35,29 @@ const webTvLibrary={ok:true,items:[
   {id:'upload:asset-a.mp4',assetId:'asset-a',title:'Émission Cloudflare A',mediaUrl:'/media/webtv/asset-a.mp4',durationSeconds:1800,size:120000000,contentType:'video/mp4',source:'cloudflare-r2'},
   {id:'upload:asset-b.mp4',assetId:'asset-b',title:'Émission Cloudflare B',mediaUrl:'/media/webtv/asset-b.mp4',durationSeconds:1500,size:95000000,contentType:'video/mp4',source:'cloudflare-r2'},
 ]};
-const catalogContext={ok:true,formats:[],suppliers:[],cities:[],families:[],configurationVisuals:[],offers:[],services:[],supplierRates:[],rateUnits:[],durationOptions:[]};
-const publishedCatalog={ok:true,formats:[],cities:[],offers:[],suppliers:[],pricing:{}};
+const catalogFamilyKey='city-toulouse|format-hors-norme|supplier-recbox';
+const catalogFamily={
+  key:catalogFamilyKey,
+  cityId:'city-toulouse',cityName:'Toulouse',formatId:'format-hors-norme',formatName:'Hors Norme',formatSlug:'hors-norme',
+  supplierId:'supplier-recbox',supplierName:'RecBox',active:true,publicOrder:10,priceSuffix:'HT',currency:'eur',supplierNetCents:60000,vatRateBps:2000,
+  tiers:{launch:{id:'offer-launch',clientPriceCents:99000,paymentUrl:'https://buy.stripe.com/test-launch'},promo:{id:'offer-promo',clientPriceCents:129000,paymentUrl:'https://buy.stripe.com/test-promo'},base:{id:'offer-base',clientPriceCents:159000,paymentUrl:'https://buy.stripe.com/test-base'}},
+  configurationOptions:['Canapé','Chaise'],
+  configurationVisuals:[{label:'Canapé',imageBase64:'/assets/formats/exact-hn1.b64',description:'Canapé'},{label:'Chaise',imageBase64:'/assets/formats/exact-hn2.b64',description:'Chaise'}],
+  format:{id:'format-hors-norme',slug:'hors-norme',name:'Hors Norme',concept:'Interview signature',description:'Le concept Hors Norme.',durationLabel:'60 min',image:'/assets/posters/hors-norme-wide.webp',active:true},
+};
+const catalogContext={
+  ok:true,
+  formats:[catalogFamily.format],
+  suppliers:[{id:'supplier-recbox',name:'RecBox',active:true,defaultNetCents:60000,vatRateBps:2000}],
+  cities:[{id:'city-toulouse',slug:'toulouse',name:'Toulouse',country:'France',active:true,publicOrder:10}],
+  families:[catalogFamily],configurationVisuals:catalogFamily.configurationVisuals,offers:[],services:[],supplierRates:[],rateUnits:[],durationOptions:[],
+};
+const publishedCatalog={
+  ok:true,
+  pricing:{tierKey:'launch',tierLabel:'Prix coûtant · lancement',remaining:2},
+  cities:[{id:'city-toulouse',slug:'toulouse',name:'Toulouse',country:'France',formats:[{id:'format-hors-norme',slug:'hors-norme',name:'Hors Norme',concept:'Interview signature',description:'Le concept Hors Norme.',durationLabel:'60 min',image:'/assets/posters/hors-norme-wide.webp',offers:[{id:'offer-launch',name:'Prix coûtant · lancement',clientPriceCents:99000,currency:'eur',priceSuffix:'HT',pricing:{tierKey:'launch',tierLabel:'Prix coûtant · lancement',remaining:2,basePriceCents:159000},configurations:catalogFamily.configurationVisuals}]}]}],
+  formats:[],offers:[],suppliers:[],
+};
 const portal={clients:[],orders:[],supplierPayments:[],refundRequests:[],deletionRequests:[],finance:adminState.finance};
 const screens=[
   {id:'webtv',path:'/studio/webtv.html',active:'Diffusion',kind:'webtv'},

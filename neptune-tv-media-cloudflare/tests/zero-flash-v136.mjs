@@ -95,7 +95,15 @@ async function clientFirstPaint(authenticated){
     assert.equal(before.dashboardHidden,true,'client: dashboard flashed before session resolution');
     assert.equal(before.before,'fixed','client: neutral boot surface missing');
     releaseSession();
-    await page.waitForFunction(()=>document.documentElement.dataset.neptuneClientReady==='v136',null,{timeout:10000});
+    await page.waitForFunction((isAuthenticated)=>{
+      const auth=document.getElementById('auth');
+      const dashboard=document.getElementById('dashboard');
+      return document.documentElement.dataset.neptuneClientReady==='v136'
+        && auth
+        && dashboard
+        && auth.hidden===isAuthenticated
+        && dashboard.hidden===!isAuthenticated;
+    },authenticated,{timeout:12000});
     const after=await page.evaluate(()=>({authHidden:document.getElementById('auth')?.hidden,dashboardHidden:document.getElementById('dashboard')?.hidden,boot:document.documentElement.hasAttribute('data-neptune-client-boot')}));
     assert.equal(after.boot,false,'client: boot guard remains after session resolution');
     assert.equal(after.authHidden,authenticated,'client: wrong auth visibility after session resolution');

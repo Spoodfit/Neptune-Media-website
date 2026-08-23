@@ -82,9 +82,8 @@ try{
       if(screen.kind!=='webtv')await page.waitForSelector('#app:not([hidden])',{timeout:20000});
       if(screen.kind==='catalogue'){
         await page.waitForSelector('.c98-page',{timeout:20000});
-        await page.waitForSelector('#studioCatalogGlanceV1221',{timeout:20000});
-        await page.waitForSelector('[data-c116-services]',{state:'attached',timeout:20000});
-        await page.waitForSelector('.c116-preview-panel',{state:'attached',timeout:20000});
+        await page.waitForFunction(()=>document.getElementById('content')?.dataset.c98==='ready',null,{timeout:20000});
+        await page.waitForSelector('#studioCatalogMarketplaceV128',{state:'visible',timeout:20000});
       }
       if(screen.kind==='settings')await page.waitForSelector('#studioSettingsOverviewV122:not([hidden])',{timeout:20000});
       if(screen.kind==='webtv'){
@@ -105,13 +104,17 @@ try{
         const overflow=Math.max(root.scrollWidth,body.scrollWidth)-innerWidth;
         const data={kind,nav,active,context,overflow,pageHeight:Math.max(root.scrollHeight,body.scrollHeight),viewportHeight:innerHeight};
         if(kind==='catalogue'){
-          const hero=document.querySelector('.c98-hero');
-          const layout=document.querySelector('.c98-layout')?.getBoundingClientRect();
-          const work=document.querySelector('.c98-work')?.getBoundingClientRect();
-          const preview=document.getElementById('c98Preview');
-          const previewPanel=document.querySelector('.c116-preview-panel');
+          const marketplace=document.getElementById('studioCatalogMarketplaceV128');
+          const legacyLayout=document.querySelector('.c98-layout');
           const oldTabs=document.querySelector('.c98-tabs');
-          data.catalogue={heroHeight:Math.round(hero?.getBoundingClientRect().height||0),bodyMode:body.classList.contains('v122-studio-catalog'),widthRatio:layout?.width?work.width/layout.width:0,previewDisplay:preview?getComputedStyle(preview).display:'missing',previewPanelDisplay:previewPanel?getComputedStyle(previewPanel).display:'missing',oldTabsDisplay:oldTabs?getComputedStyle(oldTabs).display:'missing',glance:document.querySelectorAll('[data-v122-catalog-tab]').length,tunnel:Boolean(document.querySelector('.c98-hero-actions a[href^="/reserver"]'))};
+          data.catalogue={
+            bodyMode:body.classList.contains('v122-studio-catalog'),
+            marketplaceVisible:visible(marketplace),
+            legacyLayoutDisplay:legacyLayout?getComputedStyle(legacyLayout).display:'missing',
+            oldTabsDisplay:oldTabs?getComputedStyle(oldTabs).display:'missing',
+            legacyGlance:document.querySelectorAll('[data-v122-catalog-tab]').length,
+            tunnel:Boolean(document.querySelector('a[href^="/reserver"]')),
+          };
         }
         if(kind==='settings')data.settings={cards:document.querySelectorAll('.v122-overview-card').length,bodyMode:body.classList.contains('v122-studio-settings'),overviewVisible:visible(document.querySelector('#studioSettingsOverviewV122'))};
         if(kind==='finance')data.finance={bodyMode:body.classList.contains('v122-studio-finance')};
@@ -141,12 +144,10 @@ try{
       assert(metrics.overflow<=3,`${screen.id}/${viewport.id}: overflow ${metrics.overflow}px`);
       if(screen.kind==='catalogue'){
         assert(metrics.catalogue.bodyMode,`${screen.id}: mode Catalogue absent`);
-        assert(metrics.catalogue.heroHeight>0&&metrics.catalogue.heroHeight<180,`${screen.id}: hero trop haut ${metrics.catalogue.heroHeight}px`);
-        assert(metrics.catalogue.widthRatio>.97,`${screen.id}: zone de travail limitée à ${Math.round(metrics.catalogue.widthRatio*100)}%`);
-        assert(metrics.catalogue.previewDisplay==='none',`${screen.id}: aperçu tunnel permanent encore visible`);
-        assert(metrics.catalogue.previewPanelDisplay==='none',`${screen.id}: ancien aperçu repliable encore visible`);
+        assert(metrics.catalogue.marketplaceVisible,`${screen.id}: marketplace Catalogue v128 absente`);
+        assert(metrics.catalogue.legacyLayoutDisplay==='none',`${screen.id}: gestion legacy visible dans la marketplace`);
         assert(metrics.catalogue.oldTabsDisplay==='none',`${screen.id}: ancienne navigation Catalogue encore visible`);
-        assert(metrics.catalogue.glance===6,`${screen.id}: vue d’ensemble ${metrics.catalogue.glance}/6`);
+        assert(metrics.catalogue.legacyGlance===0,`${screen.id}: raccourcis legacy encore montés`);
         assert(metrics.catalogue.tunnel,`${screen.id}: accès au tunnel absent`);
       }
       if(screen.kind==='finance')assert(metrics.finance.bodyMode,'finance: mode compact absent');

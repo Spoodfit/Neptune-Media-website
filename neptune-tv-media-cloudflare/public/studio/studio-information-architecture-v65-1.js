@@ -149,6 +149,7 @@
 
   function primaryRoute(kind) {
     if (kind === 'clients') return 'clients';
+    if (kind === 'production') return 'production';
     if (kind === 'webtv') return 'diffusion';
     if (kind === 'advanced') return groupForTab(requestedTab());
     return '';
@@ -184,6 +185,7 @@
       <div class="neptune-studio-status"><i></i><span>Studio synchronisé</span></div>
       <nav class="neptune-studio-nav" aria-label="Navigation principale du Studio">
         ${link('clients', '/studio/clients', '◎', 'Parcours clients')}
+        ${link('production', '/studio/video-ai.html', '✦', 'Production vidéo')}
         ${link('diffusion', '/studio/webtv.html', '▶', 'Diffusion')}
         ${link('settings', '/studio/advanced.html#programs', '⚙', 'Réglages')}
       </nav>

@@ -12,6 +12,7 @@ const STALE_DRIVE_ERRORS = new Set([
   'order_not_found',
   'not-found',
 ]);
+const STAGING_UPLOAD_PREFIX = '.__neptune_uploading__';
 const MAX_DELTA_BATCHES = 80;
 const MAX_SNAPSHOTS = 80;
 
@@ -108,7 +109,14 @@ export async function handleDriveRoute(request, env, studio) {
 }
 
 async function processDrivePayload(env, requestUrl, studio, payload) {
-  const response = await callStore(studio, '/portal/drive-files', payload);
+  // A Drive folder can expose an object while a Studio resumable upload is not yet committed.
+  // Only complete, non-staging files are allowed into the webhook inventory path.
+  const deliverableFiles = currentDeliverableFiles(payload);
+  const storePayload = {
+    ...(payload && typeof payload === 'object' ? payload : {}),
+    files: deliverableFiles,
+  };
+  const response = await callStore(studio, '/portal/drive-files', storePayload);
   const result = await response.json().catch(() => ({}));
   if (!response.ok) {
     const orderId = result.orderId || payload?.orderId || '';
@@ -126,13 +134,25 @@ async function processDrivePayload(env, requestUrl, studio, payload) {
     };
   }
 
-  const events = Array.isArray(result.pendingEvents) ? result.pendingEvents : [];
+  // The store intentionally keeps unnotified events for retry. Never flush an old event merely
+  // because another sync happened: the file must also be present and deliverable in THIS scan.
+  const currentFileIds = new Set(deliverableFiles.map(driveFileId).filter(Boolean));
+  const pending = Array.isArray(result.pendingEvents) ? result.pendingEvents : [];
+  const events = pending.filter((event) => currentFileIds.has(String(event?.driveFileId || '')));
+  const deliveryResult = { ...result, pendingEvents: events };
+
   if (!events.length) {
-    const body = { ...result, emailSent: false, emailPending: false, notificationSkipped: true };
+    const body = {
+      ...deliveryResult,
+      emailSent: false,
+      emailPending: false,
+      notificationSkipped: true,
+      notificationSkippedReason: deliverableFiles.length ? 'no_current_pending_delivery' : 'no_complete_file_in_current_scan',
+    };
     return { ok: true, status: 200, body, ...body };
   }
 
-  const sent = await sendDriveDelivery(env, requestUrl, result);
+  const sent = await sendDriveDelivery(env, requestUrl, deliveryResult);
   if (!sent.ok) {
     const emailWarning = {
       code: sent.error || 'email_failed',
@@ -146,7 +166,7 @@ async function processDrivePayload(env, requestUrl, studio, payload) {
       ...emailWarning,
     });
     const body = {
-      ...result,
+      ...deliveryResult,
       emailSent: false,
       emailPending: true,
       notificationPending: true,
@@ -163,12 +183,32 @@ async function processDrivePayload(env, requestUrl, studio, payload) {
   if (!markResponse.ok) {
     const markResult = await markResponse.json().catch(() => ({}));
     console.error('drive_delivery_mark_failed', { orderId: result.orderId, error: markResult.error || markResponse.status });
-    const body = { ...result, emailSent: true, emailPending: false, emailId: sent.id || null, notificationMarkWarning: true };
+    const body = { ...deliveryResult, emailSent: true, emailPending: false, emailId: sent.id || null, notificationMarkWarning: true };
     return { ok: true, status: 200, body, ...body };
   }
 
-  const body = { ...result, emailSent: true, emailPending: false, emailId: sent.id || null, notifiedEvents: events.length };
+  const body = { ...deliveryResult, emailSent: true, emailPending: false, emailId: sent.id || null, notifiedEvents: events.length };
   return { ok: true, status: 200, body, ...body };
+}
+
+function currentDeliverableFiles(payload) {
+  const files = Array.isArray(payload?.files) ? payload.files.slice(0, 250) : [];
+  return files.filter((file) => {
+    const fileId = driveFileId(file);
+    const name = String(file?.name || '').trim();
+    const size = Math.max(0, Math.trunc(Number(file?.sizeBytes ?? file?.size ?? 0)));
+    if (!fileId || !name || size <= 0) return false;
+    if (isStagingUploadName(name)) return false;
+    return true;
+  });
+}
+
+function driveFileId(file) {
+  return String(file?.driveFileId || file?.id || '').trim();
+}
+
+function isStagingUploadName(name) {
+  return String(name || '').startsWith(STAGING_UPLOAD_PREFIX);
 }
 
 function staleOutcome(orderId, error) {

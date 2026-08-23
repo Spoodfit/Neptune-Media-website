@@ -35,8 +35,31 @@ const webTvLibrary={ok:true,items:[
   {id:'upload:asset-a.mp4',assetId:'asset-a',title:'Émission Cloudflare A',mediaUrl:'/media/webtv/asset-a.mp4',durationSeconds:1800,size:120000000,contentType:'video/mp4',source:'cloudflare-r2'},
   {id:'upload:asset-b.mp4',assetId:'asset-b',title:'Émission Cloudflare B',mediaUrl:'/media/webtv/asset-b.mp4',durationSeconds:1500,size:95000000,contentType:'video/mp4',source:'cloudflare-r2'},
 ]};
-const catalogContext={ok:true,formats:[],suppliers:[],cities:[],families:[],configurationVisuals:[],offers:[],services:[],supplierRates:[],rateUnits:[],durationOptions:[]};
-const publishedCatalog={ok:true,formats:[],cities:[],offers:[],suppliers:[],pricing:{}};
+const catalogFamilyKey='city-toulouse|format-hors-norme|supplier-recbox';
+const catalogFamily={
+  key:catalogFamilyKey,
+  cityId:'city-toulouse',cityName:'Toulouse',formatId:'format-hors-norme',formatName:'Hors Norme',formatSlug:'hors-norme',
+  supplierId:'supplier-recbox',supplierName:'RecBox',active:true,publicOrder:10,priceSuffix:'HT',currency:'eur',supplierNetCents:60000,vatRateBps:2000,
+  preparationUrl:'https://example.com/preparation',
+  tiers:{launch:{id:'offer-launch',clientPriceCents:99000,paymentUrl:'https://buy.stripe.com/test-launch'},promo:{id:'offer-promo',clientPriceCents:129000,paymentUrl:'https://buy.stripe.com/test-promo'},base:{id:'offer-base',clientPriceCents:159000,paymentUrl:'https://buy.stripe.com/test-base'}},
+  configurationOptions:['Canapé','Chaise'],
+  configurationVisuals:[{label:'Canapé',image:'/assets/posters/hors-norme-wide.webp',description:'Canapé'},{label:'Chaise',image:'/assets/posters/hors-norme-wide.webp',description:'Chaise'}],
+  format:{id:'format-hors-norme',slug:'hors-norme',name:'Hors Norme',concept:'Interview signature',description:'Le concept Hors Norme.',durationLabel:'60 min',image:'/assets/posters/hors-norme-wide.webp',active:true},
+};
+const catalogService={id:'service-1',cityId:'city-toulouse',cityName:'Toulouse',supplierId:'supplier-recbox',supplierName:'RecBox',formatId:'format-hors-norme',formatName:'Hors Norme',active:true,preparationUrl:'https://example.com/preparation'};
+const catalogContext={
+  ok:true,
+  formats:[catalogFamily.format],
+  suppliers:[{id:'supplier-recbox',name:'RecBox',active:true,defaultNetCents:60000,vatRateBps:2000}],
+  cities:[{id:'city-toulouse',slug:'toulouse',name:'Toulouse',country:'France',active:true,publicOrder:10}],
+  families:[catalogFamily],configurationVisuals:catalogFamily.configurationVisuals,offers:[],services:[catalogService],supplierRates:[],rateUnits:[],durationOptions:[],
+};
+const publishedCatalog={
+  ok:true,
+  pricing:{tierKey:'launch',tierLabel:'Prix coûtant · lancement',remaining:2},
+  cities:[{id:'city-toulouse',slug:'toulouse',name:'Toulouse',country:'France',formats:[{id:'format-hors-norme',slug:'hors-norme',name:'Hors Norme',concept:'Interview signature',description:'Le concept Hors Norme.',durationLabel:'60 min',image:'/assets/posters/hors-norme-wide.webp',offers:[{id:'offer-launch',name:'Prix coûtant · lancement',clientPriceCents:99000,currency:'eur',priceSuffix:'HT',pricing:{tierKey:'launch',tierLabel:'Prix coûtant · lancement',remaining:2,basePriceCents:159000},configurations:catalogFamily.configurationVisuals}]}]}],
+  formats:[],offers:[],suppliers:[],
+};
 const portal={clients:[],orders:[],supplierPayments:[],refundRequests:[],deletionRequests:[],finance:adminState.finance};
 const screens=[
   {id:'webtv',path:'/studio/webtv.html',active:'Diffusion',kind:'webtv'},
@@ -56,6 +79,7 @@ try{
       await context.route('**/*',async route=>{
         const url=new URL(route.request().url());
         if(url.hostname==='media.example')return route.fulfill({status:204,body:''});
+        if(url.pathname.startsWith('/media/webtv/'))return route.fulfill({status:204,contentType:'video/mp4',body:''});
         if(!url.pathname.startsWith('/api/'))return route.continue();
         let body={ok:true};
         if(url.pathname==='/api/auth/status')body={authenticated:true,csrfToken:'test-csrf',user:adminState.user};
@@ -71,8 +95,9 @@ try{
       });
       const page=await context.newPage();
       const errors=[];
-      page.on('pageerror',error=>errors.push(error.message));
-      page.on('console',message=>{if(message.type()==='error'&&!/favicon/iu.test(message.text()))errors.push(message.text());});
+      page.on('pageerror',error=>errors.push(`PAGE ${error.message}`));
+      page.on('response',response=>{const status=response.status(),url=response.url();if(status>=400&&!/favicon/iu.test(url))errors.push(`HTTP ${status} ${url}`);});
+      page.on('console',message=>{const text=message.text();if(message.type()==='error'&&!/favicon/iu.test(text)&&!/^Failed to load resource:/iu.test(text))errors.push(`CONSOLE ${text}`);});
       const response=await page.goto(`${baseURL}${screen.path}`,{waitUntil:'domcontentloaded',timeout:30000});
       assert(response?.ok(),`${screen.id}/${viewport.id}: HTTP ${response?.status()}`);
       await page.waitForFunction(()=>Boolean(document.documentElement.dataset.studioOverviewV122),null,{timeout:20000});
@@ -80,12 +105,16 @@ try{
       if(screen.kind!=='webtv')await page.waitForSelector('#app:not([hidden])',{timeout:20000});
       if(screen.kind==='catalogue'){
         await page.waitForSelector('.c98-page',{timeout:20000});
-        await page.waitForSelector('#studioCatalogGlanceV1221',{timeout:20000});
-        await page.waitForSelector('[data-c116-services]',{state:'attached',timeout:20000});
-        await page.waitForSelector('.c116-preview-panel',{state:'attached',timeout:20000});
+        await page.waitForFunction(()=>document.getElementById('content')?.dataset.c98==='ready',null,{timeout:20000});
+        await page.waitForSelector('#studioCatalogHierarchyV133',{state:'visible',timeout:20000});
       }
       if(screen.kind==='settings')await page.waitForSelector('#studioSettingsOverviewV122:not([hidden])',{timeout:20000});
-      if(screen.kind==='webtv')await page.waitForSelector('#webtvCockpitV125',{state:'visible',timeout:20000});
+      if(screen.kind==='webtv'){
+        await page.waitForSelector('#webtvCockpitV125',{state:'visible',timeout:20000});
+        await page.waitForFunction(()=>Boolean(document.documentElement.dataset.webtvMonitorControlsV135),null,{timeout:10000});
+        await page.waitForSelector('#antennaPreview',{state:'attached',timeout:10000});
+        await page.waitForSelector('#v125MonitorControls',{state:'attached',timeout:10000});
+      }
       await page.waitForTimeout(500);
 
       const metrics=await page.evaluate(kind=>{
@@ -98,13 +127,19 @@ try{
         const overflow=Math.max(root.scrollWidth,body.scrollWidth)-innerWidth;
         const data={kind,nav,active,context,overflow,pageHeight:Math.max(root.scrollHeight,body.scrollHeight),viewportHeight:innerHeight};
         if(kind==='catalogue'){
-          const hero=document.querySelector('.c98-hero');
-          const layout=document.querySelector('.c98-layout')?.getBoundingClientRect();
-          const work=document.querySelector('.c98-work')?.getBoundingClientRect();
-          const preview=document.getElementById('c98Preview');
-          const previewPanel=document.querySelector('.c116-preview-panel');
+          const hierarchy=document.getElementById('studioCatalogHierarchyV133');
+          const legacyLayout=document.querySelector('.c98-layout');
           const oldTabs=document.querySelector('.c98-tabs');
-          data.catalogue={heroHeight:Math.round(hero?.getBoundingClientRect().height||0),bodyMode:body.classList.contains('v122-studio-catalog'),widthRatio:layout?.width?work.width/layout.width:0,previewDisplay:preview?getComputedStyle(preview).display:'missing',previewPanelDisplay:previewPanel?getComputedStyle(previewPanel).display:'missing',oldTabsDisplay:oldTabs?getComputedStyle(oldTabs).display:'missing',glance:document.querySelectorAll('[data-v122-catalog-tab]').length,tunnel:Boolean(document.querySelector('.c98-hero-actions a[href^="/reserver"]'))};
+          data.catalogue={
+            bodyMode:body.classList.contains('v133-catalog'),
+            hierarchyVisible:visible(hierarchy),
+            legacyLayoutDisplay:legacyLayout?getComputedStyle(legacyLayout).display:'missing',
+            oldTabsDisplay:oldTabs?getComputedStyle(oldTabs).display:'missing',
+            oldCockpit:Boolean(document.getElementById('studioCatalogCockpitV131')),
+            oldMarketplace:Boolean(document.getElementById('studioCatalogMarketplaceV128')),
+            legacyGlance:document.querySelectorAll('[data-v122-catalog-tab]').length,
+            tunnel:Boolean(document.querySelector('a[href^="/reserver"]')),
+          };
         }
         if(kind==='settings')data.settings={cards:document.querySelectorAll('.v122-overview-card').length,bodyMode:body.classList.contains('v122-studio-settings'),overviewVisible:visible(document.querySelector('#studioSettingsOverviewV122'))};
         if(kind==='finance')data.finance={bodyMode:body.classList.contains('v122-studio-finance')};
@@ -115,6 +150,8 @@ try{
             tabs:[...document.querySelectorAll('[data-v125-tab]')].map(x=>x.textContent.trim()),
             activeTabs:[...document.querySelectorAll('[data-v125-tab].active')].map(x=>x.textContent.trim()),
             programRows:document.querySelectorAll('.v125-program-row').length,
+            monitorControlsRelease:document.documentElement.dataset.webtvMonitorControlsV135||'',
+            antennaAttached:Boolean(video),
             controlsAttached:Boolean(document.querySelector('#v125MonitorControls')),
             nativeControls:Boolean(video?.controls),
             legacyCommand:visible(document.querySelector('#webTvCommandV122')),
@@ -131,13 +168,13 @@ try{
       assert(metrics.context===0,`${screen.id}/${viewport.id}: ancienne sous-navigation encore visible`);
       assert(metrics.overflow<=3,`${screen.id}/${viewport.id}: overflow ${metrics.overflow}px`);
       if(screen.kind==='catalogue'){
-        assert(metrics.catalogue.bodyMode,`${screen.id}: mode Catalogue absent`);
-        assert(metrics.catalogue.heroHeight>0&&metrics.catalogue.heroHeight<180,`${screen.id}: hero trop haut ${metrics.catalogue.heroHeight}px`);
-        assert(metrics.catalogue.widthRatio>.97,`${screen.id}: zone de travail limitée à ${Math.round(metrics.catalogue.widthRatio*100)}%`);
-        assert(metrics.catalogue.previewDisplay==='none',`${screen.id}: aperçu tunnel permanent encore visible`);
-        assert(metrics.catalogue.previewPanelDisplay==='none',`${screen.id}: ancien aperçu repliable encore visible`);
+        assert(metrics.catalogue.bodyMode,`${screen.id}: mode Catalogue v133 absent`);
+        assert(metrics.catalogue.hierarchyVisible,`${screen.id}: hiérarchie Catalogue v133 absente`);
+        assert(metrics.catalogue.legacyLayoutDisplay==='none',`${screen.id}: gestion legacy visible sous v133`);
         assert(metrics.catalogue.oldTabsDisplay==='none',`${screen.id}: ancienne navigation Catalogue encore visible`);
-        assert(metrics.catalogue.glance===6,`${screen.id}: vue d’ensemble ${metrics.catalogue.glance}/6`);
+        assert(metrics.catalogue.oldCockpit===false,`${screen.id}: cockpit v131 encore monté`);
+        assert(metrics.catalogue.oldMarketplace===false,`${screen.id}: marketplace v128 encore montée`);
+        assert(metrics.catalogue.legacyGlance===0,`${screen.id}: raccourcis legacy encore montés`);
         assert(metrics.catalogue.tunnel,`${screen.id}: accès au tunnel absent`);
       }
       if(screen.kind==='finance')assert(metrics.finance.bodyMode,'finance: mode compact absent');
@@ -150,6 +187,8 @@ try{
         assert(JSON.stringify(metrics.webtv.tabs)===JSON.stringify(['Antenne','Bibliothèque','Configuration','Analyse']),`webtv: onglets ${JSON.stringify(metrics.webtv.tabs)}`);
         assert(metrics.webtv.activeTabs.length===1&&metrics.webtv.activeTabs[0]==='Antenne','webtv: onglet Antenne initial absent');
         assert(metrics.webtv.programRows===2,'webtv: programme v125 incomplet');
+        assert(metrics.webtv.monitorControlsRelease,'webtv: runtime de contrôle moniteur v135 absent');
+        assert(metrics.webtv.antennaAttached,'webtv: retour antenne Neptune absent');
         assert(metrics.webtv.controlsAttached,'webtv: contrôles Neptune non montés');
         assert(metrics.webtv.nativeControls===false,'webtv: contrôles vidéo natifs encore actifs');
         assert(metrics.webtv.legacyCommand===false,'webtv: ancien command center v122 encore visible');
@@ -173,6 +212,7 @@ try{
   }
 }finally{await browser.close();}
 
-await writeFile(path.join(outputDir,'report.json'),JSON.stringify({ok:true,reports},null,2));
-console.log('Studio visual audit passed: canonical 5-destination shell, full-width Catalogue and compact WebTV v125 cockpit with four internal tabs.');
+await writeFile(path.join(outputDir,'report.json'),JSON.stringify(reports,null,2));
+console.log('Studio overview v122 audit passed.');
+
 function assert(condition,message){if(!condition)throw new Error(message);}

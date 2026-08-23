@@ -40,8 +40,7 @@ try{
   assert(await page.locator('.neptune-studio-account-copy b').textContent()==='Compte Studio','sidebar canonique incompatible');
   assert(errors.length===0,errors.join(' | '));
 
-  await page.locator('[data-webtv-section-button="program"]').click();
-  await page.locator('[data-webtv-section-panel="program"]:not([hidden])').waitFor({state:'visible',timeout:5000});
+  await page.locator('#programPanel').waitFor({state:'visible',timeout:5000});
   const add=page.locator('#addFromLibrary');
   assert(await add.isVisible()&&await add.isEnabled(),'Ajouter un contenu indisponible dans Programme');
 

@@ -1,4 +1,4 @@
-const RELEASE='neptune-studio-zero-flash-20260823-v137';
+const RELEASE='neptune-studio-zero-flash-20260823-v137.1';
 const root=document.documentElement;
 const SHELL_READY='neptuneStudioShellReady';
 const studioRoutes=['/studio/clients','/studio/webtv.html','/studio/video-ai.html','/studio/advanced.html#programs'];
@@ -6,6 +6,7 @@ const path=location.pathname.replace(/\/+$/u,'')||'/';
 const page=path==='/studio/clients'||path==='/studio/clients.html'?'clients':path==='/studio/webtv'||path==='/studio/webtv.html'?'webtv':path==='/studio/video-ai'||path==='/studio/video-ai.html'?'production':path==='/studio/advanced'||path==='/studio/advanced.html'?'advanced':'other';
 let revealed=false;
 let fallbackTimer=0;
+let readinessPoll=0;
 let inspectQueued=false;
 
 root.dataset.neptuneStudioZeroFlash=RELEASE;
@@ -14,6 +15,7 @@ function reveal(reason='canonical'){
   if(revealed)return;
   revealed=true;
   clearTimeout(fallbackTimer);
+  clearInterval(readinessPoll);
   root.removeAttribute('data-neptune-studio-boot');
   root.removeAttribute('data-neptune-studio-navigating');
   root.dataset.neptuneStudioReady='v136';
@@ -47,19 +49,23 @@ function ensureLegacyAccountAnchors(){
   if(name&&!document.getElementById('accountName'))name.id='accountName';
   if(role&&!document.getElementById('accountRole'))role.id='accountRole';
 }
+function inspectNow(){
+  if(!shellReady())return;
+  ensureLegacyAccountAnchors();
+  if(pageReady())reveal(page==='clients'?'clients-final':page==='webtv'?'diffusion-final':'canonical');
+}
 function inspect(){
-  if(inspectQueued)return;
+  if(inspectQueued||revealed)return;
   inspectQueued=true;
   queueMicrotask(()=>{
     inspectQueued=false;
-    if(!shellReady())return;
-    ensureLegacyAccountAnchors();
-    if(pageReady())reveal(page==='clients'?'clients-final':page==='webtv'?'diffusion-final':'canonical');
+    inspectNow();
   });
 }
 
 const observer=new MutationObserver(inspect);
 observer.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['data-neptune-studio-shell-ready','class','hidden']});
+readinessPoll=window.setInterval(inspectNow,60);
 inspect();
 
 fallbackTimer=window.setTimeout(()=>{
@@ -67,7 +73,7 @@ fallbackTimer=window.setTimeout(()=>{
   ensureLegacyAccountAnchors();
   console.warn('[Neptune Studio] v137 final-screen readiness timeout; revealing safe fallback');
   reveal('bounded-fallback');
-},8000);
+},10000);
 
 window.addEventListener('pageshow',()=>{root.removeAttribute('data-neptune-studio-navigating');inspect();});
 

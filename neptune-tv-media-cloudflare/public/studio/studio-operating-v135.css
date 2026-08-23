@@ -1,10 +1,10 @@
 body.studio-operating-v135{--v135-border:#dce4f1;--v135-ink:#09152f;--v135-muted:#65728b;--v135-blue:#4f5fff;--v135-purple:#a54ef4}
 body.studio-operating-webtv-v135 .webtv-section-tabs,body.studio-operating-webtv-v135 .webtv-section-workspace{display:none!important}
-body.studio-operating-webtv-v135.webtv-v125-mounted{overflow:hidden!important}
+body.studio-operating-webtv-v135.webtv-v125-mounted{box-sizing:border-box;height:100dvh!important;margin:0!important;overflow:hidden!important}
 body.studio-operating-webtv-v135.webtv-v125-mounted .topbar{box-sizing:border-box;flex:0 0 54px;height:54px!important;min-height:54px!important;padding:6px 20px!important}
 body.studio-operating-webtv-v135.webtv-v125-mounted .topbar h1{font-size:28px!important;line-height:1!important;margin:0!important}
 body.studio-operating-webtv-v135.webtv-v125-mounted .topbar .eyebrow,body.studio-operating-webtv-v135.webtv-v125-mounted .topbar .subtitle{display:none!important}
-body.studio-operating-webtv-v135.webtv-v125-mounted .main{height:calc(100dvh - 54px)!important;min-height:0!important;overflow:hidden!important;padding:10px 14px 12px!important}
+body.studio-operating-webtv-v135.webtv-v125-mounted .main{box-sizing:border-box;height:calc(100dvh - 54px)!important;min-height:0!important;overflow:hidden!important;padding:10px 14px 12px!important}
 body.studio-operating-webtv-v135 .v125-cockpit{height:100%!important;min-height:0!important;gap:8px!important;grid-template-rows:auto 42px minmax(0,1fr)!important}
 body.studio-operating-webtv-v135 .v125-summary{min-height:0!important;padding:9px 11px!important;gap:8px!important}
 body.studio-operating-webtv-v135 .v125-live-slot .live-card{min-height:88px!important;padding:10px 14px!important}

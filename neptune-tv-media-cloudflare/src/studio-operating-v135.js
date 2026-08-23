@@ -10,6 +10,7 @@ const WIZARD_PATH='/studio/client-passage-wizard-v118.js';
 const CATALOG_VISUAL_PATH='/studio/studio-catalog-visual-v132.js';
 const CONTACT_API='/api/admin/contact-profile-v135';
 const CONTACT_STORE='/portal/studio-contact-v135/upsert';
+const WEBTV_MONITOR_CONTROLS_V135='/studio/webtv-monitor-controls-v135.js?v=1';
 const WEBTV_LEGACY_SCRIPTS=['/studio/webtv-workspace-v1.js','/studio/webtv-control-room-v122.js'];
 const WEBTV_LEGACY_STYLES=['/studio/webtv-workspace-v1.css','/studio/webtv-control-room-v122.css'];
 
@@ -45,9 +46,11 @@ export async function injectStudioOperatingDocumentV135(response,pathname){
   if(isWebTv(pathname)){
     for(const asset of WEBTV_LEGACY_SCRIPTS)body=removeAsset(body,'script',asset);
     for(const asset of WEBTV_LEGACY_STYLES)body=removeAsset(body,'link',asset);
+    body=removeAsset(body,'script',WEBTV_MONITOR_CONTROLS_V135.split('?')[0]);
   }
   body=body.replace('</head>',`<link rel="stylesheet" href="${STUDIO_OPERATING_V135_CSS}"></head>`);
-  body=body.replace('</body>',`<script type="module" src="${STUDIO_OPERATING_V135_JS}"></script></body>`);
+  const webTvMonitor=isWebTv(pathname)?`<script type="module" src="${WEBTV_MONITOR_CONTROLS_V135}"></script>`:'';
+  body=body.replace('</body>',`${webTvMonitor}<script type="module" src="${STUDIO_OPERATING_V135_JS}"></script></body>`);
   const headers=rewritten(response);headers.set('X-Neptune-Studio-Operating-UX',STUDIO_OPERATING_V135_RELEASE);
   return new Response(body,{status:response.status,statusText:response.statusText,headers});
 }

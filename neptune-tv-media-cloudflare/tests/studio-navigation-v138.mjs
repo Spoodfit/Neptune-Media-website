@@ -28,7 +28,14 @@ async function verifyScreen(path,activeRoute){
   await context.route('**/api/**',route=>mockApi(route));
   const page=await context.newPage();
   const pageErrors=[];
+  const runtimeErrors=[];
   page.on('pageerror',error=>pageErrors.push(String(error.stack||error.message||error)));
+  const cdp=await context.newCDPSession(page);
+  await cdp.send('Runtime.enable');
+  cdp.on('Runtime.exceptionThrown',({exceptionDetails:d})=>{
+    const frames=d.stackTrace?.callFrames||[];
+    runtimeErrors.push(JSON.stringify({text:d.text,description:d.exception?.description||'',url:d.url||frames[0]?.url||'',line:(d.lineNumber??-1)+1,column:(d.columnNumber??-1)+1,frames:frames.slice(0,3).map(f=>({url:f.url,line:f.lineNumber+1,column:f.columnNumber+1,functionName:f.functionName}))}));
+  });
   try{
     await page.goto(`${base}${path}`,{waitUntil:'domcontentloaded',timeout:30000});
     await page.waitForFunction(()=>Boolean(document.documentElement.dataset.neptuneStudioShellReady),null,{timeout:12000});
@@ -52,8 +59,8 @@ async function verifyScreen(path,activeRoute){
     assert.equal(active.length,1,`${path}: expected exactly one active main tab`);
     assert.equal(active[0].route,activeRoute,`${path}: wrong active main tab`);
     assert(snapshot.overflow<=1,`${path}: canonical navigation creates horizontal overflow (${snapshot.overflow}px)`);
-    assert.equal(pageErrors.length,0,`${path}: runtime error(s): ${pageErrors.join('\n---\n')}`);
-  }finally{await context.close();}
+    assert.equal(pageErrors.length,0,`${path}: runtime error(s): ${pageErrors.join('\n---\n')}\nCDP: ${runtimeErrors.join('\n')}`);
+  }finally{await cdp.detach().catch(()=>{});await context.close();}
 }
 
 function mockApi(route){

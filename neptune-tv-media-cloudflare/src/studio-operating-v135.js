@@ -6,6 +6,8 @@ import {isSameOrigin,json,sanitizeText} from './security.js';
 export const STUDIO_OPERATING_V135_RELEASE='neptune-studio-operating-ux-20260821-v135';
 export const STUDIO_OPERATING_V135_JS='/studio/studio-operating-v135.js?v=2';
 export const STUDIO_OPERATING_V135_CSS='/studio/studio-operating-v135.css?v=2';
+const PASSAGE_SESSION_RELEASE='neptune-studio-passage-session-20260823-v141';
+const PASSAGE_SESSION_JS='/studio/client-passage-session-v141.js?v=1';
 const WIZARD_PATH='/studio/client-passage-wizard-v118.js';
 const CATALOG_VISUAL_PATH='/studio/studio-catalog-visual-v132.js';
 const CONTACT_API='/api/admin/contact-profile-v135';
@@ -43,22 +45,25 @@ export async function injectStudioOperatingDocumentV135(response,pathname){
   let body=await response.text();
   body=removeAsset(body,'script',STUDIO_OPERATING_V135_JS.split('?')[0]);
   body=removeAsset(body,'link',STUDIO_OPERATING_V135_CSS.split('?')[0]);
+  body=removeAsset(body,'script',PASSAGE_SESSION_JS.split('?')[0]);
   if(isWebTv(pathname)){
     for(const asset of WEBTV_LEGACY_SCRIPTS)body=removeAsset(body,'script',asset);
     for(const asset of WEBTV_LEGACY_STYLES)body=removeAsset(body,'link',asset);
     body=removeAsset(body,'script',WEBTV_MONITOR_CONTROLS_V135.split('?')[0]);
   }
-  body=body.replace('</head>',`<link rel="stylesheet" href="${STUDIO_OPERATING_V135_CSS}"></head>`);
+  const passageSession=isClients(pathname)?`<script src="${PASSAGE_SESSION_JS}"></script>`:'';
+  body=body.replace('</head>',`<link rel="stylesheet" href="${STUDIO_OPERATING_V135_CSS}">${passageSession}</head>`);
   const webTvMonitor=isWebTv(pathname)?`<script type="module" src="${WEBTV_MONITOR_CONTROLS_V135}"></script>`:'';
   body=body.replace('</body>',`${webTvMonitor}<script type="module" src="${STUDIO_OPERATING_V135_JS}"></script></body>`);
   const headers=rewritten(response);headers.set('X-Neptune-Studio-Operating-UX',STUDIO_OPERATING_V135_RELEASE);
+  if(isClients(pathname))headers.set('X-Neptune-Passage-Wizard-Security',PASSAGE_SESSION_RELEASE);
   return new Response(body,{status:response.status,statusText:response.statusText,headers});
 }
 
 export async function augmentStudioOperatingReleaseV135(response){
   const current=await response.json().catch(()=>({}));
   const headers=rewritten(response);headers.set('Content-Type','application/json; charset=utf-8');headers.set('X-Neptune-Studio-Operating-UX',STUDIO_OPERATING_V135_RELEASE);
-  return new Response(JSON.stringify({...current,studioOperatingUx:STUDIO_OPERATING_V135_RELEASE,studioDiffusionLayout:'single-cockpit-no-legacy-workspace-v135',studioAgenda:'global-interactive-v135',studioPassageWizardSecurity:'csrf-refresh-v135',studioCatalogInput:'stable-focus-v135'}),{status:response.status,statusText:response.statusText,headers});
+  return new Response(JSON.stringify({...current,studioOperatingUx:STUDIO_OPERATING_V135_RELEASE,studioDiffusionLayout:'single-cockpit-no-legacy-workspace-v135',studioAgenda:'global-interactive-v135',studioPassageWizardSecurity:PASSAGE_SESSION_RELEASE,studioCatalogInput:'stable-focus-v135'}),{status:response.status,statusText:response.statusText,headers});
 }
 
 export function isStudioOperatingAssetV135(pathname){return pathname===WIZARD_PATH||pathname===CATALOG_VISUAL_PATH;}
@@ -91,8 +96,8 @@ async function hardenPassageWizard(response){
   const hardened="async function loadContext(){try{const auth=await get('/api/auth/status');if(auth.csrfToken)sessionStorage.setItem('neptune_csrf',auth.csrfToken);const [clients,catalog,sales]=await Promise.all([get('/api/admin/clients'),post('/api/admin/media-catalog-v98/context',{},true),get('/api/reservation/catalog-v96').catch(()=>({cities:[]}))]);";
   if(body.includes(legacy))body=body.replace(legacy,hardened);
   else if(!body.includes("post('/api/admin/media-catalog-v98/context',{},true)"))throw new Error('studio_v135_wizard_contract_changed');
-  if(!body.includes("dataset.passageWizardSecurity='v135'"))body=body.replace("document.body.dataset.passageWizardV118=RELEASE;","document.body.dataset.passageWizardV118=RELEASE;document.body.dataset.passageWizardSecurity='v135';");
-  const headers=rewritten(response);headers.set('Content-Type','application/javascript; charset=utf-8');headers.set('X-Neptune-Passage-Wizard-Security',STUDIO_OPERATING_V135_RELEASE);
+  if(!body.includes("dataset.passageWizardSecurity='v141'"))body=body.replace("document.body.dataset.passageWizardV118=RELEASE;","document.body.dataset.passageWizardV118=RELEASE;document.body.dataset.passageWizardSecurity='v141';");
+  const headers=rewritten(response);headers.set('Content-Type','application/javascript; charset=utf-8');headers.set('X-Neptune-Passage-Wizard-Security',PASSAGE_SESSION_RELEASE);
   return new Response(body,{status:response.status,statusText:response.statusText,headers});
 }
 

@@ -10,6 +10,7 @@ import {
   isStudioOperatingAssetV135,
   isStudioOperationalDocumentV135,
 } from './studio-operating-v135.js';
+import {injectStudioZeroFlashV136,isStudioZeroFlashDocumentV136} from './studio-zero-flash-v136.js';
 
 export {WebTvEncoder};
 
@@ -72,6 +73,7 @@ export default{
     if(request.method==='GET'&&response.ok&&isStudioDocument(url.pathname)&&(response.headers.get('Content-Type')||'').includes('text/html')){
       response=await injectStudioReadiness(response);
       if(isStudioOperationalDocumentV135(url.pathname))response=await injectStudioOperatingDocumentV135(response,url.pathname);
+      if(isStudioZeroFlashDocumentV136(url.pathname))response=await injectStudioZeroFlashV136(response,url.pathname);
     }
     return response;
   },

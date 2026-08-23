@@ -1,9 +1,13 @@
-const RELEASE = 'neptune-studio-drive-upload-20260811-v94';
+const RELEASE = 'neptune-studio-drive-upload-20260824-v94.1-resilient';
 const TARGET_API = '/api/admin/drive-upload-v94/target';
 const SESSION_API = '/api/admin/drive-upload-v94/session';
 const REGISTER_API = '/api/admin/drive-upload-v94/register';
 const CHUNK_BYTES = 8 * 1024 * 1024;
-const MAX_RETRIES = 3;
+const MAX_CHUNK_RETRIES = 6;
+const MAX_RESUME_RETRIES = 6;
+const MAX_API_RETRIES = 4;
+const MAX_SESSION_RESTARTS = 1;
+const RETRYABLE_HTTP = new Set([408, 425, 429, 500, 502, 503, 504]);
 const ACCEPT = '.mp4,.mov,.m4v,.webm,.zip,video/mp4,video/quicktime,video/x-m4v,video/webm,application/zip';
 let scheduled = false;
 let busy = false;
@@ -70,7 +74,7 @@ async function loadTarget(orderId, mount, force = false) {
     renderUploader(mount, data);
   } catch (error) {
     if (!mount.isConnected) return;
-    mount.innerHTML = unavailableMarkup(error.message);
+    mount.innerHTML = unavailableMarkup(errorCode(error));
     mount.querySelector('[data-v94-retry]')?.addEventListener('click', () => {
       mount.innerHTML = loadingMarkup();
       targetCache.delete(orderId);
@@ -165,7 +169,7 @@ async function uploadBatch(files, category, mount, target) {
       finishRow(row, 'done', 'Déposé dans Drive');
     } catch (error) {
       failed += 1;
-      finishRow(row, 'error', errorLabel(error.message));
+      finishRow(row, 'error', errorLabel(errorCode(error)));
     }
   }
 
@@ -182,17 +186,32 @@ async function uploadBatch(files, category, mount, target) {
 }
 
 async function uploadOne(file, category, orderId, row) {
-  updateRow(row, 0, 'Création de la session Drive…');
-  const session = await api(SESSION_API, {
-    orderId,
-    category,
-    name: file.name,
-    mimeType: mimeFor(file),
-    size: file.size,
-  });
-  if (!session.uploadUrl) throw new Error('drive_upload_session_missing');
+  let restarts = 0;
+  let metadata = null;
 
-  const metadata = await uploadChunks(session.uploadUrl, file, row);
+  while (restarts <= MAX_SESSION_RESTARTS) {
+    updateRow(row, 0, restarts ? 'Renouvellement de la session Drive…' : 'Création de la session Drive…');
+    const session = await api(SESSION_API, {
+      orderId,
+      category,
+      name: file.name,
+      mimeType: mimeFor(file),
+      size: file.size,
+    });
+    if (!session.uploadUrl) throw new Error('drive_upload_session_missing');
+
+    try {
+      metadata = await uploadChunks(session.uploadUrl, file, row);
+      break;
+    } catch (error) {
+      const code = errorCode(error);
+      if (!['drive_upload_session_expired', 'drive_upload_session_gone'].includes(code) || restarts >= MAX_SESSION_RESTARTS) throw error;
+      restarts += 1;
+      updateRow(row, 0, 'La session Drive a expiré · reprise avec une nouvelle session…');
+      await wait(backoffMs(restarts));
+    }
+  }
+
   const fileId = String(metadata?.id || '');
   if (!fileId) throw new Error('drive_upload_incomplete');
   updateRow(row, 99, 'Vérification dans le Drive client…');
@@ -202,11 +221,14 @@ async function uploadOne(file, category, orderId, row) {
 
 async function uploadChunks(uploadUrl, file, row) {
   let offset = 0;
-  let retries = 0;
+  let failures = 0;
+
   while (offset < file.size) {
+    await waitForOnline(row);
     const endExclusive = Math.min(file.size, offset + CHUNK_BYTES);
     const chunk = file.slice(offset, endExclusive);
     let response;
+
     try {
       response = await fetch(uploadUrl, {
         method: 'PUT',
@@ -216,59 +238,132 @@ async function uploadChunks(uploadUrl, file, row) {
         },
         body: chunk,
       });
-    } catch (error) {
-      if (retries >= MAX_RETRIES) throw new Error('drive_network_error');
-      retries += 1;
-      await wait(retries * 900);
-      const resumed = await resumePosition(uploadUrl, file.size);
+    } catch {
+      failures += 1;
+      if (failures > MAX_CHUNK_RETRIES) throw new Error('drive_network_error');
+      updateRow(row, progressPercent(offset, file.size), 'Connexion interrompue · reprise automatique…');
+      await wait(backoffMs(failures));
+      const resumed = await resumePositionRobust(uploadUrl, file.size, row, offset);
       if (resumed.complete) return resumed.metadata;
-      offset = resumed.next;
+      offset = clampOffset(resumed.next, file.size);
       continue;
     }
 
     if (response.status === 200 || response.status === 201) {
-      updateRow(row, 100, 'Upload terminé');
+      updateRow(row, 99, 'Upload reçu par Google Drive…');
       return response.json().catch(() => ({}));
     }
+
     if (response.status === 308) {
-      const next = nextOffset(response.headers.get('Range'), endExclusive);
-      offset = next;
-      retries = 0;
-      updateRow(row, Math.min(99, Math.round(offset / file.size * 100)), `${formatBytes(offset)} / ${formatBytes(file.size)}`);
+      offset = clampOffset(nextOffset(response.headers.get('Range'), endExclusive), file.size);
+      failures = 0;
+      updateRow(row, progressPercent(offset, file.size), `${formatBytes(offset)} / ${formatBytes(file.size)}`);
       continue;
     }
-    if (response.status >= 500 && retries < MAX_RETRIES) {
-      retries += 1;
-      await wait(retries * 900);
-      const resumed = await resumePosition(uploadUrl, file.size);
-      if (resumed.complete) return resumed.metadata;
-      offset = resumed.next;
-      continue;
-    }
+
     if (response.status === 404) throw new Error('drive_upload_session_expired');
+    if (response.status === 410) throw new Error('drive_upload_session_gone');
+
+    if (RETRYABLE_HTTP.has(response.status)) {
+      failures += 1;
+      if (failures > MAX_CHUNK_RETRIES) throw new Error(`drive_upload_http_${response.status}`);
+      updateRow(row, progressPercent(offset, file.size), 'Google Drive répond lentement · reprise automatique…');
+      await retryAfterOrBackoff(response, failures);
+      const resumed = await resumePositionRobust(uploadUrl, file.size, row, offset);
+      if (resumed.complete) return resumed.metadata;
+      offset = clampOffset(resumed.next, file.size);
+      continue;
+    }
+
     throw new Error(`drive_upload_http_${response.status}`);
   }
-  const resumed = await resumePosition(uploadUrl, file.size);
+
+  const resumed = await resumePositionRobust(uploadUrl, file.size, row, offset);
   if (resumed.complete) return resumed.metadata;
   throw new Error('drive_upload_incomplete');
 }
 
-async function resumePosition(uploadUrl, total) {
-  const response = await fetch(uploadUrl, {
-    method: 'PUT',
-    headers: { 'Content-Range': `bytes */${total}` },
-  });
-  if (response.status === 200 || response.status === 201) {
-    return { complete: true, next: total, metadata: await response.json().catch(() => ({})) };
+async function resumePositionRobust(uploadUrl, total, row, lastKnownOffset = 0) {
+  let lastCode = 'drive_network_error';
+
+  for (let attempt = 1; attempt <= MAX_RESUME_RETRIES; attempt += 1) {
+    await waitForOnline(row);
+    let response;
+
+    try {
+      response = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Range': `bytes */${total}` },
+      });
+    } catch {
+      lastCode = 'drive_network_error';
+      updateRow(row, progressPercent(lastKnownOffset, total), 'Connexion interrompue · recherche du dernier bloc reçu…');
+      if (attempt < MAX_RESUME_RETRIES) {
+        await wait(backoffMs(attempt));
+        continue;
+      }
+      break;
+    }
+
+    if (response.status === 200 || response.status === 201) {
+      return { complete: true, next: total, metadata: await response.json().catch(() => ({})) };
+    }
+    if (response.status === 308) {
+      const next = clampOffset(nextOffset(response.headers.get('Range'), 0), total);
+      updateRow(row, progressPercent(next, total), next > 0 ? `Reprise à ${formatBytes(next)} / ${formatBytes(total)}` : 'Reprise du dépôt…');
+      return { complete: false, next, metadata: null };
+    }
+    if (response.status === 404) throw new Error('drive_upload_session_expired');
+    if (response.status === 410) throw new Error('drive_upload_session_gone');
+
+    lastCode = `drive_resume_http_${response.status}`;
+    if (!RETRYABLE_HTTP.has(response.status) || attempt >= MAX_RESUME_RETRIES) break;
+    updateRow(row, progressPercent(lastKnownOffset, total), 'Google Drive répond lentement · nouvelle tentative…');
+    await retryAfterOrBackoff(response, attempt);
   }
-  if (response.status === 308) return { complete: false, next: nextOffset(response.headers.get('Range'), 0), metadata: null };
-  if (response.status === 404) throw new Error('drive_upload_session_expired');
-  throw new Error(`drive_resume_http_${response.status}`);
+
+  throw new Error(lastCode);
 }
 
 function nextOffset(range, fallback) {
   const match = String(range || '').match(/bytes=0-(\d+)/u);
   return match ? Number(match[1]) + 1 : Number(fallback || 0);
+}
+
+function clampOffset(value, total) {
+  const next = Number(value || 0);
+  if (!Number.isFinite(next) || next < 0) return 0;
+  return Math.min(Math.trunc(next), Math.trunc(Number(total || 0)));
+}
+
+function progressPercent(offset, total) {
+  if (!Number(total)) return 0;
+  return Math.min(99, Math.max(0, Math.round(Number(offset || 0) / Number(total) * 100)));
+}
+
+async function waitForOnline(row) {
+  while (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    updateRow(row, currentRowPercent(row), 'Connexion Internet perdue · reprise dès le retour du réseau…');
+    await Promise.race([
+      new Promise((resolve) => window.addEventListener('online', resolve, { once: true })),
+      wait(15000),
+    ]);
+  }
+}
+
+async function retryAfterOrBackoff(response, attempt) {
+  const header = Number(response?.headers?.get?.('Retry-After') || 0);
+  const retryAfter = Number.isFinite(header) && header > 0 ? Math.min(header * 1000, 15000) : 0;
+  await wait(retryAfter || backoffMs(attempt));
+}
+
+function backoffMs(attempt) {
+  const base = Math.min(8000, 500 * (2 ** Math.max(0, Number(attempt || 1) - 1)));
+  return Math.round(base * (0.85 + Math.random() * 0.3));
+}
+
+function currentRowPercent(row) {
+  return Number(row?.querySelector?.('[data-v94-progress]')?.style?.width?.replace('%', '') || 0);
 }
 
 function queueItem(index, file, category) {
@@ -291,7 +386,7 @@ function finishRow(row, state, text) {
   if (!row) return;
   row.classList.remove('is-done', 'is-error');
   row.classList.add(state === 'done' ? 'is-done' : 'is-error');
-  updateRow(row, state === 'done' ? 100 : Number(row.querySelector('[data-v94-progress]')?.style.width?.replace('%', '') || 0), text);
+  updateRow(row, state === 'done' ? 100 : currentRowPercent(row), text);
 }
 
 function setZonesDisabled(mount, disabled) {
@@ -328,20 +423,43 @@ function mimeFor(file) {
 }
 
 async function api(path, payload = {}) {
-  const csrf = sessionStorage.getItem('neptune_csrf') || '';
-  const response = await fetch(path, {
-    method: 'POST',
-    credentials: 'same-origin',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      ...(csrf ? { 'X-CSRF-Token': csrf } : {}),
-    },
-    body: JSON.stringify(payload),
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || `http_${response.status}`);
-  return data;
+  let lastError = new Error('drive_network_error');
+
+  for (let attempt = 1; attempt <= MAX_API_RETRIES; attempt += 1) {
+    await waitForOnline(null);
+    const csrf = sessionStorage.getItem('neptune_csrf') || '';
+    let response;
+
+    try {
+      response = await fetch(path, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          ...(csrf ? { 'X-CSRF-Token': csrf } : {}),
+        },
+        body: JSON.stringify(payload),
+      });
+    } catch {
+      lastError = new Error('drive_network_error');
+      if (attempt < MAX_API_RETRIES) {
+        await wait(backoffMs(attempt));
+        continue;
+      }
+      throw lastError;
+    }
+
+    const data = await response.json().catch(() => ({}));
+    if (response.ok) return data;
+
+    const code = String(data.error || `http_${response.status}`);
+    lastError = new Error(code);
+    if (!RETRYABLE_HTTP.has(response.status) || attempt >= MAX_API_RETRIES) throw lastError;
+    await retryAfterOrBackoff(response, attempt);
+  }
+
+  throw lastError;
 }
 
 function loadingMarkup() {
@@ -352,9 +470,16 @@ function unavailableMarkup(code) {
   return `<div class="v94-unavailable"><strong>Dépôt Drive indisponible</strong><p>${esc(errorLabel(code))}</p><button type="button" data-v94-retry>Réessayer</button></div>`;
 }
 
+function errorCode(error) {
+  const message = String(error?.message || error || '').trim();
+  if (!message || /failed to fetch|networkerror|load failed|network request failed/iu.test(message)) return 'drive_network_error';
+  return message;
+}
+
 function errorLabel(code) {
-  if (String(code || '').startsWith('drive_upload_http_')) return `Google Drive a refusé une partie du fichier (${String(code).split('_').at(-1)}).`;
-  if (String(code || '').startsWith('drive_resume_http_')) return 'La reprise Google Drive a échoué. Relancez ce fichier.';
+  const value = String(code || '');
+  if (value.startsWith('drive_upload_http_')) return `Google Drive a refusé une partie du fichier (${value.split('_').at(-1)}).`;
+  if (value.startsWith('drive_resume_http_')) return 'Google Drive reste momentanément inaccessible après plusieurs tentatives. Relancez ce fichier.';
   return ({
     unauthorized: 'Votre session Studio a expiré.',
     csrf_failed: 'Rechargez la page pour renouveler la session de sécurité.',
@@ -365,14 +490,15 @@ function errorLabel(code) {
     invalid_upload_metadata: 'Ce fichier ne peut pas être envoyé dans Google Drive.',
     drive_upload_session_failed: 'Google Drive n’a pas pu ouvrir la session de dépôt.',
     drive_upload_session_missing: 'Google Drive n’a pas renvoyé de session de dépôt.',
-    drive_upload_session_expired: 'La session de dépôt a expiré. Relancez uniquement ce fichier.',
-    drive_network_error: 'La connexion a été interrompue plusieurs fois. Relancez ce fichier.',
+    drive_upload_session_expired: 'La session Drive a expiré malgré une tentative de renouvellement. Relancez uniquement ce fichier.',
+    drive_upload_session_gone: 'La session Drive n’est plus disponible. Relancez uniquement ce fichier.',
+    drive_network_error: 'La connexion à Google Drive reste indisponible après plusieurs reprises automatiques. Réessayez ce fichier.',
     drive_upload_incomplete: 'Le fichier n’a pas été complètement reçu par Google Drive.',
     drive_file_verification_failed: 'Neptune n’a pas pu vérifier le fichier dans Google Drive.',
     drive_file_wrong_folder: 'Le fichier n’est pas dans le dossier Drive attendu pour ce passage.',
     drive_file_metadata_mismatch: 'Le fichier ne correspond pas au passage en cours.',
     drive_registration_failed: 'Le fichier est dans Drive mais Neptune n’a pas pu l’enregistrer. Actualisez le Drive.',
-  })[code] || String(code || 'Une erreur est survenue.');
+  })[value] || 'Une erreur est survenue pendant le dépôt. Réessayez ce fichier.';
 }
 
 function safeUrl(value) {

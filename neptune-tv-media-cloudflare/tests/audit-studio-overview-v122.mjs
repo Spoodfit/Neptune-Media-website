@@ -71,8 +71,9 @@ try{
       });
       const page=await context.newPage();
       const errors=[];
-      page.on('pageerror',error=>errors.push(error.message));
-      page.on('console',message=>{if(message.type()==='error'&&!/favicon/iu.test(message.text()))errors.push(message.text());});
+      page.on('pageerror',error=>errors.push(`PAGE ${error.message}`));
+      page.on('response',response=>{const status=response.status(),url=response.url();if(status>=400&&!/favicon/iu.test(url))errors.push(`HTTP ${status} ${url}`);});
+      page.on('console',message=>{const text=message.text();if(message.type()==='error'&&!/favicon/iu.test(text)&&!/^Failed to load resource:/iu.test(text))errors.push(`CONSOLE ${text}`);});
       const response=await page.goto(`${baseURL}${screen.path}`,{waitUntil:'domcontentloaded',timeout:30000});
       assert(response?.ok(),`${screen.id}/${viewport.id}: HTTP ${response?.status()}`);
       await page.waitForFunction(()=>Boolean(document.documentElement.dataset.studioOverviewV122),null,{timeout:20000});

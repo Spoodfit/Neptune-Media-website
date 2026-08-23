@@ -4,8 +4,8 @@ import assert from 'node:assert/strict';
 
 const base=process.env.LOCAL_BASE_URL||'http://127.0.0.1:4173';
 const read=file=>fs.readFile(new URL(`../${file}`,import.meta.url),'utf8');
-const [entry,extension,operating,css,wizard,catalog,localWrangler,rootWrangler]=await Promise.all([
-  read('src/entry-v40.js'),read('src/studio-operating-v135.js'),read('public/studio/studio-operating-v135.js'),read('public/studio/studio-operating-v135.css'),read('public/studio/client-passage-wizard-v118.js'),read('public/studio/studio-catalog-visual-v132.js'),read('wrangler.jsonc'),fs.readFile(new URL('../../wrangler.jsonc',import.meta.url),'utf8')
+const [entry,extension,operating,modalFix,css,wizard,catalog,localWrangler,rootWrangler]=await Promise.all([
+  read('src/entry-v40.js'),read('src/studio-operating-v135.js'),read('public/studio/studio-operating-v135.js'),read('public/studio/studio-operating-modal-fix-v135-1.js'),read('public/studio/studio-operating-v135.css'),read('public/studio/client-passage-wizard-v118.js'),read('public/studio/studio-catalog-visual-v132.js'),read('wrangler.jsonc'),fs.readFile(new URL('../../wrangler.jsonc',import.meta.url),'utf8')
 ]);
 assert.match(localWrangler,/"main"\s*:\s*"src\/entry-v40\.js"/u);
 assert.match(rootWrangler,/"main"\s*:\s*"neptune-tv-media-cloudflare\/src\/entry-v40\.js"/u);
@@ -14,6 +14,7 @@ assert.ok(extension.includes("post('/api/admin/media-catalog-v98/context',{},tru
 assert.ok(extension.includes('renderCatalogResultsV135()'));
 assert.ok(extension.includes('webtv-workspace-v1.js')&&extension.includes('webtv-control-room-v122.js'));
 assert.ok(operating.includes('studioAgendaV135')&&operating.includes('wizardPhoneV135'));
+assert.ok(modalFix.includes("target.closest('[data-v135-date]')")&&modalFix.includes("target.closest('[data-v135-create]')"));
 
 const wizardLegacy="async function loadContext(){try{const [clients,catalog,sales]=await Promise.all([get('/api/admin/clients'),post('/api/admin/media-catalog-v98/context',{}),get('/api/reservation/catalog-v96').catch(()=>({cities:[]}))]);";
 const wizardSafe="async function loadContext(){try{const auth=await get('/api/auth/status');if(auth.csrfToken)sessionStorage.setItem('neptune_csrf',auth.csrfToken);const [clients,catalog,sales]=await Promise.all([get('/api/admin/clients'),post('/api/admin/media-catalog-v98/context',{},true),get('/api/reservation/catalog-v96').catch(()=>({cities:[]}))]);";
@@ -25,7 +26,7 @@ const safeCatalog=`${catalog.replace(catalogLegacy,catalogSafe)}\nfunction rende
 
 const browser=await chromium.launch({headless:true});
 try{await catalogTyping();await wizardAgenda();await webTvViewport();}finally{await browser.close();}
-console.log('Studio v135 gate passed');
+console.log('Studio v135.1 gate passed');
 
 async function addModule(page,source){await page.addScriptTag({type:'module',content:source});}
 
@@ -49,14 +50,16 @@ async function wizardAgenda(){
   await page.route('**/api/admin/media-catalog-v98/context',r=>{csrf=r.request().headers()['x-csrf-token']||'';r.fulfill({status:csrf==='csrf-v135'?200:403,contentType:'application/json',body:JSON.stringify(csrf==='csrf-v135'?{ok:true,formats:[],services:[],supplierRates:[],offerFamilies:[],cities:[],suppliers:[]}:{error:'csrf_failed'})});});
   await page.route('**/api/reservation/catalog-v96',r=>r.fulfill({contentType:'application/json',body:'{"ok":true,"cities":[]}'}));
   await page.goto(`${base}/studio/clients`);await addModule(page,safeWizard);await page.waitForFunction(()=>document.body.dataset.passageWizardV118);assert.equal(csrf,'csrf-v135');
-  await addModule(page,operating);await page.waitForSelector('#studioAgendaV135');
+  await addModule(page,operating);await addModule(page,modalFix);await page.waitForSelector('#studioAgendaV135');
   await page.locator('#newClient').click();await page.getByRole('button',{name:'Nouveau client'}).click();
   const first=page.locator('#wizardFirstNameV135'),last=page.locator('#wizardLastNameV135'),phone=page.locator('#wizardPhoneV135');
   await first.type('Jean');await last.type('Dupont');await phone.type('0612345678');
   assert.equal(await first.inputValue(),'Jean');assert.equal(await last.inputValue(),'Dupont');assert.equal(await phone.inputValue(),'0612345678');assert.equal(await page.locator('#wizardNameV118').inputValue(),'Jean Dupont');
   await page.evaluate(()=>newDialog.close());
   await page.locator('#studioAgendaV135').click();await page.waitForSelector('[data-v135-order="order-v135"]');
-  await page.locator('[data-v135-date="2026-08-28"]').click();await page.getByRole('button',{name:/Nouvelle préparation/}).click();
+  await page.locator('[data-v135-date="2026-08-28"]').click();
+  await page.waitForFunction(()=>!document.querySelector('#studioAgendaDialogV135')?.open&&document.querySelector('#studioAgendaActionV135')?.open);
+  await page.getByRole('button',{name:/Nouvelle préparation/}).click();
   assert.match(await page.locator('#v135PreparationOrder').innerText(),/Léa Dupoulin/u);
   await page.close();
 }

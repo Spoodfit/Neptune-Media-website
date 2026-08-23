@@ -1,4 +1,4 @@
-const RELEASE = 'neptune-studio-drive-upload-20260824-v94.1-resilient';
+const RELEASE = 'neptune-studio-drive-upload-20260811-v94';
 const TARGET_API = '/api/admin/drive-upload-v94/target';
 const SESSION_API = '/api/admin/drive-upload-v94/session';
 const REGISTER_API = '/api/admin/drive-upload-v94/register';

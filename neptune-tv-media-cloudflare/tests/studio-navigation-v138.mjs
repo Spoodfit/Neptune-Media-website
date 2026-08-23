@@ -40,7 +40,8 @@ async function verifyScreen(path,activeRoute){
     await page.goto(`${base}${path}`,{waitUntil:'domcontentloaded',timeout:30000});
     await page.waitForFunction(()=>Boolean(document.documentElement.dataset.neptuneStudioShellReady),null,{timeout:12000});
     await page.waitForSelector('.neptune-studio-nav',{state:'attached',timeout:10000});
-    await page.waitForTimeout(250);
+    await page.waitForFunction(()=>document.documentElement.dataset.neptuneStudioNavigationReady==='v138'&&document.querySelectorAll('.neptune-studio-nav [data-studio-route]').length===4,null,{timeout:10000});
+    await page.waitForTimeout(120);
     const snapshot=await page.evaluate(()=>({
       routes:[...document.querySelectorAll('.neptune-studio-nav [data-studio-route]')].map(item=>({
         route:item.dataset.studioRoute,
@@ -51,8 +52,10 @@ async function verifyScreen(path,activeRoute){
       })),
       sidebars:document.querySelectorAll('.neptune-studio-sidebar').length,
       overflow:document.documentElement.scrollWidth-innerWidth,
+      guard:document.documentElement.dataset.neptuneStudioNavigationGuard||'',
     }));
     assert.equal(snapshot.sidebars,1,`${path}: canonical sidebar duplicated or missing`);
+    assert.match(snapshot.guard,/v138/u,`${path}: canonical navigation guard missing`);
     assert.equal(snapshot.routes.length,4,`${path}: expected exactly four main Studio tabs`);
     assert.deepEqual(snapshot.routes.map(({route,label,href})=>[route,label,href]),expected,`${path}: main menu differs from canonical Studio navigation`);
     const active=snapshot.routes.filter(item=>item.active||item.current==='page');

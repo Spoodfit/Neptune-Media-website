@@ -56,16 +56,17 @@ const required = [
   'studioPrimaryNavigation:STUDIO_PRIMARY_NAVIGATION',
 ];
 for (const marker of required) {
-  if (!entry.includes(marker)) throw new Error(`Preserved v36 Studio shell is missing v105 marker: ${marker}`);
+  if (!entry.includes(marker)) throw new Error(`Preserved v36 Studio shell is missing historical v105 marker: ${marker}`);
 }
 
 const shellPath = path.join(root, `${prefix}public/studio/studio-information-architecture-v65-1.js`);
 const shell = fs.readFileSync(shellPath, 'utf8');
 const visibleRoutes = [...shell.matchAll(/\$\{link\('([^']+)'/gu)].map((match) => match[1]);
-if (JSON.stringify(visibleRoutes) !== JSON.stringify(['clients', 'diffusion', 'settings'])) {
-  throw new Error(`Canonical sidebar must expose exactly 3 routes; got ${JSON.stringify(visibleRoutes)}`);
+if (JSON.stringify(visibleRoutes) !== JSON.stringify(['clients', 'production', 'diffusion', 'settings'])) {
+  throw new Error(`Canonical sidebar must expose exactly 4 routes; got ${JSON.stringify(visibleRoutes)}`);
 }
-if (shell.includes("link('production'")) throw new Error('Production vidéo must not be a primary sidebar item');
+if (!shell.includes("link('production', '/studio/video-ai.html'")) throw new Error('Production vidéo must be a primary sidebar item');
+if (!shell.includes("if (kind === 'production') return 'production';")) throw new Error('Production vidéo must mark itself as the active primary route');
 if (!shell.includes('id="neptuneStudioLogout"')) throw new Error('Canonical Studio logout block is missing');
 if (!shell.includes("document.documentElement.dataset.neptuneStudioShellReady = 'v105'")) throw new Error('Canonical Studio shell never marks itself ready');
 if (!shell.includes('settleAdvancedSession(markReady)')) throw new Error('Réglages must wait for session resolution before first reveal');
@@ -73,6 +74,7 @@ if (shell.includes('installWebTvContext')) throw new Error('Diffusion must not i
 
 const css = fs.readFileSync(path.join(root, `${prefix}public/studio/studio-shell-v105.css`), 'utf8');
 if (!css.includes('#auth.login')) throw new Error('The legacy login screen is not hidden by the pre-paint guard');
+if (css.includes('[data-studio-route="production"]')) throw new Error('Canonical shell CSS still hides Production vidéo');
 
 const advanced = fs.readFileSync(path.join(root, `${prefix}public/studio/advanced.html`), 'utf8');
 if (!advanced.includes('<main id="auth" class="login" hidden>')) throw new Error('advanced.html must keep the login screen hidden until auth actually fails');
@@ -93,4 +95,8 @@ for (const marker of [
   if (!catalogueLoader.includes(marker)) throw new Error(`Catalogue bootstrap safety is missing: ${marker}`);
 }
 
-console.log('Studio v115 active entry verified: v40 preserves v39/v38 client experience, v37/v36 canonical 3-tab shell, Réglages auth gate, Catalogue v108 bootstrap, v115 runtime recovery and WebTV HLS playback CSP.');
+const zeroFlash = fs.readFileSync(path.join(root, `${prefix}src/studio-zero-flash-v136.js`), 'utf8');
+if (!zeroFlash.includes("const CANONICAL_SHELL='/studio/studio-information-architecture-v65-1.js?v=109';")) throw new Error('Active zero-flash layer must cache-bust the v138 canonical navigation');
+if (!zeroFlash.includes("const CANONICAL_CSS='/studio/studio-shell-v105.css?v=4';")) throw new Error('Active zero-flash layer must cache-bust the v138 canonical shell CSS');
+
+console.log('Studio v138 active entry verified: v40 preserves the runtime chain and zero-flash now serves one four-tab canonical shell across all Studio screens.');

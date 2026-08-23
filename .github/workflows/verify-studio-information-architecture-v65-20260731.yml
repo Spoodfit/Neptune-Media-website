@@ -143,8 +143,8 @@ jobs:
           for attempt in $(seq 1 60); do
             if curl --fail --silent --show-error --location http://127.0.0.1:8787/studio/clients > /tmp/studio-v105.html; then
               if grep -Fq '/studio/studio-information-architecture-v65.css?v=1' /tmp/studio-v105.html \
-                && grep -Fq '/studio/studio-shell-v105.css?v=3' /tmp/studio-v105.html \
-                && grep -Fq '/studio/studio-information-architecture-v65-1.js?v=107' /tmp/studio-v105.html \
+                && grep -Fq '/studio/studio-shell-v105.css?v=4' /tmp/studio-v105.html \
+                && grep -Fq '/studio/studio-information-architecture-v65-1.js?v=109' /tmp/studio-v105.html \
                 && grep -Fq 'data-neptune-studio-shell-boot="v105"' /tmp/studio-v105.html \
                 && ! grep -Fq 'studio_embed=' /tmp/studio-v105.html; then
                 ready=1

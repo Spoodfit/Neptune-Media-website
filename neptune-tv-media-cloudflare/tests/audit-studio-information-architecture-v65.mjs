@@ -43,7 +43,7 @@ const publishedCatalog = { ok: true, formats: [], cities: [], offers: [], suppli
 
 const screens = [
   { id: 'clients', path: '/studio/clients', active: 'Parcours clients', context: [] },
-  { id: 'production-legacy', path: '/studio/video-ai.html', active: null, context: [] },
+  { id: 'production', path: '/studio/video-ai.html', active: 'Production vidéo', context: [] },
   { id: 'webtv', path: '/studio/webtv.html', active: 'Diffusion', context: [] },
   { id: 'programme', path: '/studio/advanced.html#episodes', active: 'Diffusion', context: ['Web TV', 'Programme', 'Publicités', 'Audience'] },
   { id: 'catalogue', path: '/studio/advanced.html#programs', active: 'Réglages', context: ['Catalogue Media', 'Finances', 'Équipe', 'Journal', 'Général'] },
@@ -52,7 +52,7 @@ const viewports = [
   { id: 'desktop', width: 1440, height: 900 },
   { id: 'mobile', width: 390, height: 844 },
 ];
-const expectedPrimary = ['Parcours clients', 'Diffusion', 'Réglages'];
+const expectedPrimary = ['Parcours clients', 'Production vidéo', 'Diffusion', 'Réglages'];
 const readinessTimeout = 30000;
 
 const browser = await chromium.launch({ headless: true });
@@ -97,7 +97,7 @@ try {
         await page.waitForSelector('#content', { state: 'visible', timeout: readinessTimeout });
       }
       if (screen.id === 'catalogue') await page.waitForSelector('.c98-page', { timeout: readinessTimeout });
-      if (screen.id === 'production-legacy') await page.waitForSelector('.video-ai-main', { timeout: readinessTimeout });
+      if (screen.id === 'production') await page.waitForSelector('.video-ai-main', { timeout: readinessTimeout });
       if (screen.id === 'webtv') {
         await page.waitForSelector('#save', { timeout: readinessTimeout });
         await page.waitForSelector('[data-webtv-section-button="antenna"]', { timeout: readinessTimeout });
@@ -147,10 +147,9 @@ try {
       assert(metrics.topLevel, `${screen.id}/${viewport.id}: l’écran métier est encore embarqué dans une iframe`);
       assert(metrics.primarySidebarCount === 1, `${screen.id}/${viewport.id}: ${metrics.primarySidebarCount} sidebars canoniques détectées`);
       assert(metrics.logoutCount === 1, `${screen.id}/${viewport.id}: le bloc unique de déconnexion est absent ou dupliqué (${metrics.logoutCount})`);
-      assert(metrics.productionNavCount === 0, `${screen.id}/${viewport.id}: Production vidéo réapparaît dans la navigation principale`);
+      assert(metrics.productionNavCount === 1, `${screen.id}/${viewport.id}: Production vidéo doit apparaître exactement une fois dans la navigation principale`);
       assert(JSON.stringify(metrics.attachedPrimaryTexts) === JSON.stringify(expectedPrimary), `${screen.id}/${viewport.id}: navigation attachée incorrecte ${JSON.stringify(metrics.attachedPrimaryTexts)} · ${browserErrors.join(' | ')}`);
-      if (screen.active) assert(metrics.attachedActiveTexts.length === 1 && metrics.attachedActiveTexts[0] === screen.active, `${screen.id}/${viewport.id}: destination active incorrecte ${JSON.stringify(metrics.attachedActiveTexts)}`);
-      else assert(metrics.attachedActiveTexts.length === 0, `${screen.id}/${viewport.id}: une destination principale ne doit pas être active sur cette route interne ${JSON.stringify(metrics.attachedActiveTexts)}`);
+      assert(metrics.attachedActiveTexts.length === 1 && metrics.attachedActiveTexts[0] === screen.active, `${screen.id}/${viewport.id}: destination active incorrecte ${JSON.stringify(metrics.attachedActiveTexts)}`);
       assert(metrics.horizontalOverflow <= 2 || metrics.horizontalOverflowClipped, `${screen.id}/${viewport.id}: débordement horizontal global de ${metrics.horizontalOverflow}px sans politique de clipping ${JSON.stringify(metrics.overflowPolicy)}`);
       assert(JSON.stringify(metrics.contextTexts) === JSON.stringify(screen.context), `${screen.id}/${viewport.id}: sous-navigation incorrecte ${JSON.stringify(metrics.contextTexts)}`);
 
@@ -179,7 +178,7 @@ try {
         await page.waitForFunction(() => !document.body.classList.contains('studio-menu-open-v65'), null, { timeout: readinessTimeout });
       }
 
-      if (screen.id === 'production-legacy') assert(await page.locator('.video-ai-main').isVisible(), `production/${viewport.id}: workspace interne absent`);
+      if (screen.id === 'production') assert(await page.locator('.video-ai-main').isVisible(), `production/${viewport.id}: workspace interne absent`);
       if (screen.id === 'catalogue') assert(await page.locator('#content').isVisible(), `catalogue/${viewport.id}: contenu Réglages absent`);
       if (screen.id === 'webtv') {
         const sectionLabels = await page.locator('[data-webtv-section-button]').allTextContents();
@@ -196,7 +195,7 @@ try {
 }
 
 await writeFile(path.join(outputDir, 'report.json'), JSON.stringify({ ok: true, reports }, null, 2));
-console.log('Studio visual audit v105 passed: sidebar canonique unique, Diffusion sans sous-navigation redondante, desktop/mobile cohérents.');
+console.log('Studio visual audit v138 passed: sidebar canonique unique à quatre onglets, Diffusion sans sous-navigation redondante, desktop/mobile cohérents.');
 
 async function routeApi(route) {
   const url = new URL(route.request().url());

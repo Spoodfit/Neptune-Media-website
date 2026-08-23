@@ -85,7 +85,12 @@ try{
         await page.waitForSelector('.c116-preview-panel',{state:'attached',timeout:20000});
       }
       if(screen.kind==='settings')await page.waitForSelector('#studioSettingsOverviewV122:not([hidden])',{timeout:20000});
-      if(screen.kind==='webtv')await page.waitForSelector('#webtvCockpitV125',{state:'visible',timeout:20000});
+      if(screen.kind==='webtv'){
+        await page.waitForSelector('#webtvCockpitV125',{state:'visible',timeout:20000});
+        await page.waitForFunction(()=>Boolean(document.documentElement.dataset.webtvMonitorControlsV135),null,{timeout:10000});
+        await page.waitForSelector('#antennaPreview',{state:'attached',timeout:10000});
+        await page.waitForSelector('#v125MonitorControls',{state:'attached',timeout:10000});
+      }
       await page.waitForTimeout(500);
 
       const metrics=await page.evaluate(kind=>{
@@ -115,6 +120,8 @@ try{
             tabs:[...document.querySelectorAll('[data-v125-tab]')].map(x=>x.textContent.trim()),
             activeTabs:[...document.querySelectorAll('[data-v125-tab].active')].map(x=>x.textContent.trim()),
             programRows:document.querySelectorAll('.v125-program-row').length,
+            monitorControlsRelease:document.documentElement.dataset.webtvMonitorControlsV135||'',
+            antennaAttached:Boolean(video),
             controlsAttached:Boolean(document.querySelector('#v125MonitorControls')),
             nativeControls:Boolean(video?.controls),
             legacyCommand:visible(document.querySelector('#webTvCommandV122')),
@@ -150,6 +157,8 @@ try{
         assert(JSON.stringify(metrics.webtv.tabs)===JSON.stringify(['Antenne','Bibliothèque','Configuration','Analyse']),`webtv: onglets ${JSON.stringify(metrics.webtv.tabs)}`);
         assert(metrics.webtv.activeTabs.length===1&&metrics.webtv.activeTabs[0]==='Antenne','webtv: onglet Antenne initial absent');
         assert(metrics.webtv.programRows===2,'webtv: programme v125 incomplet');
+        assert(metrics.webtv.monitorControlsRelease,'webtv: runtime de contrôle moniteur v135 absent');
+        assert(metrics.webtv.antennaAttached,'webtv: retour antenne Neptune absent');
         assert(metrics.webtv.controlsAttached,'webtv: contrôles Neptune non montés');
         assert(metrics.webtv.nativeControls===false,'webtv: contrôles vidéo natifs encore actifs');
         assert(metrics.webtv.legacyCommand===false,'webtv: ancien command center v122 encore visible');
@@ -173,6 +182,7 @@ try{
   }
 }finally{await browser.close();}
 
-await writeFile(path.join(outputDir,'report.json'),JSON.stringify({ok:true,reports},null,2));
-console.log('Studio visual audit passed: canonical 5-destination shell, full-width Catalogue and compact WebTV v125 cockpit with four internal tabs.');
+await writeFile(path.join(outputDir,'report.json'),JSON.stringify(reports,null,2));
+console.log('Studio overview v122 audit passed.');
+
 function assert(condition,message){if(!condition)throw new Error(message);}

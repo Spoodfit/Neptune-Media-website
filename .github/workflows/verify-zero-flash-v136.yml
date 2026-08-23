@@ -12,6 +12,7 @@ on:
       - 'neptune-tv-media-cloudflare/public/studio/studio-information-architecture-v65-1.js'
       - 'neptune-tv-media-cloudflare/tests/zero-flash-v136.mjs'
       - 'neptune-tv-media-cloudflare/tests/studio-tabs-final-ready-v137.mjs'
+      - 'neptune-tv-media-cloudflare/tests/studio-navigation-v138.mjs'
       - '.github/workflows/verify-zero-flash-v136.yml'
   workflow_dispatch:
 
@@ -36,6 +37,7 @@ jobs:
           node --check neptune-tv-media-cloudflare/public/espace-client/session-zero-flash-v136.js
           node --check neptune-tv-media-cloudflare/tests/zero-flash-v136.mjs
           node --check neptune-tv-media-cloudflare/tests/studio-tabs-final-ready-v137.mjs
+          node --check neptune-tv-media-cloudflare/tests/studio-navigation-v138.mjs
           grep -Fq "from './studio-zero-flash-v136.js'" neptune-tv-media-cloudflare/src/entry-v40.js
           grep -Fq "from './client-zero-flash-v136.js'" neptune-tv-media-cloudflare/src/entry-v40.js
       - name: Install Worker and browser dependencies
@@ -65,6 +67,11 @@ jobs:
         env:
           ZERO_FLASH_BASE_URL: http://127.0.0.1:8787
         run: node tests/studio-tabs-final-ready-v137.mjs
+      - name: Audit canonical four-tab Studio navigation
+        working-directory: neptune-tv-media-cloudflare
+        env:
+          ZERO_FLASH_BASE_URL: http://127.0.0.1:8787
+        run: node tests/studio-navigation-v138.mjs
       - name: Dry-run active Worker bundle
         run: npx wrangler deploy --config wrangler.jsonc --dry-run --outdir .wrangler-v136-dry-run
       - name: Upload diagnostics

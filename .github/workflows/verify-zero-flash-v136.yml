@@ -39,9 +39,8 @@ jobs:
       - name: Install Worker and browser dependencies
         run: |
           cd neptune-tv-media-cloudflare
-          npm install --package-lock=false --ignore-scripts --no-audit --no-fund
-          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
-          npx playwright install --with-deps chromium
+          npm install --package-lock=false --ignore-scripts --no-audit --no-fund playwright@1.55.0
+          npx playwright install chromium
       - name: Start active Worker
         shell: bash
         run: |

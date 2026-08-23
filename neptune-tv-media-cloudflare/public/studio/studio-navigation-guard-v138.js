@@ -59,8 +59,8 @@ function normalizeAccount(sidebar){
   if(!account)return;
   const name=account.querySelector('b');
   const role=account.querySelector('small');
-  if(name&&['Compte Studio','Neptune Media'].includes(name.textContent.trim()))name.textContent='Neptune Media';
-  if(role&&['Se déconnecter','Réglages et accès','admin'].includes(role.textContent.trim()))role.textContent='admin';
+  if(name&&name.textContent.trim()==='Compte Studio')name.textContent='Neptune Media';
+  if(role&&['Se déconnecter','Réglages et accès'].includes(role.textContent.trim()))role.textContent='admin';
 }
 
 function activeRoute(){

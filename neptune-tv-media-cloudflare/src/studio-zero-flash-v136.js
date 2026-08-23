@@ -1,4 +1,4 @@
-const RELEASE='neptune-studio-zero-flash-20260823-v138.2';
+const RELEASE='neptune-studio-zero-flash-20260823-v138.3';
 const SHELL_CSS='/studio/studio-zero-flash-v136.css?v=1';
 const SHELL_JS='/studio/studio-zero-flash-v136.js?v=1';
 const CANONICAL_CSS='/studio/studio-shell-v105.css?v=4';
@@ -7,7 +7,6 @@ const CANONICAL_SHELL='/studio/studio-information-architecture-v65-1.js?v=109';
 const CANONICAL_PATH='/studio/studio-information-architecture-v65-1.js';
 const COMPAT_PATH='/studio/studio-information-architecture-v65.js';
 const CLIENT_OPERATIONS_PATH='/studio/studio-client-operations-v76.js';
-const CLIENT_OPERATIONS_JS='/studio/studio-client-operations-v76.js?v=2';
 
 const SHELL_PATHS=new Set([
   '/studio/clients',
@@ -32,14 +31,15 @@ export async function injectStudioZeroFlashV136(response,pathname){
   body=removeAsset(body,'script',SHELL_JS.split('?')[0]);
   body=removeAsset(body,'script',CANONICAL_PATH);
   body=removeAsset(body,'script',COMPAT_PATH);
+  // v76 was an already-broken legacy enhancement: it redeclared global helpers and
+  // removed the Production destination. Keep it out of the final canonical shell.
   if(isClients(pathname))body=removeAsset(body,'script',CLIENT_OPERATIONS_PATH);
   body=body.replace(/<html\b([^>]*)>/iu,(match,attrs)=>{
     if(/\bdata-neptune-studio-boot=/iu.test(attrs))return match.replace(/data-neptune-studio-boot=["'][^"']*["']/iu,'data-neptune-studio-boot="v136"');
     return `<html${attrs} data-neptune-studio-boot="v136">`;
   });
   body=body.replace(/<head>/iu,`<head><link rel="stylesheet" href="${SHELL_CSS}" data-neptune-zero-flash="v136"><link rel="stylesheet" href="${CANONICAL_CSS}" data-neptune-canonical-shell-css="v138">`);
-  const clientOperations=isClients(pathname)?`<script type="module" src="${CLIENT_OPERATIONS_JS}" data-neptune-client-operations="v138.2"></script>`:'';
-  body=body.replace(/<\/body>/iu,`${clientOperations}<script type="module" src="${CANONICAL_SHELL}" data-neptune-canonical-shell="v138"></script><script type="module" src="${SHELL_JS}" data-neptune-zero-flash="v136"></script></body>`);
+  body=body.replace(/<\/body>/iu,`<script type="module" src="${CANONICAL_SHELL}" data-neptune-canonical-shell="v138"></script><script type="module" src="${SHELL_JS}" data-neptune-zero-flash="v136"></script></body>`);
   const headers=new Headers(response.headers);
   for(const name of ['Content-Length','Content-Encoding','ETag','Last-Modified'])headers.delete(name);
   headers.set('Cache-Control','private, no-store, max-age=0');

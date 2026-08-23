@@ -27,6 +27,7 @@ try{
   await page.goto(`${base}/studio/clients`,{waitUntil:'domcontentloaded',timeout:30000});
   await page.waitForFunction(()=>document.documentElement.dataset.neptunePassageSessionGuard?.includes('v141'),null,{timeout:10000});
   await page.waitForFunction(()=>document.getElementById('wizardBodyV118')?.textContent?.includes('Pour qui est ce passage ?'),null,{timeout:10000});
+  await page.waitForFunction(()=>document.getElementById('wizardNextV118')?.disabled===false,null,{timeout:10000});
 
   const initial=await page.evaluate(()=>({
     text:document.getElementById('wizardBodyV118')?.textContent||'',

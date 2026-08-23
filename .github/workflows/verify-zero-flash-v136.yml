@@ -8,6 +8,7 @@ on:
       - 'neptune-tv-media-cloudflare/src/studio-zero-flash-v136.js'
       - 'neptune-tv-media-cloudflare/src/client-zero-flash-v136.js'
       - 'neptune-tv-media-cloudflare/public/studio/studio-zero-flash-v136.*'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-navigation-guard-v138.js'
       - 'neptune-tv-media-cloudflare/public/espace-client/session-zero-flash-v136.*'
       - 'neptune-tv-media-cloudflare/public/studio/studio-information-architecture-v65-1.js'
       - 'neptune-tv-media-cloudflare/tests/zero-flash-v136.mjs'
@@ -34,6 +35,7 @@ jobs:
           node --check neptune-tv-media-cloudflare/src/studio-zero-flash-v136.js
           node --check neptune-tv-media-cloudflare/src/client-zero-flash-v136.js
           node --check neptune-tv-media-cloudflare/public/studio/studio-zero-flash-v136.js
+          node --check neptune-tv-media-cloudflare/public/studio/studio-navigation-guard-v138.js
           node --check neptune-tv-media-cloudflare/public/espace-client/session-zero-flash-v136.js
           node --check neptune-tv-media-cloudflare/tests/zero-flash-v136.mjs
           node --check neptune-tv-media-cloudflare/tests/studio-tabs-final-ready-v137.mjs

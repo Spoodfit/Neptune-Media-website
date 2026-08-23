@@ -14,11 +14,11 @@ const files = {
 };
 
 const failures = [];
-const requiredLabels = ['Parcours clients', 'Diffusion', 'Réglages'];
+const requiredLabels = ['Parcours clients', 'Production vidéo', 'Diffusion', 'Réglages'];
 
-check(files.entry, "const STUDIO_UI_RELEASE='neptune-studio-ui-20260812-v105-three-tab-canonical-shell'", 'la release Studio v105 n’est pas active');
-check(files.entry, "const STUDIO_NAV_JS='/studio/studio-information-architecture-v65-1.js?v=107'", 'le runtime canonique n’est pas injecté avec le cache-busting Réglages');
-check(files.entry, "const STUDIO_SHELL_CSS='/studio/studio-shell-v105.css?v=3'", 'le CSS canonique anti-flash Réglages n’est pas injecté');
+check(files.entry, "const STUDIO_UI_RELEASE='neptune-studio-ui-20260812-v105-three-tab-canonical-shell'", 'la release Studio v105 historique n’est pas active');
+check(files.entry, "const STUDIO_NAV_JS='/studio/studio-information-architecture-v65-1.js?v=107'", 'le runtime canonique historique n’est pas injecté par le Worker de base');
+check(files.entry, "const STUDIO_SHELL_CSS='/studio/studio-shell-v105.css?v=3'", 'le CSS canonique historique n’est pas injecté par le Worker de base');
 check(files.entry, 'data-neptune-studio-shell-boot="v105"', 'le Worker ne marque pas le document Studio avant le premier paint');
 check(files.entry, 'secureStudioDocument(await injectStudioNavigation(response))', 'les pages métier ne reçoivent pas le shell partagé top-level');
 check(files.entry, "target.searchParams.delete('studio_embed')", 'les anciennes URLs iframe ne sont pas nettoyées');
@@ -32,9 +32,9 @@ check(files.router, "'settings/catalogue':'/studio/advanced.html#programs'", 'le
 check(files.runtime, "const KEY = '__neptuneStudioCanonicalShellV105'", 'le runtime partagé v105 n’est pas déclaré');
 check(files.runtime, 'installCanonicalSidebar', 'la sidebar canonique n’est pas reconstruite sur chaque route');
 check(files.runtime, "link('clients', '/studio/clients'", 'Parcours clients n’est pas la première destination canonique');
+check(files.runtime, "link('production', '/studio/video-ai.html'", 'Production vidéo n’est pas une destination canonique');
 check(files.runtime, "link('diffusion', '/studio/webtv.html'", 'Diffusion ne mène pas à la régie Web TV');
 check(files.runtime, "link('settings', '/studio/advanced.html#programs'", 'Réglages ne mène pas au Catalogue Media');
-forbid(files.runtime, "link('production'", 'Production vidéo reste une destination principale');
 check(files.runtime, 'id="neptuneStudioLogout"', 'le bloc unique de déconnexion n’est pas présent dans le composant canonique');
 check(files.runtime, "fetch('/api/auth/logout'", 'le bloc de compte ne déclenche pas la déconnexion');
 check(files.runtime, "['webtv', 'Web TV']", 'le sous-menu Diffusion des réglages ne contient pas Web TV');
@@ -50,7 +50,7 @@ forbid(files.runtime, "['Antenne', '/studio/webtv.html'", 'la rangée de navigat
 forbid(files.runtime, 'observeLegacyInterference', 'un ancien observateur récursif instable subsiste dans le runtime actif');
 
 check(files.shellStyles, 'body.studio-shell-v105 .neptune-studio-account', 'le bloc compte/déconnexion n’a pas de style canonique');
-check(files.shellStyles, '[data-studio-route="production"]', 'le garde-fou CSS contre Production vidéo est absent');
+forbid(files.shellStyles, '[data-studio-route="production"]', 'Production vidéo est encore masquée par le CSS canonique');
 check(files.shellStyles, 'data-neptune-studio-shell-boot="v105"', 'le CSS ne masque pas le shell historique pendant le boot');
 check(files.shellStyles, 'data-neptune-studio-shell-ready="v105"', 'le CSS ne révèle pas explicitement le shell canonique prêt');
 check(files.shellStyles, '#auth.login', 'l’écran de connexion historique n’est pas masqué pendant le bootstrap');
@@ -73,7 +73,6 @@ check(files.webtv, '<h1>Diffusion</h1>', 'la page Web TV n’est pas présentée
 check(files.webtv, 'Web TV active', 'la commande d’activation antenne est absente');
 
 for (const label of requiredLabels) check(files.runtime, label, `la navigation canonique ne contient pas « ${label} »`);
-forbid(files.runtime, "strong>Production vidéo</strong>", 'Production vidéo réapparaît dans la sidebar canonique');
 forbid(files.clients, 'Audience</strong>', 'Audience reste une destination principale sur Parcours clients');
 forbid(files.clients, 'Finances</strong>', 'Finances reste une destination principale sur Parcours clients');
 forbid(files.clients, 'Calendrier</strong>', 'Calendrier reste une destination principale sur Parcours clients');
@@ -86,7 +85,7 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Studio IA v105 validée : shell sans flash, trois destinations et Catalogue v108 avec CSRF et bootstrap borné.');
+console.log('Studio IA v138 validée : shell sans flash, quatre destinations principales et Catalogue v108 avec CSRF et bootstrap borné.');
 
 async function read(path) { return readFile(new URL(`../${path}`, import.meta.url), 'utf8'); }
 function check(content, needle, message) { if (!content.includes(needle)) failures.push(message); }

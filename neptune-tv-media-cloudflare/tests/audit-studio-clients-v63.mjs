@@ -78,7 +78,7 @@ try {
         activeNavigationCount: document.querySelectorAll('.neptune-studio-nav-link.active, .studio-nav-link.active, .neptune-studio-nav-link[aria-current="page"], .studio-nav-link[aria-current="page"]').length,
         primary,
         canonicalLogoutCount: document.querySelectorAll('#neptuneStudioLogout').length,
-        legacyProductionVisible: [...document.querySelectorAll('a,button')].some((item) => item.textContent.trim() === 'Production vidéo' && getComputedStyle(item).display !== 'none'),
+        productionVisibleCount: [...document.querySelectorAll('.neptune-studio-nav-link')].filter((item) => item.dataset.studioRoute === 'production' && getComputedStyle(item).display !== 'none').length,
         reducedMotionRulePresent: [...document.styleSheets].some((sheet) => {
           try { return [...sheet.cssRules].some((rule) => rule.cssText.includes('prefers-reduced-motion')); } catch { return false; }
         }),
@@ -94,9 +94,9 @@ try {
     assert(metrics.columns.every((column) => column.width >= 250), `${viewport.name}: workflow column below 250px`);
     assert(metrics.cards.every((card) => card.width >= 220), `${viewport.name}: client card below 220px`);
     assert(metrics.activeNavigationCount === 1, `${viewport.name}: canonical navigation must have exactly one active state`);
-    assert(JSON.stringify(metrics.primary) === JSON.stringify(['◎Parcours clients', '▶Diffusion', '⚙Réglages']), `${viewport.name}: canonical primary navigation changed`);
+    assert(JSON.stringify(metrics.primary) === JSON.stringify(['◎Parcours clients', '✦Production vidéo', '▶Diffusion', '⚙Réglages']), `${viewport.name}: canonical primary navigation changed`);
     assert(metrics.canonicalLogoutCount === 1, `${viewport.name}: expected one canonical logout block`);
-    assert(!metrics.legacyProductionVisible, `${viewport.name}: Production vidéo leaked into primary navigation`);
+    assert(metrics.productionVisibleCount === 1, `${viewport.name}: Production vidéo must be visible exactly once in primary navigation`);
     assert(metrics.reducedMotionRulePresent, `${viewport.name}: reduced motion rule missing`);
 
     const toggle = page.locator('#neptuneStudioMenuToggle, #studioMenuToggle').first();
@@ -134,7 +134,7 @@ try {
 const blockingErrors = results.flatMap((result) => result.errors.filter((error) => !error.includes('favicon')));
 assert(blockingErrors.length === 0, `Browser errors: ${blockingErrors.join(' | ')}`);
 await writeFile(path.join(outputDir, 'report.json'), JSON.stringify({ ok: true, results }, null, 2));
-console.log(`Studio clients v105 canonical-shell audit passed for ${viewports.length} viewports.`);
+console.log(`Studio clients v138 four-tab canonical-shell audit passed for ${viewports.length} viewports.`);
 
 function order(id, email, fullName, company, format, status) {
   const now = new Date();

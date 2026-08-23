@@ -56,6 +56,7 @@ try{
       await context.route('**/*',async route=>{
         const url=new URL(route.request().url());
         if(url.hostname==='media.example')return route.fulfill({status:204,body:''});
+        if(url.pathname.startsWith('/media/webtv/'))return route.fulfill({status:204,contentType:'video/mp4',body:''});
         if(!url.pathname.startsWith('/api/'))return route.continue();
         let body={ok:true};
         if(url.pathname==='/api/auth/status')body={authenticated:true,csrfToken:'test-csrf',user:adminState.user};

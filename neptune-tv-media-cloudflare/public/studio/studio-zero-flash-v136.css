@@ -1,0 +1,74 @@
+html[data-neptune-studio-boot="v136"]{
+  background:#f4f7fb;
+  color-scheme:light;
+}
+html[data-neptune-studio-boot="v136"] body{
+  min-height:100dvh;
+  margin:0;
+  overflow:hidden;
+  background:#f4f7fb;
+}
+html[data-neptune-studio-boot="v136"] body>*{
+  visibility:hidden!important;
+}
+html[data-neptune-studio-boot="v136"] body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:2147483645;
+  pointer-events:none;
+  background:
+    linear-gradient(90deg,#071a45 0 236px,#f4f7fb 236px 100%);
+}
+html[data-neptune-studio-boot="v136"] body::after{
+  content:"";
+  position:fixed;
+  z-index:2147483646;
+  top:0;
+  left:236px;
+  width:min(280px,30vw);
+  height:2px;
+  pointer-events:none;
+  background:linear-gradient(90deg,#46d9ff,#6955ed 52%,#ee46bc);
+  transform-origin:left center;
+  animation:neptune-studio-boot-v136 1.05s cubic-bezier(.2,.8,.2,1) infinite alternate;
+}
+html[data-neptune-studio-ready="v136"] body{
+  animation:neptune-studio-reveal-v136 .16s ease-out both;
+}
+html[data-neptune-studio-navigating="v136"] body{
+  cursor:progress;
+}
+html[data-neptune-studio-navigating="v136"] .neptune-studio-main,
+html[data-neptune-studio-navigating="v136"] .clients-workspace,
+html[data-neptune-studio-navigating="v136"] .video-ai-main,
+html[data-neptune-studio-navigating="v136"] .workspace{
+  opacity:.985;
+}
+@keyframes neptune-studio-boot-v136{
+  from{transform:scaleX(.28);opacity:.58}
+  to{transform:scaleX(1);opacity:1}
+}
+@keyframes neptune-studio-reveal-v136{
+  from{opacity:.94}
+  to{opacity:1}
+}
+@media(max-width:860px){
+  html[data-neptune-studio-boot="v136"] body::before{
+    background:linear-gradient(180deg,#fff 0 58px,#f4f7fb 58px 100%);
+    border-bottom:1px solid #e3e8f1;
+  }
+  html[data-neptune-studio-boot="v136"] body::after{
+    top:56px;
+    left:0;
+    width:min(220px,58vw);
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  html[data-neptune-studio-boot="v136"] body::after,
+  html[data-neptune-studio-ready="v136"] body{animation:none}
+}
+@supports(view-transition-name:root){
+  @view-transition{navigation:auto}
+  ::view-transition-old(root),::view-transition-new(root){animation-duration:.16s}
+}

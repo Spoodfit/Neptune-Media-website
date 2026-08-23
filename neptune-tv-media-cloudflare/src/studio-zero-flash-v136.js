@@ -1,4 +1,4 @@
-const RELEASE='neptune-studio-zero-flash-20260823-v138';
+const RELEASE='neptune-studio-zero-flash-20260823-v138.1';
 const SHELL_CSS='/studio/studio-zero-flash-v136.css?v=1';
 const SHELL_JS='/studio/studio-zero-flash-v136.js?v=1';
 const CANONICAL_CSS='/studio/studio-shell-v105.css?v=4';
@@ -6,6 +6,7 @@ const CANONICAL_CSS_PATH='/studio/studio-shell-v105.css';
 const CANONICAL_SHELL='/studio/studio-information-architecture-v65-1.js?v=109';
 const CANONICAL_PATH='/studio/studio-information-architecture-v65-1.js';
 const COMPAT_PATH='/studio/studio-information-architecture-v65.js';
+const CLIENT_OPERATIONS_PATH='/studio/studio-client-operations-v76.js';
 
 const SHELL_PATHS=new Set([
   '/studio/clients',
@@ -30,6 +31,7 @@ export async function injectStudioZeroFlashV136(response,pathname){
   body=removeAsset(body,'script',SHELL_JS.split('?')[0]);
   body=removeAsset(body,'script',CANONICAL_PATH);
   body=removeAsset(body,'script',COMPAT_PATH);
+  if(isClients(pathname))body=moduleizeScript(body,CLIENT_OPERATIONS_PATH);
   body=body.replace(/<html\b([^>]*)>/iu,(match,attrs)=>{
     if(/\bdata-neptune-studio-boot=/iu.test(attrs))return match.replace(/data-neptune-studio-boot=["'][^"']*["']/iu,'data-neptune-studio-boot="v136"');
     return `<html${attrs} data-neptune-studio-boot="v136">`;
@@ -51,9 +53,21 @@ function normalize(pathname){
   const clean=String(pathname||'').replace(/\/+$/u,'');
   return clean||'/';
 }
+function isClients(pathname){
+  const path=normalize(pathname);
+  return path==='/studio/clients'||path==='/studio/clients.html';
+}
 function removeAsset(body,type,path){
   const escaped=path.replace(/[.*+?^${}()|[\]\\]/gu,'\\$&');
   return type==='link'
     ?body.replace(new RegExp(`<link\\b[^>]*href=["'][^"']*${escaped}[^"']*["'][^>]*>\\s*`,'giu'),'')
     :body.replace(new RegExp(`<script\\b[^>]*src=["'][^"']*${escaped}[^"']*["'][^>]*>\\s*<\\/script>\\s*`,'giu'),'');
+}
+function moduleizeScript(body,path){
+  const escaped=path.replace(/[.*+?^${}()|[\]\\]/gu,'\\$&');
+  return body.replace(new RegExp(`<script\\b([^>]*?)src=(["'])((?:[^"']*)${escaped}[^"']*)\\2([^>]*)>\\s*<\\/script>`,'giu'),(match,before,quote,src,after)=>{
+    const attrs=`${before}${after}`;
+    if(/\btype\s*=\s*["']module["']/iu.test(attrs))return match;
+    return `<script type="module"${before}src=${quote}${src}${quote}${after}></script>`;
+  });
 }

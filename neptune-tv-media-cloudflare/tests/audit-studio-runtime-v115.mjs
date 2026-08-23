@@ -40,6 +40,10 @@ try{
   assert(await page.locator('.neptune-studio-account-copy b').textContent()==='Compte Studio','sidebar canonique incompatible');
   assert(errors.length===0,errors.join(' | '));
 
+  // Zero-flash intentionally keeps the legacy WebTV workspace non-paintable while
+  // the current cockpit is resolving. In this degraded fixture the v125 cockpit
+  // cannot mount, so wait for the bounded safe fallback before auditing v115.
+  await page.waitForFunction(()=>document.documentElement.dataset.neptuneStudioReady==='v136',null,{timeout:12000});
   await page.locator('#programPanel').waitFor({state:'visible',timeout:5000});
   const add=page.locator('#addFromLibrary');
   assert(await add.isVisible()&&await add.isEnabled(),'Ajouter un contenu indisponible dans Programme');

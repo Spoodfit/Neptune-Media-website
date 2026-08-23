@@ -5,17 +5,19 @@ on:
     branches: [main]
     paths:
       - 'neptune-tv-media-cloudflare/src/entry-v40.js'
+      - 'neptune-tv-media-cloudflare/src/studio-operating-v135.js'
       - 'neptune-tv-media-cloudflare/src/studio-zero-flash-v136.js'
       - 'neptune-tv-media-cloudflare/src/client-zero-flash-v136.js'
       - 'neptune-tv-media-cloudflare/public/studio/studio-zero-flash-v136.*'
       - 'neptune-tv-media-cloudflare/public/studio/studio-navigation-guard-v138.js'
       - 'neptune-tv-media-cloudflare/public/studio/studio-operating-modal-fix-v135-1.js'
+      - 'neptune-tv-media-cloudflare/public/studio/client-passage-session-v141.js'
       - 'neptune-tv-media-cloudflare/public/espace-client/session-zero-flash-v136.*'
       - 'neptune-tv-media-cloudflare/public/studio/studio-information-architecture-v65-1.js'
       - 'neptune-tv-media-cloudflare/tests/zero-flash-v136.mjs'
       - 'neptune-tv-media-cloudflare/tests/studio-tabs-final-ready-v137.mjs'
       - 'neptune-tv-media-cloudflare/tests/studio-navigation-v138.mjs'
-      - 'neptune-tv-media-cloudflare/tests/passage-session-v140.mjs'
+      - 'neptune-tv-media-cloudflare/tests/passage-session-v141.mjs'
       - '.github/workflows/verify-zero-flash-v136.yml'
   workflow_dispatch:
 
@@ -34,18 +36,21 @@ jobs:
       - name: Validate sources
         run: |
           node --check neptune-tv-media-cloudflare/src/entry-v40.js
+          node --check neptune-tv-media-cloudflare/src/studio-operating-v135.js
           node --check neptune-tv-media-cloudflare/src/studio-zero-flash-v136.js
           node --check neptune-tv-media-cloudflare/src/client-zero-flash-v136.js
           node --check neptune-tv-media-cloudflare/public/studio/studio-zero-flash-v136.js
           node --check neptune-tv-media-cloudflare/public/studio/studio-navigation-guard-v138.js
           node --check neptune-tv-media-cloudflare/public/studio/studio-operating-modal-fix-v135-1.js
+          node --check neptune-tv-media-cloudflare/public/studio/client-passage-session-v141.js
           node --check neptune-tv-media-cloudflare/public/espace-client/session-zero-flash-v136.js
           node --check neptune-tv-media-cloudflare/tests/zero-flash-v136.mjs
           node --check neptune-tv-media-cloudflare/tests/studio-tabs-final-ready-v137.mjs
           node --check neptune-tv-media-cloudflare/tests/studio-navigation-v138.mjs
-          node --check neptune-tv-media-cloudflare/tests/passage-session-v140.mjs
+          node --check neptune-tv-media-cloudflare/tests/passage-session-v141.mjs
           grep -Fq "from './studio-zero-flash-v136.js'" neptune-tv-media-cloudflare/src/entry-v40.js
           grep -Fq "from './client-zero-flash-v136.js'" neptune-tv-media-cloudflare/src/entry-v40.js
+          grep -Fq "client-passage-session-v141.js?v=1" neptune-tv-media-cloudflare/src/studio-operating-v135.js
       - name: Install Worker and browser dependencies
         run: |
           cd neptune-tv-media-cloudflare
@@ -78,11 +83,11 @@ jobs:
         env:
           ZERO_FLASH_BASE_URL: http://127.0.0.1:8787
         run: node tests/studio-navigation-v138.mjs
-      - name: Audit passage security-session recovery
+      - name: Audit cache-safe passage security-session recovery
         working-directory: neptune-tv-media-cloudflare
         env:
           ZERO_FLASH_BASE_URL: http://127.0.0.1:8787
-        run: node tests/passage-session-v140.mjs
+        run: node tests/passage-session-v141.mjs
       - name: Dry-run active Worker bundle
         run: npx wrangler deploy --config wrangler.jsonc --dry-run --outdir .wrangler-v136-dry-run
       - name: Upload diagnostics

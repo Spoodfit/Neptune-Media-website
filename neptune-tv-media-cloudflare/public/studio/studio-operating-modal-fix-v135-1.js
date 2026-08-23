@@ -5,8 +5,9 @@ document.body.dataset.studioOperatingModalFocus=RELEASE;
 document.addEventListener('click',event=>{
   const raw=event.target;
   if(!(raw instanceof Element))return;
-  if(raw.closest('[data-v135-order]'))return;
-  const trigger=raw.closest('[data-v135-date]')||raw.closest('[data-v135-create]');
+  const target=raw;
+  if(target.closest('[data-v135-order]'))return;
+  const trigger=target.closest('[data-v135-date]')||target.closest('[data-v135-create]');
   if(!trigger)return;
   if(trigger.dataset.v135ModalReplay==='1'){
     delete trigger.dataset.v135ModalReplay;

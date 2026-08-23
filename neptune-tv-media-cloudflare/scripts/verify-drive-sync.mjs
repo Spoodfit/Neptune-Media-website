@@ -7,6 +7,7 @@ const files = {
   store: await read('src/store-v5.js'),
   entry: await read('src/entry-v8.js'),
   release: await read('src/entry-v9.js'),
+  uploadEntry: await read('src/entry-v32.js'),
   clientUi: await read('public/espace-client/workflow-v45.js'),
   studioUi: await read('public/studio/drive-sync-v47.js'),
   appsScript: await read('integrations/google-drive/NeptuneDriveSync.gs'),
@@ -22,9 +23,20 @@ check(files.driveRoutes, '/api/webhooks/drive/provisioned', 'route provisioned a
 check(files.driveRoutes, '/api/webhooks/drive/files', 'route files absente');
 check(files.driveRoutes, 'X-Neptune-Drive-Secret', 'en-tête secret Drive absent');
 check(files.driveRoutes, 'drive_delivery_email_failed', 'retry e-mail Drive absent');
+check(files.driveRoutes, "STAGING_UPLOAD_PREFIX = '.__neptune_uploading__'", 'marqueur upload incomplet absent de la synchro Drive');
+check(files.driveRoutes, 'currentDeliverableFiles', 'filtre des fichiers réellement livrables absent');
+check(files.driveRoutes, 'size <= 0', 'fichiers vides non bloqués avant livraison');
+check(files.driveRoutes, 'currentFileIds.has', 'les anciens événements peuvent encore déclencher un mail hors du scan courant');
+check(files.driveRoutes, 'no_complete_file_in_current_scan', 'raison de blocage e-mail pour import incomplet absente');
 check(files.driveEmail, 'Voir mes contenus', 'CTA e-mail livraison compact absent');
 check(files.driveEmail, 'deliveryIdempotencyKey(payload.orderId, summary)', 'signature d’idempotence de bibliothèque absente');
 check(files.driveEmail, 'summary.latestContentAt', 'date de dernière version absente de l’idempotence');
+check(files.uploadEntry, 'neptuneExpectedSize', 'taille attendue non enregistrée dans la session resumable');
+check(files.uploadEntry, 'neptuneUploadState: UPLOAD_STATE_UPLOADING', 'état uploading absent de la session Drive');
+check(files.uploadEntry, 'actualSize !== expectedSize', 'intégrité de taille non vérifiée avant finalisation');
+check(files.uploadEntry, 'const provisional = await registerDriveInventory', 'enregistrement Neptune préalable à la finalisation absent');
+check(files.uploadEntry, 'const finalized = await finalizeGoogleDriveFile', 'finalisation explicite Drive absente');
+check(files.uploadEntry, 'neptuneUploadState: UPLOAD_STATE_COMPLETE', 'état complete absent de la finalisation Drive');
 check(files.store, "'/portal/drive-sync-plan'", 'store ne route pas le plan Drive');
 check(files.entry, 'handleDriveRoute', 'Worker ne charge pas les routes Drive');
 check(files.entry, '/studio/drive-sync-v47.js?v=2', 'version corrigée de l’interface Studio Drive non injectée');

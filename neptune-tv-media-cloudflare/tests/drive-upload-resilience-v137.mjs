@@ -5,6 +5,8 @@ import {
 } from '../src/drive-upload-resilience-v137.js';
 
 const source=await readFile(new URL('../public/studio/drive-upload-v94.js',import.meta.url),'utf8');
+const recovery=await readFile(new URL('../src/drive-upload-recovery-v137.js',import.meta.url),'utf8');
+const entry=await readFile(new URL('../src/entry-v41.js',import.meta.url),'utf8');
 const transformedResponse=await transformDriveUploadAssetV137(new Response(source,{status:200,headers:{'Content-Type':'application/javascript'}}));
 const transformed=await transformedResponse.text();
 
@@ -21,6 +23,13 @@ expect('pending registration is not presented as upload failure',transformed.inc
 expect('user is warned not to resend completed bytes',transformed.includes('Ne renvoyez pas ces fichiers')&&transformed.includes('ne renvoyez pas ce fichier'));
 expect('old static uploader release removed',!transformed.includes("const RELEASE = 'neptune-studio-drive-upload-20260811-v94';"));
 expect('transformed uploader is valid JavaScript',compiles(transformed));
+expect('server recovery searches only Studio staging uploads',recovery.includes("neptuneUploadState' and value='uploading'")&&recovery.includes("neptuneSource' and value='studio-v94'"));
+expect('server recovery requires exact byte integrity',recovery.includes('actualSize!==expectedSize'));
+expect('server recovery verifies expected destination folder',recovery.includes('parents.includes(expectedFolder)'));
+expect('server recovery finalizes Drive lifecycle atomically',recovery.includes('neptuneUploadState:COMPLETE')&&recovery.includes("method:'PATCH'"));
+expect('server recovery registers finalized object in Neptune',recovery.includes("callStore(studio,'/portal/drive-files'"));
+expect('recovery runs on client screen open',entry.includes('recoverDriveStagingUploadsV137(env)')&&entry.includes('ctx?.waitUntil?.'));
+expect('recovery also runs on five-minute maintenance',entry.includes("controller?.cron==='*/5 * * * *'"));
 
 const html='<html><body><script type="module" src="/studio/drive-upload-v94.js?v=1"></script></body></html>';
 const injected=await injectDriveUploadResilienceV137(new Response(html,{status:200,headers:{'Content-Type':'text/html'}}));

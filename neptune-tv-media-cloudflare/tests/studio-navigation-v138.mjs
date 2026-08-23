@@ -28,11 +28,12 @@ async function verifyScreen(path,activeRoute){
   await context.route('**/api/**',route=>mockApi(route));
   const page=await context.newPage();
   const pageErrors=[];
-  page.on('pageerror',error=>pageErrors.push(String(error.message||error)));
+  page.on('pageerror',error=>pageErrors.push(String(error.stack||error.message||error)));
   try{
     await page.goto(`${base}${path}`,{waitUntil:'domcontentloaded',timeout:30000});
     await page.waitForFunction(()=>Boolean(document.documentElement.dataset.neptuneStudioShellReady),null,{timeout:12000});
     await page.waitForSelector('.neptune-studio-nav',{state:'attached',timeout:10000});
+    await page.waitForTimeout(250);
     const snapshot=await page.evaluate(()=>({
       routes:[...document.querySelectorAll('.neptune-studio-nav [data-studio-route]')].map(item=>({
         route:item.dataset.studioRoute,
@@ -51,7 +52,7 @@ async function verifyScreen(path,activeRoute){
     assert.equal(active.length,1,`${path}: expected exactly one active main tab`);
     assert.equal(active[0].route,activeRoute,`${path}: wrong active main tab`);
     assert(snapshot.overflow<=1,`${path}: canonical navigation creates horizontal overflow (${snapshot.overflow}px)`);
-    assert.equal(pageErrors.length,0,`${path}: runtime error(s): ${pageErrors.join(' | ')}`);
+    assert.equal(pageErrors.length,0,`${path}: runtime error(s): ${pageErrors.join('\n---\n')}`);
   }finally{await context.close();}
 }
 

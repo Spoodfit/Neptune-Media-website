@@ -13,6 +13,9 @@ const DRIVE_UPLOAD_JS = '/studio/drive-upload-v94.js?v=1';
 const DRIVE_UPLOAD_CSS = '/studio/drive-upload-v94.css?v=1';
 const DRIVE_UPLOAD_ORIGIN = 'https://www.googleapis.com';
 const MAX_FILE_BYTES = 5 * 1024 ** 4;
+const STAGING_PREFIX = '.__neptune_uploading__';
+const UPLOAD_STATE_UPLOADING = 'uploading';
+const UPLOAD_STATE_COMPLETE = 'complete';
 const ALLOWED_CATEGORIES = new Set(['long', 'short']);
 const ALLOWED_EXACT_MIME = new Set([
   'application/octet-stream',
@@ -86,13 +89,15 @@ async function createUploadSession(request, studio) {
   googleUrl.searchParams.set('supportsAllDrives', 'true');
   googleUrl.searchParams.set('fields', 'id,name,mimeType,size,modifiedTime,webViewLink,parents,appProperties');
   const metadata = {
-    name,
+    name: stagingFilename(name),
     mimeType,
     parents: [folderId],
     appProperties: {
       neptuneOrderId: orderId,
       neptuneCategory: category,
       neptuneSource: 'studio-v94',
+      neptuneExpectedSize: String(Math.trunc(size)),
+      neptuneUploadState: UPLOAD_STATE_UPLOADING,
     },
   };
   const googleResponse = await fetch(googleUrl.toString(), {
@@ -147,42 +152,56 @@ async function registerUploadedFile(request, studio) {
   const credential = await readDriveCredential(studio);
   if (!credential.ok) return credential.response;
 
-  const googleUrl = new URL(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`);
-  googleUrl.searchParams.set('supportsAllDrives', 'true');
-  googleUrl.searchParams.set('fields', 'id,name,mimeType,size,modifiedTime,webViewLink,parents,appProperties');
-  const googleResponse = await fetch(googleUrl.toString(), {
-    headers: { Authorization: `Bearer ${credential.accessToken}`, Accept: 'application/json' },
-  });
-  const file = await googleResponse.json().catch(() => ({}));
-  if (!googleResponse.ok) {
-    return json({ error: 'drive_file_verification_failed', providerStatus: googleResponse.status }, 502);
-  }
+  const verified = await readGoogleDriveFile(credential.accessToken, fileId);
+  if (!verified.ok) return verified.response;
+  let file = verified.file;
 
   const parents = Array.isArray(file.parents) ? file.parents.map(String) : [];
   if (!parents.includes(target.data.targetFolderId)) {
     return json({ error: 'drive_file_wrong_folder' }, 409);
   }
-  if (String(file.appProperties?.neptuneOrderId || '') !== orderId
-    || String(file.appProperties?.neptuneCategory || '') !== category) {
+
+  const properties = file.appProperties && typeof file.appProperties === 'object' ? file.appProperties : {};
+  if (String(properties.neptuneOrderId || '') !== orderId
+    || String(properties.neptuneCategory || '') !== category
+    || String(properties.neptuneSource || '') !== 'studio-v94') {
     return json({ error: 'drive_file_metadata_mismatch' }, 409);
   }
 
-  const modifiedAt = validIso(file.modifiedTime) || new Date().toISOString();
-  const syncResponse = await callStore(studio, '/portal/drive-files', {
-    orderId,
-    scannedAt: new Date().toISOString(),
-    files: [{
-      driveFileId: file.id,
-      name: file.name,
-      mimeType: file.mimeType || 'application/octet-stream',
-      modifiedAt,
-      category,
-      webViewUrl: file.webViewLink || '',
-      sizeBytes: Number(file.size || 0),
-    }],
+  const actualSize = Math.max(0, Math.trunc(Number(file.size || 0)));
+  const expectedSize = Math.max(0, Math.trunc(Number(properties.neptuneExpectedSize || 0)));
+  const uploadState = String(properties.neptuneUploadState || '');
+  if (!validFileSize(actualSize) || !validFileSize(expectedSize) || actualSize !== expectedSize) {
+    console.warn('drive_upload_size_mismatch', { orderId, fileId, expectedSize, actualSize });
+    return json({ error: 'drive_file_metadata_mismatch' }, 409);
+  }
+  if (![UPLOAD_STATE_UPLOADING, UPLOAD_STATE_COMPLETE].includes(uploadState)) {
+    return json({ error: 'drive_file_metadata_mismatch' }, 409);
+  }
+
+  const originalName = originalFilename(file.name);
+  if (!originalName) return json({ error: 'drive_file_metadata_mismatch' }, 409);
+
+  // Phase 1: Neptune records the fully received bytes before the Drive object becomes deliverable.
+  const provisional = await registerDriveInventory(studio, orderId, category, file, {
+    name: originalName,
+    sizeBytes: actualSize,
   });
-  const registered = await syncResponse.json().catch(() => ({}));
-  if (!syncResponse.ok) return json({ error: registered.error || 'drive_registration_failed' }, syncResponse.status);
+  if (!provisional.ok) return provisional.response;
+
+  // Phase 2: only after Neptune has accepted the file do we remove the staging marker in Drive.
+  if (uploadState !== UPLOAD_STATE_COMPLETE || String(file.name || '') !== originalName) {
+    const finalized = await finalizeGoogleDriveFile(credential.accessToken, file, originalName);
+    if (!finalized.ok) return finalized.response;
+    file = finalized.file;
+  }
+
+  // Reconcile the final Drive metadata. This is idempotent and makes a lost HTTP response safe to retry.
+  const committed = await registerDriveInventory(studio, orderId, category, file, {
+    name: originalName,
+    sizeBytes: actualSize,
+  });
+  if (!committed.ok) return committed.response;
 
   return json({
     ok: true,
@@ -191,16 +210,87 @@ async function registerUploadedFile(request, studio) {
     category,
     file: {
       id: String(file.id || ''),
-      name: String(file.name || ''),
+      name: originalName,
       mimeType: String(file.mimeType || ''),
-      size: Number(file.size || 0),
-      modifiedTime: modifiedAt,
+      size: actualSize,
+      modifiedTime: validIso(file.modifiedTime) || new Date().toISOString(),
       webViewLink: String(file.webViewLink || ''),
     },
-    drive: registered.summary || null,
-    changed: Number(registered.changed || 0),
-    registered: Number(registered.accepted || 0) > 0,
+    drive: committed.data.summary || provisional.data.summary || null,
+    changed: Number(committed.data.changed || provisional.data.changed || 0),
+    registered: Number(committed.data.accepted || provisional.data.accepted || 0) > 0,
+    deliveryReady: true,
   });
+}
+
+async function readGoogleDriveFile(accessToken, fileId) {
+  const googleUrl = new URL(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`);
+  googleUrl.searchParams.set('supportsAllDrives', 'true');
+  googleUrl.searchParams.set('fields', 'id,name,mimeType,size,modifiedTime,webViewLink,parents,appProperties');
+  const response = await fetch(googleUrl.toString(), {
+    headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
+  });
+  const file = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    return { ok: false, response: json({ error: 'drive_file_verification_failed', providerStatus: response.status }, 502) };
+  }
+  return { ok: true, file };
+}
+
+async function finalizeGoogleDriveFile(accessToken, file, originalName) {
+  const fileId = cleanDriveFileId(file?.id);
+  if (!fileId) return { ok: false, response: json({ error: 'drive_file_verification_failed' }, 502) };
+  const googleUrl = new URL(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`);
+  googleUrl.searchParams.set('supportsAllDrives', 'true');
+  googleUrl.searchParams.set('fields', 'id,name,mimeType,size,modifiedTime,webViewLink,parents,appProperties');
+  const appProperties = {
+    ...(file.appProperties && typeof file.appProperties === 'object' ? file.appProperties : {}),
+    neptuneUploadState: UPLOAD_STATE_COMPLETE,
+  };
+  const response = await fetch(googleUrl.toString(), {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: 'application/json',
+      'Content-Type': 'application/json; charset=UTF-8',
+    },
+    body: JSON.stringify({ name: originalName, appProperties }),
+  });
+  const finalized = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    console.error('drive_upload_finalize_failed', { fileId, providerStatus: response.status });
+    return { ok: false, response: json({ error: 'drive_file_verification_failed', providerStatus: response.status }, 502) };
+  }
+  const expectedSize = Math.max(0, Math.trunc(Number(appProperties.neptuneExpectedSize || 0)));
+  const actualSize = Math.max(0, Math.trunc(Number(finalized.size || 0)));
+  if (!validFileSize(actualSize) || actualSize !== expectedSize
+    || String(finalized.appProperties?.neptuneUploadState || '') !== UPLOAD_STATE_COMPLETE
+    || String(finalized.name || '') !== originalName) {
+    return { ok: false, response: json({ error: 'drive_file_metadata_mismatch' }, 409) };
+  }
+  return { ok: true, file: finalized };
+}
+
+async function registerDriveInventory(studio, orderId, category, file, overrides = {}) {
+  const modifiedAt = validIso(file.modifiedTime) || new Date().toISOString();
+  const response = await callStore(studio, '/portal/drive-files', {
+    orderId,
+    scannedAt: new Date().toISOString(),
+    files: [{
+      driveFileId: file.id,
+      name: overrides.name || originalFilename(file.name),
+      mimeType: file.mimeType || 'application/octet-stream',
+      modifiedAt,
+      category,
+      webViewUrl: file.webViewLink || '',
+      sizeBytes: Number(overrides.sizeBytes || file.size || 0),
+    }],
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    return { ok: false, response: json({ error: data.error || 'drive_registration_failed' }, response.status), data };
+  }
+  return { ok: true, data };
 }
 
 async function readTarget(request, studio, orderId, category) {
@@ -247,6 +337,15 @@ function callStore(studio, path, body) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body || {}),
   });
+}
+
+function stagingFilename(name) {
+  return `${STAGING_PREFIX}${String(name || 'video')}`;
+}
+
+function originalFilename(name) {
+  const value = String(name || '');
+  return safeFilename(value.startsWith(STAGING_PREFIX) ? value.slice(STAGING_PREFIX.length) : value);
 }
 
 function cleanId(value) {

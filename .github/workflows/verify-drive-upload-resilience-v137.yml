@@ -8,6 +8,7 @@ on:
       - 'package.json'
       - 'neptune-tv-media-cloudflare/src/entry-v41.js'
       - 'neptune-tv-media-cloudflare/src/drive-upload-resilience-v137.js'
+      - 'neptune-tv-media-cloudflare/src/drive-upload-recovery-v137.js'
       - 'neptune-tv-media-cloudflare/src/entry-v32.js'
       - 'neptune-tv-media-cloudflare/src/portal-drive-routes.js'
       - 'neptune-tv-media-cloudflare/public/studio/drive-upload-v94.js'
@@ -24,6 +25,7 @@ on:
       - 'package.json'
       - 'neptune-tv-media-cloudflare/src/entry-v41.js'
       - 'neptune-tv-media-cloudflare/src/drive-upload-resilience-v137.js'
+      - 'neptune-tv-media-cloudflare/src/drive-upload-recovery-v137.js'
       - 'neptune-tv-media-cloudflare/src/entry-v32.js'
       - 'neptune-tv-media-cloudflare/src/portal-drive-routes.js'
       - 'neptune-tv-media-cloudflare/public/studio/drive-upload-v94.js'
@@ -45,8 +47,10 @@ jobs:
       - name: Validate production Worker entry
         run: |
           node --check neptune-tv-media-cloudflare/src/drive-upload-resilience-v137.js
+          node --check neptune-tv-media-cloudflare/src/drive-upload-recovery-v137.js
           node --check neptune-tv-media-cloudflare/src/entry-v41.js
           grep -Fq '"main": "neptune-tv-media-cloudflare/src/entry-v41.js"' wrangler.jsonc
+          grep -Fq "from './drive-upload-recovery-v137.js'" neptune-tv-media-cloudflare/src/entry-v41.js
       - name: Verify Drive upload resilience contract
         working-directory: neptune-tv-media-cloudflare
         run: node tests/drive-upload-resilience-v137.mjs

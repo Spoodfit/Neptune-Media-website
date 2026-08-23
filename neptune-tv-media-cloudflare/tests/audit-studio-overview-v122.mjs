@@ -40,17 +40,19 @@ const catalogFamily={
   key:catalogFamilyKey,
   cityId:'city-toulouse',cityName:'Toulouse',formatId:'format-hors-norme',formatName:'Hors Norme',formatSlug:'hors-norme',
   supplierId:'supplier-recbox',supplierName:'RecBox',active:true,publicOrder:10,priceSuffix:'HT',currency:'eur',supplierNetCents:60000,vatRateBps:2000,
+  preparationUrl:'https://example.com/preparation',
   tiers:{launch:{id:'offer-launch',clientPriceCents:99000,paymentUrl:'https://buy.stripe.com/test-launch'},promo:{id:'offer-promo',clientPriceCents:129000,paymentUrl:'https://buy.stripe.com/test-promo'},base:{id:'offer-base',clientPriceCents:159000,paymentUrl:'https://buy.stripe.com/test-base'}},
   configurationOptions:['Canapé','Chaise'],
-  configurationVisuals:[{label:'Canapé',imageBase64:'/assets/formats/exact-hn1.b64',description:'Canapé'},{label:'Chaise',imageBase64:'/assets/formats/exact-hn2.b64',description:'Chaise'}],
+  configurationVisuals:[{label:'Canapé',image:'/assets/posters/hors-norme-wide.webp',description:'Canapé'},{label:'Chaise',image:'/assets/posters/hors-norme-wide.webp',description:'Chaise'}],
   format:{id:'format-hors-norme',slug:'hors-norme',name:'Hors Norme',concept:'Interview signature',description:'Le concept Hors Norme.',durationLabel:'60 min',image:'/assets/posters/hors-norme-wide.webp',active:true},
 };
+const catalogService={id:'service-1',cityId:'city-toulouse',cityName:'Toulouse',supplierId:'supplier-recbox',supplierName:'RecBox',formatId:'format-hors-norme',formatName:'Hors Norme',active:true,preparationUrl:'https://example.com/preparation'};
 const catalogContext={
   ok:true,
   formats:[catalogFamily.format],
   suppliers:[{id:'supplier-recbox',name:'RecBox',active:true,defaultNetCents:60000,vatRateBps:2000}],
   cities:[{id:'city-toulouse',slug:'toulouse',name:'Toulouse',country:'France',active:true,publicOrder:10}],
-  families:[catalogFamily],configurationVisuals:catalogFamily.configurationVisuals,offers:[],services:[],supplierRates:[],rateUnits:[],durationOptions:[],
+  families:[catalogFamily],configurationVisuals:catalogFamily.configurationVisuals,offers:[],services:[catalogService],supplierRates:[],rateUnits:[],durationOptions:[],
 };
 const publishedCatalog={
   ok:true,
@@ -104,7 +106,7 @@ try{
       if(screen.kind==='catalogue'){
         await page.waitForSelector('.c98-page',{timeout:20000});
         await page.waitForFunction(()=>document.getElementById('content')?.dataset.c98==='ready',null,{timeout:20000});
-        await page.waitForSelector('#studioCatalogMarketplaceV128',{state:'visible',timeout:20000});
+        await page.waitForSelector('#studioCatalogHierarchyV133',{state:'visible',timeout:20000});
       }
       if(screen.kind==='settings')await page.waitForSelector('#studioSettingsOverviewV122:not([hidden])',{timeout:20000});
       if(screen.kind==='webtv'){
@@ -125,14 +127,16 @@ try{
         const overflow=Math.max(root.scrollWidth,body.scrollWidth)-innerWidth;
         const data={kind,nav,active,context,overflow,pageHeight:Math.max(root.scrollHeight,body.scrollHeight),viewportHeight:innerHeight};
         if(kind==='catalogue'){
-          const marketplace=document.getElementById('studioCatalogMarketplaceV128');
+          const hierarchy=document.getElementById('studioCatalogHierarchyV133');
           const legacyLayout=document.querySelector('.c98-layout');
           const oldTabs=document.querySelector('.c98-tabs');
           data.catalogue={
-            bodyMode:body.classList.contains('v122-studio-catalog'),
-            marketplaceVisible:visible(marketplace),
+            bodyMode:body.classList.contains('v133-catalog'),
+            hierarchyVisible:visible(hierarchy),
             legacyLayoutDisplay:legacyLayout?getComputedStyle(legacyLayout).display:'missing',
             oldTabsDisplay:oldTabs?getComputedStyle(oldTabs).display:'missing',
+            oldCockpit:Boolean(document.getElementById('studioCatalogCockpitV131')),
+            oldMarketplace:Boolean(document.getElementById('studioCatalogMarketplaceV128')),
             legacyGlance:document.querySelectorAll('[data-v122-catalog-tab]').length,
             tunnel:Boolean(document.querySelector('a[href^="/reserver"]')),
           };
@@ -164,10 +168,12 @@ try{
       assert(metrics.context===0,`${screen.id}/${viewport.id}: ancienne sous-navigation encore visible`);
       assert(metrics.overflow<=3,`${screen.id}/${viewport.id}: overflow ${metrics.overflow}px`);
       if(screen.kind==='catalogue'){
-        assert(metrics.catalogue.bodyMode,`${screen.id}: mode Catalogue absent`);
-        assert(metrics.catalogue.marketplaceVisible,`${screen.id}: marketplace Catalogue v128 absente`);
-        assert(metrics.catalogue.legacyLayoutDisplay==='none',`${screen.id}: gestion legacy visible dans la marketplace`);
+        assert(metrics.catalogue.bodyMode,`${screen.id}: mode Catalogue v133 absent`);
+        assert(metrics.catalogue.hierarchyVisible,`${screen.id}: hiérarchie Catalogue v133 absente`);
+        assert(metrics.catalogue.legacyLayoutDisplay==='none',`${screen.id}: gestion legacy visible sous v133`);
         assert(metrics.catalogue.oldTabsDisplay==='none',`${screen.id}: ancienne navigation Catalogue encore visible`);
+        assert(metrics.catalogue.oldCockpit===false,`${screen.id}: cockpit v131 encore monté`);
+        assert(metrics.catalogue.oldMarketplace===false,`${screen.id}: marketplace v128 encore montée`);
         assert(metrics.catalogue.legacyGlance===0,`${screen.id}: raccourcis legacy encore montés`);
         assert(metrics.catalogue.tunnel,`${screen.id}: accès au tunnel absent`);
       }

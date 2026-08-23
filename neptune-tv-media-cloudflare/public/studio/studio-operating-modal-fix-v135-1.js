@@ -1,13 +1,22 @@
-const RELEASE='neptune-studio-operating-modal-focus-20260823-v135.1';
+const RELEASE='neptune-studio-operating-modal-focus-20260823-v135.2';
 
 document.body.dataset.studioOperatingModalFocus=RELEASE;
 
 document.addEventListener('click',event=>{
-  const target=event.target;
-  if(!(target instanceof Element))return;
-  if(target.closest('[data-v135-order]'))return;
-  const opensAction=target.closest('[data-v135-date]')||target.closest('[data-v135-create]');
-  if(!opensAction)return;
+  const raw=event.target;
+  if(!(raw instanceof Element))return;
+  if(raw.closest('[data-v135-order]'))return;
+  const trigger=raw.closest('[data-v135-date]')||raw.closest('[data-v135-create]');
+  if(!trigger)return;
+  if(trigger.dataset.v135ModalReplay==='1'){
+    delete trigger.dataset.v135ModalReplay;
+    return;
+  }
   const agenda=document.getElementById('studioAgendaDialogV135');
-  if(agenda?.open)agenda.close();
+  if(!agenda?.open)return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  agenda.close();
+  trigger.dataset.v135ModalReplay='1';
+  queueMicrotask(()=>trigger.click());
 },true);

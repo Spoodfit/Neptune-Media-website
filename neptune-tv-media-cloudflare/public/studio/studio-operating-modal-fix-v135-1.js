@@ -1,4 +1,4 @@
-const RELEASE='neptune-studio-operating-modal-focus-20260823-v135.3';
+const RELEASE='neptune-studio-operating-modal-focus-20260823-v135.4';
 
 document.body.dataset.studioOperatingModalFocus=RELEASE;
 
@@ -17,7 +17,7 @@ document.addEventListener('click',event=>{
   if(!agenda?.open)return;
   event.preventDefault();
   event.stopImmediatePropagation();
-  agenda.close();
   trigger.dataset.v135ModalReplay='1';
-  setTimeout(()=>trigger.click(),0);
+  agenda.addEventListener('close',()=>trigger.click(),{once:true});
+  agenda.close();
 },true);

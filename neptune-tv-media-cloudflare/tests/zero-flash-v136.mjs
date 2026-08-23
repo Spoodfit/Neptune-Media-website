@@ -13,7 +13,7 @@ try{
   await clientFirstPaint(true);
   await clientFirstPaint(false);
   await reservationSurface();
-  console.log('Zero-flash v136 audit passed: Studio legacy UI never paints, client auth state never flashes, reservation tunnel has one canonical surface.');
+  console.log('Zero-flash audit passed: Studio v138 legacy UI never paints, client auth state never flashes, reservation tunnel has one canonical surface.');
 }finally{await browser.close();}
 
 async function sourceContracts(){
@@ -22,11 +22,13 @@ async function sourceContracts(){
     for(const path of studioPaths){
       const response=await request.request.get(`${base}${path}`);
       assert(response.ok(),`${path}: HTTP ${response.status()}`);
-      assert.match(response.headers()['x-neptune-studio-zero-flash']||'',/v136/u,`${path}: zero-flash header missing`);
+      assert.match(response.headers()['x-neptune-studio-zero-flash']||'',/v138/u,`${path}: current Studio zero-flash v138 header missing`);
       const html=await response.text();
       assert.match(html,/<html\b[^>]*data-neptune-studio-boot="v136"/iu,`${path}: boot attribute missing before paint`);
       const bodyIndex=html.search(/<body\b/iu),cssIndex=html.indexOf('/studio/studio-zero-flash-v136.css?v=1');
       assert(cssIndex>=0&&cssIndex<bodyIndex,`${path}: render-blocking guard not in head`);
+      assert.match(html,/\/studio\/studio-shell-v105\.css\?v=4/u,`${path}: current canonical Studio shell CSS is not injected`);
+      assert.match(html,/\/studio\/studio-information-architecture-v65-1\.js\?v=109/u,`${path}: current canonical Studio navigation is not injected`);
       assert.equal((html.match(/studio-information-architecture-v65-1\.js/gu)||[]).length,1,`${path}: canonical shell loaded more than once`);
       assert.equal((html.match(/studio-zero-flash-v136\.js/gu)||[]).length,1,`${path}: reveal runtime duplicated`);
     }
@@ -63,11 +65,12 @@ async function studioFirstPaint(path){
     assert.equal(before.before,'fixed',`${path}: controlled latest-shell boot surface missing`);
     assert(before.scrollWidth<=before.innerWidth+1,`${path}: boot surface overflows viewport`);
     releaseCanonical();
-    await page.waitForFunction(()=>document.documentElement.dataset.neptuneStudioReady==='v136',null,{timeout:10000});
-    const after=await page.evaluate(()=>({boot:document.documentElement.hasAttribute('data-neptune-studio-boot'),canonical:document.querySelectorAll('.neptune-studio-sidebar').length,visible:document.querySelector('.neptune-studio-sidebar')?getComputedStyle(document.querySelector('.neptune-studio-sidebar')).visibility:'missing',scrollWidth:document.documentElement.scrollWidth,innerWidth}));
+    await page.waitForFunction(()=>document.documentElement.dataset.neptuneStudioReady==='v136',null,{timeout:12000});
+    const after=await page.evaluate(()=>({boot:document.documentElement.hasAttribute('data-neptune-studio-boot'),canonical:document.querySelectorAll('.neptune-studio-sidebar').length,visible:document.querySelector('.neptune-studio-sidebar')?getComputedStyle(document.querySelector('.neptune-studio-sidebar')).visibility:'missing',routes:[...document.querySelectorAll('.neptune-studio-nav-link')].map(item=>item.querySelector('strong')?.textContent?.trim()||''),scrollWidth:document.documentElement.scrollWidth,innerWidth}));
     assert.equal(after.boot,false,`${path}: boot guard not removed`);
     assert.equal(after.canonical,1,`${path}: canonical sidebar duplicated or absent`);
     assert.equal(after.visible,'visible',`${path}: canonical sidebar not visible`);
+    assert.deepEqual(after.routes,['Parcours clients','Production vidéo','Diffusion','Réglages'],`${path}: wrong canonical Studio navigation after reveal`);
     assert(after.scrollWidth<=after.innerWidth+1,`${path}: final shell horizontal overflow`);
   }finally{releaseCanonical?.();await context.close();}
 }

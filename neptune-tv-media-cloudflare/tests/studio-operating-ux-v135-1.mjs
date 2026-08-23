@@ -14,7 +14,7 @@ assert.ok(extension.includes("post('/api/admin/media-catalog-v98/context',{},tru
 assert.ok(extension.includes('renderCatalogResultsV135()'));
 assert.ok(extension.includes('webtv-workspace-v1.js')&&extension.includes('webtv-control-room-v122.js'));
 assert.ok(operating.includes('studioAgendaV135')&&operating.includes('wizardPhoneV135'));
-assert.ok(modalFix.includes("target.closest('[data-v135-date]')")&&modalFix.includes("target.closest('[data-v135-create]')"));
+assert.ok(modalFix.includes("this.id==='studioAgendaActionV135'")&&modalFix.includes('agenda?.open')&&modalFix.includes('agenda.close()'));
 
 const wizardLegacy="async function loadContext(){try{const [clients,catalog,sales]=await Promise.all([get('/api/admin/clients'),post('/api/admin/media-catalog-v98/context',{}),get('/api/reservation/catalog-v96').catch(()=>({cities:[]}))]);";
 const wizardSafe="async function loadContext(){try{const auth=await get('/api/auth/status');if(auth.csrfToken)sessionStorage.setItem('neptune_csrf',auth.csrfToken);const [clients,catalog,sales]=await Promise.all([get('/api/admin/clients'),post('/api/admin/media-catalog-v98/context',{},true),get('/api/reservation/catalog-v96').catch(()=>({cities:[]}))]);";
@@ -26,7 +26,7 @@ const safeCatalog=`${catalog.replace(catalogLegacy,catalogSafe)}\nfunction rende
 
 const browser=await chromium.launch({headless:true});
 try{await catalogTyping();await wizardAgenda();await webTvViewport();}finally{await browser.close();}
-console.log('Studio v135.1 gate passed');
+console.log('Studio v135.5 gate passed');
 
 async function addModule(page,source){await page.addScriptTag({type:'module',content:source});}
 

@@ -103,11 +103,19 @@ function installPassageLoadingGuard(){
     const failed=Boolean(empty);
     const ready=Boolean(steps?.children?.length)&&!failed;
 
-    if(next)next.disabled=!ready;
-    if(create&&failed)create.disabled=true;
-    if(!failed)return;
+    // Do not disable navigation while the wizard is merely between render states.
+    // Only change controls when the UI state is unambiguous.
+    if(failed){
+      if(next)next.disabled=true;
+      if(create)create.disabled=true;
+    }else if(ready){
+      if(next)next.disabled=false;
+      if(create&&!create.hidden)create.disabled=false;
+    }
 
+    if(!failed)return;
     if(empty.querySelector('[data-passage-retry-v141]'))return;
+
     const retry=document.createElement('button');
     retry.type='button';
     retry.className='secondary';

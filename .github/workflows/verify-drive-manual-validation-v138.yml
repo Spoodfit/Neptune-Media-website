@@ -24,7 +24,7 @@ permissions:
 jobs:
   verify-drive-manual-validation:
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -42,9 +42,7 @@ jobs:
       - name: Verify production Worker remains v41
         run: |
           grep -Fq '"main": "neptune-tv-media-cloudflare/src/entry-v41.js"' wrangler.jsonc
+          grep -Fq '"main": "src/entry-v41.js"' neptune-tv-media-cloudflare/wrangler.jsonc
           grep -Fq "from './drive-manual-validation-v138.js'" neptune-tv-media-cloudflare/src/entry-v41.js
-      - name: Install Worker dependencies
-        working-directory: neptune-tv-media-cloudflare
-        run: npm install --ignore-scripts --no-audit --no-fund
-      - name: Wrangler dry-run
-        run: npx wrangler deploy --config wrangler.jsonc --dry-run --outdir .wrangler-drive-v138-dry-run
+      - name: Note global bundle gate
+        run: echo 'Cloudflare bundle validation is owned by the repository-wide Validate Neptune Worker workflow.'

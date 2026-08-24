@@ -2,25 +2,34 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
-const packageRoot = fs.existsSync(path.join(root, 'src/entry-v41.js')) && fs.existsSync(path.join(root, 'public/studio/studio-information-architecture-v65-1.js'));
+const packageRoot = fs.existsSync(path.join(root, 'src/entry-v42.js')) && fs.existsSync(path.join(root, 'public/studio/studio-information-architecture-v65-1.js'));
 const prefix = packageRoot ? '' : 'neptune-tv-media-cloudflare/';
 const wranglerPath = path.join(root, 'wrangler.jsonc');
 const wrangler = fs.readFileSync(wranglerPath, 'utf8');
 const mainMatch = wrangler.match(/"main"\s*:\s*"([^"]+)"/u);
 if (!mainMatch) throw new Error('wrangler.jsonc: main entry is missing');
 
-const expectedEntry = packageRoot ? 'src/entry-v41.js' : 'neptune-tv-media-cloudflare/src/entry-v41.js';
+const expectedEntry = packageRoot ? 'src/entry-v42.js' : 'neptune-tv-media-cloudflare/src/entry-v42.js';
 const activeEntry = mainMatch[1];
 if (activeEntry !== expectedEntry) {
-  throw new Error(`Studio active Worker is not routed through v41: wrangler main is ${activeEntry}, expected ${expectedEntry}`);
+  throw new Error(`Studio active Worker is not routed through v42: wrangler main is ${activeEntry}, expected ${expectedEntry}`);
 }
 
-const entry41 = fs.readFileSync(path.join(root, activeEntry), 'utf8');
+const entry42 = fs.readFileSync(path.join(root, activeEntry), 'utf8');
+if (!entry42.includes("from './entry-v41.js'")) {
+  throw new Error('Active v42 entry must preserve the complete v41 runtime');
+}
+if (!entry42.includes("from './drive-manual-validation-v138.js'")) {
+  throw new Error('Active v42 entry must activate manual Drive validation v138');
+}
+
+const entry41Path = path.join(root, `${prefix}src/entry-v41.js`);
+const entry41 = fs.readFileSync(entry41Path, 'utf8');
 if (!entry41.includes("from './entry-v40.js'")) {
-  throw new Error('Active v41 entry must preserve the complete v40 runtime');
+  throw new Error('Preserved v41 entry must preserve the complete v40 runtime');
 }
 if (!entry41.includes("from './drive-upload-resilience-v137.js'")) {
-  throw new Error('Active v41 entry must activate Drive upload resilience v137');
+  throw new Error('Preserved v41 entry must keep Drive upload resilience v137');
 }
 
 const entry40Path = path.join(root, `${prefix}src/entry-v40.js`);
@@ -44,7 +53,7 @@ if (!entry38.includes("from './entry-v37.js'")) {
   throw new Error('Preserved v38 entry must preserve the complete v37 Studio runtime');
 }
 if (!entry38.includes('neptune-client-experience-20260814-v118.2')) {
-  throw new Error('Active v41 chain must preserve the v118.2 client experience from v38');
+  throw new Error('Active v42 chain must preserve the v118.2 client experience from v38');
 }
 
 const entry37Path = path.join(root, `${prefix}src/entry-v37.js`);
@@ -108,4 +117,4 @@ const zeroFlash = fs.readFileSync(path.join(root, `${prefix}src/studio-zero-flas
 if (!zeroFlash.includes("const CANONICAL_SHELL='/studio/studio-information-architecture-v65-1.js?v=109';")) throw new Error('Active zero-flash layer must cache-bust the v138 canonical navigation');
 if (!zeroFlash.includes("const CANONICAL_CSS='/studio/studio-shell-v105.css?v=4';")) throw new Error('Active zero-flash layer must cache-bust the v138 canonical shell CSS');
 
-console.log('Studio v138 active entry verified: v41 preserves the v40 runtime chain and activates Drive upload resilience v137 without altering the canonical Studio shell.');
+console.log('Studio active entry verified: v42 preserves the v41/v40 runtime chain and adds manual Drive validation v138 without altering the canonical Studio shell.');

@@ -1,4 +1,4 @@
-const RELEASE='neptune-hors-norme-personalization-client-20260824-v139';
+const RELEASE='neptune-hors-norme-personalization-client-20260824-v139.1';
 const API='/api/client/hors-norme-personalization';
 const PHASES=[
   {id:'ouverture',title:'Ouverture de l’émission',objective:'Faire comprendre pourquoi cette conversation mérite d’exister, sans tomber dans la présentation corporate.',options:['Quel problème vous a tellement marqué que vous avez fini par vous dire : “je ne peux pas laisser les gens seuls avec ça” ?','Qui avez-vous vu galérer trop longtemps avant de comprendre qu’il avait besoin d’aide ?','Quelle situation vous révolte encore aujourd’hui dans votre métier ?'],placeholder:'Expliquez pourquoi cette question révèle le mieux votre vraie raison d’être.'},
@@ -13,7 +13,7 @@ const PHASES=[
   {id:'message_final',title:'Ce qu’il devait entendre',objective:'Finir sur une parole utile, humaine, sans basculer dans la promo.',options:['Qu’avez-vous envie de dire à quelqu’un qui se reconnaît, mais qui n’a encore rien osé changer ?','Quelle phrase aurait pu l’aider plus tôt s’il l’avait entendue au bon moment ?','Qu’est-ce qu’il doit arrêter de porter seul à partir d’aujourd’hui ?'],placeholder:'Expliquez le message final que vous voulez transmettre sans vendre.'},
   {id:'cloture',title:'Clôture d’émission',objective:'Laisser une idée forte et un premier mouvement simple.',options:['Quelle idée doit rester quand l’écran s’éteint ?','Quel premier pas peut-il faire dans les prochaines 24 heures sans tout bouleverser ?','Si cette conversation devait enlever un poids à quelqu’un, lequel ?'],placeholder:'Expliquez l’impression finale que l’audience doit garder.'}
 ];
-let data=null,index=0,saveTimer=0,saving=false,dirty=false;
+let data=null,index=0,saveTimer=0,saving=false,dirty=false,mountObserver=null;
 document.documentElement.dataset.horsNormePersonalization=RELEASE;
 start();
 
@@ -25,24 +25,27 @@ async function boot(){
     if(!response.ok)return;
     data=await response.json();
     hydrate();
+    index=firstIncompleteIndex();
     mount();
+    mountObserver=new MutationObserver(()=>mount());
+    mountObserver.observe(document.body,{childList:true,subtree:true});
   }catch(error){console.error('hors_norme_personalization_v139_boot_failed',error);}
 }
 function hydrate(){
   const saved=new Map((data.personalization?.phases||[]).map(phase=>[phase.id,phase]));
   data.personalization=data.personalization||{};
   data.personalization.phases=PHASES.map(phase=>({...phase,question:String(saved.get(phase.id)?.question||''),pourquoi:String(saved.get(phase.id)?.pourquoi||'')}));
-  const firstIncomplete=data.personalization.phases.findIndex(phase=>!phase.question||phase.pourquoi.trim().length<12);
-  index=firstIncomplete<0?0:firstIncomplete;
 }
+function firstIncompleteIndex(){const found=data.personalization.phases.findIndex(phase=>!phase.question||phase.pourquoi.trim().length<12);return found<0?0:found;}
 function mount(){
   if(document.getElementById('hnPersonalizationV139'))return;
-  const target=document.getElementById('ccPreparationDeckV118')||document.getElementById('horsNormePreparationV77')?.parentElement||document.querySelector('.dashboard-canvas');
-  if(!target){setTimeout(mount,300);return;}
+  const deck=document.getElementById('ccPreparationDeckV118');
+  const target=deck?.parentElement||document.getElementById('horsNormePreparationV77')?.parentElement||document.querySelector('.dashboard-canvas');
+  if(!target)return;
   const card=document.createElement('section');
   card.id='hnPersonalizationV139';
   card.className='hn-personalization-v139';
-  target.append(card);
+  if(deck)deck.after(card);else target.append(card);
   renderCard(card);
   ensureDialog();
 }
@@ -70,7 +73,7 @@ function ensureDialog(){
 function openDialog(){
   const dialog=document.getElementById('hnPersonalizationDialogV139');
   if(!dialog)return;
-  if(data.personalization.status==='submitted')index=0;
+  index=data.personalization.status==='submitted'?0:firstIncompleteIndex();
   renderStep();dialog.showModal();
 }
 async function closeDialog(){await save('draft',false);document.getElementById('hnPersonalizationDialogV139')?.close();renderCard();}
@@ -93,14 +96,15 @@ async function next(){
   if(!phase.question){error.textContent='Sélectionnez une formulation.';return;}
   if(phase.pourquoi.length<12){error.textContent='Expliquez votre choix en une phrase claire.';return;}
   markDirty();
-  if(index<PHASES.length-1){await save('draft',false);index+=1;renderStep();return;}
+  if(index<PHASES.length-1){const ok=await save('draft',false);if(!ok)return;index+=1;renderStep();return;}
   const ok=await save('submitted',true);
   if(!ok)return;
   document.getElementById('hnPersonalizationDialogV139').close();renderCard();toast('Vos choix sont enregistrés dans votre dossier Neptune.');
 }
 function markDirty(){dirty=true;clearTimeout(saveTimer);saveTimer=setTimeout(()=>save('draft',false),650);updateSaveLabel('Sauvegarde…');}
 async function save(status='draft',showErrors=false){
-  if(!data||saving)return true;
+  if(!data)return false;
+  if(saving){await waitForSave();if(status==='draft'&&!dirty)return true;}
   clearTimeout(saveTimer);
   if(status==='draft'&&!dirty)return true;
   saving=true;updateSaveLabel('Sauvegarde…');
@@ -112,8 +116,9 @@ async function save(status='draft',showErrors=false){
   }catch(error){console.error('hors_norme_personalization_v139_save_failed',error);updateSaveLabel('Sauvegarde impossible · réessayez');if(showErrors)document.querySelector('[data-hn-error]').textContent='Impossible d’enregistrer pour le moment. Réessayez.';return false;}
   finally{saving=false;}
 }
+async function waitForSave(){for(let attempt=0;attempt<40&&saving;attempt+=1)await new Promise(resolve=>setTimeout(resolve,50));}
 function countDone(){return (data?.personalization?.phases||[]).filter(phase=>phase.question&&String(phase.pourquoi||'').trim().length>=12).length;}
 function current(){return data.personalization.phases[index];}
 function updateSaveLabel(value){const node=document.querySelector('[data-hn-save]');if(node)node.textContent=value;}
 function toast(message){let node=document.getElementById('hnToastV139');if(!node){node=document.createElement('div');node.id='hnToastV139';node.className='hn-toast-v139';document.body.append(node);}node.textContent=message;node.classList.add('show');setTimeout(()=>node.classList.remove('show'),3200);}
-function esc(value){return String(value??'').replace(/[&<>"']/gu,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[char]));}
+function esc(value){return String(value??'').replace(/[&<>"']/gu,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));}

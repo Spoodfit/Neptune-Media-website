@@ -295,10 +295,11 @@ async function googleRequest(token,url,method='GET',body=null){
   }
 }
 
-function meetingUrl(event={}){
-  const direct=safeMeetUrl(event.hangoutLink);
+function meetingUrl(event){
+  const current=event||{};
+  const direct=safeMeetUrl(current.hangoutLink);
   if(direct)return direct;
-  const points=Array.isArray(event.conferenceData?.entryPoints)?event.conferenceData.entryPoints:[];
+  const points=Array.isArray(current.conferenceData?.entryPoints)?current.conferenceData.entryPoints:[];
   for(const point of points){
     if(point?.entryPointType!=='video')continue;
     const url=safeMeetUrl(point.uri);

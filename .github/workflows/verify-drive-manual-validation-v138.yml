@@ -1,0 +1,48 @@
+name: Verify Drive Manual Validation V138
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'neptune-tv-media-cloudflare/src/entry-v41.js'
+      - 'neptune-tv-media-cloudflare/src/drive-manual-validation-v138.js'
+      - 'neptune-tv-media-cloudflare/public/studio/drive-manual-validation-v138.js'
+      - 'neptune-tv-media-cloudflare/tests/drive-manual-validation-v138.mjs'
+      - '.github/workflows/verify-drive-manual-validation-v138.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'neptune-tv-media-cloudflare/src/entry-v41.js'
+      - 'neptune-tv-media-cloudflare/src/drive-manual-validation-v138.js'
+      - 'neptune-tv-media-cloudflare/public/studio/drive-manual-validation-v138.js'
+      - 'neptune-tv-media-cloudflare/tests/drive-manual-validation-v138.mjs'
+      - '.github/workflows/verify-drive-manual-validation-v138.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify-drive-manual-validation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate JavaScript syntax
+        run: |
+          node --check neptune-tv-media-cloudflare/src/drive-manual-validation-v138.js
+          node --check neptune-tv-media-cloudflare/public/studio/drive-manual-validation-v138.js
+          node --check neptune-tv-media-cloudflare/src/entry-v41.js
+          node --check neptune-tv-media-cloudflare/tests/drive-manual-validation-v138.mjs
+      - name: Verify manual Drive fallback contract and runtime
+        working-directory: neptune-tv-media-cloudflare
+        run: node tests/drive-manual-validation-v138.mjs
+      - name: Verify production Worker remains v41
+        run: |
+          grep -Fq '"main": "neptune-tv-media-cloudflare/src/entry-v41.js"' wrangler.jsonc
+          grep -Fq '"main": "src/entry-v41.js"' neptune-tv-media-cloudflare/wrangler.jsonc
+          grep -Fq "from './drive-manual-validation-v138.js'" neptune-tv-media-cloudflare/src/entry-v41.js
+      - name: Note global bundle gate
+        run: echo 'Cloudflare bundle validation is owned by the repository-wide Validate Neptune Worker workflow.'

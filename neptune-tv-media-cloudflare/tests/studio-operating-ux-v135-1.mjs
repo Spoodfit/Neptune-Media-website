@@ -4,12 +4,13 @@ import assert from 'node:assert/strict';
 
 const base=process.env.LOCAL_BASE_URL||'http://127.0.0.1:4173';
 const read=file=>fs.readFile(new URL(`../${file}`,import.meta.url),'utf8');
-const [entry,extension,operating,modalFix,css,wizard,catalog,localWrangler,rootWrangler]=await Promise.all([
-  read('src/entry-v40.js'),read('src/studio-operating-v135.js'),read('public/studio/studio-operating-v135.js'),read('public/studio/studio-operating-modal-fix-v135-1.js'),read('public/studio/studio-operating-v135.css'),read('public/studio/client-passage-wizard-v118.js'),read('public/studio/studio-catalog-visual-v132.js'),read('wrangler.jsonc'),fs.readFile(new URL('../../wrangler.jsonc',import.meta.url),'utf8')
+const [entry40,entry41,extension,operating,modalFix,css,wizard,catalog,localWrangler,rootWrangler]=await Promise.all([
+  read('src/entry-v40.js'),read('src/entry-v41.js'),read('src/studio-operating-v135.js'),read('public/studio/studio-operating-v135.js'),read('public/studio/studio-operating-modal-fix-v135-1.js'),read('public/studio/studio-operating-v135.css'),read('public/studio/client-passage-wizard-v118.js'),read('public/studio/studio-catalog-visual-v132.js'),read('wrangler.jsonc'),fs.readFile(new URL('../../wrangler.jsonc',import.meta.url),'utf8')
 ]);
-assert.match(localWrangler,/"main"\s*:\s*"src\/entry-v40\.js"/u);
-assert.match(rootWrangler,/"main"\s*:\s*"neptune-tv-media-cloudflare\/src\/entry-v40\.js"/u);
-assert.ok(entry.includes("from './studio-operating-v135.js'"));
+assert.match(localWrangler,/"main"\s*:\s*"src\/entry-v41\.js"/u);
+assert.match(rootWrangler,/"main"\s*:\s*"neptune-tv-media-cloudflare\/src\/entry-v41\.js"/u);
+assert.ok(entry41.includes("from './entry-v40.js'"));
+assert.ok(entry40.includes("from './studio-operating-v135.js'"));
 assert.ok(extension.includes("post('/api/admin/media-catalog-v98/context',{},true)"));
 assert.ok(extension.includes('renderCatalogResultsV135()'));
 assert.ok(extension.includes('webtv-workspace-v1.js')&&extension.includes('webtv-control-room-v122.js'));

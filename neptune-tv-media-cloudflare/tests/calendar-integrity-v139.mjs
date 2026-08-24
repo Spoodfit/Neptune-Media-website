@@ -31,7 +31,7 @@ expect(server.includes("error:filming.error||'filming_calendar_failed'"),'filmin
 expect(server.includes('/portal/preparation-calendar-synced-v85'),'repaired preparation Meet is persisted back to Neptune');
 expect(server.includes('sendUpdates=all'),'Calendar attendee updates are sent by Google');
 
-expect(client.includes("payload.action==='set_filming_date'"),'filming date request is augmented client-side');
+expect(client.includes("payload?.action==='set_filming_date'"),'filming date request is augmented client-side');
 expect(client.includes('data-v139-filming-meet'),'manual filming dialog exposes explicit Meet choice');
 expect(client.includes('Enregistrer + envoyer le Meet'),'manual UI communicates the side effect before validation');
 expect(client.includes('Réessayer Google Meet'),'failed synchronization stays retryable in the same dialog');

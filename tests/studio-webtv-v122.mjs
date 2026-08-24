@@ -61,6 +61,6 @@ expect(entry40.includes('webTv:webTvStats(this.sql)'),'admin state expose stats.
 expect(entry40.includes("STUDIO_V122_RELEASE='neptune-studio-webtv-20260818-v122'"),'release Studio v122 exposée');
 expect(entry40.includes("WEBTV_ANALYTICS_RELEASE='neptune-webtv-analytics-20260818-v122'"),'release analytics v122 exposée');
 expect(wrangler.includes('"* * * * *"'),'watchdog Cloudflare planifié chaque minute');
-expect(wrangler.includes('"main": "src/entry-v40.js"'),'entry-v40 reste le Worker actif');
+expect(wrangler.includes('"main": "src/entry-v42.js"'),'entry-v42 reste le Worker actif et préserve v40 dans sa chaîne');
 
 console.log(JSON.stringify({ok:true,checks:checks.length},null,2));

@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'neptune-tv-media-cloudflare/src/entry-v40.js'
+      - 'neptune-tv-media-cloudflare/src/entry-v42.js'
       - 'neptune-tv-media-cloudflare/src/studio-operating-v135.js'
       - 'neptune-tv-media-cloudflare/public/studio/studio-operating-v135.*'
       - 'neptune-tv-media-cloudflare/public/studio/studio-operating-modal-fix-v135-1.js'
@@ -31,14 +32,16 @@ jobs:
       - name: Validate source
         run: |
           node --check neptune-tv-media-cloudflare/src/entry-v40.js
+          node --check neptune-tv-media-cloudflare/src/entry-v42.js
           node --check neptune-tv-media-cloudflare/src/studio-operating-v135.js
           node --check neptune-tv-media-cloudflare/public/studio/studio-operating-v135.js
           node --check neptune-tv-media-cloudflare/public/studio/studio-operating-modal-fix-v135-1.js
           node --check neptune-tv-media-cloudflare/tests/studio-operating-ux-v135-1.mjs
           node neptune-tv-media-cloudflare/scripts/verify-simple-journey-v92.mjs
           grep -Fq '/studio/studio-operating-modal-fix-v135-1.js?v=1' neptune-tv-media-cloudflare/public/studio/clients.html
-          grep -Fq 'src/entry-v40.js' neptune-tv-media-cloudflare/wrangler.jsonc
-          grep -Fq 'neptune-tv-media-cloudflare/src/entry-v40.js' wrangler.jsonc
+          grep -Fq 'src/entry-v42.js' neptune-tv-media-cloudflare/wrangler.jsonc
+          grep -Fq 'neptune-tv-media-cloudflare/src/entry-v42.js' wrangler.jsonc
+          grep -Fq "from './entry-v41.js'" neptune-tv-media-cloudflare/src/entry-v42.js
           grep -Fq "from './studio-operating-v135.js'" neptune-tv-media-cloudflare/src/entry-v40.js
       - name: Install Playwright
         run: |

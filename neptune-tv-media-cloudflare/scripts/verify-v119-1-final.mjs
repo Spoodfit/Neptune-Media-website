@@ -8,6 +8,8 @@ const expect=(name,condition)=>checks.push({name,ok:Boolean(condition)});
 
 const rootWrangler=read('../wrangler.jsonc');
 const localWrangler=read('wrangler.jsonc');
+const entry42=read('src/entry-v42.js');
+const entry41=read('src/entry-v41.js');
 const entry40=read('src/entry-v40.js');
 const entry39=read('src/entry-v39.js');
 const entry38=read('src/entry-v38.js');
@@ -17,8 +19,10 @@ const docker=read('containers/webtv/Dockerfile');
 const studio=read('public/studio/webtv-native-v118.js');
 const wizard=read('public/studio/client-passage-wizard-v118.js');
 
-expect('root Worker targets v40',rootWrangler.includes('neptune-tv-media-cloudflare/src/entry-v40.js'));
-expect('local Worker targets v40',localWrangler.includes('src/entry-v40.js'));
+expect('root Worker targets active v42 wrapper',rootWrangler.includes('neptune-tv-media-cloudflare/src/entry-v42.js'));
+expect('local Worker targets active v42 wrapper',localWrangler.includes('src/entry-v42.js'));
+expect('v42 preserves v41',entry42.includes("from './entry-v41.js'"));
+expect('v41 preserves v40',entry41.includes("from './entry-v40.js'"));
 expect('v40 preserves v39',entry40.includes("from './entry-v39.js'"));
 expect('v40 fixes Hls.js worker CSP',entry40.includes('worker-src')&&entry40.includes('blob:')&&entry40.includes('neptune-webtv-playback-20260815-v119.5'));
 expect('v39 preserves current client v38',entry39.includes("from './entry-v38.js'"));
@@ -56,4 +60,4 @@ expect('Google appointment schedule remains integrated',wizard.includes('calenda
 const failed=checks.filter(check=>!check.ok);
 for(const check of checks)console.log(`${check.ok?'✓':'✗'} ${check.name}`);
 if(failed.length){console.error(`v119.1 final verification failed: ${failed.length} check(s).`);process.exit(1);}
-console.log(`v119.1 final contract verified through v40: ${checks.length} checks.`);
+console.log(`v119.1 final contract verified through active v42→v41→v40 chain: ${checks.length} checks.`);

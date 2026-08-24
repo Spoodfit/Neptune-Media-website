@@ -1,0 +1,38 @@
+name: Verify Calendar Integrity V139
+
+on:
+  pull_request:
+    paths:
+      - 'neptune-tv-media-cloudflare/src/entry-v41.js'
+      - 'neptune-tv-media-cloudflare/src/calendar-integrity-v139.js'
+      - 'neptune-tv-media-cloudflare/public/studio/calendar-integrity-v139.js'
+      - 'neptune-tv-media-cloudflare/tests/calendar-integrity-v139.mjs'
+      - '.github/workflows/verify-calendar-integrity-v139.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check JavaScript syntax
+        run: |
+          node --check neptune-tv-media-cloudflare/src/calendar-integrity-v139.js
+          node --check neptune-tv-media-cloudflare/public/studio/calendar-integrity-v139.js
+          node --check neptune-tv-media-cloudflare/src/entry-v41.js
+          node --check neptune-tv-media-cloudflare/tests/calendar-integrity-v139.mjs
+      - name: Verify Calendar and Meet contract
+        run: node neptune-tv-media-cloudflare/tests/calendar-integrity-v139.mjs
+      - name: Install Worker dependencies
+        working-directory: neptune-tv-media-cloudflare
+        run: npm install --ignore-scripts --no-audit --no-fund
+      - name: Wrangler dry-run
+        working-directory: neptune-tv-media-cloudflare
+        run: npx wrangler deploy --dry-run

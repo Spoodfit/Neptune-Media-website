@@ -3,9 +3,9 @@ import {handleHorsNormePersonalizationV139,HORS_NORME_PERSONALIZATION_RELEASE} f
 
 export {StudioStore,WebTvEncoder};
 
-const CLIENT_JS='/espace-client/client-hors-norme-personalization-v139.js?v=1';
+const CLIENT_JS='/espace-client/client-hors-norme-personalization-v139.js?v=2';
 const CLIENT_CSS='/espace-client/client-hors-norme-personalization-v139.css?v=1';
-const STUDIO_JS='/studio/studio-hors-norme-personalization-v139.js?v=1';
+const STUDIO_JS='/studio/studio-hors-norme-personalization-v139.js?v=2';
 const STUDIO_CSS='/studio/studio-hors-norme-personalization-v139.css?v=1';
 
 export default{
@@ -33,7 +33,7 @@ async function injectAssets(response,css,js,headerName){
   let body=await response.text();
   body=removeAsset(body,'link',css.split('?')[0]);
   body=removeAsset(body,'script',js.split('?')[0]);
-  body=body.replace('</head>',`<link rel="stylesheet" href="${css}"></head>`).replace('</body>',`<script src="${js}" defer></script></body>`);
+  body=body.replace('</head>',`<link rel="stylesheet" href="${css}"></head>`).replace('</body>',`<script type="module" src="${js}"></script></body>`);
   const headers=new Headers(response.headers);
   for(const name of ['Content-Length','Content-Encoding','ETag','Last-Modified'])headers.delete(name);
   headers.set('Cache-Control','private, no-store, max-age=0');

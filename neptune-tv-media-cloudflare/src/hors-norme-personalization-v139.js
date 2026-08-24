@@ -1,9 +1,66 @@
 import {clientToken} from './portal-http-utils.js';
 import {isSameOrigin,json} from './security.js';
 
-export const HORS_NORME_PERSONALIZATION_RELEASE='neptune-hors-norme-personalization-20260824-v139';
+export const HORS_NORME_PERSONALIZATION_RELEASE='neptune-hors-norme-personalization-20260824-v139.1';
 const PREFIX='private/client-personalization/hors-norme/';
 const PHASE_IDS=['ouverture','silence','scene','erreurs','croyances','chemin','freins','verites','avant_apres','message_final','cloture'];
+const ALLOWED_QUESTIONS={
+  ouverture:[
+    'Quel problème vous a tellement marqué que vous avez fini par vous dire : “je ne peux pas laisser les gens seuls avec ça” ?',
+    'Qui avez-vous vu galérer trop longtemps avant de comprendre qu’il avait besoin d’aide ?',
+    'Quelle situation vous révolte encore aujourd’hui dans votre métier ?'
+  ],
+  silence:[
+    'Qu’est-ce que votre client vit en silence, mais qu’il n’avouera presque jamais au premier rendez-vous ?',
+    'Quelle phrase se répète-t-il pour se rassurer alors qu’au fond il sait que ça bloque ?',
+    'À quel moment son problème commence à lui prendre plus que de l’argent : de l’énergie, de la confiance ou de la paix mentale ?'
+  ],
+  scene:[
+    'Racontez une scène précise où vous avez vu quelqu’un comprendre trop tard qu’il s’était trompé de problème.',
+    'Quel moment client vous revient encore parce qu’il résume tout ce que votre métier cherche à éviter ?',
+    'Décrivez la scène : qui est là, qu’est-ce qui se passe, et qu’est-ce qu’on comprend à ce moment-là ?'
+  ],
+  erreurs:[
+    'Quelle erreur votre client répète en pensant se protéger, alors qu’elle l’enfonce ?',
+    'Quel réflexe paraît raisonnable sur le moment, mais coûte très cher à long terme ?',
+    'Qu’est-ce qu’il continue de faire parce qu’il croit gagner du temps, alors qu’il en perd ?'
+  ],
+  croyances:[
+    'Quelle croyance donne l’impression d’être prudent, alors qu’elle bloque tout ?',
+    'Quelle phrase votre client se raconte pour ne pas prendre la décision qu’il sait nécessaire ?',
+    'Quelle vérité dérangeante ferait gagner des mois à ceux qui vous écoutent ?'
+  ],
+  chemin:[
+    'Si quelqu’un se reconnaît, quel est le premier pas intelligent, pas spectaculaire, juste intelligent ?',
+    'Par où faut-il commencer quand on est fatigué de tourner autour du même problème ?',
+    'Quelle étape paraît simple, mais change tout parce qu’elle remet de l’ordre dans la tête ?'
+  ],
+  freins:[
+    'Quand il dit “je n’ai pas le budget”, quelle peur est souvent cachée derrière ?',
+    'Quand il dit “je vais attendre”, qu’est-ce qu’il espère éviter de regarder en face ?',
+    'Quelle objection mérite d’être respectée, mais ne doit pas devenir une prison ?'
+  ],
+  verites:[
+    'Quelle phrase aimeriez-vous que votre client se répète demain matin ?',
+    'Quelle vérité simple ferait mal à entendre, mais du bien à accepter ?',
+    'Si vous deviez réveiller quelqu’un en une phrase, vous lui diriez quoi ?'
+  ],
+  avant_apres:[
+    'À quoi ressemblait la personne avant de comprendre ce qui bloquait vraiment ?',
+    'Quel déclic a changé sa façon de voir le problème ?',
+    'Qu’est-ce qui a changé dans sa posture, sa confiance ou ses décisions après ?'
+  ],
+  message_final:[
+    'Qu’avez-vous envie de dire à quelqu’un qui se reconnaît, mais qui n’a encore rien osé changer ?',
+    'Quelle phrase aurait pu l’aider plus tôt s’il l’avait entendue au bon moment ?',
+    'Qu’est-ce qu’il doit arrêter de porter seul à partir d’aujourd’hui ?'
+  ],
+  cloture:[
+    'Quelle idée doit rester quand l’écran s’éteint ?',
+    'Quel premier pas peut-il faire dans les prochaines 24 heures sans tout bouleverser ?',
+    'Si cette conversation devait enlever un poids à quelqu’un, lequel ?'
+  ]
+};
 
 export async function handleHorsNormePersonalizationV139(request,env,ctx,baseFetch){
   const url=new URL(request.url);
@@ -114,6 +171,8 @@ function normalizePayload(payload,order){
       pourquoi:clean(raw.pourquoi,1600),
     };
   });
+  const invalidQuestion=phases.find(phase=>phase.question&&!ALLOWED_QUESTIONS[phase.id].includes(phase.question));
+  if(invalidQuestion)return {error:`invalid_question:${invalidQuestion.id}`};
   if(status==='submitted'){
     const invalid=phases.find(phase=>!phase.question||phase.pourquoi.length<12);
     if(invalid)return {error:`phase_incomplete:${invalid.id}`};

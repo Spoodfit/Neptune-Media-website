@@ -3,9 +3,9 @@ import {handleHorsNormePersonalizationV139,HORS_NORME_PERSONALIZATION_RELEASE} f
 
 export {StudioStore,WebTvEncoder};
 
-const CLIENT_JS='/espace-client/client-hors-norme-personalization-v139.js?v=2';
+const CLIENT_JS='/espace-client/client-hors-norme-personalization-v139.js?v=3';
 const CLIENT_CSS='/espace-client/client-hors-norme-personalization-v139.css?v=1';
-const STUDIO_JS='/studio/studio-hors-norme-personalization-v139.js?v=2';
+const STUDIO_JS='/studio/studio-hors-norme-personalization-v139.js?v=3';
 const STUDIO_CSS='/studio/studio-hors-norme-personalization-v139.css?v=1';
 
 export default{

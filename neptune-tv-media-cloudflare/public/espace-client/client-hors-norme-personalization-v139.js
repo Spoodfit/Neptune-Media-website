@@ -1,4 +1,4 @@
-const RELEASE='neptune-hors-norme-personalization-client-20260824-v139.1';
+const RELEASE='neptune-hors-norme-personalization-client-20260824-v139.2';
 const API='/api/client/hors-norme-personalization';
 const PHASES=[
   {id:'ouverture',title:'Ouverture de l’émission',objective:'Faire comprendre pourquoi cette conversation mérite d’exister, sans tomber dans la présentation corporate.',options:['Quel problème vous a tellement marqué que vous avez fini par vous dire : “je ne peux pas laisser les gens seuls avec ça” ?','Qui avez-vous vu galérer trop longtemps avant de comprendre qu’il avait besoin d’aide ?','Quelle situation vous révolte encore aujourd’hui dans votre métier ?'],placeholder:'Expliquez pourquoi cette question révèle le mieux votre vraie raison d’être.'},
@@ -13,7 +13,7 @@ const PHASES=[
   {id:'message_final',title:'Ce qu’il devait entendre',objective:'Finir sur une parole utile, humaine, sans basculer dans la promo.',options:['Qu’avez-vous envie de dire à quelqu’un qui se reconnaît, mais qui n’a encore rien osé changer ?','Quelle phrase aurait pu l’aider plus tôt s’il l’avait entendue au bon moment ?','Qu’est-ce qu’il doit arrêter de porter seul à partir d’aujourd’hui ?'],placeholder:'Expliquez le message final que vous voulez transmettre sans vendre.'},
   {id:'cloture',title:'Clôture d’émission',objective:'Laisser une idée forte et un premier mouvement simple.',options:['Quelle idée doit rester quand l’écran s’éteint ?','Quel premier pas peut-il faire dans les prochaines 24 heures sans tout bouleverser ?','Si cette conversation devait enlever un poids à quelqu’un, lequel ?'],placeholder:'Expliquez l’impression finale que l’audience doit garder.'}
 ];
-let data=null,index=0,saveTimer=0,saving=false,dirty=false,mountObserver=null;
+let data=null,index=0,saveTimer=0,saving=false,dirty=false,mountObserver=null,editRevision=0;
 document.documentElement.dataset.horsNormePersonalization=RELEASE;
 start();
 
@@ -101,18 +101,23 @@ async function next(){
   if(!ok)return;
   document.getElementById('hnPersonalizationDialogV139').close();renderCard();toast('Vos choix sont enregistrés dans votre dossier Neptune.');
 }
-function markDirty(){dirty=true;clearTimeout(saveTimer);saveTimer=setTimeout(()=>save('draft',false),650);updateSaveLabel('Sauvegarde…');}
+function markDirty(){editRevision+=1;dirty=true;if(data?.personalization)data.personalization.status='draft';clearTimeout(saveTimer);saveTimer=setTimeout(()=>save('draft',false),650);updateSaveLabel('Sauvegarde…');}
 async function save(status='draft',showErrors=false){
   if(!data)return false;
-  if(saving){await waitForSave();if(status==='draft'&&!dirty)return true;}
+  if(saving){await waitForSave();if(saving)return false;if(status==='draft'&&!dirty)return true;}
   clearTimeout(saveTimer);
   if(status==='draft'&&!dirty)return true;
+  const revisionAtStart=editRevision;
+  const payload={orderId:data.order.id,status,phases:data.personalization.phases.map(({id,title,objective,question,pourquoi})=>({id,title,objective,question,pourquoi}))};
   saving=true;updateSaveLabel('Sauvegarde…');
   try{
-    const response=await fetch(API,{method:'PUT',credentials:'same-origin',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({orderId:data.order.id,status,phases:data.personalization.phases.map(({id,title,objective,question,pourquoi})=>({id,title,objective,question,pourquoi}))})});
+    const response=await fetch(API,{method:'PUT',credentials:'same-origin',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(payload)});
     const result=await response.json().catch(()=>({}));
     if(!response.ok)throw new Error(result.error||`http_${response.status}`);
-    data.personalization=result.personalization;hydrate();dirty=false;updateSaveLabel(status==='submitted'?'Choix confirmés':'Enregistré automatiquement');renderCard();return true;
+    if(editRevision===revisionAtStart){
+      data.personalization=result.personalization;hydrate();dirty=false;updateSaveLabel(status==='submitted'?'Choix confirmés':'Enregistré automatiquement');renderCard();return true;
+    }
+    dirty=true;updateSaveLabel('Modifications en attente…');clearTimeout(saveTimer);saveTimer=setTimeout(()=>save('draft',false),180);renderCard();return status!=='submitted';
   }catch(error){console.error('hors_norme_personalization_v139_save_failed',error);updateSaveLabel('Sauvegarde impossible · réessayez');if(showErrors)document.querySelector('[data-hn-error]').textContent='Impossible d’enregistrer pour le moment. Réessayez.';return false;}
   finally{saving=false;}
 }

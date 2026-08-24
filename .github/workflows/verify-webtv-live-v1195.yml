@@ -6,6 +6,8 @@ on:
       - 'neptune-tv-media-cloudflare/src/webtv-control-v118.js'
       - 'neptune-tv-media-cloudflare/src/entry-v39.js'
       - 'neptune-tv-media-cloudflare/src/entry-v40.js'
+      - 'neptune-tv-media-cloudflare/src/entry-v41.js'
+      - 'neptune-tv-media-cloudflare/src/entry-v42.js'
       - 'neptune-tv-media-cloudflare/public/studio/webtv-native-v118.js'
       - 'neptune-tv-media-cloudflare/containers/webtv/**'
       - 'neptune-tv-media-cloudflare/wrangler.jsonc'
@@ -34,7 +36,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -q '"main": "src/entry-v40.js"' neptune-tv-media-cloudflare/wrangler.jsonc
+          grep -q '"main": "src/entry-v42.js"' neptune-tv-media-cloudflare/wrangler.jsonc
+          grep -q "from './entry-v41.js'" neptune-tv-media-cloudflare/src/entry-v42.js
+          grep -q "from './entry-v40.js'" neptune-tv-media-cloudflare/src/entry-v41.js
           grep -q "neptune-webtv-playback-20260815-v119.5" neptune-tv-media-cloudflare/src/entry-v40.js
           grep -q "neptune-webtv-player-selection-20260815-v119.6" neptune-tv-media-cloudflare/src/entry-v40.js
           grep -q "neptune-webtv-container-readiness-20260817-v119.7" neptune-tv-media-cloudflare/src/entry-v40.js
@@ -143,63 +147,19 @@ jobs:
             return target.evaluate(()=>{
               const v=document.querySelector('#player');
               const s=document.querySelector('#playerState');
-              return {
-                readyState:v?.readyState,
-                networkState:v?.networkState,
-                currentTime:v?.currentTime,
-                paused:v?.paused,
-                muted:v?.muted,
-                error:v?.error?{code:v.error.code,message:v.error.message}:null,
-                stateHidden:s?.hidden,
-                stateText:s?.innerText,
-                currentSrc:v?.currentSrc||'',
-                hlsSupported:Boolean(window.Hls?.isSupported?.()),
-              };
+              return {readyState:v?.readyState,networkState:v?.networkState,currentTime:v?.currentTime,paused:v?.paused,muted:v?.muted,error:v?.error?{code:v.error.code,message:v.error.message}:null,stateHidden:s?.hidden,stateText:s?.innerText,currentSrc:v?.currentSrc||'',hlsSupported:Boolean(window.Hls?.isSupported?.())};
             });
           }
-
           async function inspect(target,label){
             await target.waitForSelector('#player',{state:'attached',timeout:20000});
-            const deadline=Date.now()+45000;
-            let state=await readState(target);
-            while(Date.now()<deadline){
-              if(state.currentTime>0.5&&state.readyState>=2&&!state.paused&&!state.error&&state.stateHidden===true&&state.hlsSupported&&state.currentSrc.startsWith('blob:'))break;
-              await target.waitForTimeout(1000);
-              state=await readState(target);
-            }
+            const deadline=Date.now()+45000;let state=await readState(target);
+            while(Date.now()<deadline){if(state.currentTime>0.5&&state.readyState>=2&&!state.paused&&!state.error&&state.stateHidden===true&&state.hlsSupported&&state.currentSrc.startsWith('blob:'))break;await target.waitForTimeout(1000);state=await readState(target);}
             console.log(label,JSON.stringify(state,null,2));
-            if(!(state.currentTime>0.5)||state.readyState<2||state.paused||state.error||state.stateHidden!==true||!state.hlsSupported||!state.currentSrc.startsWith('blob:')){
-              console.log(log.join('\n'));
-              throw new Error(`${label} Hls.js playback failed: ${JSON.stringify(state)}`);
-            }
+            if(!(state.currentTime>0.5)||state.readyState<2||state.paused||state.error||state.stateHidden!==true||!state.hlsSupported||!state.currentSrc.startsWith('blob:')){console.log(log.join('\n'));throw new Error(`${label} Hls.js playback failed: ${JSON.stringify(state)}`);}
           }
-
-          const standaloneResponse=await page.goto(`${base}/direct/?probe=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:60000});
-          if(!standaloneResponse?.ok())throw new Error(`standalone direct HTTP ${standaloneResponse?.status()}`);
-          await inspect(page,'standalone');
-
-          const embedResponse=await page.goto(`${base}/direct/?embed=1&probe=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:60000});
-          if(!embedResponse?.ok())throw new Error(`Studio embed direct HTTP ${embedResponse?.status()}`);
-          await inspect(page,'studio-embed-document');
-
-          const headers=embedResponse.headers();
-          const csp=headers['content-security-policy']||'';
-          const xfo=(headers['x-frame-options']||'').toUpperCase();
-          const playback=headers['x-neptune-webtv-playback']||'';
-          const player=headers['x-neptune-webtv-player']||'';
-          const readiness=headers['x-neptune-webtv-readiness']||'';
-          console.log('CSP',csp);
-          console.log('X_FRAME_OPTIONS',xfo);
-          console.log('PLAYBACK_RELEASE',playback);
-          console.log('PLAYER_RELEASE',player);
-          console.log('READINESS_RELEASE',readiness);
-          if(!/worker-src[^;]*blob:/.test(csp))throw new Error(`worker-src blob missing: ${csp}`);
-          if(!/frame-ancestors[^;]*'self'/.test(csp))throw new Error(`same-origin frame permission missing: ${csp}`);
-          if(xfo!=='SAMEORIGIN')throw new Error(`unexpected X-Frame-Options: ${xfo}`);
-          if(playback!=='neptune-webtv-playback-20260815-v119.5')throw new Error(`unexpected playback release: ${playback}`);
-          if(player!=='neptune-webtv-player-selection-20260815-v119.6')throw new Error(`unexpected player release: ${player}`);
-          if(readiness!=='neptune-webtv-container-readiness-20260817-v119.7')throw new Error(`unexpected readiness release: ${readiness}`);
-
-          console.log(log.join('\n'));
-          await browser.close();
+          const standaloneResponse=await page.goto(`${base}/direct/?probe=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:60000});if(!standaloneResponse?.ok())throw new Error(`standalone direct HTTP ${standaloneResponse?.status()}`);await inspect(page,'standalone');
+          const embedResponse=await page.goto(`${base}/direct/?embed=1&probe=${Date.now()}`,{waitUntil:'domcontentloaded',timeout:60000});if(!embedResponse?.ok())throw new Error(`Studio embed direct HTTP ${embedResponse?.status()}`);await inspect(page,'studio-embed-document');
+          const headers=embedResponse.headers();const csp=headers['content-security-policy']||'';const xfo=(headers['x-frame-options']||'').toUpperCase();const playback=headers['x-neptune-webtv-playback']||'';const player=headers['x-neptune-webtv-player']||'';const readiness=headers['x-neptune-webtv-readiness']||'';
+          if(!/worker-src[^;]*blob:/.test(csp))throw new Error(`worker-src blob missing: ${csp}`);if(!/frame-ancestors[^;]*'self'/.test(csp))throw new Error(`same-origin frame permission missing: ${csp}`);if(xfo!=='SAMEORIGIN')throw new Error(`unexpected X-Frame-Options: ${xfo}`);if(playback!=='neptune-webtv-playback-20260815-v119.5')throw new Error(`unexpected playback release: ${playback}`);if(player!=='neptune-webtv-player-selection-20260815-v119.6')throw new Error(`unexpected player release: ${player}`);if(readiness!=='neptune-webtv-container-readiness-20260817-v119.7')throw new Error(`unexpected readiness release: ${readiness}`);
+          console.log(log.join('\n'));await browser.close();
           NODE

@@ -1,5 +1,7 @@
 import base,{StudioStore as BaseStudioStore,WebTvEncoder} from './entry-v43.js';
 import {CATALOG_COMMERCE_V143_RELEASE,handleCatalogCommerceV143Store,enhanceCatalogCommerceV143Store} from './catalog-commerce-v143.js';
+import {adminAuth} from './portal-http-utils.js';
+import {isSameOrigin,json} from './security.js';
 
 export {WebTvEncoder};
 
@@ -12,18 +14,27 @@ export class StudioStore extends BaseStudioStore{
     const handled=await handleCatalogCommerceV143Store(this,request);
     if(handled)return handled;
     const response=await super.fetch(request);
-    return enhanceCatalogCommerceV143Store(this,request,response);
+    const pathname=new URL(request.url).pathname;
+    const probe=pathname.endsWith('/catalog-v96')?new Request('https://store/api/reservation/catalog-v96',{method:'GET'}):request;
+    return enhanceCatalogCommerceV143Store(this,probe,response);
   }
 }
 
 export default{
   async fetch(request,env,ctx){
+    const url=new URL(request.url);
+    if(request.method==='POST'&&url.pathname.startsWith('/api/admin/media-catalog-v143/'))return forwardCatalogAdmin(request,env,url);
     const response=await base.fetch(request,env,ctx);
     return maybeEnhance(request,response);
   },
   async scheduled(controller,env,ctx){if(typeof base.scheduled==='function')return base.scheduled(controller,env,ctx);},
 };
 
+async function forwardCatalogAdmin(request,env,url){
+  if(!isSameOrigin(request))return json({error:'origin_forbidden'},403);
+  const payload=await request.json().catch(()=>({})),studio=env.STUDIO.get(env.STUDIO.idFromName('neptune-media-main'));
+  return studio.fetch(`https://store${url.pathname}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...adminAuth(request),payload})});
+}
 async function maybeEnhance(request,response){
   if(!response?.ok)return response;
   const url=new URL(request.url),type=response.headers.get('Content-Type')||'';

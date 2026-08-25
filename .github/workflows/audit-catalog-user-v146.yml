@@ -1,0 +1,75 @@
+name: Audit Catalog User Journey V146
+
+on:
+  pull_request:
+    paths:
+      - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-commercial-cockpit-v145.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-user-reliability-v146.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-commercial-cockpit-v145.css'
+      - 'neptune-tv-media-cloudflare/src/entry-v44.js'
+      - 'neptune-tv-media-cloudflare/tests/audit-catalog-user-v146.mjs'
+      - '.github/workflows/audit-catalog-user-v146.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-commercial-cockpit-v145.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-user-reliability-v146.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-commercial-cockpit-v145.css'
+      - 'neptune-tv-media-cloudflare/src/entry-v44.js'
+      - 'neptune-tv-media-cloudflare/tests/audit-catalog-user-v146.mjs'
+      - '.github/workflows/audit-catalog-user-v146.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  user-journey:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate changed JavaScript
+        run: |
+          node --check neptune-tv-media-cloudflare/public/studio/studio-catalog-user-reliability-v146.js
+          node --check neptune-tv-media-cloudflare/tests/audit-catalog-user-v146.mjs
+          node --check neptune-tv-media-cloudflare/src/entry-v44.js
+          grep -Fq "studio-catalog-user-reliability-v146.js?v=1" neptune-tv-media-cloudflare/src/entry-v44.js
+          grep -Fq "X-Neptune-Catalog-Cockpit','v146" neptune-tv-media-cloudflare/src/entry-v44.js
+
+      - name: Build static browser fixture from the real Studio assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/neptune-catalog-public
+          cp -a neptune-tv-media-cloudflare/public /tmp/neptune-catalog-public
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('/tmp/neptune-catalog-public/studio/advanced.html')
+          s=p.read_text(encoding='utf-8')
+          tag='<script type="module" src="/studio/studio-catalog-user-reliability-v146.js?v=1"></script>'
+          if tag not in s:
+              s=s.replace('</body>',tag+'</body>')
+          p.write_text(s,encoding='utf-8')
+          PY
+          python3 -m http.server 8787 --bind 127.0.0.1 --directory /tmp/neptune-catalog-public >/tmp/catalog-http.log 2>&1 &
+          echo $! >/tmp/catalog-http.pid
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8787/studio/advanced.html >/dev/null && exit 0; sleep .2; done
+          cat /tmp/catalog-http.log
+          exit 1
+
+      - name: Exercise the Catalogue like an operator
+        env:
+          STUDIO_BASE_URL: http://127.0.0.1:8787
+          CATALOG_AUDIT_DIR: test-results/catalog-user-v146
+        run: node neptune-tv-media-cloudflare/tests/audit-catalog-user-v146.mjs
+
+      - name: Upload visual and functional evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: catalog-user-v146-${{ github.run_id }}
+          path: test-results/catalog-user-v146
+          if-no-files-found: warn
+          retention-days: 14

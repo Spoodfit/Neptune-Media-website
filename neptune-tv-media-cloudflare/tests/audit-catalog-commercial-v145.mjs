@@ -38,4 +38,5 @@ function findChrome(){for(const f of ['/usr/bin/google-chrome','/usr/bin/google-
 async function waitForChrome(port,proc,getError){const t=Date.now();while(Date.now()-t<15000){if(proc.exitCode!==null)throw new Error(`Chrome arrêté: ${getError().slice(-1000)}`);try{const r=await fetch(`http://127.0.0.1:${port}/json/version`);if(r.ok)return;}catch{}await sleep(150);}throw new Error(`Chrome DevTools indisponible: ${getError().slice(-1000)}`);}
 async function evaluate(cdp,expression){const r=await cdp.send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(r.exceptionDetails)throw new Error(r.exceptionDetails.exception?.description||r.exceptionDetails.text||'Erreur JavaScript navigateur');return r.result?.value;}
 async function waitFor(check,limit,message){const t=Date.now();while(Date.now()-t<limit){try{if(await check())return;}catch{}await sleep(100);}throw new Error(message);}
-const sleep=ms=>new Promise(r=>setTimeout(r,ms));function assert(condition,message){if(!condition)throw new Error(message);}
+function sleep(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
+function assert(condition,message){if(!condition)throw new Error(message);}

@@ -37,7 +37,7 @@ try{
 
   await page.waitForFunction(()=>document.getElementById('syncState')?.textContent?.includes('Régie indisponible'),null,{timeout:8000});
   assert(webtvAttempts>=3,`retries WebTV insuffisants: ${webtvAttempts}`);
-  assert(await page.locator('.neptune-studio-account-copy b').textContent()==='Compte Studio','sidebar canonique incompatible');
+  assert(await page.locator('.neptune-studio-account-copy b').textContent()==='Neptune Media','sidebar canonique incompatible');
   assert(errors.length===0,errors.join(' | '));
 
   // Zero-flash intentionally keeps the legacy WebTV workspace non-paintable while

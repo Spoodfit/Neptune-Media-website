@@ -6,7 +6,7 @@ const baseURL=process.env.STUDIO_BASE_URL||'http://127.0.0.1:8787';
 const outputDir=process.env.OUTPUT_DIR||'test-results/studio-overview-v122';
 await mkdir(outputDir,{recursive:true});
 
-const expectedNav=['Parcours clients','Production vidéo','Diffusion','Réglages'];
+const expectedNav=['Parcours clients','Diffusion','Catalogue Média','Finance','Réglage'];
 const adminState={
   user:{id:'admin-1',email:'contact@neptunebusiness.com',fullName:'Neptune Media',role:'admin'},
   programs:[{id:'program-1',name:'Hors Norme',slug:'hors-norme',description:'Interview signature',displayOrder:10,active:true}],
@@ -63,9 +63,9 @@ const publishedCatalog={
 const portal={clients:[],orders:[],supplierPayments:[],refundRequests:[],deletionRequests:[],finance:adminState.finance};
 const screens=[
   {id:'webtv',path:'/studio/webtv.html',active:'Diffusion',kind:'webtv'},
-  {id:'catalogue',path:'/studio/advanced.html#programs',active:'Réglages',kind:'catalogue'},
-  {id:'finance',path:'/studio/advanced.html#finances',active:'Réglages',kind:'finance'},
-  {id:'settings',path:'/studio/advanced.html#settings',active:'Réglages',kind:'settings'},
+  {id:'catalogue',path:'/studio/advanced.html#programs',active:'Catalogue Média',kind:'catalogue'},
+  {id:'finance',path:'/studio/advanced.html#finances',active:'Finance',kind:'finance'},
+  {id:'settings',path:'/studio/advanced.html#settings',active:'Réglage',kind:'settings'},
   {id:'legacy-programme',path:'/studio/advanced.html#episodes',active:'Diffusion',kind:'legacy'},
 ];
 const viewports=[{id:'desktop',width:1440,height:900},{id:'mobile',width:390,height:844}];
@@ -202,7 +202,7 @@ try{
         await toggle.click();
         await page.waitForFunction(()=>document.body.classList.contains('studio-menu-open-v65'),null,{timeout:5000});
         const drawerNav=await page.locator('.neptune-studio-nav-link').allTextContents();
-        assert(drawerNav.length===4,`${screen.id}: tiroir mobile incomplet`);
+        assert(drawerNav.length===5,`${screen.id}: tiroir mobile incomplet`);
         await page.keyboard.press('Escape');
       }
       await page.screenshot({path:path.join(outputDir,`${screen.id}-${viewport.id}.png`),fullPage:true});
@@ -214,6 +214,6 @@ try{
 }finally{await browser.close();}
 
 await writeFile(path.join(outputDir,'report.json'),JSON.stringify(reports,null,2));
-console.log('Studio overview v138 audit passed: four-tab canonical navigation preserved across WebTV, Catalogue, Finance and Réglages.');
+console.log('Studio overview v139 audit passed: five-section navigation preserved across WebTV, Catalogue, Finance and Réglage.');
 
 function assert(condition,message){if(!condition)throw new Error(message);}

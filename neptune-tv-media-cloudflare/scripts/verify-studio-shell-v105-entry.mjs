@@ -9,18 +9,19 @@ const wrangler = fs.readFileSync(wranglerPath, 'utf8');
 const mainMatch = wrangler.match(/"main"\s*:\s*"([^"]+)"/u);
 if (!mainMatch) throw new Error('wrangler.jsonc: main entry is missing');
 
-const expectedEntry = packageRoot ? 'src/entry-v41.js' : 'neptune-tv-media-cloudflare/src/entry-v41.js';
 const activeEntry = mainMatch[1];
-if (activeEntry !== expectedEntry) {
-  throw new Error(`Studio active Worker is not routed through v41: wrangler main is ${activeEntry}, expected ${expectedEntry}`);
+const entry41Path = packageRoot ? 'src/entry-v41.js' : 'neptune-tv-media-cloudflare/src/entry-v41.js';
+const activeChain = traceEntryChain(activeEntry);
+if (!activeChain.includes(entry41Path)) {
+  throw new Error(`Studio active Worker must preserve v41 in its runtime chain: ${activeChain.join(' -> ')}`);
 }
 
-const entry41 = fs.readFileSync(path.join(root, activeEntry), 'utf8');
+const entry41 = fs.readFileSync(path.join(root, entry41Path), 'utf8');
 if (!entry41.includes("from './entry-v40.js'")) {
-  throw new Error('Active v41 entry must preserve the complete v40 runtime');
+  throw new Error('Preserved v41 entry must preserve the complete v40 runtime');
 }
 if (!entry41.includes("from './drive-upload-resilience-v137.js'")) {
-  throw new Error('Active v41 entry must activate Drive upload resilience v137');
+  throw new Error('Preserved v41 entry must activate Drive upload resilience v137');
 }
 
 const entry40Path = path.join(root, `${prefix}src/entry-v40.js`);
@@ -44,7 +45,7 @@ if (!entry38.includes("from './entry-v37.js'")) {
   throw new Error('Preserved v38 entry must preserve the complete v37 Studio runtime');
 }
 if (!entry38.includes('neptune-client-experience-20260814-v118.2')) {
-  throw new Error('Active v41 chain must preserve the v118.2 client experience from v38');
+  throw new Error('Active Worker chain must preserve the v118.2 client experience from v38');
 }
 
 const entry37Path = path.join(root, `${prefix}src/entry-v37.js`);
@@ -108,4 +109,23 @@ const zeroFlash = fs.readFileSync(path.join(root, `${prefix}src/studio-zero-flas
 if (!zeroFlash.includes("const CANONICAL_SHELL='/studio/studio-information-architecture-v65-1.js?v=109';")) throw new Error('Active zero-flash layer must cache-bust the v138 canonical navigation');
 if (!zeroFlash.includes("const CANONICAL_CSS='/studio/studio-shell-v105.css?v=4';")) throw new Error('Active zero-flash layer must cache-bust the v138 canonical shell CSS');
 
-console.log('Studio v138 active entry verified: v41 preserves the v40 runtime chain and activates Drive upload resilience v137 without altering the canonical Studio shell.');
+console.log(`Studio shell verified through active entry chain: ${activeChain.join(' -> ')}.`);
+
+function traceEntryChain(start) {
+  const chain = [];
+  const seen = new Set();
+  let current = start;
+  for (let depth = 0; depth < 20; depth += 1) {
+    if (seen.has(current)) throw new Error(`Studio entry chain contains a cycle at ${current}`);
+    seen.add(current);
+    chain.push(current);
+    if (current === entry41Path) return chain;
+    const sourcePath = path.join(root, current);
+    if (!fs.existsSync(sourcePath)) throw new Error(`Studio entry chain file is missing: ${current}`);
+    const source = fs.readFileSync(sourcePath, 'utf8');
+    const parent = source.match(/from\s+['"]\.\/(entry-v\d+\.js)['"]/u)?.[1];
+    if (!parent) throw new Error(`Studio entry chain from ${current} does not reach v41`);
+    current = path.posix.join(path.posix.dirname(current), parent);
+  }
+  throw new Error(`Studio entry chain is unexpectedly deep: ${chain.join(' -> ')}`);
+}

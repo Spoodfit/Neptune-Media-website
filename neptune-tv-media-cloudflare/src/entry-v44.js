@@ -6,7 +6,7 @@ import {isSameOrigin,json} from './security.js';
 export {WebTvEncoder};
 
 const STUDIO_CSS='/studio/studio-catalog-commercial-cockpit-v145.css?v=1';
-const STUDIO_JS='/studio/studio-catalog-commercial-cockpit-v145.js?v=1';
+const STUDIO_JS='/studio/studio-catalog-user-reliability-v146.js?v=1';
 const BOOKING_JS='/reserver/assets/catalog-commerce-v143.js?v=1';
 
 export class StudioStore extends BaseStudioStore{
@@ -50,6 +50,6 @@ async function inject(response,css,js,kind){
     if(kind==='booking'&&body.includes('/reserver/assets/app-v96.js'))body=body.replace(/<script\b[^>]*src=["'][^"']*\/reserver\/assets\/app-v96\.js[^"']*["'][^>]*>\s*<\/script>/iu,match=>`<script type="module" src="${js}"></script>${match}`);
     else body=body.replace('</body>',`<script type="module" src="${js}"></script></body>`);
   }
-  const headers=new Headers(response.headers);for(const name of ['Content-Length','Content-Encoding','ETag','Last-Modified'])headers.delete(name);headers.set('Cache-Control','private, no-store, max-age=0');headers.set('X-Neptune-Catalog-Commerce',CATALOG_COMMERCE_V143_RELEASE);headers.set('X-Neptune-City-Drawer','v143.4');headers.set('X-Neptune-Catalog-Cockpit','v145');return new Response(body,{status:response.status,statusText:response.statusText,headers});
+  const headers=new Headers(response.headers);for(const name of ['Content-Length','Content-Encoding','ETag','Last-Modified'])headers.delete(name);headers.set('Cache-Control','private, no-store, max-age=0');headers.set('X-Neptune-Catalog-Commerce',CATALOG_COMMERCE_V143_RELEASE);headers.set('X-Neptune-City-Drawer','v143.4');headers.set('X-Neptune-Catalog-Cockpit','v146');return new Response(body,{status:response.status,statusText:response.statusText,headers});
 }
-function mark(response){const headers=new Headers(response.headers);headers.set('X-Neptune-Catalog-Commerce',CATALOG_COMMERCE_V143_RELEASE);headers.set('X-Neptune-City-Drawer','v143.4');headers.set('X-Neptune-Catalog-Cockpit','v145');return new Response(response.body,{status:response.status,statusText:response.statusText,headers});}
+function mark(response){const headers=new Headers(response.headers);headers.set('X-Neptune-Catalog-Commerce',CATALOG_COMMERCE_V143_RELEASE);headers.set('X-Neptune-City-Drawer','v143.4');headers.set('X-Neptune-Catalog-Cockpit','v146');return new Response(response.body,{status:response.status,statusText:response.statusText,headers});}

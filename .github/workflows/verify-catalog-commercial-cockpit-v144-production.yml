@@ -1,4 +1,4 @@
-name: Verify Catalog Commercial Cockpit V144 Production
+name: Verify Catalog Commercial Cockpit V145 Production
 
 on:
   workflow_run:
@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
-      - name: Verify v144 assets on both production domains
+      - name: Verify v145 assets on both production domains
         shell: bash
         env:
           HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
@@ -24,20 +24,23 @@ jobs:
             local base="$1"
             local slug="$2"
             local ok=0
-            mkdir -p /tmp/v144
+            mkdir -p /tmp/v145
             for attempt in $(seq 1 24); do
-              local q="v144=$HEAD_SHA&attempt=$attempt"
-              curl --fail --silent --show-error -D "/tmp/v144/$slug.headers" -H 'Cache-Control: no-cache, no-store' "$base/studio/advanced.html?$q" > "/tmp/v144/$slug.html" || true
-              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/studio-catalog-commercial-cockpit-v144.css?$q" > "/tmp/v144/$slug.css" || true
-              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/studio-catalog-commercial-cockpit-v144.js?$q" > "/tmp/v144/$slug.js" || true
-              if grep -Fqi 'x-neptune-catalog-cockpit: v144' "/tmp/v144/$slug.headers" \
-                && grep -Fq '/studio/studio-catalog-commercial-cockpit-v144.css?v=1' "/tmp/v144/$slug.html" \
-                && grep -Fq '/studio/studio-catalog-commercial-cockpit-v144.js?v=1' "/tmp/v144/$slug.html" \
-                && grep -Fq '.v144-cockpit' "/tmp/v144/$slug.css" \
-                && grep -Fq "document.body.dataset.neptuneCatalogCockpit='v144'" "/tmp/v144/$slug.js" \
-                && grep -Fq "import '/studio/studio-catalog-commerce-v143-4.js?v=1'" "/tmp/v144/$slug.js"; then
+              local q="v145=$HEAD_SHA&attempt=$attempt"
+              curl --fail --silent --show-error -D "/tmp/v145/$slug.headers" -H 'Cache-Control: no-cache, no-store' "$base/studio/advanced.html?$q" > "/tmp/v145/$slug.html" || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/studio-catalog-commercial-cockpit-v145.css?$q" > "/tmp/v145/$slug.css" || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/studio-catalog-commercial-cockpit-v145.js?$q" > "/tmp/v145/$slug.js" || true
+              if grep -Fqi 'x-neptune-catalog-cockpit: v145' "/tmp/v145/$slug.headers" \
+                && grep -Fq '/studio/studio-catalog-commercial-cockpit-v145.css?v=1' "/tmp/v145/$slug.html" \
+                && grep -Fq '/studio/studio-catalog-commercial-cockpit-v145.js?v=1' "/tmp/v145/$slug.html" \
+                && grep -Fq '.v145-cockpit' "/tmp/v145/$slug.css" \
+                && grep -Fq 'Prix client TTC' "/tmp/v145/$slug.js" \
+                && grep -Fq 'supplierGrossCents' "/tmp/v145/$slug.js" \
+                && grep -Fq "POLICY_API='/api/admin/media-catalog-v143/policies'" "/tmp/v145/$slug.js" \
+                && grep -Fq "document.body.dataset.neptuneCatalogCockpit='v145'" "/tmp/v145/$slug.js" \
+                && grep -Fq "import '/studio/studio-catalog-commerce-v143-4.js?v=1'" "/tmp/v145/$slug.js"; then
                 ok=1
-                echo "$base: v144 cockpit verified on attempt $attempt"
+                echo "$base: v145 cockpit verified on attempt $attempt"
                 break
               fi
               sleep 5

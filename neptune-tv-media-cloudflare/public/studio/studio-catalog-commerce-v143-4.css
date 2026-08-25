@@ -1,0 +1,200 @@
+@import url('/studio/studio-catalog-commerce-v143.css?v=4');
+
+/* Neptune Catalogue Commerce v143.4 — city drawer production-proof visual layer. */
+.v143-city-drawer{
+  top:0!important;
+  right:0!important;
+  bottom:0!important;
+  transform:none!important;
+  width:min(760px,94vw)!important;
+  height:100dvh!important;
+  max-height:100dvh!important;
+  border:0!important;
+  border-radius:0!important;
+  overflow:hidden!important;
+  background:#f6f8fc!important;
+  box-shadow:-28px 0 72px rgba(15,23,42,.22)!important;
+}
+.v143-city-drawer>header{
+  display:flex!important;
+  align-items:flex-start!important;
+  justify-content:space-between!important;
+  gap:20px!important;
+  padding:26px 30px 22px!important;
+  border-bottom:1px solid #e5e9f1!important;
+  background:#fff!important;
+}
+.v143-city-drawer>header span{
+  display:block!important;
+  font-size:.56rem!important;
+  font-weight:900!important;
+  letter-spacing:.15em!important;
+  color:#6554df!important;
+}
+.v143-city-drawer>header h2{
+  margin:6px 0 0!important;
+  font-size:1.42rem!important;
+  line-height:1.08!important;
+  letter-spacing:-.04em!important;
+  color:#101828!important;
+}
+.v143-city-drawer>header button{
+  width:42px!important;
+  height:42px!important;
+  flex:0 0 42px!important;
+  border:1px solid #d8dfeb!important;
+  border-radius:12px!important;
+  background:#fff!important;
+  color:#536176!important;
+}
+.v143-city-drawer .v133-drawer-body{
+  min-height:0!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  padding:26px 30px 36px!important;
+  background:#f6f8fc!important;
+}
+.v143-city-drawer .v133-simple-form{
+  display:grid!important;
+  grid-template-columns:minmax(0,1.5fr) minmax(210px,.8fr)!important;
+  gap:18px 20px!important;
+  align-content:start!important;
+  width:100%!important;
+  box-sizing:border-box!important;
+  padding:22px!important;
+  border:1px solid #dfe5ef!important;
+  border-radius:16px!important;
+  background:#fff!important;
+  box-shadow:0 8px 28px rgba(15,23,42,.055)!important;
+}
+.v143-city-drawer .v133-simple-form>label{
+  min-width:0!important;
+  gap:8px!important;
+  font-size:.64rem!important;
+  line-height:1.2!important;
+  font-weight:850!important;
+  color:#27364b!important;
+}
+.v143-city-drawer .v133-simple-form input{
+  height:48px!important;
+  min-height:48px!important;
+  box-sizing:border-box!important;
+  padding:0 14px!important;
+  border:1px solid #cfd8e7!important;
+  border-radius:11px!important;
+  background:#fff!important;
+  color:#101828!important;
+  font-size:.74rem!important;
+  font-weight:750!important;
+  box-shadow:0 1px 2px rgba(16,24,40,.02)!important;
+}
+.v143-city-drawer .v133-simple-form input:focus{
+  outline:0!important;
+  border-color:#7059e6!important;
+  box-shadow:0 0 0 3px rgba(112,89,230,.12)!important;
+}
+.v143-city-field>small:not(.v143-city-help){display:none!important}
+.v143-city-help{
+  display:block!important;
+  margin-top:5px!important;
+  max-width:100%!important;
+  color:#7b879a!important;
+  font-size:.56rem!important;
+  line-height:1.5!important;
+  font-weight:550!important;
+}
+.v143-city-drawer input[name="country"][readonly]{
+  background:#f4f6f9!important;
+  border-color:#e0e5ed!important;
+  color:#536176!important;
+  box-shadow:none!important;
+  cursor:default!important;
+}
+.v143-city-drawer .v133-simple-form>.v133-switch{
+  grid-column:1/-1!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  gap:10px!important;
+  justify-self:start!important;
+  margin:2px 0 0!important;
+  padding:10px 12px!important;
+  border:1px solid #e4e8ef!important;
+  border-radius:12px!important;
+  background:#f8f9fc!important;
+  box-shadow:none!important;
+}
+.v143-city-drawer .v133-switch b{
+  font-size:.64rem!important;
+  color:#344054!important;
+}
+.v143-city-combobox{position:relative!important}
+.v143-city-combobox>input{padding-right:42px!important}
+.v143-city-combobox:after{
+  content:'⌄'!important;
+  position:absolute!important;
+  right:14px!important;
+  top:50%!important;
+  transform:translateY(-52%)!important;
+  pointer-events:none!important;
+  color:#667085!important;
+  font-size:.9rem!important;
+}
+.v143-city-listbox{
+  position:absolute!important;
+  z-index:220!important;
+  top:calc(100% + 8px)!important;
+  left:0!important;
+  right:0!important;
+  max-height:280px!important;
+  overflow:auto!important;
+  box-sizing:border-box!important;
+  padding:6px!important;
+  border:1px solid #dce2eb!important;
+  border-radius:12px!important;
+  background:#fff!important;
+  box-shadow:0 18px 46px rgba(15,23,42,.18)!important;
+}
+.v143-city-listbox[hidden]{display:none!important}
+.v143-city-listbox button{
+  width:100%!important;
+  min-height:54px!important;
+  display:grid!important;
+  gap:3px!important;
+  padding:10px 12px!important;
+  border:0!important;
+  border-radius:9px!important;
+  background:#fff!important;
+  text-align:left!important;
+  cursor:pointer!important;
+}
+.v143-city-listbox button:hover,.v143-city-listbox button:focus-visible{
+  outline:0!important;
+  background:#f5f3ff!important;
+}
+.v143-city-listbox strong{font-size:.7rem!important;color:#172033!important}
+.v143-city-listbox small{font-size:.55rem!important;color:#7a8698!important}
+.v143-city-loading,.v143-city-empty{padding:12px!important;color:#7c879b!important;font-size:.58rem!important}
+.v143-city-drawer .v133-drawer-footer{
+  position:relative!important;
+  z-index:10!important;
+  min-height:74px!important;
+  flex:0 0 auto!important;
+  padding:13px 22px!important;
+  border-top:1px solid #e3e8ef!important;
+  background:#fff!important;
+  box-shadow:0 -10px 28px rgba(15,23,42,.05)!important;
+}
+.v143-city-drawer .v133-drawer-footer .v133-btn{
+  min-height:44px!important;
+  padding:10px 17px!important;
+  border-radius:11px!important;
+  font-size:.72rem!important;
+}
+
+@media(max-width:760px){
+  .v143-city-drawer{width:100vw!important;max-width:100vw!important}
+  .v143-city-drawer>header{padding:19px 18px 16px!important}
+  .v143-city-drawer .v133-drawer-body{padding:16px 18px 24px!important}
+  .v143-city-drawer .v133-simple-form{grid-template-columns:1fr!important;padding:16px!important;gap:16px!important}
+  .v143-city-drawer .v133-simple-form>.v133-switch{grid-column:1!important;width:100%!important;box-sizing:border-box!important}
+}

@@ -5,7 +5,7 @@ import {isSameOrigin,json} from './security.js';
 
 export {WebTvEncoder};
 
-const STUDIO_CSS='/studio/studio-catalog-commerce-v143.css?v=1';
+const STUDIO_CSS='/studio/studio-catalog-commerce-v143.css?v=2';
 const STUDIO_JS='/studio/studio-catalog-commerce-v143.js?v=1';
 const BOOKING_JS='/reserver/assets/catalog-commerce-v143.js?v=1';
 

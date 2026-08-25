@@ -1,0 +1,51 @@
+name: Verify City Drawer V143.4 Production
+
+on:
+  workflow_run:
+    workflows: ['Deploy Neptune Media to Cloudflare']
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-city-drawer-v143-4:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      PUBLIC_URL: https://tv.neptunebusiness.com
+      WORKERS_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
+    steps:
+      - name: Verify v143.4 on both production domains
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/neptune-city-v1434
+          verify_domain() {
+            local base="$1"
+            local slug="$2"
+            local ready=0
+            for attempt in $(seq 1 24); do
+              local query="city_v1434=${GITHUB_RUN_ID}&attempt=$attempt"
+              curl --fail --silent --show-error -D "/tmp/neptune-city-v1434/$slug.headers" -H 'Cache-Control: no-cache, no-store' "$base/studio/advanced.html?$query" > "/tmp/neptune-city-v1434/$slug.html" || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/studio-catalog-commerce-v143-4.css?$query" > "/tmp/neptune-city-v1434/$slug.css" || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/studio-catalog-commerce-v143-4.js?$query" > "/tmp/neptune-city-v1434/$slug.js" || true
+              if grep -Fqi 'x-neptune-city-drawer: v143.4' "/tmp/neptune-city-v1434/$slug.headers" \
+                && grep -Fq '/studio/studio-catalog-commerce-v143-4.css?v=1' "/tmp/neptune-city-v1434/$slug.html" \
+                && grep -Fq '/studio/studio-catalog-commerce-v143-4.js?v=1' "/tmp/neptune-city-v1434/$slug.html" \
+                && grep -Fq 'production-proof visual layer' "/tmp/neptune-city-v1434/$slug.css" \
+                && grep -Fq '.v143-city-drawer .v133-simple-form' "/tmp/neptune-city-v1434/$slug.css" \
+                && grep -Fq "neptune-studio-city-drawer-v143-4" "/tmp/neptune-city-v1434/$slug.js" \
+                && grep -Fq "input.removeAttribute('list')" "/tmp/neptune-city-v1434/$slug.js"; then
+                ready=1
+                echo "$base: city drawer v143.4 verified on attempt $attempt"
+                break
+              fi
+              sleep 5
+            done
+            test "$ready" = 1
+          }
+          verify_domain "$WORKERS_URL" workers
+          verify_domain "$PUBLIC_URL" public

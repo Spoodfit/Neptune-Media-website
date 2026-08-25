@@ -1,4 +1,4 @@
-const VERIFIER_RELEASE = 'studio-production-verifier-v138';
+const VERIFIER_RELEASE = 'studio-production-verifier-v139';
 const DEFAULT_BASES = [
   'https://neptune-media-webtv.neptunebusinessclub.workers.dev',
   'https://tv.neptunebusiness.com',
@@ -12,13 +12,14 @@ const delayMs = Number.parseInt(process.env.STUDIO_PRODUCTION_DELAY_MS || '10000
 const expectedNavigation = ['Parcours clients', 'Diffusion', 'Réglages'];
 const expectedRelease = 'neptune-studio-ui-20260812-v105-three-tab-canonical-shell';
 const expectedCatalogAudit = 'neptune-media-catalog-audit-20260813-v109';
+const expectedZeroFlashRelease = 'neptune-studio-zero-flash-20260823-v139';
 const expectedCanonicalNavigation = ['Parcours clients', 'Production vidéo', 'Diffusion', 'Réglages'];
 
 const reports = [];
 for (const base of bases) reports.push(await verifyWithRetry(base));
 
 console.log(JSON.stringify({ ok: true, verifier: VERIFIER_RELEASE, checkedAt: new Date().toISOString(), reports }, null, 2));
-console.log('Studio v138 + Catalogue v109 production verification passed on workers.dev and the custom domain.');
+console.log('Studio v139 + Catalogue v109 production verification passed on workers.dev and the custom domain.');
 
 async function verifyWithRetry(base) {
   let lastError = null;
@@ -38,24 +39,24 @@ async function verifyWithRetry(base) {
 
 async function verifyBase(base, attempt) {
   const nonce = `${Date.now()}-${process.pid}-${attempt}`;
-  const release = await fetchJson(`${base}/api/public/release?studio_v138=${nonce}`);
+  const release = await fetchJson(`${base}/api/public/release?studio_v139=${nonce}`);
   assert(release.studioUi === expectedRelease, `historical v105 release marker missing: ${JSON.stringify(release)}`);
   assert(release.studioShell === expectedRelease, `Studio shell marker incorrect: ${release.studioShell}`);
   assert(release.mediaCatalogAudit === expectedCatalogAudit, `Catalogue v109 audit marker missing: ${release.mediaCatalogAudit}`);
   assert(JSON.stringify(release.studioPrimaryNavigation) === JSON.stringify(expectedNavigation), `historical primary navigation release marker incorrect: ${JSON.stringify(release.studioPrimaryNavigation)}`);
 
-  const layoutCss = await fetchText(`${base}/studio/studio-information-architecture-v65.css?v=1&studio_v138=${nonce}`);
+  const layoutCss = await fetchText(`${base}/studio/studio-information-architecture-v65.css?v=1&studio_v139=${nonce}`);
   assert(layoutCss.body.includes('--studio-v65-sidebar: 236px'), 'shared sidebar width token missing from production CSS');
   assert(layoutCss.body.includes('Four primary destinations across every Studio screen'), 'four-destination architecture marker missing from production CSS');
   assert(layoutCss.body.includes('prefers-reduced-motion'), 'reduced-motion support missing from production layout CSS');
 
-  const shellCss = await fetchText(`${base}/studio/studio-shell-v105.css?v=4&studio_v138=${nonce}`);
+  const shellCss = await fetchText(`${base}/studio/studio-shell-v105.css?v=4&studio_v139=${nonce}`);
   assert(shellCss.body.includes('data-neptune-studio-shell-boot="v105"'), 'anti-flash boot guard missing from production shell CSS');
   assert(shellCss.body.includes('data-neptune-studio-shell-ready="v105"'), 'canonical ready state missing from production shell CSS');
   assert(shellCss.body.includes('body.studio-shell-v105 .neptune-studio-account'), 'canonical account block styles missing');
   assert(!shellCss.body.includes('[data-studio-route="production"]'), 'production navigation is still hidden by production shell CSS');
 
-  const runtime = await fetchText(`${base}/studio/studio-information-architecture-v65-1.js?v=109&studio_v138=${nonce}`);
+  const runtime = await fetchText(`${base}/studio/studio-information-architecture-v65-1.js?v=109&studio_v139=${nonce}`);
   assert(runtime.body.includes("const KEY = '__neptuneStudioCanonicalShellV105'"), 'canonical navigation runtime missing');
   assert(runtime.body.includes('installCanonicalSidebar'), 'canonical sidebar installer missing from production runtime');
   for (const label of expectedCanonicalNavigation) assert(runtime.body.includes(label), `production runtime missing navigation label ${label}`);
@@ -67,29 +68,29 @@ async function verifyBase(base, attempt) {
   assert(runtime.body.includes('revealLegacyFallback'), 'canonical boot fallback is missing');
   assert(!runtime.body.includes('installWebTvContext'), 'Diffusion still injects the obsolete Antenne / Programme / Publicités / Audience row');
 
-  const catalogManager = await fetchText(`${base}/studio/media-catalog-manager-v98.js?v=2&studio_v138=${nonce}`);
+  const catalogManager = await fetchText(`${base}/studio/media-catalog-manager-v98.js?v=2&studio_v139=${nonce}`);
   assert(catalogManager.headers.get('x-neptune-media-catalog-manager') === 'stabilized-v109', 'hardened Catalogue manager response marker missing');
   assert(catalogManager.body.includes("let wasActive=active()"), 'Catalogue manager still lacks route transition state');
   assert(!catalogManager.body.includes("subtree:true,childList:true,attributes:true,attributeFilter:['class','hidden']"), 'Catalogue manager still remounts on arbitrary child mutations');
   assert(catalogManager.body.includes("h.dataset.c98='error'"), 'Catalogue manager does not keep a terminal error state');
 
-  const catalogUx = await fetchText(`${base}/studio/media-catalog-ux-v99.js?v=1&studio_v138=${nonce}`);
+  const catalogUx = await fetchText(`${base}/studio/media-catalog-ux-v99.js?v=1&studio_v139=${nonce}`);
   assert(catalogUx.headers.get('x-neptune-media-catalog-ux') === expectedCatalogAudit, 'Catalogue UX v109 response marker missing');
   assert(catalogUx.body.includes("params.set('catalog_view',active==='configurations'?'configuration':'format')"), 'Catalogue preview does not request the edited tunnel screen');
 
-  const tunnelApp = await fetchText(`${base}/reserver/assets/app-v96.js?studio_v138=${nonce}`);
+  const tunnelApp = await fetchText(`${base}/reserver/assets/app-v96.js?studio_v139=${nonce}`);
   assert(tunnelApp.headers.get('x-neptune-sales-tunnel-preview') === expectedCatalogAudit, 'sales tunnel preview runtime marker missing');
   assert(tunnelApp.body.includes("STUDIO_CATALOG_PREVIEW=params.get('catalog_preview')==='studio'"), 'sales tunnel runtime lacks Studio preview mode');
   assert(tunnelApp.body.includes("hydrateStudioCatalogPreview()"), 'sales tunnel runtime cannot open a selected catalog family');
   assert(tunnelApp.body.includes('o.description||configurationCopy(o.label)'), 'sales tunnel still ignores configured client descriptions');
   assert(tunnelApp.body.includes('if(STUDIO_CATALOG_PREVIEW)return;localStorage.setItem'), 'Studio preview can still contaminate customer reservation localStorage');
 
-  const webTvRuntime = await fetchText(`${base}/studio/webtv-workspace-v1.js?studio_v138=${nonce}`);
+  const webTvRuntime = await fetchText(`${base}/studio/webtv-workspace-v1.js?studio_v139=${nonce}`);
   assert(webTvRuntime.body.includes("['antenna','Antenne','Direct et état']"), 'Web TV Antenne section missing');
   assert(webTvRuntime.body.includes("['program','Programme','Grille de diffusion']"), 'Web TV Programme section missing');
   assert(webTvRuntime.body.includes("['settings','Configuration','YouTube et sécurité']"), 'Web TV Configuration section missing');
 
-  const app = await fetchText(`${base}/studio/app.html?studio_v138=${nonce}`);
+  const app = await fetchText(`${base}/studio/app.html?studio_v139=${nonce}`);
   assert(!app.body.includes('<iframe'), 'compatibility Studio entry still contains an iframe');
   assert(app.body.includes('/studio/studio-app-router-v104.js?v=1'), 'compatibility Studio entry does not use the top-level router');
 
@@ -102,18 +103,19 @@ async function verifyBase(base, attempt) {
   const pageReports = [];
   for (const [pathname, id] of pages) {
     const join = pathname.includes('?') ? '&' : '?';
-    const page = await fetchText(`${base}${pathname}${join}studio_v138=${nonce}`);
+    const page = await fetchText(`${base}${pathname}${join}studio_v139=${nonce}`);
     assert(page.status === 200, `${id}: expected final HTTP 200, received ${page.status}`);
     assert(page.body.includes('data-neptune-studio-boot="v136"'), `${id}: zero-flash pre-paint boot marker is missing`);
     assert(page.body.includes('/studio/studio-shell-v105.css?v=4'), `${id}: canonical v138 shell stylesheet is not present`);
     assert(page.body.includes('/studio/studio-information-architecture-v65-1.js?v=109'), `${id}: canonical v138 runtime is not injected`);
-    assert(page.headers.get('x-neptune-studio-zero-flash')?.includes('v138'), `${id}: v138 zero-flash response header missing`);
+    const zeroFlashHeader = page.headers.get('x-neptune-studio-zero-flash');
+    assert(zeroFlashHeader === expectedZeroFlashRelease, `${id}: zero-flash response header incorrect: ${zeroFlashHeader || 'missing'}`);
     assert(page.headers.get('x-frame-options') === 'DENY', `${id}: top-level page must reject iframe embedding`);
     assert(!page.body.includes('studio_embed='), `${id}: legacy iframe mode leaked into production HTML`);
-    pageReports.push({ id, finalUrl: page.url, status: page.status, bytes: page.body.length });
+    pageReports.push({ id, finalUrl: page.url, status: page.status, bytes: page.body.length, zeroFlash: zeroFlashHeader });
   }
 
-  const preview = await fetchText(`${base}/reserver?catalog_preview=studio&catalog_view=configuration&studio_v138=${nonce}`);
+  const preview = await fetchText(`${base}/reserver?catalog_preview=studio&catalog_view=configuration&studio_v139=${nonce}`);
   assert(preview.headers.get('x-frame-options') === 'SAMEORIGIN', 'sales tunnel Studio preview must remain same-origin embeddable');
   assert(preview.headers.get('x-neptune-studio-preview') === expectedRelease, 'sales tunnel Studio preview marker missing');
 
@@ -161,7 +163,7 @@ function requestOptions() {
     headers: {
       'Cache-Control': 'no-cache, no-store',
       Pragma: 'no-cache',
-      'User-Agent': 'Neptune-Studio-V138-Production-Verification/1.0',
+      'User-Agent': 'Neptune-Studio-V139-Production-Verification/1.0',
     },
     redirect: 'follow',
     signal: AbortSignal.timeout(30000),

@@ -5,6 +5,7 @@ on:
     paths:
       - 'wrangler.jsonc'
       - 'neptune-tv-media-cloudflare/wrangler.jsonc'
+      - 'neptune-tv-media-cloudflare/src/entry-v44.js'
       - 'neptune-tv-media-cloudflare/src/entry-v40.js'
       - 'neptune-tv-media-cloudflare/public/studio/advanced.html'
       - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-visual-v132.js'
@@ -33,11 +34,13 @@ jobs:
         run: npm install --package-lock=false --ignore-scripts --no-audit --no-fund
       - name: Validate JavaScript and visual assets
         run: |
+          node --check neptune-tv-media-cloudflare/src/entry-v44.js
           node --check neptune-tv-media-cloudflare/src/entry-v40.js
           node --check neptune-tv-media-cloudflare/public/studio/studio-catalog-visual-v132.js
           node --check neptune-tv-media-cloudflare/tests/audit-catalog-visual-v132.mjs
-          grep -Fq '"main": "neptune-tv-media-cloudflare/src/entry-v40.js"' wrangler.jsonc
-          grep -Fq '"main": "src/entry-v40.js"' neptune-tv-media-cloudflare/wrangler.jsonc
+          grep -Fq '"main": "neptune-tv-media-cloudflare/src/entry-v44.js"' wrangler.jsonc
+          grep -Fq '"main": "src/entry-v44.js"' neptune-tv-media-cloudflare/wrangler.jsonc
+          grep -Fq "from './entry-v43.js'" neptune-tv-media-cloudflare/src/entry-v44.js
           grep -Fq 'studio-catalog-visual-polish-v132-1.css?v=1' neptune-tv-media-cloudflare/public/studio/advanced.html
           grep -Fq 'body.v132-catalog-visual{height:100dvh!important;overflow:hidden!important}' neptune-tv-media-cloudflare/public/studio/studio-catalog-visual-polish-v132-1.css
       - name: Start active Cloudflare Worker

@@ -1,6 +1,10 @@
 name: Production Readiness Live V121
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/production-readiness-live-v121.yml'
   workflow_run:
     workflows: ['Deploy Neptune Media to Cloudflare']
     types: [completed]
@@ -11,7 +15,7 @@ permissions:
 
 jobs:
   certify-production:
-    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:

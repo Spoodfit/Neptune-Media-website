@@ -59,7 +59,11 @@ jobs:
           grep -Fq 'Nom de votre entreprise' /tmp/v121-reserver-readiness.js
           ! grep -Eiq 'Johan|Zambelli|lorem ipsum|mode démo|bouton démo' /tmp/v121-reserver-readiness.js
 
-          curl -fsS -D /tmp/v121-studio.headers -o /tmp/v121-webtv.html "$BASE/studio/webtv.html?v121=$(date +%s)"
+          legacy_status=$(curl -sS -D /tmp/v121-studio-legacy.headers -o /dev/null -w '%{http_code}' "$BASE/studio/webtv.html?v121=$(date +%s)")
+          test "$legacy_status" = 307
+          grep -Fiq 'location: /studio/webtv' /tmp/v121-studio-legacy.headers
+
+          curl -fsS -D /tmp/v121-studio.headers -o /tmp/v121-webtv.html "$BASE/studio/webtv?v121=$(date +%s)"
           grep -Fq '/studio/production-readiness-v121.js?v=1' /tmp/v121-webtv.html
           grep -Fq '/studio/production-readiness-v121.css?v=1' /tmp/v121-webtv.html
           grep -Fiq 'x-neptune-production-readiness: neptune-production-readiness-20260817-v121' /tmp/v121-studio.headers

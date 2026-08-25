@@ -40,6 +40,7 @@ jobs:
       SMART_EMAIL_RELEASE: neptune-smart-email-governor-20260806-v84
       HORIZONTAL_JOURNEY_RELEASE: neptune-horizontal-client-journey-20260810-v93
       DRIVE_UPLOAD_RELEASE: neptune-studio-drive-upload-20260811-v94
+      DRIVE_UPLOAD_RESILIENCE_RELEASE: neptune-drive-upload-resilience-20260824-v137
 
     steps:
       - name: Checkout
@@ -143,22 +144,22 @@ jobs:
           verify_horizontal "$WORKERS_URL" workers
           verify_horizontal "$PUBLIC_URL" public
 
-      - name: Verify Studio Drive upload v94 in production
+      - name: Verify Studio Drive upload v94/v137 in production
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p /tmp/neptune-drive-upload-v94
+          mkdir -p /tmp/neptune-drive-upload-v137
           verify_drive_upload() {
             local base="$1"
             local slug="$2"
             local ready=0
             for attempt in $(seq 1 24); do
-              local query="drive_upload_v94=$GITHUB_SHA&attempt=$attempt"
-              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/api/public/release?$query" > "/tmp/neptune-drive-upload-v94/$slug-release.json" || true
-              curl --fail --silent --show-error -D "/tmp/neptune-drive-upload-v94/$slug-clients.headers" -H 'Cache-Control: no-cache, no-store' "$base/studio/clients?$query" > "/tmp/neptune-drive-upload-v94/$slug-clients.html" || true
-              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/drive-upload-v94.js?$query" > "/tmp/neptune-drive-upload-v94/$slug-upload.js" || true
-              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/drive-upload-v94.css?$query" > "/tmp/neptune-drive-upload-v94/$slug-upload.css" || true
-              if RELEASE_FILE="/tmp/neptune-drive-upload-v94/$slug-release.json" node <<'NODE'
+              local query="drive_upload_v137=$GITHUB_SHA&attempt=$attempt"
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/api/public/release?$query" > "/tmp/neptune-drive-upload-v137/$slug-release.json" || true
+              curl --fail --silent --show-error -D "/tmp/neptune-drive-upload-v137/$slug-clients.headers" -H 'Cache-Control: no-cache, no-store' "$base/studio/clients?$query" > "/tmp/neptune-drive-upload-v137/$slug-clients.html" || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/drive-upload-v94.js?$query" > "/tmp/neptune-drive-upload-v137/$slug-upload.js" || true
+              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/drive-upload-v94.css?$query" > "/tmp/neptune-drive-upload-v137/$slug-upload.css" || true
+              if RELEASE_FILE="/tmp/neptune-drive-upload-v137/$slug-release.json" node <<'NODE'
           const fs = require('node:fs');
           let data;
           try { data = JSON.parse(fs.readFileSync(process.env.RELEASE_FILE, 'utf8')); } catch { process.exit(1); }
@@ -167,16 +168,19 @@ jobs:
           if (data.studioDriveUploadStorage !== 'google-drive-source-of-truth') process.exit(1);
           NODE
               then
-                if grep -Fq '/studio/drive-upload-v94.js?v=1' "/tmp/neptune-drive-upload-v94/$slug-clients.html" \
-                  && grep -Fq '/studio/drive-upload-v94.css?v=1' "/tmp/neptune-drive-upload-v94/$slug-clients.html" \
-                  && grep -Fqi 'www.googleapis.com' "/tmp/neptune-drive-upload-v94/$slug-clients.headers" \
-                  && grep -Fq "$DRIVE_UPLOAD_RELEASE" "/tmp/neptune-drive-upload-v94/$slug-upload.js" \
-                  && grep -Fq '/api/admin/drive-upload-v94/session' "/tmp/neptune-drive-upload-v94/$slug-upload.js" \
-                  && grep -Fq "dropzone('long', 'Long format'" "/tmp/neptune-drive-upload-v94/$slug-upload.js" \
-                  && grep -Fq "dropzone('short', 'Shorts'" "/tmp/neptune-drive-upload-v94/$slug-upload.js" \
-                  && grep -Fq 'grid-template-columns:repeat(2,minmax(0,1fr))' "/tmp/neptune-drive-upload-v94/$slug-upload.css"; then
+                if grep -Fq '/studio/drive-upload-v94.js?v=137' "/tmp/neptune-drive-upload-v137/$slug-clients.html" \
+                  && grep -Fq '/studio/drive-upload-v94.css?v=1' "/tmp/neptune-drive-upload-v137/$slug-clients.html" \
+                  && grep -Fqi "x-neptune-drive-upload-resilience: $DRIVE_UPLOAD_RESILIENCE_RELEASE" "/tmp/neptune-drive-upload-v137/$slug-clients.headers" \
+                  && grep -Fqi 'www.googleapis.com' "/tmp/neptune-drive-upload-v137/$slug-clients.headers" \
+                  && grep -Fq 'const MAX_CHUNK_RETRIES = 18;' "/tmp/neptune-drive-upload-v137/$slug-upload.js" \
+                  && grep -Fq 'rememberPendingRegistration({ orderId, category, fileId });' "/tmp/neptune-drive-upload-v137/$slug-upload.js" \
+                  && ! grep -Fq "const RELEASE = '$DRIVE_UPLOAD_RELEASE';" "/tmp/neptune-drive-upload-v137/$slug-upload.js" \
+                  && grep -Fq '/api/admin/drive-upload-v94/session' "/tmp/neptune-drive-upload-v137/$slug-upload.js" \
+                  && grep -Fq "dropzone('long', 'Long format'" "/tmp/neptune-drive-upload-v137/$slug-upload.js" \
+                  && grep -Fq "dropzone('short', 'Shorts'" "/tmp/neptune-drive-upload-v137/$slug-upload.js" \
+                  && grep -Fq 'grid-template-columns:repeat(2,minmax(0,1fr))' "/tmp/neptune-drive-upload-v137/$slug-upload.css"; then
                   ready=1
-                  echo "$base: Studio Drive upload v94 verified on attempt $attempt."
+                  echo "$base: Studio Drive upload v94/v137 verified on attempt $attempt."
                   break
                 fi
               fi

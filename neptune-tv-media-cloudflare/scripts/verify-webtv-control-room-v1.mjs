@@ -7,9 +7,11 @@ const [entry41,entry40,entry39,entry38,entry37,entry36,entry35,entry34,entry33,c
 ]);
 const root=JSON.parse(rootRaw),local=JSON.parse(localRaw),cors=JSON.parse(corsRaw),rootPackage=JSON.parse(rootPackageRaw),localPackage=JSON.parse(localPackageRaw),failures=[];
 const expect=(condition,message)=>{if(!condition)failures.push(message);};
+const rootChain=await traceEntryChain(String(root.main||'').replace(/^neptune-tv-media-cloudflare\//u,''));
+const localChain=await traceEntryChain(String(local.main||''));
 
-expect(root.main==='neptune-tv-media-cloudflare/src/entry-v41.js','le Worker racine doit cibler entry-v41');
-expect(local.main==='src/entry-v41.js','le Worker local doit cibler entry-v41');
+expect(rootChain.includes('src/entry-v41.js'),`le Worker racine doit préserver entry-v41 dans sa chaîne active (${rootChain.join(' -> ')})`);
+expect(localChain.includes('src/entry-v41.js'),`le Worker local doit préserver entry-v41 dans sa chaîne active (${localChain.join(' -> ')})`);
 expect(entry41.includes("from './entry-v40.js'")&&entry41.includes("from './drive-upload-recovery-v137.js'"),'entry-v41 doit prolonger v40 et conserver la reprise Drive');
 expect(entry40.includes("from './entry-v39.js'"),'entry-v40 doit prolonger entry-v39');
 expect(entry40.includes('neptune-webtv-playback-20260815-v119.5')&&entry40.includes('worker-src')&&entry40.includes('blob:'),'entry-v40 doit conserver la correction CSP du lecteur Hls.js');
@@ -70,4 +72,22 @@ expect(corsRule?.exposeHeaders?.includes('ETag'),'CORS R2 : ETag non exposé');
 expect(corsWorkflow.includes('wrangler r2 bucket cors set neptune-media-assets')&&corsWorkflow.includes('wrangler r2 bucket cors list neptune-media-assets'),'workflow CORS R2 doit appliquer puis vérifier la politique');
 
 if(failures.length){console.error(failures.map(failure=>`- ${failure}`).join('\n'));process.exit(1);}
-console.log('WebTV v119.5 validée à travers entry-v41 : chaîne v40/v39/v38 préservée, HLS Neptune principal, YouTube secondaire facultatif, import R2 et watchdog conservés.');
+console.log(`WebTV v119.5 validée à travers les chaînes actives root=${rootChain.join(' -> ')} / local=${localChain.join(' -> ')} : HLS Neptune principal, YouTube secondaire facultatif, import R2 et watchdog conservés.`);
+
+async function traceEntryChain(start){
+  const chain=[];
+  const seen=new Set();
+  let current=start;
+  for(let depth=0;depth<20&&current;depth+=1){
+    if(seen.has(current))break;
+    seen.add(current);
+    chain.push(current);
+    if(current==='src/entry-v41.js')return chain;
+    let source='';
+    try{source=await read(current);}catch{return chain;}
+    const parent=source.match(/from\s+['"]\.\/(entry-v\d+\.js)['"]/u)?.[1];
+    if(!parent)return chain;
+    current=`src/${parent}`;
+  }
+  return chain;
+}

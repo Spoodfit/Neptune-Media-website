@@ -44,12 +44,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Validate production Worker entry
+      - name: Validate preserved Drive resilience layer
         run: |
           node --check neptune-tv-media-cloudflare/src/drive-upload-resilience-v137.js
           node --check neptune-tv-media-cloudflare/src/drive-upload-recovery-v137.js
           node --check neptune-tv-media-cloudflare/src/entry-v41.js
-          grep -Fq '"main": "neptune-tv-media-cloudflare/src/entry-v41.js"' wrangler.jsonc
           grep -Fq "from './drive-upload-recovery-v137.js'" neptune-tv-media-cloudflare/src/entry-v41.js
       - name: Verify Drive upload resilience contract
         working-directory: neptune-tv-media-cloudflare

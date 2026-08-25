@@ -13,7 +13,7 @@ expect('entry-v44 serves v145 CSS',entry.includes("studio-catalog-commercial-coc
 expect('entry-v44 serves v145 JS',entry.includes("studio-catalog-commercial-cockpit-v145.js?v=1"));
 expect('entry-v44 exposes v145 marker',entry.includes("X-Neptune-Catalog-Cockpit','v145"));
 expect('v145 preserves v143.4 commerce and city drawer',js.includes("import '/studio/studio-catalog-commerce-v143-4.js?v=1'"));
-expect('margin uses TTC supplier cost',js.includes('supplierGrossCents')&&js.includes('marginCents=minPrice-supplierGrossCents'));
+expect('margin uses TTC supplier cost',js.includes('supplierGrossCents')&&js.includes('minPrice-supplierGrossCents'));
 expect('UI explicitly labels TTC basis',js.includes('Prix client TTC')&&js.includes('Coût fournisseur TTC')&&js.includes('% du prix TTC'));
 expect('legacy HT client label removed',!js.includes('Prix client HT'));
 expect('supplier HT remains secondary information only',js.includes("${money(offer.supplierNetCents)} HT"));

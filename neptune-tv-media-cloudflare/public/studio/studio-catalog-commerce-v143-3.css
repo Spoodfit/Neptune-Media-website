@@ -1,0 +1,115 @@
+@import url('/studio/studio-catalog-commerce-v143-2.css?v=2');
+
+/* v143.3 — finition du drawer Ville : une seule hiérarchie, zéro suggestion native. */
+.v143-city-drawer{
+  width:min(760px,94vw)!important;
+  background:#f7f9fc!important;
+}
+.v143-city-drawer>header{
+  padding:24px 28px 20px!important;
+  background:#fff!important;
+}
+.v143-city-drawer>header h2{
+  font-size:1.38rem!important;
+  letter-spacing:-.04em!important;
+}
+.v143-city-drawer .v133-drawer-body{
+  padding:24px 28px 32px!important;
+  background:#f7f9fc!important;
+}
+.v143-city-drawer .v133-simple-form{
+  display:grid!important;
+  grid-template-columns:minmax(0,1.45fr) minmax(190px,.78fr)!important;
+  gap:18px!important;
+  padding:20px!important;
+  border:1px solid #e2e7f0!important;
+  border-radius:16px!important;
+  background:#fff!important;
+  box-shadow:0 1px 2px rgba(16,24,40,.03)!important;
+}
+.v143-city-drawer .v133-simple-form>label{
+  gap:7px!important;
+  font-size:.64rem!important;
+  font-weight:850!important;
+  color:#27364b!important;
+}
+.v143-city-drawer .v133-simple-form input{
+  height:46px!important;
+  min-height:46px!important;
+  border-radius:10px!important;
+  font-size:.73rem!important;
+}
+.v143-city-field>small:not(.v143-city-help){display:none!important}
+.v143-city-help{
+  margin-top:4px!important;
+  max-width:100%!important;
+  color:#768398!important;
+  font-size:.56rem!important;
+  line-height:1.45!important;
+  font-weight:550!important;
+}
+.v143-city-drawer input[name="country"][readonly]{
+  background:#f5f7fa!important;
+  border-color:#e0e5ed!important;
+  color:#526075!important;
+  box-shadow:none!important;
+}
+.v143-city-drawer .v133-simple-form>.v133-switch{
+  grid-column:1/-1!important;
+  margin-top:2px!important;
+  padding:9px 11px!important;
+  border:0!important;
+  background:#f7f8fb!important;
+  box-shadow:none!important;
+}
+.v143-city-drawer .v133-switch b{
+  font-size:.63rem!important;
+  color:#344054!important;
+}
+.v143-city-combobox:after{
+  content:'⌄'!important;
+  right:14px!important;
+  color:#667085!important;
+}
+.v143-city-listbox{
+  top:calc(100% + 8px)!important;
+  z-index:120!important;
+  max-height:260px!important;
+  padding:6px!important;
+  border:1px solid #dce2eb!important;
+  border-radius:12px!important;
+  background:#fff!important;
+  box-shadow:0 14px 38px rgba(15,23,42,.16)!important;
+}
+.v143-city-listbox button{
+  min-height:52px!important;
+  padding:10px 12px!important;
+  border-radius:9px!important;
+  background:#fff!important;
+}
+.v143-city-listbox button:hover,
+.v143-city-listbox button:focus-visible{
+  background:#f6f4ff!important;
+}
+.v143-city-listbox strong{font-size:.7rem!important;color:#172033!important}
+.v143-city-listbox small{font-size:.55rem!important;color:#7a8698!important}
+.v143-city-drawer .v133-drawer-footer{
+  min-height:72px!important;
+  padding:12px 22px!important;
+  background:#fff!important;
+  border-top:1px solid #e4e8ef!important;
+  box-shadow:none!important;
+}
+.v143-city-drawer .v133-drawer-footer .v133-btn{
+  min-height:44px!important;
+  border-radius:11px!important;
+  font-size:.72rem!important;
+}
+
+@media(max-width:760px){
+  .v143-city-drawer{width:100vw!important;max-width:100vw!important}
+  .v143-city-drawer>header{padding:18px!important}
+  .v143-city-drawer .v133-drawer-body{padding:16px!important}
+  .v143-city-drawer .v133-simple-form{grid-template-columns:1fr!important;padding:16px!important;gap:15px!important}
+  .v143-city-drawer .v133-simple-form>.v133-switch{grid-column:1!important}
+}

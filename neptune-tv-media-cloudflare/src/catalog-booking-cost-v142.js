@@ -4,6 +4,8 @@ import {BUSINESS_V142_RELEASE,STORE_PREFIX,ensureBusinessV142Schema,mergeCatalog
 import {cancelProspectHoldV142,catalogMapV142,cityDuplicateCheckV142,finalizeProspectHoldV142,journeyConfirmV142,journeyPreflightV142,manualConfirmV142,manualPreflightV142,publicSlotsV142,selectionPreflightV142} from './business-v142-booking.js';
 import {adminContextV142,orderPreparationContextV142,preparationDueV142,preparationSendResultV142,prepareManualSendV142,savePreparationPackV142,saveSupplierBusinessV142,saveSupplierRateV142,sendPreparationEmailV142} from './business-v142-preparation.js';
 
+export {BUSINESS_V142_RELEASE};
+
 const PUBLIC_SLOTS='/api/reservation/slots-v142',ADMIN_PREFIX='/api/admin/business-v142/';
 export function handleBusinessV142Store(store,request){
   const url=new URL(request.url);if(!url.pathname.startsWith(STORE_PREFIX))return null;ensureBusinessV142Schema(store);return routeStore(store,request,url.pathname.slice(STORE_PREFIX.length));

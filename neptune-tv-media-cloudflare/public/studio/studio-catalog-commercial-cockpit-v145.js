@@ -85,6 +85,9 @@ function render(){
   const sellable=offers.filter(item=>item.active&&!item.issues.length);
   const activeCities=cities().filter(city=>city.active!==false);
   const activeSuppliers=suppliers().filter(supplier=>supplier.active!==false);
+  const commercialOffers=offers.filter(item=>item.active);
+  const commercialCityIds=new Set(commercialOffers.map(item=>item.cityId).filter(Boolean));
+  const commercialSupplierIds=new Set(commercialOffers.map(item=>item.supplierId).filter(Boolean));
   const margins=sellable.map(item=>item.marginPct).filter(Number.isFinite);
   const avgMargin=margins.length?Math.round(margins.reduce((a,b)=>a+b,0)/margins.length):null;
   const alerts=buildAlerts(offers);
@@ -95,7 +98,7 @@ function render(){
       <div class="v145-summary-head">
         <div><span class="v145-eyebrow">CATALOGUE COMMERCIAL</span><div class="v145-titleline"><h2>Pilotage des offres</h2>${alerts.length?`<span class="v145-health is-warn">${alerts.length} à vérifier</span>`:'<span class="v145-health is-ok">✓ Prêt à vendre</span>'}</div></div>
         <div class="v145-kpis">
-          ${kpi(sellable.length,'Offres vendables')}${kpi(activeCities.length,'Villes actives')}${kpi(activeSuppliers.length,'Fournisseurs actifs')}${kpi(avgMargin===null?'—':`${avgMargin} %`,'Marge brute moy.')}
+          ${kpi(sellable.length,'Offres vendables')}${kpi(commercialCityIds.size,'Villes actives')}${kpi(commercialSupplierIds.size,'Fournisseurs actifs')}${kpi(avgMargin===null?'—':`${avgMargin} %`,'Marge brute moy.')}
         </div>
       </div>
       <div class="v145-toolbar">
@@ -112,6 +115,7 @@ function render(){
       <span class="v145-updated">Mis à jour ${relativeTime(state.lastLoaded)}</span>
     </div>
     <div class="v145-city-stack">${grouped.length?grouped.map(renderCityGroup).join(''):'<div class="v145-empty">Aucune offre ne correspond à cette vue.</div>'}</div>`;
+  void activeCities;void activeSuppliers;
 }
 
 function kpi(value,label){return `<div class="v145-kpi"><strong>${html(value)}</strong><span>${html(label)}</span></div>`;}
@@ -130,6 +134,7 @@ function renderFilters(offers){
 
 function activeFilterCount(){return [state.supplier!=='all',state.status!=='all',state.margin!=='all',state.showInactive].filter(Boolean).length;}
 function buildAlerts(offers){const out=[];for(const offer of offers){for(const issue of offer.issues)out.push(`${offer.cityName||'Ville'} · ${offer.formatName}: ${issue}`);if(Number.isFinite(offer.marginPct)&&offer.marginPct<20&&offer.active&&!offer.issues.length)out.push(`${offer.cityName} · ${offer.formatName}: marge brute faible (${Math.round(offer.marginPct)} %)`);if(offer.launchRemaining===0&&offer.active)out.push(`${offer.cityName} · ${offer.formatName}: tarif lancement épuisé`);}return unique(out).slice(0,12);}
+function offerWarning(offer){return Boolean(offer.issues.length||(Number.isFinite(offer.marginPct)&&offer.marginPct<20)||offer.launchRemaining===0);}
 
 function filteredOffers(all){
   const query=state.query.trim().toLowerCase();
@@ -137,8 +142,8 @@ function filteredOffers(all){
     if(!state.showInactive&&!offer.active)return false;
     if(state.city!=='all'&&offer.cityId!==state.city)return false;
     if(state.supplier!=='all'&&offer.supplierId!==state.supplier)return false;
-    if(state.status==='ready'&&(!offer.active||offer.issues.length||offer.marginPct<20))return false;
-    if(state.status==='warning'&&(!offer.active||(!offer.issues.length&&!(Number.isFinite(offer.marginPct)&&offer.marginPct<20))))return false;
+    if(state.status==='ready'&&(!offer.active||offerWarning(offer)))return false;
+    if(state.status==='warning'&&(!offer.active||!offerWarning(offer)))return false;
     if(state.status==='hidden'&&offer.active)return false;
     if(state.margin==='low'&&!(Number.isFinite(offer.marginPct)&&offer.marginPct<20))return false;
     if(state.margin==='healthy'&&!(Number.isFinite(offer.marginPct)&&offer.marginPct>=20&&offer.marginPct<=40))return false;
@@ -160,22 +165,22 @@ function groupByCitySupplier(offers){
 }
 
 function renderCityGroup(city){
-  const allOffers=city.suppliers.flatMap(s=>s.offers),ready=allOffers.filter(o=>o.active&&!o.issues.length&&!(Number.isFinite(o.marginPct)&&o.marginPct<20)).length;
+  const allOffers=city.suppliers.flatMap(s=>s.offers),ready=allOffers.filter(o=>o.active&&!offerWarning(o)).length;
   const label=ready===allOffers.length?'Prête à vendre':ready?'À vérifier':'Configuration requise',klass=ready===allOffers.length?'is-ok':'is-warn';
   return `<section class="v145-city"><header class="v145-city-head"><div><span>VILLE</span><h2>${html(city.name)}</h2><small>${city.suppliers.length} fournisseur${plural(city.suppliers.length)} · ${allOffers.length} offre${plural(allOffers.length)}</small></div><div><span class="v145-status ${klass}">${label}</span><button class="v145-more" type="button" data-v145-menu="city" data-city-id="${attr(city.id)}" aria-label="Actions pour ${attr(city.name)}">•••</button></div></header>${city.suppliers.map(supplier=>renderSupplier(city,supplier)).join('')}</section>`;
 }
 
 function renderSupplier(city,supplier){
   const grossCosts=supplier.offers.map(o=>o.supplierGrossCents).filter(v=>v>0),netCosts=supplier.offers.map(o=>o.supplierNetCents).filter(v=>v>0),minGross=grossCosts.length?Math.min(...grossCosts):0,minNet=netCosts.length?Math.min(...netCosts):0;
-  return `<section class="v145-supplier"><header class="v145-supplier-head"><div class="v145-supplier-id"><span>${initials(supplier.name)}</span><div><small>FOURNISSEUR</small><strong>${html(supplier.name)}</strong><em>${minGross?`${money(minGross)} TTC${minNet?` · ${money(minNet)} HT`:''}`:'Coût à définir'}</em></div></div><div><small>${supplier.offers.length} offre${plural(supplier.offers.length)}</small><button class="v145-more" type="button" data-v145-menu="supplier" data-city-id="${attr(city.id)}" data-supplier-id="${attr(supplier.id)}">•••</button></div></header><div class="v145-offer-grid">${supplier.offers.map(renderOfferCard).join('')}</div></section>`;
+  return `<section class="v145-supplier"><header class="v145-supplier-head"><div class="v145-supplier-id"><span>${initials(supplier.name)}</span><div><small>FOURNISSEUR</small><strong>${html(supplier.name)}</strong><em>${minGross?`${money(minGross)} TTC${minNet?` · ${money(minNet)} HT`:''}`:'Coût à définir'}</em></div></div><div><small>${supplier.offers.length} offre${plural(supplier.offers.length)}</small><button class="v145-more" type="button" data-v145-menu="supplier" data-city-id="${attr(city.id)}" data-supplier-id="${attr(supplier.id)}" aria-label="Actions pour ${attr(supplier.name)}">•••</button></div></header><div class="v145-offer-grid">${supplier.offers.map(renderOfferCard).join('')}</div></section>`;
 }
 
 function renderOfferCard(offer){
   const health=offerHealth(offer),configs=offer.configurations.slice(0,5),extra=Math.max(0,offer.configurations.length-configs.length),visual=offer.visualUrl?`<img src="${attr(offer.visualUrl)}" alt="" loading="lazy">`:`<div class="v145-art-fallback"><span>${html(offer.formatName)}</span></div>`;
-  return `<article class="v145-offer ${offer.active?'':'is-muted'}"><div class="v145-art">${visual}<span class="v145-status ${health.className}">${health.label}</span></div><div class="v145-offer-body"><div class="v145-offer-title"><div><small>CONCEPT ÉDITORIAL</small><h3>${html(offer.formatName)}</h3>${offer.concept?`<p>${html(offer.concept)}</p>`:''}</div><button class="v145-more" type="button" data-v145-menu="offer" data-offer-key="${attr(offer.key)}">•••</button></div><div class="v145-formats">${configs.length?configs.map(item=>`<span>${html(item)}</span>`).join(''):'<span>Standard</span>'}${extra?`<span>+${extra}</span>`:''}</div><div class="v145-money"><div class="is-main"><span>Prix client TTC</span><strong>${offer.minPrice?money(offer.minPrice):'—'}</strong><small>${offer.maxPrice&&offer.maxPrice!==offer.minPrice?`jusqu’à ${money(offer.maxPrice)}`:'prix d’appel'}</small></div><div><span>Coût fournisseur TTC</span><strong>${offer.supplierGrossCents?money(offer.supplierGrossCents):'—'}</strong><small>${offer.supplierNetCents?`${money(offer.supplierNetCents)} HT`:'base TTC'}</small></div><div><span>Marge brute</span><strong class="${offer.marginCents<0?'is-danger':''}">${Number.isFinite(offer.marginCents)?moneyBare(offer.marginCents):'—'}</strong><small>${Number.isFinite(offer.marginPct)?`${Math.round(offer.marginPct)} % du prix TTC`:'Non calculable'}</small></div><div><span>Places lancement</span><strong>${offer.launchRemainingLabel}</strong><small>${offer.launchLimitLabel}</small></div></div>${offer.issues.length?`<div class="v145-issues">${offer.issues.map(issue=>`<span>⚠ ${html(issue)}</span>`).join('')}</div>`:''}<footer><a href="${previewUrl(offer.key)}" target="_blank" rel="noopener">Voir côté client ↗</a><button class="v145-configure" type="button" data-v145-configure="${attr(offer.key)}">Configurer</button></footer></div></article>`;
+  return `<article class="v145-offer ${offer.active?'':'is-muted'}"><div class="v145-art">${visual}<span class="v145-status ${health.className}">${health.label}</span></div><div class="v145-offer-body"><div class="v145-offer-title"><div><small>CONCEPT ÉDITORIAL</small><h3>${html(offer.formatName)}</h3>${offer.concept?`<p>${html(offer.concept)}</p>`:''}</div><button class="v145-more" type="button" data-v145-menu="offer" data-offer-key="${attr(offer.key)}" aria-label="Actions pour ${attr(offer.formatName)}">•••</button></div><div class="v145-formats">${configs.length?configs.map(item=>`<span>${html(item)}</span>`).join(''):'<span>Standard</span>'}${extra?`<span>+${extra}</span>`:''}</div><div class="v145-money"><div class="is-main"><span>Prix client TTC</span><strong>${offer.minPrice?money(offer.minPrice):'—'}</strong><small>${offer.maxPrice&&offer.maxPrice!==offer.minPrice?`jusqu’à ${money(offer.maxPrice)}`:'prix d’appel'}</small></div><div><span>Coût fournisseur TTC</span><strong>${offer.supplierGrossCents?money(offer.supplierGrossCents):'—'}</strong><small>${offer.supplierNetCents?`${money(offer.supplierNetCents)} HT`:'base TTC'}</small></div><div><span>Marge brute</span><strong class="${offer.marginCents<0?'is-danger':''}">${Number.isFinite(offer.marginCents)?moneyBare(offer.marginCents):'—'}</strong><small>${Number.isFinite(offer.marginPct)?`${Math.round(offer.marginPct)} % du prix TTC`:'Non calculable'}</small></div><div><span>Places lancement</span><strong>${offer.launchRemainingLabel}</strong><small>${offer.launchLimitLabel}</small></div></div>${offer.issues.length?`<div class="v145-issues">${offer.issues.map(issue=>`<span>⚠ ${html(issue)}</span>`).join('')}</div>`:''}<footer><a href="${previewUrl(offer.key)}" target="_blank" rel="noopener">Voir côté client ↗</a><button class="v145-configure" type="button" data-v145-configure="${attr(offer.key)}">Configurer</button></footer></div></article>`;
 }
 
-function offerHealth(offer){if(!offer.active)return{label:'Masquée',className:'is-muted'};if(offer.issues.length)return{label:'Configuration requise',className:'is-warn'};if(Number.isFinite(offer.marginPct)&&offer.marginPct<20)return{label:'Marge faible',className:'is-warn'};return{label:'Prête à vendre',className:'is-ok'};}
+function offerHealth(offer){if(!offer.active)return{label:'Masquée',className:'is-muted'};if(offer.issues.length)return{label:'Configuration requise',className:'is-warn'};if(Number.isFinite(offer.marginPct)&&offer.marginPct<20)return{label:'Marge faible',className:'is-warn'};if(offer.launchRemaining===0)return{label:'Lancement épuisé',className:'is-warn'};return{label:'Prête à vendre',className:'is-ok'};}
 
 function offerViews(){
   const formatMap=new Map(formats().map(item=>[String(item.id),item])),supplierMap=new Map(suppliers().map(item=>[String(item.id),item])),policyMap=new Map(array(state.policies?.offerPolicies).map(item=>[String(item.offerId),item]));
@@ -197,7 +202,7 @@ function firstTierGross(tiers){for(const tier of Object.values(tiers||{})){const
 
 function handleInput(event){
   if(event.target.matches('[data-v145-search]')){state.query=event.target.value;render();return;}
-  if(event.target.matches('[data-v145-status]')){state.status=event.target.value;render();return;}
+  if(event.target.matches('[data-v145-status]')){state.status=event.target.value;if(state.status==='hidden')state.showInactive=true;render();return;}
   if(event.target.matches('[data-v145-supplier]')){state.supplier=event.target.value;render();return;}
   if(event.target.matches('[data-v145-margin]')){state.margin=event.target.value;render();return;}
   if(event.target.matches('[data-v145-inactive]')){state.showInactive=event.target.checked;render();return;}
@@ -219,12 +224,13 @@ function handleClick(event){
 
 function openAddMenu(button){
   closeMenus();const active=cities().filter(city=>city.active!==false);if(active.length===1){delegateCityOffer(String(active[0].id));return;}
-  const pop=popover(button);pop.innerHTML=`<strong>Nouvelle offre</strong>${active.map(city=>`<button type="button" data-v145-new-city-offer="${attr(city.id)}">${html(city.name)}</button>`).join('')||'<span>Aucune ville active</span>'}`;
+  const pop=popover(button);pop.innerHTML=`<strong>Nouvelle offre</strong>${active.map(city=>`<button type="button" data-v145-new-city-offer="${attr(city.id)}">${html(city.name)}</button>`).join('')||'<span>Aucune ville active</span>'}`;markMenuItems(pop);
 }
 function openContextMenu(button){
-  closeMenus();const type=button.dataset.v145Menu,pop=popover(button);if(type==='city')pop.innerHTML=`<button data-v145-action="city-edit" data-city-id="${attr(button.dataset.cityId)}">Modifier la ville</button><button data-v145-action="city-offer" data-city-id="${attr(button.dataset.cityId)}">Ajouter une offre</button>`;else if(type==='supplier')pop.innerHTML=`<button data-v145-action="supplier-edit" data-supplier-id="${attr(button.dataset.supplierId)}">Modifier le fournisseur</button><button data-v145-action="supplier-offer" data-city-id="${attr(button.dataset.cityId)}" data-supplier-id="${attr(button.dataset.supplierId)}">Ajouter un concept</button>`;else pop.innerHTML=`<button data-v145-action="offer-edit" data-offer-key="${attr(button.dataset.offerKey)}">Configurer l’offre</button><button data-v145-action="offer-format" data-offer-key="${attr(button.dataset.offerKey)}">Ajouter un format</button><a href="${previewUrl(button.dataset.offerKey)}" target="_blank" rel="noopener">Aperçu client ↗</a>`;
+  closeMenus();const type=button.dataset.v145Menu,pop=popover(button);if(type==='city')pop.innerHTML=`<button data-v145-action="city-edit" data-city-id="${attr(button.dataset.cityId)}">Modifier la ville</button><button data-v145-action="city-offer" data-city-id="${attr(button.dataset.cityId)}">Ajouter une offre</button>`;else if(type==='supplier')pop.innerHTML=`<button data-v145-action="supplier-edit" data-supplier-id="${attr(button.dataset.supplierId)}">Modifier le fournisseur</button><button data-v145-action="supplier-offer" data-city-id="${attr(button.dataset.cityId)}" data-supplier-id="${attr(button.dataset.supplierId)}">Ajouter un concept</button>`;else pop.innerHTML=`<button data-v145-action="offer-edit" data-offer-key="${attr(button.dataset.offerKey)}">Configurer l’offre</button><button data-v145-action="offer-format" data-offer-key="${attr(button.dataset.offerKey)}">Ajouter un format</button><a href="${previewUrl(button.dataset.offerKey)}" target="_blank" rel="noopener">Aperçu client ↗</a>`;markMenuItems(pop);
 }
-function popover(button){const pop=document.createElement('div');pop.className='v145-popover';const rect=button.getBoundingClientRect();pop.style.position='fixed';pop.style.top=`${Math.min(innerHeight-220,rect.bottom+8)}px`;pop.style.left=`${Math.max(12,Math.min(innerWidth-240,rect.right-230))}px`;document.body.append(pop);return pop;}
+function popover(button){const pop=document.createElement('div');pop.className='v145-popover';pop.setAttribute('role','menu');const rect=button.getBoundingClientRect();pop.style.position='fixed';pop.style.top=`${Math.min(innerHeight-220,rect.bottom+8)}px`;pop.style.left=`${Math.max(12,Math.min(innerWidth-240,rect.right-230))}px`;document.body.append(pop);return pop;}
+function markMenuItems(pop){for(const action of pop.querySelectorAll('button,a'))action.setAttribute('role','menuitem');}
 function runMenuAction(button){const action=button.dataset.v145Action;if(action==='city-edit')delegateClick(`[data-v133-edit-city="${cssEscape(button.dataset.cityId)}"]`);if(action==='city-offer')delegateCityOffer(button.dataset.cityId);if(action==='supplier-edit')delegateClick(`[data-v133-edit-supplier="${cssEscape(button.dataset.supplierId)}"]`);if(action==='supplier-offer')delegateClick(`[data-v133-add-concept][data-city="${cssEscape(button.dataset.cityId)}"][data-supplier="${cssEscape(button.dataset.supplierId)}"]`);if(action==='offer-edit')delegateOffer(button.dataset.offerKey);if(action==='offer-format')delegateClick(`[data-v133-add-format="${cssEscape(button.dataset.offerKey)}"]`);closeMenus();}
 function delegateOffer(key){delegateClick(`[data-v133-edit-offer="${cssEscape(key)}"]`);}
 function delegateCityOffer(cityId){delegateClick(`[data-v133-add-supplier-city="${cssEscape(cityId)}"]`);}
@@ -239,7 +245,7 @@ function suppliers(){return array(state.context?.suppliers);}
 function families(){return array(state.context?.families);}
 function cityNameById(id){return cities().find(city=>String(city.id)===String(id))?.name||'';}
 function firstNumber(...values){for(const value of values){if(value===''||value==null)continue;const n=Number(value);if(Number.isFinite(n)&&n>=0)return n;}return null;}
-function firstUrl(...values){for(const value of values){if(typeof value==='string'&&/^https?:\/\//i.test(value.trim()))return value.trim();}return '';}
+function firstUrl(...values){for(const value of values){if(typeof value!=='string')continue;const clean=value.trim();if(/^https?:\/\//i.test(clean)||clean.startsWith('/'))return clean;}return '';}
 function initials(name){return String(name||'?').split(/\s+/).filter(Boolean).slice(0,2).map(v=>v[0]).join('').toUpperCase();}
 function relativeTime(time){const seconds=Math.max(0,Math.round((Date.now()-Number(time||Date.now()))/1000));if(seconds<10)return'à l’instant';if(seconds<60)return`il y a ${seconds} s`;const minutes=Math.round(seconds/60);return`il y a ${minutes} min`;}
 function money(cents){return new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR',maximumFractionDigits:0}).format(Number(cents||0)/100);}

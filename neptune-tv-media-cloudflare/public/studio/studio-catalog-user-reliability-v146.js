@@ -7,7 +7,7 @@ document.body.dataset.neptuneCatalogReliability='v146';
 
 const mark=()=>{
   const root=document.querySelector('#studioCatalogCommercialCockpitV145');
-  if(root)root.dataset.catalogUserReliability='v146';
+  if(root&&(root.querySelector('.v145-offer')||root.querySelector('.v145-empty')))root.dataset.catalogUserReliability='v146';
 };
 
 new MutationObserver(mark).observe(document.body,{subtree:true,childList:true});

@@ -35,8 +35,11 @@ jobs:
           node --check neptune-tv-media-cloudflare/public/studio/studio-catalog-user-reliability-v146.js
           node --check neptune-tv-media-cloudflare/tests/audit-catalog-user-v146.mjs
           node --check neptune-tv-media-cloudflare/src/entry-v44.js
+          node neptune-tv-media-cloudflare/tests/catalog-user-v146-source-contract.mjs
+          grep -Fq "studio-catalog-commercial-cockpit-v145.js?v=1" neptune-tv-media-cloudflare/src/entry-v44.js
           grep -Fq "studio-catalog-user-reliability-v146.js?v=1" neptune-tv-media-cloudflare/src/entry-v44.js
-          grep -Fq "X-Neptune-Catalog-Cockpit','v146" neptune-tv-media-cloudflare/src/entry-v44.js
+          grep -Fq "X-Neptune-Catalog-Cockpit','v145" neptune-tv-media-cloudflare/src/entry-v44.js
+          grep -Fq "X-Neptune-Catalog-Reliability','v146" neptune-tv-media-cloudflare/src/entry-v44.js
 
       - name: Build static browser fixture from the real Studio assets
         shell: bash

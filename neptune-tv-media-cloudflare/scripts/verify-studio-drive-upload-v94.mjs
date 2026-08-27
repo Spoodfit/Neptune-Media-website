@@ -5,7 +5,7 @@ const root=path.resolve(import.meta.dirname,'..');
 const repoRoot=path.resolve(root,'..');
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
 const readRepo=file=>fs.readFileSync(path.join(repoRoot,file),'utf8');
-const entry41=read('src/entry-v41.js');
+const entry44=read('src/entry-v44.js');
 const entry40=read('src/entry-v40.js');
 const entry39=read('src/entry-v39.js');
 const entry38=read('src/entry-v38.js');
@@ -26,7 +26,7 @@ const activeChain=traceEntryChain(mainEntry);
 const checks=[];
 const expect=(name,c)=>checks.push({name,ok:Boolean(c)});
 
-expect('active Cloudflare entry preserves v94 through v41',activeChain.includes('src/entry-v41.js')&&entry41.includes("from './entry-v40.js'")&&entry40.includes("from './entry-v39.js'")&&entry39.includes("from './entry-v38.js'")&&entry38.includes("from './entry-v37.js'")&&entry37.includes("from './entry-v36.js'")&&entry36.includes("from './entry-v35.js'")&&entry35.includes("from './entry-v34.js'")&&entry34.includes("from './entry-v33.js'")&&entry33.includes("from './entry-v32.js'"));
+expect('active Cloudflare entry preserves v94 through canonical v44 -> v40 chain',activeChain[0]==='src/entry-v44.js'&&!activeChain.includes('src/entry-v41.js')&&activeChain.includes('src/entry-v40.js')&&activeChain.includes('src/entry-v32.js')&&entry44.includes("from './entry-v40.js'")&&entry44.includes("from './drive-upload-resilience-v137.js'")&&entry44.includes("from './drive-upload-recovery-v137.js'")&&entry44.includes("from './drive-manual-validation-v138.js'")&&entry40.includes("from './entry-v39.js'")&&entry39.includes("from './entry-v38.js'")&&entry38.includes("from './entry-v37.js'")&&entry37.includes("from './entry-v36.js'")&&entry36.includes("from './entry-v35.js'")&&entry35.includes("from './entry-v34.js'")&&entry34.includes("from './entry-v33.js'")&&entry33.includes("from './entry-v32.js'"));
 expect('v94 inherits v92/v93 Worker',entry.includes("import base from './entry-v31.js'")&&entry.includes("from './store-v26.js'"));
 expect('upload target protected by operator session',target.includes('requireOperator')&&target.includes('driveUploadTargetV94'));
 expect('Drive mapping isolated by orderId',target.includes('WHERE dp.order_id=? LIMIT 1')&&target.includes("mapping.syncStatus === 'ready'")&&target.includes('longFolderId')&&target.includes('shortsFolderId'));
@@ -73,7 +73,7 @@ function traceEntryChain(start){
     if(seen.has(current))return chain;
     seen.add(current);
     chain.push(current);
-    if(current==='src/entry-v41.js')return chain;
+    if(current==='src/entry-v32.js')return chain;
     const full=path.join(root,current);
     if(!fs.existsSync(full))return chain;
     const source=fs.readFileSync(full,'utf8');

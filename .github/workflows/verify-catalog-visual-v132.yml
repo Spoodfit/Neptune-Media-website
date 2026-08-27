@@ -48,7 +48,8 @@ jobs:
           grep -Fq '"main": "neptune-tv-media-cloudflare/src/entry-v44.js"' wrangler.jsonc
           test -L neptune-tv-media-cloudflare/wrangler.jsonc
           test "$(readlink neptune-tv-media-cloudflare/wrangler.jsonc)" = '../wrangler.jsonc'
-          grep -Fq "from './entry-v42.js'" neptune-tv-media-cloudflare/src/entry-v44.js
+          grep -Fq "from './entry-v41.js'" neptune-tv-media-cloudflare/src/entry-v44.js
+          ! grep -Fq "from './entry-v42.js'" neptune-tv-media-cloudflare/src/entry-v44.js
           ! grep -Fq "from './entry-v43.js'" neptune-tv-media-cloudflare/src/entry-v44.js
           grep -Fq 'studio-catalog-commercial-cockpit-v145.css?v=1' neptune-tv-media-cloudflare/src/entry-v44.js
           grep -Fq 'studio-catalog-commercial-cockpit-v145.js?v=1' neptune-tv-media-cloudflare/src/entry-v44.js

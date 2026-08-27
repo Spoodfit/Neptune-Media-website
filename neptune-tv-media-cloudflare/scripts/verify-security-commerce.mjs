@@ -37,6 +37,12 @@ assert.equal(read(legacyWranglerPath),rootWrangler,'legacy Wrangler compatibilit
 assert.ok(rootWrangler.includes('"main": "neptune-tv-media-cloudflare/src/entry-v44.js"'),'root Wrangler config must point to the canonical active entry');
 assert.ok(rootWrangler.includes('"WEBTV_VIDEO_BITRATE_KBPS": "4000"'),'canonical WebTV bitrate must remain 4000 kbps');
 assert.ok(!activeEntry.includes("from './entry-v43.js'"),'active entry must not retain the redundant v43 wrapper layer');
+assert.ok(!activeEntry.includes("from './entry-v42.js'"),'active entry must not retain the redundant v42 personalization wrapper layer');
+assert.ok(activeEntry.includes("from './entry-v41.js'"),'active entry must now compose directly on the preserved v41 runtime');
+assert.ok(activeEntry.includes('handleHorsNormePersonalizationV139'),'Hors Norme personalization must remain active after flattening v42');
+assert.ok(activeEntry.includes('client-hors-norme-personalization-v139.js'),'client Hors Norme personalization asset must remain injected by the canonical entry');
+assert.ok(activeEntry.includes('studio-hors-norme-personalization-v139.js'),'Studio Hors Norme personalization asset must remain injected by the canonical entry');
+assert.ok(activeEntry.includes('horsNormePersonalization:HORS_NORME_PERSONALIZATION_RELEASE'),'public release metadata must still expose the Hors Norme personalization release');
 assert.ok(activeEntry.includes('handleBusinessV142Http'),'v142 business runtime must be flattened into the canonical active entry');
 assert.ok(activeEntry.includes('handleCatalogCommerceV143Store'),'v143 commerce runtime must remain in the canonical active entry');
 

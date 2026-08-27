@@ -1,4 +1,5 @@
-import base,{StudioStore as BaseStudioStore,WebTvEncoder} from './entry-v42.js';
+import base,{StudioStore as BaseStudioStore,WebTvEncoder} from './entry-v41.js';
+import {handleHorsNormePersonalizationV139,HORS_NORME_PERSONALIZATION_RELEASE} from './hors-norme-personalization-v139.js';
 import {
   BUSINESS_V142_RELEASE,
   augmentBusinessReleaseV142,
@@ -13,6 +14,10 @@ import {isSameOrigin,json} from './security.js';
 
 export {WebTvEncoder};
 
+const HORS_NORME_CLIENT_JS='/espace-client/client-hors-norme-personalization-v139.js?v=3';
+const HORS_NORME_CLIENT_CSS='/espace-client/client-hors-norme-personalization-v139.css?v=1';
+const HORS_NORME_STUDIO_JS='/studio/studio-hors-norme-personalization-v139.js?v=3';
+const HORS_NORME_STUDIO_CSS='/studio/studio-hors-norme-personalization-v139.css?v=1';
 const BOOKING_V142_JS='/reserver/assets/booking-slots-v142.js?v=1';
 const BOOKING_V142_CSS='/reserver/assets/booking-slots-v142.css?v=1';
 const STUDIO_V142_JS='/studio/studio-business-v142.js?v=1';
@@ -39,7 +44,7 @@ export default{
   async fetch(request,env,ctx){
     const url=new URL(request.url);
     if(request.method==='POST'&&url.pathname.startsWith('/api/admin/media-catalog-v143/'))return forwardCatalogAdmin(request,env,url);
-    let response=await handleBusinessV142Http(request,env,ctx,(probe)=>base.fetch(probe,env,ctx));
+    let response=await handleBusinessV142Http(request,env,ctx,(probe)=>fetchHorsNormeV139(probe,env,ctx));
     response=await maybeEnhanceBusinessV142(request,response);
     return maybeEnhanceCatalogV143(request,response);
   },
@@ -50,6 +55,19 @@ export default{
     if(tasks.length)await Promise.allSettled(tasks);
   },
 };
+
+async function fetchHorsNormeV139(request,env,ctx){
+  const handled=await handleHorsNormePersonalizationV139(request,env,ctx,(probe)=>base.fetch(probe,env,ctx));
+  if(handled)return handled;
+  const url=new URL(request.url);
+  let response=await base.fetch(request,env,ctx);
+  if(request.method==='GET'&&response.ok&&(response.headers.get('Content-Type')||'').includes('text/html')){
+    if(isClientHome(url.pathname))response=await injectHorsNormeAssets(response,HORS_NORME_CLIENT_CSS,HORS_NORME_CLIENT_JS,'X-Neptune-Hors-Norme-Personalization');
+    if(isStudioClients(url.pathname))response=await injectHorsNormeAssets(response,HORS_NORME_STUDIO_CSS,HORS_NORME_STUDIO_JS,'X-Neptune-Studio-Hors-Norme-Personalization');
+  }
+  if(request.method==='GET'&&url.pathname==='/api/public/release'&&response.ok)response=await augmentHorsNormeRelease(response);
+  return response;
+}
 
 async function forwardCatalogAdmin(request,env,url){
   if(!isSameOrigin(request))return json({error:'origin_forbidden'},403);
@@ -75,7 +93,31 @@ async function maybeEnhanceCatalogV143(request,response){
   return markCatalog(response);
 }
 
+function isClientHome(path){return path==='/espace-client'||path==='/espace-client/'||path==='/espace-client/index.html';}
+function isStudioClients(path){return path==='/studio/clients'||path==='/studio/clients/'||path==='/studio/clients.html';}
 function isStudio(path){return path==='/studio'||path==='/studio/'||path.startsWith('/studio/');}
+
+async function injectHorsNormeAssets(response,css,js,headerName){
+  let body=await response.text();
+  body=removeAsset(body,'link',css.split('?')[0]);
+  body=removeAsset(body,'script',js.split('?')[0]);
+  body=body.replace('</head>',`<link rel="stylesheet" href="${css}"></head>`).replace('</body>',`<script type="module" src="${js}"></script></body>`);
+  const headers=new Headers(response.headers);
+  for(const name of ['Content-Length','Content-Encoding','ETag','Last-Modified'])headers.delete(name);
+  headers.set('Cache-Control','private, no-store, max-age=0');
+  headers.set(headerName,HORS_NORME_PERSONALIZATION_RELEASE);
+  return new Response(body,{status:response.status,statusText:response.statusText,headers});
+}
+
+async function augmentHorsNormeRelease(response){
+  const current=await response.json().catch(()=>({}));
+  const headers=new Headers(response.headers);
+  headers.delete('Content-Length');
+  headers.set('Content-Type','application/json; charset=utf-8');
+  headers.set('Cache-Control','no-store');
+  headers.set('X-Neptune-Hors-Norme-Personalization',HORS_NORME_PERSONALIZATION_RELEASE);
+  return new Response(JSON.stringify({...current,horsNormePersonalization:HORS_NORME_PERSONALIZATION_RELEASE}),{status:response.status,statusText:response.statusText,headers});
+}
 
 async function injectBusinessAssets(response,css,js,headerName){
   let body=await response.text();

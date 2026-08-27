@@ -30,7 +30,10 @@ assert.ok(lifecycleRuntime.includes("AFTER INSERT ON portal_orders"),'paid order
 assert.ok(lifecycleRuntime.includes("AFTER UPDATE OF payment_status ON portal_orders"),'paid order updates must activate client entitlement');
 assert.ok(activeEntry.includes("ensurePortalLifecycleV144(this)"),'the active store runtime must install lifecycle guards before lower-level routes');
 
-assert.ok(!fs.existsSync('neptune-tv-media-cloudflare/wrangler.jsonc'),'production must have exactly one Wrangler configuration');
+const legacyWranglerPath='neptune-tv-media-cloudflare/wrangler.jsonc';
+assert.ok(fs.lstatSync(legacyWranglerPath).isSymbolicLink(),'legacy Wrangler path must be a symlink, never a second config');
+assert.equal(fs.readlinkSync(legacyWranglerPath),'../wrangler.jsonc','legacy Wrangler path must resolve to the canonical root config');
+assert.equal(read(legacyWranglerPath),rootWrangler,'legacy Wrangler compatibility path must expose exactly the canonical config');
 assert.ok(rootWrangler.includes('"main": "neptune-tv-media-cloudflare/src/entry-v44.js"'),'root Wrangler config must point to the canonical active entry');
 assert.ok(rootWrangler.includes('"WEBTV_VIDEO_BITRATE_KBPS": "4000"'),'canonical WebTV bitrate must remain 4000 kbps');
 assert.ok(!activeEntry.includes("from './entry-v43.js'"),'active entry must not retain the redundant v43 wrapper layer');

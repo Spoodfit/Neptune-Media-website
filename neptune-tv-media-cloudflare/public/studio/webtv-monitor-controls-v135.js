@@ -1,10 +1,25 @@
-const RELEASE='neptune-webtv-monitor-controls-20260823-v135.1';
+const RELEASE='neptune-webtv-monitor-controls-20260827-v146';
 
 document.documentElement.dataset.webtvMonitorControlsV135=RELEASE;
 
 if(location.pathname.includes('/studio/webtv')){
+  ensureLandscapeMonitor();
   ensureControls();
-  new MutationObserver(ensureControls).observe(document.body,{childList:true,subtree:true});
+  new MutationObserver(()=>{ensureLandscapeMonitor();ensureControls();}).observe(document.body,{childList:true,subtree:true});
+}
+
+function ensureLandscapeMonitor(){
+  if(document.getElementById('neptuneWebTvLandscapeV146'))return;
+  const style=document.createElement('style');
+  style.id='neptuneWebTvLandscapeV146';
+  style.textContent=`
+    .webtv-v125-mounted .v125-monitor-slot{display:grid!important;min-height:0!important;place-items:center!important;overflow:hidden!important}
+    .webtv-v125-mounted .v125-monitor-slot .antenna-monitor{width:100%!important;height:100%!important;min-height:0!important;grid-template-rows:auto minmax(0,1fr) auto!important}
+    .webtv-v125-mounted .v125-monitor-slot .antenna-screen{width:min(100%,calc((100dvh - 240px) * 16 / 9))!important;height:auto!important;max-width:100%!important;max-height:100%!important;aspect-ratio:16/9!important;align-self:center!important;justify-self:center!important}
+    .webtv-v125-mounted .v125-monitor-slot .antenna-screen iframe,.webtv-v125-mounted .v125-monitor-slot .antenna-screen video{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;object-fit:contain!important}
+    @media(max-width:900px){.webtv-v125-mounted .v125-monitor-slot .antenna-screen{width:100%!important;max-height:none!important}}
+  `;
+  document.head.append(style);
 }
 
 function ensureControls(){

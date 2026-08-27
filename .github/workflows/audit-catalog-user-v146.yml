@@ -1,0 +1,89 @@
+name: Audit Catalog User Journey V146
+
+on:
+  pull_request:
+    paths:
+      - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-commercial-cockpit-v145.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-user-reliability-v146.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-commercial-cockpit-v145.css'
+      - 'neptune-tv-media-cloudflare/src/entry-v44.js'
+      - 'neptune-tv-media-cloudflare/tests/audit-catalog-user-v146.mjs'
+      - '.github/workflows/audit-catalog-user-v146.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-commercial-cockpit-v145.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-user-reliability-v146.js'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-commercial-cockpit-v145.css'
+      - 'neptune-tv-media-cloudflare/src/entry-v44.js'
+      - 'neptune-tv-media-cloudflare/tests/audit-catalog-user-v146.mjs'
+      - '.github/workflows/audit-catalog-user-v146.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  user-journey:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate changed JavaScript
+        run: |
+          node --check neptune-tv-media-cloudflare/public/studio/studio-catalog-user-reliability-v146.js
+          node --check neptune-tv-media-cloudflare/tests/audit-catalog-user-v146.mjs
+          node --check neptune-tv-media-cloudflare/src/entry-v44.js
+          node neptune-tv-media-cloudflare/tests/catalog-user-v146-source-contract.mjs
+          node neptune-tv-media-cloudflare/scripts/verify-catalog-user-v146.mjs
+          node neptune-tv-media-cloudflare/tests/catalog-commercial-cockpit-v145.mjs
+          grep -Fq "studio-catalog-commercial-cockpit-v145.js?v=1" neptune-tv-media-cloudflare/src/entry-v44.js
+          grep -Fq "studio-catalog-user-reliability-v146.js?v=1" neptune-tv-media-cloudflare/src/entry-v44.js
+          grep -Fq "X-Neptune-Catalog-Cockpit','v145" neptune-tv-media-cloudflare/src/entry-v44.js
+          grep -Fq "X-Neptune-Catalog-Reliability','v146" neptune-tv-media-cloudflare/src/entry-v44.js
+
+      - name: Install Worker dependencies
+        working-directory: neptune-tv-media-cloudflare
+        run: npm install --package-lock=false --ignore-scripts --no-audit --no-fund
+
+      - name: Start active Cloudflare Worker
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v google-chrome || command -v google-chrome-stable || command -v chromium
+          sed -i 's/"compatibility_date": "2026-07-30"/"compatibility_date": "2026-07-07"/' neptune-tv-media-cloudflare/wrangler.jsonc
+          ./neptune-tv-media-cloudflare/node_modules/.bin/wrangler dev --config neptune-tv-media-cloudflare/wrangler.jsonc --local --port 8787 > /tmp/wrangler-catalog-v146.log 2>&1 &
+          ready=0
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --show-error -D /tmp/catalog-v146.headers http://127.0.0.1:8787/studio/advanced.html > /tmp/catalog-v146.html; then ready=1; break; fi
+            sleep 2
+          done
+          if [ "$ready" != 1 ]; then cat /tmp/wrangler-catalog-v146.log; exit 1; fi
+          grep -Fqi 'x-neptune-catalog-cockpit: v145' /tmp/catalog-v146.headers
+          grep -Fqi 'x-neptune-catalog-reliability: v146' /tmp/catalog-v146.headers
+          grep -Fq '/studio/studio-catalog-commercial-cockpit-v145.js?v=1' /tmp/catalog-v146.html
+          grep -Fq '/studio/studio-catalog-user-reliability-v146.js?v=1' /tmp/catalog-v146.html
+
+      - name: Exercise the Catalogue like an operator
+        env:
+          STUDIO_BASE_URL: http://127.0.0.1:8787
+          CATALOG_AUDIT_DIR: test-results/catalog-user-v146
+        run: node neptune-tv-media-cloudflare/tests/audit-catalog-user-v146.mjs
+
+      - name: Upload visual and functional evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: catalog-user-v146-${{ github.run_id }}
+          path: |
+            test-results/catalog-user-v146
+            /tmp/wrangler-catalog-v146.log
+            /tmp/catalog-v146.headers
+            /tmp/catalog-v146.html
+          if-no-files-found: warn
+          retention-days: 14

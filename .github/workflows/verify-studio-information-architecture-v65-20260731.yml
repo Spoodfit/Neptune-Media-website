@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/verify-studio-information-architecture-v65-20260731.yml'
+      - 'wrangler.jsonc'
       - 'neptune-tv-media-cloudflare/wrangler.jsonc'
       - 'neptune-tv-media-cloudflare/src/entry-v34.js'
       - 'neptune-tv-media-cloudflare/src/entry-v36.js'
@@ -46,6 +47,7 @@ on:
       - 'fix/catalog-*'
     paths:
       - '.github/workflows/verify-studio-information-architecture-v65-20260731.yml'
+      - 'wrangler.jsonc'
       - 'neptune-tv-media-cloudflare/wrangler.jsonc'
       - 'neptune-tv-media-cloudflare/src/entry-v34.js'
       - 'neptune-tv-media-cloudflare/src/entry-v36.js'
@@ -136,8 +138,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          sed -i 's/"compatibility_date": "2026-07-30"/"compatibility_date": "2026-07-07"/' neptune-tv-media-cloudflare/wrangler.jsonc
-          ./neptune-tv-media-cloudflare/node_modules/.bin/wrangler dev --config neptune-tv-media-cloudflare/wrangler.jsonc --local --port 8787 > /tmp/wrangler-v105.log 2>&1 &
+          sed -i 's/"compatibility_date": "2026-07-30"/"compatibility_date": "2026-07-07"/' wrangler.jsonc
+          ./neptune-tv-media-cloudflare/node_modules/.bin/wrangler dev --config wrangler.jsonc --local --port 8787 > /tmp/wrangler-v105.log 2>&1 &
           echo $! > /tmp/wrangler-v105.pid
           ready=0
           for attempt in $(seq 1 60); do

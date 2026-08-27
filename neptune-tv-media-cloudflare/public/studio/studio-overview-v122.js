@@ -20,7 +20,15 @@ function boot(){
 }
 
 function installNavigation(){
-  const nav=$('.neptune-studio-nav')||$('.studio-nav');
+  // The canonical v105/v138 shell is the single owner of primary Studio navigation.
+  // v122 may provide a fallback only before that shell exists; it must never rewrite
+  // `.neptune-studio-nav` after the canonical four-route sidebar has mounted.
+  const canonical=$('.neptune-studio-nav');
+  if(canonical){
+    canonical.dataset.v122Ready='canonical-shell';
+    return;
+  }
+  const nav=$('.studio-nav');
   if(!nav||nav.dataset.v122Ready==='1'){
     updateActiveNavigation(nav);
     return;
@@ -55,8 +63,8 @@ function activeRoute(){
   return'';
 }
 
-function updateActiveNavigation(nav=$('.neptune-studio-nav')||$('.studio-nav')){
-  if(!nav)return;
+function updateActiveNavigation(nav=$('.studio-nav')){
+  if(!nav||nav.classList.contains('neptune-studio-nav'))return;
   const active=activeRoute();
   $$('[data-v122-route]',nav).forEach(link=>{
     const selected=link.dataset.v122Route===active;

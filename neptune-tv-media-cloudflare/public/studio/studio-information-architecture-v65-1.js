@@ -149,9 +149,9 @@
 
   function primaryRoute(kind) {
     if (kind === 'clients') return 'clients';
-    if (kind === 'production') return 'production';
+    if (kind === 'production') return '';
     if (kind === 'webtv') return 'diffusion';
-    if (kind === 'advanced') return groupForTab(requestedTab());
+    if (kind === 'advanced') return primaryRouteForTab(requestedTab());
     return '';
   }
 
@@ -185,9 +185,10 @@
       <div class="neptune-studio-status"><i></i><span>Studio synchronisé</span></div>
       <nav class="neptune-studio-nav" aria-label="Navigation principale du Studio">
         ${link('clients', '/studio/clients', '◎', 'Parcours clients')}
-        ${link('production', '/studio/video-ai.html', '✦', 'Production vidéo')}
         ${link('diffusion', '/studio/webtv.html', '▶', 'Diffusion')}
-        ${link('settings', '/studio/advanced.html#programs', '⚙', 'Réglages')}
+        ${link('catalog', '/studio/advanced.html#programs', '▦', 'Catalogue Média')}
+        ${link('finance', '/studio/advanced.html#finances', '€', 'Finance')}
+        ${link('settings-main', '/studio/advanced.html#settings', '⚙', 'Réglage')}
       </nav>
       <button class="neptune-studio-account" id="neptuneStudioLogout" type="button" aria-label="Se déconnecter du Studio">
         <span class="studio-avatar">NM</span>
@@ -234,10 +235,14 @@
     nav?.addEventListener('click', (event) => {
       const item = event.target.closest('[data-studio-route]');
       if (!item || kind !== 'advanced') return;
-      if (item.dataset.studioRoute === 'settings') {
-        event.preventDefault();
-        advanced?.activate('programs');
-      }
+      const tab = {
+        catalog: 'programs',
+        finance: 'finances',
+        'settings-main': 'settings',
+      }[item.dataset.studioRoute];
+      if (!tab) return;
+      event.preventDefault();
+      advanced?.activate(tab);
     });
   }
 
@@ -257,7 +262,7 @@
 
     const render = () => {
       const group = groupForTab(activeTab);
-      setPrimaryActive(ui.nav, group);
+      setPrimaryActive(ui.nav, primaryRouteForTab(activeTab));
       context.innerHTML = groups[group].map(([id, label]) => {
         const original = controls.get(id);
         const unavailable = id !== 'webtv' && (!original || original.hidden);
@@ -312,6 +317,12 @@
     return 'episodes';
   }
   function groupForTab(tab) { return ['programs', 'finances', 'users', 'audit', 'settings'].includes(tab) ? 'settings' : 'diffusion'; }
+  function primaryRouteForTab(tab) {
+    if (tab === 'programs') return 'catalog';
+    if (tab === 'finances') return 'finance';
+    if (['users', 'audit', 'settings'].includes(tab)) return 'settings-main';
+    return 'diffusion';
+  }
 
   function bindLogout(account) {
     if (!account) return;

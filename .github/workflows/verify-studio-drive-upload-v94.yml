@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/verify-studio-drive-upload-v94.yml'
+      - 'neptune-tv-media-cloudflare/src/entry-v44.js'
+      - 'neptune-tv-media-cloudflare/src/entry-v40.js'
       - 'neptune-tv-media-cloudflare/src/entry-v32.js'
       - 'neptune-tv-media-cloudflare/src/store-v26.js'
       - 'neptune-tv-media-cloudflare/src/portal-drive-upload-v94.js'
@@ -19,6 +21,8 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/verify-studio-drive-upload-v94.yml'
+      - 'neptune-tv-media-cloudflare/src/entry-v44.js'
+      - 'neptune-tv-media-cloudflare/src/entry-v40.js'
       - 'neptune-tv-media-cloudflare/src/entry-v32.js'
       - 'neptune-tv-media-cloudflare/src/store-v26.js'
       - 'neptune-tv-media-cloudflare/src/portal-drive-upload-v94.js'
@@ -47,14 +51,20 @@ jobs:
         with:
           node-version: 22
 
-      - name: Validate v94 source contract
+      - name: Validate v94 source and canonical entry contract
         working-directory: neptune-tv-media-cloudflare
         run: |
+          node --check src/entry-v44.js
+          node --check src/entry-v40.js
           node --check src/entry-v32.js
           node --check src/store-v26.js
           node --check src/portal-drive-upload-v94.js
           node --check public/studio/drive-upload-v94.js
           node --check tests/studio-drive-upload-v94.mjs
+          grep -Fq "from './entry-v40.js'" src/entry-v44.js
+          ! grep -Fq "from './entry-v41.js'" src/entry-v44.js
+          grep -Fq "from './drive-upload-resilience-v137.js'" src/entry-v44.js
+          grep -Fq "from './drive-manual-validation-v138.js'" src/entry-v44.js
           node scripts/verify-studio-drive-upload-v94.mjs
 
       - name: Install Playwright

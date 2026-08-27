@@ -37,10 +37,9 @@ function installNavigation(){
   nav.setAttribute('aria-label','Navigation principale du Studio');
   nav.innerHTML=[
     navLink('/studio/clients','◎','Parcours clients','clients'),
+    navLink('/studio/video-ai.html','✦','Production vidéo','production'),
     navLink('/studio/webtv.html','▶','Diffusion','diffusion'),
-    navLink('/studio/advanced.html#programs','▦','Catalogue Média','catalogue'),
-    navLink('/studio/advanced.html#finances','€','Finance','finance'),
-    navLink('/studio/advanced.html#settings','⚙','Réglage','settings'),
+    navLink('/studio/advanced.html#programs','⚙','Réglages','settings'),
   ].join('');
   updateActiveNavigation(nav);
 }
@@ -52,11 +51,10 @@ function navLink(href,icon,label,key){
 function activeRoute(){
   const path=location.pathname;
   if(path.includes('/studio/clients'))return'clients';
+  if(path.includes('/studio/video-ai'))return'production';
   if(path.includes('/studio/webtv'))return'diffusion';
   if(path.includes('/studio/advanced')){
     const hash=(location.hash||'#programs').slice(1);
-    if(hash==='programs')return'catalogue';
-    if(hash==='finances')return'finance';
     if(['episodes','ads','insights','webtv'].includes(hash))return'diffusion';
     return'settings';
   }
@@ -169,4 +167,4 @@ function installSettingsBack(hash,content,detail=false){
   }
 }
 
-function escapeHtml(value){return String(value??'').replace(/[&<>"']/gu,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));}
+function escapeHtml(value){return String(value??'').replace(/[&<>"']/gu,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#039;'}[char]));}

@@ -64,10 +64,10 @@ expect(entry40.includes("session_id LIKE 'webtv:%'"),'Studio calcule les métriq
 expect(entry40.includes('webTv:webTvStats(this.sql)'),'admin state expose stats.webTv sans migration de schéma');
 expect(entry40.includes("STUDIO_V122_RELEASE='neptune-studio-webtv-20260818-v122'"),'release Studio v122 exposée');
 expect(entry40.includes("WEBTV_ANALYTICS_RELEASE='neptune-webtv-analytics-20260818-v122'"),'release analytics v122 exposée');
-expect(entry41.includes("from './entry-v40.js'"),'entry-v41 préserve toute la chaîne WebTV v122 de v40');
-expect(entry42.includes("from './entry-v41.js'"),'entry-v42 préserve entry-v41');
+expect(entry41.includes("from './entry-v40.js'"),'entry-v41 historique préserve toute la chaîne WebTV v122 de v40');
+expect(entry42.includes("from './entry-v41.js'"),'entry-v42 historique préserve entry-v41');
 expect(entry43.includes("from './entry-v42.js'"),'entry-v43 historique préserve entry-v42');
-expect(entry44.includes("from './entry-v42.js'")&&!entry44.includes("from './entry-v43.js'"),'entry-v44 actif absorbe v43 et préserve directement entry-v42');
+expect(entry44.includes("from './entry-v40.js'")&&!entry44.includes("from './entry-v41.js'")&&!entry44.includes("from './entry-v42.js'")&&!entry44.includes("from './entry-v43.js'"),'entry-v44 actif compose directement entry-v40');
 expect(wrangler.includes('"* * * * *"'),'watchdog Cloudflare planifié chaque minute');
 expect(wrangler.includes('"main": "neptune-tv-media-cloudflare/src/entry-v44.js"'),'entry-v44 est le Worker actif depuis la configuration canonique racine');
 

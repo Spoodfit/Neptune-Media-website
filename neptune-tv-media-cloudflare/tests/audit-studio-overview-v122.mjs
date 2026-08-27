@@ -56,11 +56,11 @@ const publishedCatalog={
 };
 const portal={clients:[],orders:[],supplierPayments:[],refundRequests:[],deletionRequests:[],finance:adminState.finance};
 const screens=[
-  {id:'webtv',path:'/studio/webtv.html',active:'Diffusion',kind:'webtv',context:false},
-  {id:'catalogue',path:'/studio/advanced.html#programs',active:'Réglages',kind:'catalogue',context:true},
-  {id:'finance',path:'/studio/advanced.html#finances',active:'Réglages',kind:'finance',context:true},
-  {id:'settings',path:'/studio/advanced.html#settings',active:'Réglages',kind:'settings',context:true},
-  {id:'programme',path:'/studio/advanced.html#episodes',active:'Diffusion',kind:'programme',context:true},
+  {id:'webtv',path:'/studio/webtv.html',active:'Diffusion',kind:'webtv'},
+  {id:'catalogue',path:'/studio/advanced.html#programs',active:'Réglages',kind:'catalogue'},
+  {id:'finance',path:'/studio/advanced.html#finances',active:'Réglages',kind:'finance'},
+  {id:'settings',path:'/studio/advanced.html#settings',active:'Réglages',kind:'settings'},
+  {id:'programme',path:'/studio/advanced.html#episodes',active:'Diffusion',kind:'programme'},
 ];
 const viewports=[{id:'desktop',width:1440,height:900},{id:'mobile',width:390,height:844}];
 const browser=await chromium.launch({headless:true});
@@ -112,11 +112,11 @@ try{
         const links=[...document.querySelectorAll('.neptune-studio-nav-link')];
         const active=links.filter(link=>link.classList.contains('active')).map(link=>link.querySelector('strong')?.textContent.trim()||'');
         const nav=links.map(link=>link.querySelector('strong')?.textContent.trim()||'');
-        const contextNav=document.querySelector('.studio-context-nav-v65');
         const root=document.documentElement,body=document.body;
         const overflow=Math.max(root.scrollWidth,body.scrollWidth)-innerWidth;
         const data={
-          kind,nav,active,contextVisible:visible(contextNav),overflow,
+          kind,nav,active,overflow,
+          legacyContextVisible:[...document.querySelectorAll('.studio-context-nav-v65')].some(visible),
           logout:Boolean(document.getElementById('neptuneStudioLogout')),
           menuToggle:Boolean(document.getElementById('neptuneStudioMenuToggle')),
           shellReady:root.dataset.neptuneStudioShellReady||'',
@@ -125,12 +125,9 @@ try{
           const cockpit=document.getElementById('studioCatalogCommercialCockpitV145');
           const hierarchy=document.getElementById('studioCatalogHierarchyV133');
           data.catalogue={
-            cockpitVisible:visible(cockpit),
-            cockpitMounted:Boolean(cockpit),
-            legacyHierarchyMarked:hierarchy?.dataset.v145LegacyHost==='1',
-            legacyHierarchyVisible:visible(hierarchy),
-            release:window.__neptuneCatalogCommercialCockpitV145||'',
-            bodyMode:body.classList.contains('v145-catalog-active'),
+            cockpitVisible:visible(cockpit),cockpitMounted:Boolean(cockpit),
+            legacyHierarchyMarked:hierarchy?.dataset.v145LegacyHost==='1',legacyHierarchyVisible:visible(hierarchy),
+            release:window.__neptuneCatalogCommercialCockpitV145||'',bodyMode:body.classList.contains('v145-catalog-active'),
           };
         }
         if(kind==='webtv')data.webtv={cockpit:visible(document.querySelector('#webtvCockpitV125'))};
@@ -139,7 +136,7 @@ try{
 
       assert(JSON.stringify(metrics.nav)===JSON.stringify(expectedNav),`${screen.id}/${viewport.id}: navigation ${JSON.stringify(metrics.nav)}`);
       assert(metrics.active.length===1&&metrics.active[0]===screen.active,`${screen.id}/${viewport.id}: actif ${JSON.stringify(metrics.active)}`);
-      assert(metrics.contextVisible===screen.context,`${screen.id}/${viewport.id}: navigation contextuelle inattendue (${metrics.contextVisible})`);
+      assert(!metrics.legacyContextVisible,`${screen.id}/${viewport.id}: ancienne navigation contextuelle encore visible`);
       assert(metrics.overflow<=3,`${screen.id}/${viewport.id}: overflow ${metrics.overflow}px`);
       assert(metrics.logout,`${screen.id}/${viewport.id}: bloc de déconnexion canonique absent`);
       assert(metrics.menuToggle,`${screen.id}/${viewport.id}: bouton de menu responsive absent`);
@@ -168,9 +165,7 @@ try{
       await context.close();
     }
   }
-}finally{
-  await browser.close();
-}
+}finally{await browser.close();}
 
 await writeFile(path.join(outputDir,'report.json'),JSON.stringify({ok:true,release:'studio-overview-v122-canonical-v145',reports},null,2));
 console.log(JSON.stringify({ok:true,checks:reports.length,nav:expectedNav,catalogue:'v145'},null,2));

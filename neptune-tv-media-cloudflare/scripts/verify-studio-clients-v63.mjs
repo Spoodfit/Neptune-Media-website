@@ -7,13 +7,22 @@ const [html, css, runtime, canonical] = await Promise.all([
   readFile(new URL('../public/studio/studio-information-architecture-v65-1.js', import.meta.url), 'utf8'),
 ]);
 
+const approvedPrimaryRoutes = [
+  "link('clients', '/studio/clients'",
+  "link('diffusion', '/studio/webtv.html'",
+  "link('catalog', '/studio/advanced.html#programs'",
+  "link('finance', '/studio/advanced.html#finances'",
+  "link('settings-main', '/studio/advanced.html#settings'",
+];
+
 const checks = [
   ['final polish stylesheet is loaded after responsive stability', html.indexOf('responsive-stability-v60.css') < html.indexOf('studio-clients-polish-v63.css')],
   ['final polish runtime is loaded after the clients runtimes', html.indexOf('clients-feedback-v31.js') < html.indexOf('studio-clients-polish-v63.js')],
   ['Studio clients body opts into v63 content runtime', html.includes('clients-app studio-clients-v63')],
   ['legacy sidebar keeps the stable mount id used by v105', html.includes('id="studioSidebar"')],
   ['canonical shell replaces legacy account action with a single logout block', canonical.includes('id="neptuneStudioLogout"') && canonical.includes('<small>Se déconnecter</small>')],
-  ['canonical shell exposes exactly the four primary destinations', canonical.includes("link('clients', '/studio/clients'") && canonical.includes("link('production', '/studio/video-ai.html'") && canonical.includes("link('diffusion', '/studio/webtv.html'") && canonical.includes("link('settings', '/studio/advanced.html#programs'")],
+  ['canonical shell exposes exactly the five approved primary destinations', approvedPrimaryRoutes.every((marker) => canonical.includes(marker)) && !canonical.includes("link('production', '/studio/video-ai.html'")],
+  ['Production vidéo remains available without becoming a primary destination', canonical.includes("cleanPath === '/studio/video-ai'") && canonical.includes("if (kind === 'production') return '';" )],
   ['Parcours clients marks itself as the active canonical destination', canonical.includes("if (kind === 'clients') return 'clients';")],
   ['summary labels match their actual counters', ['clients', 'parcours actifs', 'urgences'].every((label) => html.includes(`<span>${label}</span>`))],
   ['desktop legacy account participates in flex layout before v105 replacement', css.includes('.studio-account {') && css.includes('position: static;')],
@@ -37,4 +46,4 @@ if (failures.length) {
   console.error(`Studio clients v63/v138 verification failed: ${failures.length} check(s).`);
   process.exit(1);
 }
-console.log('Studio clients content contract preserved under the four-tab canonical Studio shell.');
+console.log('Studio clients content contract preserved under the approved five-section canonical Studio shell.');

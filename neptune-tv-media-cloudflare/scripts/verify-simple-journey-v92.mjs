@@ -6,6 +6,7 @@ const repoRoot=path.resolve(root,'..');
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
 const readRepo=file=>fs.readFileSync(path.join(repoRoot,file),'utf8');
 const checks=[
+  ['src/entry-v44.js',["from './entry-v40.js'","from './drive-upload-resilience-v137.js'","from './drive-upload-recovery-v137.js'","from './drive-manual-validation-v138.js'"]],
   ['src/entry-v31.js',['/api/admin/journey-v92/context','/api/admin/journey-v92/action','/api/admin/journey-v92/preparation-sync','simple-journey-v92.js?v=1','supplierSlaHours: 48','clientDateChangeMinimumDays: 15']],
   ['src/entry-v32.js',["import base from './entry-v31.js'",'/api/admin/drive-upload-v94/session']],
   ['src/entry-v33.js',["import base from './entry-v32.js'",'/api/admin/studio-operations-v95/']],
@@ -16,7 +17,6 @@ const checks=[
   ['src/entry-v38.js',["from './entry-v37.js'"]],
   ['src/entry-v39.js',["from './entry-v38.js'"]],
   ['src/entry-v40.js',["from './entry-v39.js'"]],
-  ['src/entry-v41.js',["from './entry-v40.js'","from './drive-upload-recovery-v137.js'"]],
   ['src/store-v25.js',['/portal/simple-journey-context-v92','/portal/simple-journey-action-v92']],
   ['src/portal-simple-journey-v92.js',['send_reservation_link','send_payment_link','force_majeure_reschedule','date_change_locked_15_days','drive_sources_auto_detected_v92','drive_deliverables_auto_detected_v92']],
   ['src/payment-links-v92.js',['NPORD_']],
@@ -31,19 +31,20 @@ for(const [file,needles] of checks){
 const wrangler=readRepo('wrangler.jsonc');
 const mainEntry=(wrangler.match(/"main"\s*:\s*"([^"]+)"/u)?.[1]||'').replace(/^neptune-tv-media-cloudflare\//u,'');
 const activeChain=traceEntryChain(mainEntry);
-if(!activeChain.includes('src/entry-v41.js'))throw new Error(`active Worker must preserve entry-v41.js; chain=${activeChain.join(' -> ')}`);
+if(activeChain[0]!=='src/entry-v44.js'||!activeChain.includes('src/entry-v31.js'))throw new Error(`active Worker must preserve v92 through canonical v44 runtime; chain=${activeChain.join(' -> ')}`);
+if(activeChain.includes('src/entry-v41.js')||activeChain.includes('src/entry-v42.js')||activeChain.includes('src/entry-v43.js'))throw new Error(`active Worker must not reintroduce flattened v41-v43 wrappers; chain=${activeChain.join(' -> ')}`);
 if(!wrangler.includes('https://calendar.app.google/X9q1T5JT9ngMfZY67'))throw new Error('preparation booking URL must match v92');
-console.log(`Simple client journey v92 preserved through Drive v94/v137, Studio operations v95, sales tunnel v98 and active chain ${activeChain.join(' -> ')}.`);
+console.log(`Simple client journey v92 preserved through Drive v94/v137/v138, Studio operations v95, sales tunnel and active chain ${activeChain.join(' -> ')}.`);
 
 function traceEntryChain(start){
   const chain=[];
   const seen=new Set();
   let current=start;
-  for(let depth=0;depth<20&&current;depth+=1){
+  for(let depth=0;depth<64&&current;depth+=1){
     if(seen.has(current))throw new Error(`entry chain cycle: ${current}`);
     seen.add(current);
     chain.push(current);
-    if(current==='src/entry-v41.js')return chain;
+    if(current==='src/entry-v31.js')return chain;
     const full=path.join(root,current);
     if(!fs.existsSync(full))break;
     const source=fs.readFileSync(full,'utf8');

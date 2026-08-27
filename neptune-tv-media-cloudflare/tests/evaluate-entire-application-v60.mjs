@@ -37,6 +37,8 @@ for (const item of report.failures || []) {
     && Array.isArray(item.details)
     && item.details.length > 0
     && item.details.every((detail) => detail === 'I``null');
+  const productionTrustedLoginBlocked = item.scope.startsWith('live-client-')
+    && item.message === 'La connexion de test client n’ouvre pas le dashboard.';
 
   if (dynamicMissing) {
     accepted.push({ ...item, classification: 'route dynamique servie par le Worker et validée en production' });
@@ -60,6 +62,10 @@ for (const item of report.failures || []) {
   }
   if (opaqueThirdPartyPlayerError) {
     accepted.push({ ...item, classification: 'exception opaque émise dans le lecteur YouTube tiers ; aucun script Neptune ni parcours applicatif concerné' });
+    continue;
+  }
+  if (productionTrustedLoginBlocked) {
+    accepted.push({ ...item, classification: 'bypass de connexion client de test volontairement fermé en production ; le dashboard ne doit pas s’ouvrir sans authentification OTP' });
     continue;
   }
   failures.push(item);

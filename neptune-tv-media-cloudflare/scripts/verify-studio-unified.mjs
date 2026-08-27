@@ -31,25 +31,31 @@ expect(!app.includes('<iframe'), 'app.html ne doit plus contenir d’iframe Stud
 expect(!app.includes('studio-shell-v100.js'), 'app.html ne doit plus charger l’ancien shell iframe.');
 expect(app.includes('/studio/studio-app-router-v104.js?v=1'), 'app.html doit conserver le routeur top-level de compatibilité.');
 expect(router.includes("diffusion:'/studio/webtv.html'"), 'Diffusion doit rester une navigation top-level.');
-expect(router.includes("'settings/catalogue':'/studio/advanced.html#programs'"), 'Catalogue Media doit rester une route top-level de Réglages.');
+expect(router.includes("'settings/catalogue':'/studio/advanced.html#programs'"), 'Catalogue Media doit rester une route top-level historique.');
 
 expect(ia.includes("const KEY = '__neptuneStudioCanonicalShellV105'"), 'La navigation partagée doit déclarer la version v105.');
 expect(ia.includes('installCanonicalSidebar'), 'Le runtime doit remplacer les sidebars natives par un composant unique.');
 expect(ia.includes("link('clients', '/studio/clients'"), 'Parcours clients doit être présent.');
-expect(ia.includes("link('production', '/studio/video-ai.html'"), 'Production vidéo doit être présent.');
 expect(ia.includes("link('diffusion', '/studio/webtv.html'"), 'Diffusion doit être présent.');
-expect(ia.includes("link('settings', '/studio/advanced.html#programs'"), 'Réglages doit ouvrir Catalogue Media.');
+expect(ia.includes("link('catalog', '/studio/advanced.html#programs'"), 'Catalogue Média doit être présent.');
+expect(ia.includes("link('finance', '/studio/advanced.html#finances'"), 'Finance doit être présent.');
+expect(ia.includes("link('settings-main', '/studio/advanced.html#settings'"), 'Réglage doit être présent.');
+expect(!ia.includes("link('production', '/studio/video-ai.html'"), 'Production vidéo ne doit pas être une entrée principale.');
+expect(ia.includes("cleanPath === '/studio/video-ai'"), 'Production vidéo doit rester accessible par route dédiée.');
+expect(ia.includes("if (kind === 'production') return '';"), 'Production vidéo ne doit activer aucune entrée principale.');
 expect(ia.includes('id="neptuneStudioLogout"'), 'La sidebar canonique doit avoir un seul bloc de déconnexion.');
 expect(ia.includes("fetch('/api/auth/logout'"), 'Le bloc de compte doit réellement déconnecter.');
-expect(ia.includes("settings: [['programs', 'Catalogue Media']"), 'Catalogue Media doit être la première sous-section de Réglages.');
+expect(ia.includes("settings: [['programs', 'Catalogue Media']"), 'Catalogue Media doit rester la première sous-section technique du groupe historique Réglages.');
 expect(!ia.includes("['programs', 'Formats']"), 'Formats ne doit plus être présenté comme sous-section de Diffusion.');
-expect(ia.includes("groupForTab(tab) { return ['programs', 'finances', 'users', 'audit', 'settings'].includes(tab) ? 'settings' : 'diffusion'; }"), 'Le catalogue doit activer Réglages et non Diffusion.');
+expect(ia.includes("groupForTab(tab) { return ['programs', 'finances', 'users', 'audit', 'settings'].includes(tab) ? 'settings' : 'diffusion'; }"), 'Le regroupement technique des contrôles advanced doit rester déterministe.');
+expect(ia.includes("if (tab === 'programs') return 'catalog';"), 'Le hash Catalogue doit activer Catalogue Média.');
+expect(ia.includes("if (tab === 'finances') return 'finance';"), 'Le hash Finances doit activer Finance.');
+expect(ia.includes("return 'settings-main';"), 'Les écrans Équipe, Journal et Général doivent activer Réglage.');
 expect(ia.includes("document.documentElement.dataset.neptuneStudioShellReady = 'v105'"), 'Le runtime doit signaler la fin du boot canonique.');
-expect(ia.includes('settleAdvancedSession(markReady)'), 'Réglages doit attendre la résolution de session avant de se révéler.');
+expect(ia.includes('settleAdvancedSession(markReady)'), 'Réglage doit attendre la résolution de session avant de se révéler.');
 expect(ia.includes('revealLegacyFallback'), 'Le runtime doit révéler un fallback si le boot canonique échoue.');
 expect(!ia.includes('installWebTvContext'), 'Diffusion ne doit plus injecter une seconde rangée de navigation.');
 expect(shellCss.includes('body.studio-shell-v105 .neptune-studio-account'), 'Le bloc compte/déconnexion doit avoir un rendu unique.');
-expect(!shellCss.includes('[data-studio-route="production"]'), 'Le CSS canonique ne doit plus masquer Production vidéo.');
 expect(shellCss.includes('data-neptune-studio-shell-boot="v105"'), 'Le CSS doit empêcher le flash du shell historique avant initialisation.');
 expect(shellCss.includes('data-neptune-studio-shell-ready="v105"'), 'Le CSS doit révéler le shell canonique une fois prêt.');
 expect(shellCss.includes('#auth.login'), 'Le CSS doit empêcher le flash du formulaire de connexion historique.');
@@ -90,4 +96,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Studio v138 validé : shell sans flash, quatre onglets principaux cohérents, Catalogue v108 CSRF-safe et aucune iframe métier.');
+console.log('Studio v138 validé : shell sans flash, cinq onglets principaux conformes, Catalogue v108 CSRF-safe et aucune iframe métier.');

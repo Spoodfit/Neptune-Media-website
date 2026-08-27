@@ -62,7 +62,7 @@ async function main(){
   await page.locator('[data-v145-configure]').first().click();
   await page.waitForSelector('.v143-offer-drawer',{state:'attached',timeout:5000});
 
-  const blockingErrors=errors.filter(error=>!error.includes('favicon'));
+  const blockingErrors=errors.filter(error=>!error.includes('favicon')&&!isKnownPermissionsPolicyNoise(error));
   assert(blockingErrors.length===0,`Erreurs navigateur: ${blockingErrors.join(' | ')}`);
   await page.screenshot({path:process.env.CATALOG_SCREENSHOT||'/tmp/catalog-commercial-v145.png',fullPage:false});
   console.log('Catalogue commercial v145 browser audit: OK');
@@ -88,6 +88,10 @@ async function waitForStableOffers(page,expected,stableMs,timeoutMs){
   await page.waitForTimeout(100);
  }
  throw new Error(`Cockpit v145 non stabilisé avec ${expected} offre(s)`);
+}
+
+function isKnownPermissionsPolicyNoise(error){
+ return error.includes('Permissions policy violation: Geolocation access has been blocked because of a permissions policy');
 }
 
 function mockApi(path){

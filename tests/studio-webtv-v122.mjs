@@ -66,9 +66,9 @@ expect(entry40.includes("STUDIO_V122_RELEASE='neptune-studio-webtv-20260818-v122
 expect(entry40.includes("WEBTV_ANALYTICS_RELEASE='neptune-webtv-analytics-20260818-v122'"),'release analytics v122 exposée');
 expect(entry41.includes("from './entry-v40.js'"),'entry-v41 préserve toute la chaîne WebTV v122 de v40');
 expect(entry42.includes("from './entry-v41.js'"),'entry-v42 préserve entry-v41');
-expect(entry43.includes("from './entry-v42.js'"),'entry-v43 préserve entry-v42');
-expect(entry44.includes("from './entry-v43.js'"),'entry-v44 préserve entry-v43');
+expect(entry43.includes("from './entry-v42.js'"),'entry-v43 historique préserve entry-v42');
+expect(entry44.includes("from './entry-v42.js'")&&!entry44.includes("from './entry-v43.js'"),'entry-v44 actif absorbe v43 et préserve directement entry-v42');
 expect(wrangler.includes('"* * * * *"'),'watchdog Cloudflare planifié chaque minute');
-expect(wrangler.includes('"main": "src/entry-v44.js"'),'entry-v44 est le Worker actif tout en préservant WebTV v122');
+expect(wrangler.includes('"main": "neptune-tv-media-cloudflare/src/entry-v44.js"'),'entry-v44 est le Worker actif depuis la configuration canonique racine');
 
 console.log(JSON.stringify({ok:true,checks:checks.length},null,2));

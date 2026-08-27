@@ -46,8 +46,10 @@ jobs:
           node --check neptune-tv-media-cloudflare/tests/audit-catalog-commercial-v145.mjs
           node neptune-tv-media-cloudflare/tests/catalog-commercial-cockpit-v145.mjs
           grep -Fq '"main": "neptune-tv-media-cloudflare/src/entry-v44.js"' wrangler.jsonc
-          grep -Fq '"main": "src/entry-v44.js"' neptune-tv-media-cloudflare/wrangler.jsonc
-          grep -Fq "from './entry-v43.js'" neptune-tv-media-cloudflare/src/entry-v44.js
+          test -L neptune-tv-media-cloudflare/wrangler.jsonc
+          test "$(readlink neptune-tv-media-cloudflare/wrangler.jsonc)" = '../wrangler.jsonc'
+          grep -Fq "from './entry-v42.js'" neptune-tv-media-cloudflare/src/entry-v44.js
+          ! grep -Fq "from './entry-v43.js'" neptune-tv-media-cloudflare/src/entry-v44.js
           grep -Fq 'studio-catalog-commercial-cockpit-v145.css?v=1' neptune-tv-media-cloudflare/src/entry-v44.js
           grep -Fq 'studio-catalog-commercial-cockpit-v145.js?v=1' neptune-tv-media-cloudflare/src/entry-v44.js
           grep -Fq 'studio-catalog-visual-polish-v132-1.css?v=1' neptune-tv-media-cloudflare/public/studio/advanced.html
@@ -57,8 +59,8 @@ jobs:
         run: |
           set -euo pipefail
           command -v google-chrome || command -v google-chrome-stable
-          sed -i 's/"compatibility_date": "2026-07-30"/"compatibility_date": "2026-07-07"/' neptune-tv-media-cloudflare/wrangler.jsonc
-          ./neptune-tv-media-cloudflare/node_modules/.bin/wrangler dev --config neptune-tv-media-cloudflare/wrangler.jsonc --local --port 8787 > /tmp/wrangler-catalog-v145.log 2>&1 &
+          sed -i 's/"compatibility_date": "2026-07-30"/"compatibility_date": "2026-07-07"/' wrangler.jsonc
+          ./neptune-tv-media-cloudflare/node_modules/.bin/wrangler dev --config wrangler.jsonc --local --port 8787 > /tmp/wrangler-catalog-v145.log 2>&1 &
           ready=0
           for attempt in $(seq 1 60); do
             if curl --fail --silent --show-error -D /tmp/catalog-v145.headers http://127.0.0.1:8787/studio/advanced.html > /tmp/catalog-v145.html; then ready=1; break; fi

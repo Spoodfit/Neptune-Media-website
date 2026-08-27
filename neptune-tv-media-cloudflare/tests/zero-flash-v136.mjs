@@ -5,7 +5,7 @@ const base=process.env.ZERO_FLASH_BASE_URL||'http://127.0.0.1:8787';
 const studioPaths=['/studio/clients','/studio/video-ai.html','/studio/webtv.html','/studio/advanced.html#programs'];
 const user={id:'admin-v136',email:'contact@neptunebusiness.com',fullName:'Neptune Media',role:'admin'};
 const adminState={user,programs:[],episodes:[],ads:[],users:[user],audit:[],settings:{},stats:{views:0,watchSeconds:0,uniqueViewers:0,bookingClicks:0,byEpisode:{},conversions:{count:0,revenueCents:0}}};
-const approvedNavigation=['Parcours clients','Diffusion','Catalogue Média','Finance','Réglage'];
+const approvedNavigation=['Parcours clients','Production vidéo','Diffusion','Réglages'];
 
 const browser=await chromium.launch({headless:true});
 try{
@@ -14,7 +14,7 @@ try{
   await clientFirstPaint(true);
   await clientFirstPaint(false);
   await reservationSurface();
-  console.log('Zero-flash audit passed: Studio reveals only the approved five-section navigation, client auth never flashes, reservation tunnel has one canonical surface.');
+  console.log('Zero-flash audit passed: Studio reveals only the canonical four-section navigation, client auth never flashes, reservation tunnel has one canonical surface.');
 }finally{await browser.close();}
 
 async function sourceContracts(){
@@ -114,11 +114,7 @@ async function clientFirstPaint(authenticated){
     await page.waitForFunction((isAuthenticated)=>{
       const auth=document.getElementById('auth');
       const dashboard=document.getElementById('dashboard');
-      return document.documentElement.dataset.neptuneClientReady==='v136'
-        && auth
-        && dashboard
-        && auth.hidden===isAuthenticated
-        && dashboard.hidden===!isAuthenticated;
+      return document.documentElement.dataset.neptuneClientReady==='v136'&&auth&&dashboard&&auth.hidden===isAuthenticated&&dashboard.hidden===!isAuthenticated;
     },authenticated,{timeout:12000});
     const after=await page.evaluate(()=>({authHidden:document.getElementById('auth')?.hidden,dashboardHidden:document.getElementById('dashboard')?.hidden,boot:document.documentElement.hasAttribute('data-neptune-client-boot')}));
     assert.equal(after.boot,false,'client: boot guard remains after session resolution');

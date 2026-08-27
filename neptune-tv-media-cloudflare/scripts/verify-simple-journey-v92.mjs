@@ -2,7 +2,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const root=path.resolve(import.meta.dirname,'..');
+const repoRoot=path.resolve(root,'..');
 const read=file=>fs.readFileSync(path.join(root,file),'utf8');
+const readRepo=file=>fs.readFileSync(path.join(repoRoot,file),'utf8');
 const checks=[
   ['src/entry-v31.js',['/api/admin/journey-v92/context','/api/admin/journey-v92/action','/api/admin/journey-v92/preparation-sync','simple-journey-v92.js?v=1','supplierSlaHours: 48','clientDateChangeMinimumDays: 15']],
   ['src/entry-v32.js',["import base from './entry-v31.js'",'/api/admin/drive-upload-v94/session']],
@@ -26,8 +28,8 @@ for(const [file,needles] of checks){
   const content=read(file);
   for(const needle of needles)if(!content.includes(needle))throw new Error(`${file}: missing ${needle}`);
 }
-const wrangler=read('wrangler.jsonc');
-const mainEntry=wrangler.match(/"main"\s*:\s*"([^"]+)"/u)?.[1]||'';
+const wrangler=readRepo('wrangler.jsonc');
+const mainEntry=(wrangler.match(/"main"\s*:\s*"([^"]+)"/u)?.[1]||'').replace(/^neptune-tv-media-cloudflare\//u,'');
 const activeChain=traceEntryChain(mainEntry);
 if(!activeChain.includes('src/entry-v41.js'))throw new Error(`active Worker must preserve entry-v41.js; chain=${activeChain.join(' -> ')}`);
 if(!wrangler.includes('https://calendar.app.google/X9q1T5JT9ngMfZY67'))throw new Error('preparation booking URL must match v92');

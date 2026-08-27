@@ -66,7 +66,13 @@
     "WEBTV_X264_PRESET": "superfast",
     "LEGACY_ACTIVE_ENTRY_V1182": { "main": "neptune-tv-media-cloudflare/src/entry-v38.js" },
     "LEGACY_LOCAL_VERIFIER": { "main": "neptune-tv-media-cloudflare/src/entry-v19.js" },
-    "LEGACY_EMAIL_VERIFIER": { "main": "neptune-tv-media-cloudflare/src/entry-v21.js" }
+    "LEGACY_EMAIL_VERIFIER": { "main": "neptune-tv-media-cloudflare/src/entry-v21.js" },
+    "LEGACY_WEBTV_ENTRY_V119": { "main": "src/entry-v39.js" },
+    "LEGACY_ACTIVE_ENTRY_V1182_LOCAL": { "main": "src/entry-v38.js" },
+    "LEGACY_LOCAL_VERIFIER_LOCAL": { "main": "src/entry-v19.js" },
+    "LEGACY_EMAIL_VERIFIER_LOCAL": { "main": "src/entry-v21.js" },
+    "LEGACY_WEBTV_PLAYBACK_ENTRY_V1195": { "main": "src/entry-v40.js" },
+    "LEGACY_LOCAL_ACTIVE_ENTRY_V44": { "main": "src/entry-v44.js" }
   },
   "observability": { "enabled": true }
 }

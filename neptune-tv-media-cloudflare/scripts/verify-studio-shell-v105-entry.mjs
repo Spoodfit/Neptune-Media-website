@@ -9,7 +9,10 @@ const wrangler = fs.readFileSync(wranglerPath, 'utf8');
 const mainMatch = wrangler.match(/"main"\s*:\s*"([^"]+)"/u);
 if (!mainMatch) throw new Error('wrangler.jsonc: main entry is missing');
 
-const activeEntry = mainMatch[1];
+const activeEntryRaw = mainMatch[1];
+const activeEntry = packageRoot
+  ? activeEntryRaw.replace(/^neptune-tv-media-cloudflare\//u, '')
+  : activeEntryRaw;
 const entry41Path = packageRoot ? 'src/entry-v41.js' : 'neptune-tv-media-cloudflare/src/entry-v41.js';
 const activeChain = traceEntryChain(activeEntry);
 if (!activeChain.includes(entry41Path)) {
@@ -51,7 +54,7 @@ if (!entry38.includes('neptune-client-experience-20260814-v118.2')) {
 const entry37Path = path.join(root, `${prefix}src/entry-v37.js`);
 const entry37 = fs.readFileSync(entry37Path, 'utf8');
 if (!entry37.includes("from './entry-v36.js'")) {
-  throw new Error('Preserved v37 entry must preserve the complete v36 Studio shell runtime');
+  throw new Error('Preserved v37 entry must preserve the complete v36 Studio runtime');
 }
 
 const entry36Path = path.join(root, `${prefix}src/entry-v36.js`);

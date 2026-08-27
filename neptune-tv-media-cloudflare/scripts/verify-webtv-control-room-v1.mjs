@@ -7,8 +7,9 @@ const [entry41,entry40,entry39,entry38,entry37,entry36,entry35,entry34,entry33,c
 ]);
 const root=JSON.parse(rootRaw),local=JSON.parse(localRaw),cors=JSON.parse(corsRaw),rootPackage=JSON.parse(rootPackageRaw),localPackage=JSON.parse(localPackageRaw),failures=[];
 const expect=(condition,message)=>{if(!condition)failures.push(message);};
-const rootChain=await traceEntryChain(String(root.main||'').replace(/^neptune-tv-media-cloudflare\//u,''));
-const localChain=await traceEntryChain(String(local.main||''));
+const normalizeMain=(value)=>String(value||'').replace(/^neptune-tv-media-cloudflare\//u,'');
+const rootChain=await traceEntryChain(normalizeMain(root.main));
+const localChain=await traceEntryChain(normalizeMain(local.main));
 
 expect(rootChain.includes('src/entry-v41.js'),`le Worker racine doit préserver entry-v41 dans sa chaîne active (${rootChain.join(' -> ')})`);
 expect(localChain.includes('src/entry-v41.js'),`le Worker local doit préserver entry-v41 dans sa chaîne active (${localChain.join(' -> ')})`);

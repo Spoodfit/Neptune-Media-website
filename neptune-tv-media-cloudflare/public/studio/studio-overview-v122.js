@@ -20,7 +20,15 @@ function boot(){
 }
 
 function installNavigation(){
-  const nav=$('.neptune-studio-nav')||$('.studio-nav');
+  // The canonical v105/v138 shell is the single owner of primary Studio navigation.
+  // v122 may provide a fallback only before that shell exists; it must never rewrite
+  // `.neptune-studio-nav` after the canonical four-route sidebar has mounted.
+  const canonical=$('.neptune-studio-nav');
+  if(canonical){
+    canonical.dataset.v122Ready='canonical-shell';
+    return;
+  }
+  const nav=$('.studio-nav');
   if(!nav||nav.dataset.v122Ready==='1'){
     updateActiveNavigation(nav);
     return;
@@ -29,10 +37,9 @@ function installNavigation(){
   nav.setAttribute('aria-label','Navigation principale du Studio');
   nav.innerHTML=[
     navLink('/studio/clients','◎','Parcours clients','clients'),
+    navLink('/studio/video-ai.html','✦','Production vidéo','production'),
     navLink('/studio/webtv.html','▶','Diffusion','diffusion'),
-    navLink('/studio/advanced.html#programs','▦','Catalogue Média','catalogue'),
-    navLink('/studio/advanced.html#finances','€','Finance','finance'),
-    navLink('/studio/advanced.html#settings','⚙','Réglage','settings'),
+    navLink('/studio/advanced.html#programs','⚙','Réglages','settings'),
   ].join('');
   updateActiveNavigation(nav);
 }
@@ -44,19 +51,18 @@ function navLink(href,icon,label,key){
 function activeRoute(){
   const path=location.pathname;
   if(path.includes('/studio/clients'))return'clients';
+  if(path.includes('/studio/video-ai'))return'production';
   if(path.includes('/studio/webtv'))return'diffusion';
   if(path.includes('/studio/advanced')){
     const hash=(location.hash||'#programs').slice(1);
-    if(hash==='programs')return'catalogue';
-    if(hash==='finances')return'finance';
     if(['episodes','ads','insights','webtv'].includes(hash))return'diffusion';
     return'settings';
   }
   return'';
 }
 
-function updateActiveNavigation(nav=$('.neptune-studio-nav')||$('.studio-nav')){
-  if(!nav)return;
+function updateActiveNavigation(nav=$('.studio-nav')){
+  if(!nav||nav.classList.contains('neptune-studio-nav'))return;
   const active=activeRoute();
   $$('[data-v122-route]',nav).forEach(link=>{
     const selected=link.dataset.v122Route===active;
@@ -161,4 +167,4 @@ function installSettingsBack(hash,content,detail=false){
   }
 }
 
-function escapeHtml(value){return String(value??'').replace(/[&<>"']/gu,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));}
+function escapeHtml(value){return String(value??'').replace(/[&<>"']/gu,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#039;'}[char]));}

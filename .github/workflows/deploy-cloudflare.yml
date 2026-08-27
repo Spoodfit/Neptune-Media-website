@@ -179,9 +179,10 @@ jobs:
                   && grep -Fq "dropzone('long', 'Long format'" "/tmp/neptune-drive-upload-v137/$slug-upload.js" \
                   && grep -Fq "dropzone('short', 'Shorts'" "/tmp/neptune-drive-upload-v137/$slug-upload.js" \
                   && grep -Fq 'grid-template-columns:repeat(2,minmax(0,1fr))' "/tmp/neptune-drive-upload-v137/$slug-upload.css"; then
-                ready=1
-                echo "$base: Studio Drive upload v94/v137 verified on attempt $attempt."
-                break
+                  ready=1
+                  echo "$base: Studio Drive upload v94/v137 verified on attempt $attempt."
+                  break
+                fi
               fi
               sleep 5
             done

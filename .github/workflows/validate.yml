@@ -11,10 +11,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    defaults:
-      run:
-        working-directory: neptune-tv-media-cloudflare
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,7 +20,9 @@ jobs:
         with:
           node-version: 22
           registry-url: https://registry.npmjs.org
-      - name: Install active worker dependencies
+      - name: Install production worker dependencies
         run: npm install --package-lock=false --registry=https://registry.npmjs.org --ignore-scripts --no-audit --no-fund
-      - name: Validate active Cloudflare Worker
-        run: npm run verify
+      - name: Validate production application
+        run: npm run check
+      - name: Validate production Worker bundle
+        run: npx wrangler deploy --config wrangler.jsonc --dry-run --outdir .wrangler-pr-dry-run

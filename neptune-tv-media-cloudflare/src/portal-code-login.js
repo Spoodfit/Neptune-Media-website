@@ -1,9 +1,7 @@
 import { sendCode } from './portal-email.js';
-import { clientCookie } from './portal-http-utils.js';
 import { isSameOrigin, json } from './security.js';
 
 const STORE_NAME = 'neptune-media-main';
-const TRUSTED_TEST_EMAIL = 'contact@neptunebusiness.com';
 
 export async function handleClientCodeRequest(request, env) {
   if (!isSameOrigin(request)) return json({ error: 'origin_forbidden' }, 403);
@@ -11,22 +9,6 @@ export async function handleClientCodeRequest(request, env) {
   const payload = await request.json().catch(() => ({}));
   const email = String(payload.email || '').trim().toLowerCase();
   const studio = env.STUDIO.get(env.STUDIO.idFromName(STORE_NAME));
-
-  if (email === TRUSTED_TEST_EMAIL) {
-    const trustedResponse = await callStore(studio, '/portal/trusted-test-login', { email });
-    const trusted = await trustedResponse.json().catch(() => ({}));
-    if (!trustedResponse.ok) return json(trusted, trustedResponse.status);
-
-    console.log('client_trusted_test_login', { email });
-    return json({
-      ok: true,
-      authenticated: true,
-      trustedAccess: true,
-      client: trusted.client,
-    }, 200, {
-      'Set-Cookie': clientCookie(trusted.token, request.url, trusted.expiresIn),
-    });
-  }
 
   const storeResponse = await callStore(studio, '/portal/request-code', { email });
   const result = await storeResponse.json().catch(() => ({}));
@@ -44,10 +26,19 @@ export async function handleClientCodeRequest(request, env) {
       });
     }
 
+    if (result.reason === 'invalid_email') {
+      return json({ error: 'invalid_email' }, 400);
+    }
+
+    // Keep account existence private. Unknown addresses receive the same public
+    // acknowledgement as a valid OTP request, without generating or sending mail.
     return json({
-      error: result.reason === 'client_not_found' ? 'client_not_found' : 'email_send_failed',
-      reason: result.reason || 'access_not_found',
-    }, 404);
+      ok: true,
+      delivered: true,
+      codeExpected: true,
+      retryAfter: 0,
+      throttled: false,
+    });
   }
 
   const sent = await sendCode(env, request.url, email, result.code);

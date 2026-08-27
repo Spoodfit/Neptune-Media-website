@@ -38,9 +38,36 @@ jobs:
         run: npm install --package-lock=false --ignore-scripts --no-audit --no-fund
       - name: Install Playwright Chromium
         working-directory: neptune-tv-media-cloudflare
+        shell: bash
         run: |
-          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
-          npx playwright install --with-deps chromium
+          set -euo pipefail
+          installed=0
+          for attempt in 1 2 3; do
+            if timeout 120s npm install --no-save --ignore-scripts --no-audit --no-fund --prefer-offline --fetch-retries=2 --fetch-timeout=45000 --fetch-retry-mintimeout=2000 --fetch-retry-maxtimeout=10000 playwright@1.55.0; then
+              installed=1
+              break
+            fi
+            echo "Playwright npm install attempt ${attempt} failed; retrying..."
+            sleep $((attempt * 5))
+          done
+          if [ "$installed" != 1 ]; then
+            echo "Unable to install Playwright after retries"
+            exit 1
+          fi
+
+          browser_ready=0
+          for attempt in 1 2; do
+            if timeout 300s npx playwright install --with-deps chromium; then
+              browser_ready=1
+              break
+            fi
+            echo "Chromium install attempt ${attempt} failed; retrying..."
+            sleep $((attempt * 5))
+          done
+          if [ "$browser_ready" != 1 ]; then
+            echo "Unable to install Chromium after retries"
+            exit 1
+          fi
       - name: Validate JavaScript and visual assets
         run: |
           node --check neptune-tv-media-cloudflare/src/entry-v44.js

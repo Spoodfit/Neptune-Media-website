@@ -92,7 +92,11 @@ try{
       const errors=[];
       page.on('pageerror',error=>errors.push(`PAGE ${error.message}`));
       page.on('response',response=>{const status=response.status(),url=response.url();if(status>=400&&!/favicon/iu.test(url))errors.push(`HTTP ${status} ${url}`);});
-      page.on('console',message=>{const text=message.text();if(message.type()==='error'&&!/favicon/iu.test(text)&&!/^Failed to load resource:/iu.test(text))errors.push(`CONSOLE ${text}`);});
+      page.on('console',message=>{
+        const text=message.text();
+        const benignGeolocationPolicy=/Permissions policy violation: Geolocation access has been blocked because of a permissions policy applied to the current document/iu.test(text);
+        if(message.type()==='error'&&!benignGeolocationPolicy&&!/favicon/iu.test(text)&&!/^Failed to load resource:/iu.test(text))errors.push(`CONSOLE ${text}`);
+      });
 
       const response=await page.goto(`${baseURL}${screen.path}`,{waitUntil:'domcontentloaded',timeout:30000});
       assert(response?.ok(),`${screen.id}/${viewport.id}: HTTP ${response?.status()}`);

@@ -6,24 +6,25 @@ const user={id:'admin-v139',email:'contact@neptunebusiness.com',fullName:'Neptun
 const adminState={user,programs:[],episodes:[],ads:[],users:[user],audit:[],settings:{},stats:{views:0,watchSeconds:0,uniqueViewers:0,bookingClicks:0,byEpisode:{},conversions:{count:0,revenueCents:0}}};
 const cases=[
   ['/studio/clients','clients'],
-  ['/studio/video-ai.html','production'],
   ['/studio/webtv.html','diffusion'],
-  ['/studio/advanced.html#programs','settings'],
-  ['/studio/advanced.html#finances','settings'],
-  ['/studio/advanced.html#settings','settings'],
+  ['/studio/advanced.html#programs','catalog'],
+  ['/studio/advanced.html#finances','finance'],
+  ['/studio/advanced.html#settings','settings-main'],
   ['/studio/advanced.html#episodes','diffusion'],
+  ['/studio/video-ai.html',''],
 ];
 const expected=[
   ['clients','Parcours clients','/studio/clients'],
-  ['production','Production vidéo','/studio/video-ai.html'],
   ['diffusion','Diffusion','/studio/webtv.html'],
-  ['settings','Réglages','/studio/advanced.html#programs'],
+  ['catalog','Catalogue Média','/studio/advanced.html#programs'],
+  ['finance','Finance','/studio/advanced.html#finances'],
+  ['settings-main','Réglage','/studio/advanced.html#settings'],
 ];
 
 const browser=await chromium.launch({headless:true});
 try{
   for(const [path,active] of cases)await verifyScreen(path,active);
-  console.log('Studio navigation v139 gate passed: every Studio screen exposes the canonical four-section sidebar.');
+  console.log('Studio navigation v139 gate passed: every Studio screen exposes the approved five-section sidebar.');
 }finally{await browser.close();}
 
 async function verifyScreen(path,activeRoute){
@@ -43,7 +44,7 @@ async function verifyScreen(path,activeRoute){
     await page.goto(`${base}${path}`,{waitUntil:'domcontentloaded',timeout:30000});
     await page.waitForFunction(()=>Boolean(document.documentElement.dataset.neptuneStudioShellReady),null,{timeout:12000});
     await page.waitForSelector('.neptune-studio-nav',{state:'attached',timeout:10000});
-    await page.waitForFunction(()=>document.documentElement.dataset.neptuneStudioNavigationReady==='v138'&&document.querySelectorAll('.neptune-studio-nav [data-studio-route]').length===4,null,{timeout:10000});
+    await page.waitForFunction(()=>document.documentElement.dataset.neptuneStudioNavigationReady==='v138'&&document.querySelectorAll('.neptune-studio-nav [data-studio-route]').length===5,null,{timeout:10000});
     await page.waitForTimeout(120);
     const snapshot=await page.evaluate(()=>({
       routes:[...document.querySelectorAll('.neptune-studio-nav [data-studio-route]')].map(item=>({
@@ -61,11 +62,15 @@ async function verifyScreen(path,activeRoute){
     }));
     assert.equal(snapshot.sidebars,1,`${path}: canonical sidebar duplicated or missing`);
     assert.match(snapshot.guard,/v139/u,`${path}: approved navigation guard missing`);
-    assert.equal(snapshot.routes.length,4,`${path}: expected exactly four main Studio sections`);
-    assert.deepEqual(snapshot.routes.map(({route,label,href})=>[route,label,href]),expected,`${path}: menu differs from the canonical Studio reference`);
+    assert.equal(snapshot.routes.length,5,`${path}: expected exactly five main Studio sections`);
+    assert.deepEqual(snapshot.routes.map(({route,label,href})=>[route,label,href]),expected,`${path}: menu differs from the approved Studio reference`);
     const active=snapshot.routes.filter(item=>item.active||item.current==='page');
-    assert.equal(active.length,1,`${path}: expected exactly one active main section`);
-    assert.equal(active[0].route,activeRoute,`${path}: wrong active main section`);
+    if(activeRoute){
+      assert.equal(active.length,1,`${path}: expected exactly one active main section`);
+      assert.equal(active[0].route,activeRoute,`${path}: wrong active main section`);
+    }else{
+      assert.equal(active.length,0,`${path}: Production vidéo must remain outside the main Studio navigation`);
+    }
     assert.equal(snapshot.accountName,'Neptune Media',`${path}: account card label differs from reference`);
     assert.equal(snapshot.accountRole,'admin',`${path}: account card role differs from reference`);
     assert(snapshot.overflow<=1,`${path}: canonical navigation creates horizontal overflow (${snapshot.overflow}px)`);

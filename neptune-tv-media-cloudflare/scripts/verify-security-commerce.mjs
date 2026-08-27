@@ -38,7 +38,13 @@ assert.ok(rootWrangler.includes('"main": "neptune-tv-media-cloudflare/src/entry-
 assert.ok(rootWrangler.includes('"WEBTV_VIDEO_BITRATE_KBPS": "4000"'),'canonical WebTV bitrate must remain 4000 kbps');
 assert.ok(!activeEntry.includes("from './entry-v43.js'"),'active entry must not retain the redundant v43 wrapper layer');
 assert.ok(!activeEntry.includes("from './entry-v42.js'"),'active entry must not retain the redundant v42 personalization wrapper layer');
-assert.ok(activeEntry.includes("from './entry-v41.js'"),'active entry must now compose directly on the preserved v41 runtime');
+assert.ok(!activeEntry.includes("from './entry-v41.js'"),'active entry must not retain the redundant v41 Drive wrapper layer');
+assert.ok(activeEntry.includes("from './entry-v40.js'"),'active entry must now compose directly on the preserved v40 runtime');
+assert.ok(activeEntry.includes('handleDriveManualValidationV138'),'Drive v138 manual validation must remain active after flattening v41');
+assert.ok(activeEntry.includes('injectDriveUploadResilienceV137'),'Drive v137 document resilience must remain active after flattening v41');
+assert.ok(activeEntry.includes('recoverDriveStagingUploadsV137'),'Drive v137 recovery must remain active after flattening v41');
+assert.ok(activeEntry.includes("controller?.cron==='*/5 * * * *'"),'Drive v137 recovery cron must remain on the canonical entry');
+assert.ok(activeEntry.includes('augmentDriveUploadReleaseV137')&&activeEntry.includes('augmentDriveManualValidationReleaseV138'),'Drive v137/v138 release metadata must remain active after flattening v41');
 assert.ok(activeEntry.includes('handleHorsNormePersonalizationV139'),'Hors Norme personalization must remain active after flattening v42');
 assert.ok(activeEntry.includes('client-hors-norme-personalization-v139.js'),'client Hors Norme personalization asset must remain injected by the canonical entry');
 assert.ok(activeEntry.includes('studio-hors-norme-personalization-v139.js'),'Studio Hors Norme personalization asset must remain injected by the canonical entry');

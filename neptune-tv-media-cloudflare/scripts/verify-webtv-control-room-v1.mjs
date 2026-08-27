@@ -2,8 +2,8 @@ import {readFile} from 'node:fs/promises';
 
 const read=(path)=>readFile(new URL(`../${path}`,import.meta.url),'utf8');
 const readRoot=(path)=>readFile(new URL(`../../${path}`,import.meta.url),'utf8');
-const [entry41,entry40,entry39,entry38,entry37,entry36,entry35,entry34,entry33,control,nativeControl,media,directR2,encoder,nativeEncoder,html,ui,nativeUi,uploadUi,ia,navCompat,security,corsRaw,corsWorkflow,rootRaw,localRaw,rootPackageRaw,localPackageRaw]=await Promise.all([
-  read('src/entry-v41.js'),read('src/entry-v40.js'),read('src/entry-v39.js'),read('src/entry-v38.js'),read('src/entry-v37.js'),read('src/entry-v36.js'),read('src/entry-v35.js'),read('src/entry-v34.js'),read('src/entry-v33.js'),read('src/webtv-control-v1.js'),read('src/webtv-control-v118.js'),read('src/webtv-media-v1.js'),read('src/webtv-r2-direct-v1.js'),read('containers/webtv/encoder.mjs'),read('containers/webtv/encoder-v118.mjs'),read('public/studio/webtv.html'),read('public/studio/webtv-v1.js'),read('public/studio/webtv-native-v118.js'),read('public/studio/webtv-upload-v4.js'),read('public/studio/studio-information-architecture-v65-1.js'),read('public/studio/webtv-nav-compat-v1.js'),read('src/security.js'),read('config/webtv-r2-cors-wrangler.json'),readRoot('.github/workflows/configure-webtv-r2-cors.yml'),readRoot('wrangler.jsonc'),read('wrangler.jsonc'),readRoot('package.json'),read('package.json'),
+const [entry44,entry40,entry39,entry38,entry37,entry36,entry35,entry34,entry33,control,nativeControl,media,directR2,encoder,nativeEncoder,html,ui,nativeUi,uploadUi,ia,navCompat,security,corsRaw,corsWorkflow,rootRaw,localRaw,rootPackageRaw,localPackageRaw]=await Promise.all([
+  read('src/entry-v44.js'),read('src/entry-v40.js'),read('src/entry-v39.js'),read('src/entry-v38.js'),read('src/entry-v37.js'),read('src/entry-v36.js'),read('src/entry-v35.js'),read('src/entry-v34.js'),read('src/entry-v33.js'),read('src/webtv-control-v1.js'),read('src/webtv-control-v118.js'),read('src/webtv-media-v1.js'),read('src/webtv-r2-direct-v1.js'),read('containers/webtv/encoder.mjs'),read('containers/webtv/encoder-v118.mjs'),read('public/studio/webtv.html'),read('public/studio/webtv-v1.js'),read('public/studio/webtv-native-v118.js'),read('public/studio/webtv-upload-v4.js'),read('public/studio/studio-information-architecture-v65-1.js'),read('public/studio/webtv-nav-compat-v1.js'),read('src/security.js'),read('config/webtv-r2-cors-wrangler.json'),readRoot('.github/workflows/configure-webtv-r2-cors.yml'),readRoot('wrangler.jsonc'),read('wrangler.jsonc'),readRoot('package.json'),read('package.json'),
 ]);
 const root=JSON.parse(rootRaw),local=JSON.parse(localRaw),cors=JSON.parse(corsRaw),rootPackage=JSON.parse(rootPackageRaw),localPackage=JSON.parse(localPackageRaw),failures=[];
 const expect=(condition,message)=>{if(!condition)failures.push(message);};
@@ -11,9 +11,11 @@ const normalizeMain=(value)=>String(value||'').replace(/^neptune-tv-media-cloudf
 const rootChain=await traceEntryChain(normalizeMain(root.main));
 const localChain=await traceEntryChain(normalizeMain(local.main));
 
-expect(rootChain.includes('src/entry-v41.js'),`le Worker racine doit préserver entry-v41 dans sa chaîne active (${rootChain.join(' -> ')})`);
-expect(localChain.includes('src/entry-v41.js'),`le Worker local doit préserver entry-v41 dans sa chaîne active (${localChain.join(' -> ')})`);
-expect(entry41.includes("from './entry-v40.js'")&&entry41.includes("from './drive-upload-recovery-v137.js'"),'entry-v41 doit prolonger v40 et conserver la reprise Drive');
+for(const [name,chain] of [['racine',rootChain],['local',localChain]]){
+  expect(chain[0]==='src/entry-v44.js'&&chain.includes('src/entry-v40.js')&&chain.includes('src/entry-v33.js'),`le Worker ${name} doit préserver la WebTV à travers la chaîne canonique v44 -> v40 -> v33 (${chain.join(' -> ')})`);
+  expect(!chain.some(file=>['src/entry-v41.js','src/entry-v42.js','src/entry-v43.js'].includes(file)),`le Worker ${name} ne doit pas réintroduire les wrappers aplatis v41-v43 (${chain.join(' -> ')})`);
+}
+expect(entry44.includes("from './entry-v40.js'")&&entry44.includes("from './drive-upload-recovery-v137.js'"),'entry-v44 doit composer directement v40 tout en conservant la reprise Drive');
 expect(entry40.includes("from './entry-v39.js'"),'entry-v40 doit prolonger entry-v39');
 expect(entry40.includes('neptune-webtv-playback-20260815-v119.5')&&entry40.includes('worker-src')&&entry40.includes('blob:'),'entry-v40 doit conserver la correction CSP du lecteur Hls.js');
 expect(entry39.includes("from './entry-v38.js'")&&entry39.includes("from './webtv-control-v118.js'"),'entry-v39 doit conserver la WebTV native');
@@ -79,11 +81,11 @@ async function traceEntryChain(start){
   const chain=[];
   const seen=new Set();
   let current=start;
-  for(let depth=0;depth<20&&current;depth+=1){
+  for(let depth=0;depth<64&&current;depth+=1){
     if(seen.has(current))break;
     seen.add(current);
     chain.push(current);
-    if(current==='src/entry-v41.js')return chain;
+    if(current==='src/entry-v33.js')return chain;
     let source='';
     try{source=await read(current);}catch{return chain;}
     const parent=source.match(/from\s+['"]\.\/(entry-v\d+\.js)['"]/u)?.[1];

@@ -1,4 +1,17 @@
-import base,{StudioStore as BaseStudioStore,WebTvEncoder} from './entry-v41.js';
+import base,{StudioStore as BaseStudioStore,WebTvEncoder} from './entry-v40.js';
+import {
+  augmentDriveUploadReleaseV137,
+  injectDriveUploadResilienceV137,
+  isDriveUploadAssetV137,
+  isDriveUploadDocumentV137,
+  transformDriveUploadAssetV137,
+} from './drive-upload-resilience-v137.js';
+import {recoverDriveStagingUploadsV137} from './drive-upload-recovery-v137.js';
+import {
+  augmentDriveManualValidationReleaseV138,
+  handleDriveManualValidationV138,
+  injectDriveManualValidationV138,
+} from './drive-manual-validation-v138.js';
 import {handleHorsNormePersonalizationV139,HORS_NORME_PERSONALIZATION_RELEASE} from './hors-norme-personalization-v139.js';
 import {
   BUSINESS_V142_RELEASE,
@@ -51,21 +64,41 @@ export default{
   async scheduled(controller,env,ctx){
     const tasks=[];
     if(typeof base.scheduled==='function')tasks.push(Promise.resolve(base.scheduled(controller,env,ctx)));
+    if(controller?.cron==='*/5 * * * *')tasks.push(recoverDriveStagingUploadsV137(env));
     if(controller?.cron==='* * * * *')tasks.push(sendDuePreparationPacksV142(env));
     if(tasks.length)await Promise.allSettled(tasks);
   },
 };
 
 async function fetchHorsNormeV139(request,env,ctx){
-  const handled=await handleHorsNormePersonalizationV139(request,env,ctx,(probe)=>base.fetch(probe,env,ctx));
+  const handled=await handleHorsNormePersonalizationV139(request,env,ctx,(probe)=>fetchDriveV138(probe,env,ctx));
   if(handled)return handled;
   const url=new URL(request.url);
-  let response=await base.fetch(request,env,ctx);
+  let response=await fetchDriveV138(request,env,ctx);
   if(request.method==='GET'&&response.ok&&(response.headers.get('Content-Type')||'').includes('text/html')){
     if(isClientHome(url.pathname))response=await injectHorsNormeAssets(response,HORS_NORME_CLIENT_CSS,HORS_NORME_CLIENT_JS,'X-Neptune-Hors-Norme-Personalization');
     if(isStudioClients(url.pathname))response=await injectHorsNormeAssets(response,HORS_NORME_STUDIO_CSS,HORS_NORME_STUDIO_JS,'X-Neptune-Studio-Hors-Norme-Personalization');
   }
   if(request.method==='GET'&&url.pathname==='/api/public/release'&&response.ok)response=await augmentHorsNormeRelease(response);
+  return response;
+}
+
+async function fetchDriveV138(request,env,ctx){
+  const url=new URL(request.url);
+  const manualValidation=await handleDriveManualValidationV138(request,env);
+  if(manualValidation)return manualValidation;
+
+  let response=await base.fetch(request,env,ctx);
+  if(request.method==='GET'&&response.ok&&isDriveUploadAssetV137(url.pathname))return transformDriveUploadAssetV137(response);
+  if(request.method==='GET'&&response.ok&&isDriveUploadDocumentV137(url.pathname)&&(response.headers.get('Content-Type')||'').includes('text/html')){
+    response=await injectDriveUploadResilienceV137(response);
+    response=await injectDriveManualValidationV138(response);
+    ctx?.waitUntil?.(recoverDriveStagingUploadsV137(env).catch((error)=>console.warn('drive_upload_v137_recovery_on_open_failed',String(error?.message||error))));
+  }
+  if(request.method==='GET'&&url.pathname==='/api/public/release'&&response.ok){
+    response=await augmentDriveUploadReleaseV137(response);
+    response=await augmentDriveManualValidationReleaseV138(response);
+  }
   return response;
 }
 

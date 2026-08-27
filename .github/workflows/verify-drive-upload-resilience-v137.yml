@@ -6,7 +6,8 @@ on:
     paths:
       - 'wrangler.jsonc'
       - 'package.json'
-      - 'neptune-tv-media-cloudflare/src/entry-v41.js'
+      - 'neptune-tv-media-cloudflare/src/entry-v44.js'
+      - 'neptune-tv-media-cloudflare/src/entry-v40.js'
       - 'neptune-tv-media-cloudflare/src/drive-upload-resilience-v137.js'
       - 'neptune-tv-media-cloudflare/src/drive-upload-recovery-v137.js'
       - 'neptune-tv-media-cloudflare/src/entry-v32.js'
@@ -23,7 +24,8 @@ on:
     paths:
       - 'wrangler.jsonc'
       - 'package.json'
-      - 'neptune-tv-media-cloudflare/src/entry-v41.js'
+      - 'neptune-tv-media-cloudflare/src/entry-v44.js'
+      - 'neptune-tv-media-cloudflare/src/entry-v40.js'
       - 'neptune-tv-media-cloudflare/src/drive-upload-resilience-v137.js'
       - 'neptune-tv-media-cloudflare/src/drive-upload-recovery-v137.js'
       - 'neptune-tv-media-cloudflare/src/entry-v32.js'
@@ -44,12 +46,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Validate preserved Drive resilience layer
+      - name: Validate canonical Drive resilience layer
         run: |
           node --check neptune-tv-media-cloudflare/src/drive-upload-resilience-v137.js
           node --check neptune-tv-media-cloudflare/src/drive-upload-recovery-v137.js
-          node --check neptune-tv-media-cloudflare/src/entry-v41.js
-          grep -Fq "from './drive-upload-recovery-v137.js'" neptune-tv-media-cloudflare/src/entry-v41.js
+          node --check neptune-tv-media-cloudflare/src/entry-v44.js
+          node --check neptune-tv-media-cloudflare/src/entry-v40.js
+          grep -Fq "from './entry-v40.js'" neptune-tv-media-cloudflare/src/entry-v44.js
+          ! grep -Fq "from './entry-v41.js'" neptune-tv-media-cloudflare/src/entry-v44.js
+          grep -Fq "from './drive-upload-resilience-v137.js'" neptune-tv-media-cloudflare/src/entry-v44.js
+          grep -Fq "from './drive-upload-recovery-v137.js'" neptune-tv-media-cloudflare/src/entry-v44.js
+          grep -Fq 'recoverDriveStagingUploadsV137(env)' neptune-tv-media-cloudflare/src/entry-v44.js
+          grep -Fq "controller?.cron==='*/5 * * * *'" neptune-tv-media-cloudflare/src/entry-v44.js
+          grep -Fq 'augmentDriveUploadReleaseV137(response)' neptune-tv-media-cloudflare/src/entry-v44.js
       - name: Verify Drive upload resilience contract
         working-directory: neptune-tv-media-cloudflare
         run: node tests/drive-upload-resilience-v137.mjs

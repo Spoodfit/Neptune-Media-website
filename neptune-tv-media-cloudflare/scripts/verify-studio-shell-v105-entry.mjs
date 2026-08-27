@@ -84,24 +84,28 @@ for (const marker of required) {
 const shellPath = path.join(root, `${prefix}public/studio/studio-information-architecture-v65-1.js`);
 const shell = fs.readFileSync(shellPath, 'utf8');
 const visibleRoutes = [...shell.matchAll(/\$\{link\('([^']+)'/gu)].map((match) => match[1]);
-if (JSON.stringify(visibleRoutes) !== JSON.stringify(['clients', 'production', 'diffusion', 'settings'])) {
-  throw new Error(`Canonical sidebar must expose exactly 4 routes; got ${JSON.stringify(visibleRoutes)}`);
+const approvedRoutes = ['clients', 'diffusion', 'catalog', 'finance', 'settings-main'];
+if (JSON.stringify(visibleRoutes) !== JSON.stringify(approvedRoutes)) {
+  throw new Error(`Canonical sidebar must expose exactly the approved 5 routes; got ${JSON.stringify(visibleRoutes)}`);
 }
-if (!shell.includes("link('production', '/studio/video-ai.html'")) throw new Error('Production vidéo must be a primary sidebar item');
-if (!shell.includes("if (kind === 'production') return 'production';")) throw new Error('Production vidéo must mark itself as the active primary route');
+if (shell.includes("link('production', '/studio/video-ai.html'")) throw new Error('Production vidéo must remain outside the primary sidebar');
+if (!shell.includes("cleanPath === '/studio/video-ai'")) throw new Error('Production vidéo direct route must remain available');
+if (!shell.includes("if (kind === 'production') return '';")) throw new Error('Production vidéo must not impersonate a primary sidebar route');
+if (!shell.includes("link('catalog', '/studio/advanced.html#programs'")) throw new Error('Catalogue Média primary route is missing');
+if (!shell.includes("link('finance', '/studio/advanced.html#finances'")) throw new Error('Finance primary route is missing');
+if (!shell.includes("link('settings-main', '/studio/advanced.html#settings'")) throw new Error('Réglage primary route is missing');
 if (!shell.includes('id="neptuneStudioLogout"')) throw new Error('Canonical Studio logout block is missing');
 if (!shell.includes("document.documentElement.dataset.neptuneStudioShellReady = 'v105'")) throw new Error('Canonical Studio shell never marks itself ready');
-if (!shell.includes('settleAdvancedSession(markReady)')) throw new Error('Réglages must wait for session resolution before first reveal');
+if (!shell.includes('settleAdvancedSession(markReady)')) throw new Error('Advanced Studio screens must wait for session resolution before first reveal');
 if (shell.includes('installWebTvContext')) throw new Error('Diffusion must not inject the obsolete Antenne/Programme/Publicités/Audience context row');
 
 const css = fs.readFileSync(path.join(root, `${prefix}public/studio/studio-shell-v105.css`), 'utf8');
 if (!css.includes('#auth.login')) throw new Error('The legacy login screen is not hidden by the pre-paint guard');
-if (css.includes('[data-studio-route="production"]')) throw new Error('Canonical shell CSS still hides Production vidéo');
 
 const advanced = fs.readFileSync(path.join(root, `${prefix}public/studio/advanced.html`), 'utf8');
 if (!advanced.includes('<main id="auth" class="login" hidden>')) throw new Error('advanced.html must keep the login screen hidden until auth actually fails');
-if (!advanced.includes('/studio/media-catalog-loader-v104.js?v=3')) throw new Error('Réglages must load the Catalogue v108 bootstrap');
-if (!advanced.includes('/studio/media-catalog-runtime-fix-v115.js?v=1')) throw new Error('Réglages must load the Catalogue runtime recovery v115');
+if (!advanced.includes('/studio/media-catalog-loader-v104.js?v=3')) throw new Error('Advanced Studio must load the Catalogue v108 bootstrap');
+if (!advanced.includes('/studio/media-catalog-runtime-fix-v115.js?v=1')) throw new Error('Advanced Studio must load the Catalogue runtime recovery v115');
 
 const catalogueLoader = fs.readFileSync(path.join(root, `${prefix}public/studio/media-catalog-loader-v104.js`), 'utf8');
 for (const marker of [

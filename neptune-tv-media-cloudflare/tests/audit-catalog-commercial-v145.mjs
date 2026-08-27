@@ -1,7 +1,4 @@
-import {spawn} from 'node:child_process';
-import {existsSync,writeFileSync} from 'node:fs';
-
-class Cdp{constructor(url){this.url=url;this.socket=null;this.seq=0;this.pending=new Map();this.listeners=new Map();}async connect(){this.socket=new WebSocket(this.url);await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('Connexion CDP timeout')),5000);this.socket.onopen=()=>{clearTimeout(timer);resolve();};this.socket.onerror=()=>{clearTimeout(timer);reject(new Error('Connexion CDP impossible'));};});this.socket.onmessage=e=>this.handle(e.data);}handle(raw){const msg=JSON.parse(String(raw));if(msg.id){const p=this.pending.get(msg.id);if(!p)return;this.pending.delete(msg.id);clearTimeout(p.timer);msg.error?p.reject(new Error(msg.error.message)):p.resolve(msg.result||{});return;}for(const l of this.listeners.get(msg.method)||[])Promise.resolve(l(msg.params||{})).catch(error=>console.error('cdp_event_error',msg.method,error.message));}on(method,listener){if(!this.listeners.has(method))this.listeners.set(method,[]);this.listeners.get(method).push(listener);}send(method,params={}){const id=++this.seq;return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{this.pending.delete(id);reject(new Error(`CDP timeout: ${method}`));},10000);this.pending.set(id,{resolve,reject,timer});this.socket.send(JSON.stringify({id,method,params}));});}close(){try{this.socket?.close();}catch{}}}
+import {chromium} from 'playwright';
 
 const baseURL=process.env.STUDIO_BASE_URL||'http://127.0.0.1:8787';
 const release='v145';
@@ -15,28 +12,95 @@ const user={id:'admin-1',email:'contact@neptunebusiness.com',fullName:'Neptune M
 const admin={user,programs:[],episodes:[],ads:[],users:[user],audit:[],settings:{},stats:{views:0,watchSeconds:0,uniqueViewers:0,bookingClicks:0,byEpisode:{},conversions:{count:0,revenueCents:0}}};
 
 await main();
+
 async function main(){
- const chrome=findChrome(),port=9223,proc=spawn(chrome,['--headless=new','--no-sandbox','--disable-gpu','--disable-dev-shm-usage','--no-first-run','--no-default-browser-check',`--remote-debugging-port=${port}`,'--remote-debugging-address=127.0.0.1','--user-data-dir=/tmp/neptune-catalog-v145-chrome','about:blank'],{stdio:['ignore','ignore','pipe']});let err='';proc.stderr.on('data',c=>{err+=String(c);});let cdp;
+ const browser=await chromium.launch({headless:true});
+ const context=await browser.newContext({viewport:{width:1920,height:1080},serviceWorkers:'block'});
+ const page=await context.newPage();
+ const errors=[];
+ page.on('pageerror',error=>errors.push(`PAGE ${error.message}`));
+ page.on('console',message=>{if(message.type()==='error'&&!/^Failed to load resource:/u.test(message.text()))errors.push(`CONSOLE ${message.text()}`);});
+ await context.route('**/api/**',route=>route.fulfill({status:200,contentType:'application/json; charset=utf-8',headers:{'Cache-Control':'no-store'},body:JSON.stringify(mockApi(new URL(route.request().url()).pathname))}));
  try{
-  await waitForChrome(port,proc,()=>err);const targetRes=await fetch(`http://127.0.0.1:${port}/json/new?about:blank`,{method:'PUT'});assert(targetRes.ok,'Création onglet CDP impossible');const target=await targetRes.json();cdp=new Cdp(target.webSocketDebuggerUrl);await cdp.connect();await cdp.send('Page.enable');await cdp.send('Runtime.enable');await cdp.send('Network.enable');await cdp.send('Fetch.enable',{patterns:[{urlPattern:'*://*/api/*',requestStage:'Request'}]});await cdp.send('Emulation.setDeviceMetricsOverride',{width:1920,height:1080,deviceScaleFactor:1,mobile:false});
-  cdp.on('Fetch.requestPaused',async e=>{const body=mockApi(new URL(e.request.url).pathname);await cdp.send('Fetch.fulfillRequest',{requestId:e.requestId,responseCode:200,responseHeaders:[{name:'Content-Type',value:'application/json; charset=utf-8'},{name:'Cache-Control',value:'no-store'}],body:Buffer.from(JSON.stringify(body)).toString('base64')});});
-  let headers={};cdp.on('Network.responseReceived',e=>{if(e.type==='Document'&&e.response.url.includes('/studio/advanced.html'))headers=e.response.headers||{};});
-  await cdp.send('Page.navigate',{url:`${baseURL}/studio/advanced.html#programs`});await waitFor(async()=>Boolean(await evaluate(cdp,"document.querySelector('#studioCatalogCommercialCockpitV145 .v145-offer')")),30000,'Cockpit v145 non monté');
-  const marker=Object.entries(headers).find(([name])=>name.toLowerCase()==='x-neptune-catalog-cockpit')?.[1]||'';assert(marker===release,`Header cockpit incorrect: ${marker||'absent'}`);
-  const snap=await evaluate(cdp,`(()=>({runtime:document.body.dataset.neptuneCatalogCockpit||'',offers:document.querySelectorAll('.v145-offer').length,cityText:document.querySelector('.v145-city-chips')?.textContent||'',hero:document.querySelector('.c98-hero')?getComputedStyle(document.querySelector('.c98-hero')).display:'none',refresh:document.querySelector('#refresh')?getComputedStyle(document.querySelector('#refresh')).display:'none',overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth,text:document.querySelector('#studioCatalogCommercialCockpitV145')?.textContent||'',firstMargin:document.querySelector('.v145-offer .v145-money>div:nth-child(3) strong')?.textContent||'',firstPlaces:document.querySelector('.v145-offer .v145-money>div:nth-child(4) strong')?.textContent||''}))()`);
-  assert(snap.runtime==='v145',`Runtime incorrect: ${snap.runtime}`);assert(snap.offers===2,`Offres attendues 2, reçues ${snap.offers}`);assert(!snap.cityText.includes('Carcassonne'),'Ville sans offre encore visible dans les filtres commerciaux');assert(snap.hero==='none','Hero historique encore visible');assert(snap.refresh==='none','Actualiser manuel encore visible dans le Catalogue');assert(snap.overflow<=1,`Débordement horizontal: ${snap.overflow}px`);for(const text of ['Pilotage des offres','Prix client TTC','Coût fournisseur TTC','Marge brute','Toulouse','RECBOX','Hors Norme','Libre','Nouvelle offre'])assert(snap.text.includes(text),`Cockpit sans « ${text} »`);assert(snap.firstMargin.includes('170'),'Marge TTC attendue de 170 € non affichée');assert(snap.firstPlaces.trim()==='2','Quota lancement réel 2/3 non affiché');
-  await evaluate(cdp,"document.querySelector('[data-v145-filter]').click();true");await waitFor(async()=>Boolean(await evaluate(cdp,"document.querySelector('[data-v145-status]')&&document.querySelector('[data-v145-supplier]')&&document.querySelector('[data-v145-margin]')")),3000,'Filtres réels non montés');
-  await evaluate(cdp,"(()=>{const s=document.querySelector('[data-v145-margin]');s.value='strong';s.dispatchEvent(new Event('change',{bubbles:true}));return true})()");await waitFor(async()=>Number(await evaluate(cdp,"document.querySelectorAll('.v145-offer').length"))===0,3000,'Filtre marge forte non fonctionnel');
-  await evaluate(cdp,"document.querySelector('[data-v145-reset]').click();true");await waitFor(async()=>Number(await evaluate(cdp,"document.querySelectorAll('.v145-offer').length"))===2,3000,'Réinitialisation des filtres impossible');
-  await evaluate(cdp,"document.querySelector('[data-v145-configure]').click();true");await waitFor(async()=>Boolean(await evaluate(cdp,"document.querySelector('.v143-offer-drawer')")),5000,'Drawer v143.4 non préservé derrière Configurer');
-  const shot=await cdp.send('Page.captureScreenshot',{format:'png',fromSurface:true,captureBeyondViewport:false});writeFileSync(process.env.CATALOG_SCREENSHOT||'/tmp/catalog-commercial-v145.png',Buffer.from(shot.data,'base64'));
+  const response=await page.goto(`${baseURL}/studio/advanced.html#programs`,{waitUntil:'domcontentloaded',timeout:30000});
+  assert(response?.ok(),`Catalogue HTTP ${response?.status()||'absent'}`);
+  const headers=await response.headers();
+  assert((headers['x-neptune-catalog-cockpit']||'')===release,`Header cockpit incorrect: ${headers['x-neptune-catalog-cockpit']||'absent'}`);
+  await waitForStableOffers(page,2,650,30000);
+
+  const snap=await page.evaluate(()=>({
+    runtime:document.body.dataset.neptuneCatalogCockpit||'',
+    offers:document.querySelectorAll('.v145-offer').length,
+    cityText:document.querySelector('.v145-city-chips')?.textContent||'',
+    hero:document.querySelector('.c98-hero')?getComputedStyle(document.querySelector('.c98-hero')).display:'none',
+    refresh:document.querySelector('#refresh')?getComputedStyle(document.querySelector('#refresh')).display:'none',
+    overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth,
+    text:document.querySelector('#studioCatalogCommercialCockpitV145')?.textContent||'',
+    firstMargin:document.querySelector('.v145-offer .v145-money>div:nth-child(3) strong')?.textContent||'',
+    firstPlaces:document.querySelector('.v145-offer .v145-money>div:nth-child(4) strong')?.textContent||'',
+    shellReady:document.documentElement.dataset.neptuneStudioShellReady||'',
+  }));
+  assert(snap.runtime==='v145',`Runtime incorrect: ${snap.runtime}`);
+  assert(snap.shellReady==='v105',`Shell Studio non stabilisé: ${snap.shellReady||'absent'}`);
+  assert(snap.offers===2,`Offres attendues 2, reçues ${snap.offers}`);
+  assert(!snap.cityText.includes('Carcassonne'),'Ville sans offre encore visible dans les filtres commerciaux');
+  assert(snap.hero==='none','Hero historique encore visible');
+  assert(snap.refresh==='none','Actualiser manuel encore visible dans le Catalogue');
+  assert(snap.overflow<=1,`Débordement horizontal: ${snap.overflow}px`);
+  for(const text of ['Pilotage des offres','Prix client TTC','Coût fournisseur TTC','Marge brute','Toulouse','RECBOX','Hors Norme','Libre','Nouvelle offre'])assert(snap.text.includes(text),`Cockpit sans « ${text} »`);
+  assert(snap.firstMargin.includes('170'),'Marge TTC attendue de 170 € non affichée');
+  assert(snap.firstPlaces.trim()==='2','Quota lancement réel 2/3 non affiché');
+
+  await page.locator('[data-v145-filter]').click();
+  await page.waitForSelector('[data-v145-status]');
+  await page.waitForSelector('[data-v145-supplier]');
+  await page.waitForSelector('[data-v145-margin]');
+  await page.locator('[data-v145-margin]').selectOption('strong');
+  await page.waitForFunction(()=>document.querySelectorAll('.v145-offer').length===0,null,{timeout:3000});
+  await page.locator('[data-v145-reset]').click();
+  await waitForStableOffers(page,2,250,3000);
+  await page.locator('[data-v145-configure]').first().click();
+  await page.waitForSelector('.v143-offer-drawer',{state:'attached',timeout:5000});
+
+  const blockingErrors=errors.filter(error=>!error.includes('favicon')&&!isKnownPermissionsPolicyNoise(error));
+  assert(blockingErrors.length===0,`Erreurs navigateur: ${blockingErrors.join(' | ')}`);
+  await page.screenshot({path:process.env.CATALOG_SCREENSHOT||'/tmp/catalog-commercial-v145.png',fullPage:false});
   console.log('Catalogue commercial v145 browser audit: OK');
- }finally{cdp?.close();proc.kill('SIGTERM');}
+ }finally{
+  await context.close();
+  await browser.close();
+ }
 }
-function mockApi(path){if(path==='/api/auth/status')return{authenticated:true,csrfToken:'test-csrf',user};if(path==='/api/admin/state')return admin;if(path==='/api/admin/clients')return{clients:[],orders:[],supplierPayments:[],refundRequests:[],deletionRequests:[],finance:{}};if(path==='/api/admin/media-catalog-v98/context')return catalog;if(path==='/api/admin/media-catalog-v143/policies')return policies;if(path==='/api/reservation/catalog-v96')return{ok:true,cities:[],pricing:{}};return{ok:true};}
-function findChrome(){for(const f of ['/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium','/usr/bin/chromium-browser'])if(existsSync(f))return f;throw new Error('Chrome système introuvable');}
-async function waitForChrome(port,proc,getError){const t=Date.now();while(Date.now()-t<15000){if(proc.exitCode!==null)throw new Error(`Chrome arrêté: ${getError().slice(-1000)}`);try{const r=await fetch(`http://127.0.0.1:${port}/json/version`);if(r.ok)return;}catch{}await sleep(150);}throw new Error(`Chrome DevTools indisponible: ${getError().slice(-1000)}`);}
-async function evaluate(cdp,expression){const r=await cdp.send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});if(r.exceptionDetails)throw new Error(r.exceptionDetails.exception?.description||r.exceptionDetails.text||'Erreur JavaScript navigateur');return r.result?.value;}
-async function waitFor(check,limit,message){const t=Date.now();while(Date.now()-t<limit){try{if(await check())return;}catch{}await sleep(100);}throw new Error(message);}
-function sleep(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
+
+async function waitForStableOffers(page,expected,stableMs,timeoutMs){
+ const deadline=Date.now()+timeoutMs;
+ let stableSince=0;
+ while(Date.now()<deadline){
+  const state=await page.evaluate(()=>({
+   offers:document.querySelectorAll('#studioCatalogCommercialCockpitV145 .v145-offer').length,
+   runtime:document.body.dataset.neptuneCatalogCockpit||'',
+   shell:document.documentElement.dataset.neptuneStudioShellReady||'',
+  })).catch(()=>({offers:-1,runtime:'',shell:''}));
+  if(state.offers===expected&&state.runtime==='v145'&&state.shell==='v105'){
+   if(!stableSince)stableSince=Date.now();
+   if(Date.now()-stableSince>=stableMs)return;
+  }else stableSince=0;
+  await page.waitForTimeout(100);
+ }
+ throw new Error(`Cockpit v145 non stabilisé avec ${expected} offre(s)`);
+}
+
+function isKnownPermissionsPolicyNoise(error){
+ return error.includes('Permissions policy violation: Geolocation access has been blocked because of a permissions policy');
+}
+
+function mockApi(path){
+ if(path==='/api/auth/status')return{authenticated:true,csrfToken:'test-csrf',user};
+ if(path==='/api/admin/state')return admin;
+ if(path==='/api/admin/clients')return{clients:[],orders:[],supplierPayments:[],refundRequests:[],deletionRequests:[],finance:{}};
+ if(path==='/api/admin/media-catalog-v98/context')return catalog;
+ if(path==='/api/admin/media-catalog-v143/policies')return policies;
+ if(path==='/api/reservation/catalog-v96')return{ok:true,cities:[],pricing:{}};
+ return{ok:true};
+}
 function assert(condition,message){if(!condition)throw new Error(message);}

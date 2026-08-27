@@ -5,7 +5,7 @@ const base=process.env.ZERO_FLASH_BASE_URL||'http://127.0.0.1:8787';
 const studioPaths=['/studio/clients','/studio/video-ai.html','/studio/webtv.html','/studio/advanced.html#programs'];
 const user={id:'admin-v136',email:'contact@neptunebusiness.com',fullName:'Neptune Media',role:'admin'};
 const adminState={user,programs:[],episodes:[],ads:[],users:[user],audit:[],settings:{},stats:{views:0,watchSeconds:0,uniqueViewers:0,bookingClicks:0,byEpisode:{},conversions:{count:0,revenueCents:0}}};
-const approvedNavigation=['Parcours clients','Production vidéo','Diffusion','Réglages'];
+const approvedNavigation=['Parcours clients','Diffusion','Catalogue Média','Finance','Réglage'];
 
 const browser=await chromium.launch({headless:true});
 try{
@@ -14,7 +14,7 @@ try{
   await clientFirstPaint(true);
   await clientFirstPaint(false);
   await reservationSurface();
-  console.log('Zero-flash audit passed: Studio reveals only the canonical four-section navigation, client auth never flashes, reservation tunnel has one canonical surface.');
+  console.log('Zero-flash audit passed: Studio reveals only the approved five-section navigation, client auth never flashes, reservation tunnel has one canonical surface.');
 }finally{await browser.close();}
 
 async function sourceContracts(){

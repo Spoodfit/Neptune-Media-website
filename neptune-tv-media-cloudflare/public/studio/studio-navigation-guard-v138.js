@@ -2,13 +2,14 @@ const RELEASE='neptune-studio-navigation-guard-20260823-v139';
 const root=document.documentElement;
 let queued=false;
 
-// Garde de la navigation canonique v105/v138 : un seul menu principal sur tous
-// les écrans Studio. Les vues détaillées Catalogue/Finance restent sous Réglages.
+// Référence produit validée : même menu Studio sur tous les écrans.
+// Production vidéo reste accessible par son URL mais n'est pas une section du menu principal.
 const ROUTES=[
   ['clients','/studio/clients','◎','Parcours clients'],
-  ['production','/studio/video-ai.html','✦','Production vidéo'],
   ['diffusion','/studio/webtv.html','▶','Diffusion'],
-  ['settings','/studio/advanced.html#programs','⚙','Réglages'],
+  ['catalog','/studio/advanced.html#programs','▦','Catalogue Média'],
+  ['finance','/studio/advanced.html#finances','€','Finance'],
+  ['settings-main','/studio/advanced.html#settings','⚙','Réglage'],
 ];
 
 start();
@@ -65,12 +66,14 @@ function normalizeAccount(sidebar){
 function activeRoute(){
   const path=location.pathname.replace(/\/+$/u,'')||'/';
   if(path==='/studio/clients'||path==='/studio/clients.html')return'clients';
-  if(path==='/studio/video-ai'||path==='/studio/video-ai.html')return'production';
   if(path==='/studio/webtv'||path==='/studio/webtv.html')return'diffusion';
   if(path==='/studio/advanced'||path==='/studio/advanced.html'){
     const tab=decodeURIComponent(location.hash.slice(1)).trim();
-    if(['programs','finances','settings','users','audit'].includes(tab))return'settings';
+    if(tab==='programs')return'catalog';
+    if(tab==='finances')return'finance';
+    if(['settings','users','audit'].includes(tab))return'settings-main';
     return'diffusion';
   }
+  // L'outil Production vidéo n'est volontairement rattaché à aucune section principale.
   return'';
 }

@@ -33,9 +33,42 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Install Worker dependencies
+      - name: Install Worker and Playwright dependencies
         working-directory: neptune-tv-media-cloudflare
-        run: npm install --package-lock=false --ignore-scripts --no-audit --no-fund
+        shell: bash
+        run: |
+          set -euo pipefail
+          installed=0
+          for attempt in 1 2 3; do
+            if timeout 180s npm install --package-lock=false --no-save --ignore-scripts --no-audit --no-fund --prefer-offline --fetch-retries=2 --fetch-timeout=45000 --fetch-retry-mintimeout=2000 --fetch-retry-maxtimeout=10000 playwright@1.55.0; then
+              installed=1
+              break
+            fi
+            echo "Dependency install attempt ${attempt} failed; retrying..."
+            sleep $((attempt * 5))
+          done
+          if [ "$installed" != 1 ]; then
+            echo "Unable to install Worker and Playwright dependencies after retries"
+            exit 1
+          fi
+      - name: Install Playwright Chromium
+        working-directory: neptune-tv-media-cloudflare
+        shell: bash
+        run: |
+          set -euo pipefail
+          browser_ready=0
+          for attempt in 1 2; do
+            if timeout 300s npx playwright install --with-deps chromium; then
+              browser_ready=1
+              break
+            fi
+            echo "Chromium install attempt ${attempt} failed; retrying..."
+            sleep $((attempt * 5))
+          done
+          if [ "$browser_ready" != 1 ]; then
+            echo "Unable to install Chromium after retries"
+            exit 1
+          fi
       - name: Validate JavaScript and visual assets
         run: |
           node --check neptune-tv-media-cloudflare/src/entry-v44.js
@@ -62,7 +95,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          command -v google-chrome || command -v google-chrome-stable
           sed -i 's/"compatibility_date": "2026-07-30"/"compatibility_date": "2026-07-07"/' wrangler.jsonc
           ./neptune-tv-media-cloudflare/node_modules/.bin/wrangler dev --config wrangler.jsonc --local --port 8787 > /tmp/wrangler-catalog-v145.log 2>&1 &
           ready=0
@@ -75,7 +107,7 @@ jobs:
           grep -Fqi 'x-neptune-catalog-cockpit: v145' /tmp/catalog-v145.headers
           grep -Fq '/studio/studio-catalog-commercial-cockpit-v145.js?v=1' /tmp/catalog-v145.html
           grep -Fq '/studio/studio-catalog-commercial-cockpit-v145.css?v=1' /tmp/catalog-v145.html
-      - name: Audit v145 commercial cockpit in Chrome
+      - name: Audit v145 commercial cockpit in Playwright
         env:
           STUDIO_BASE_URL: http://127.0.0.1:8787
           CATALOG_SCREENSHOT: /tmp/catalog-commercial-v145.png

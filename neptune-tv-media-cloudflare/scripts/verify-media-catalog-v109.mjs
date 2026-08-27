@@ -63,8 +63,9 @@ const stripeAuth=salesEntry.indexOf('const auth=await studioAuth(request,env,ctx
 const stripeFetch=salesEntry.indexOf('return secure(await activeStripeLinks(env));',stripeStart);
 must(stripeStart>=0&&stripeAuth>stripeStart&&stripeFetch>stripeAuth,'Stripe Payment Link listing must require authenticated Studio access');
 
-must(ia.includes("settings: [['programs', 'Catalogue Media']"),'Catalogue Media must remain first in Settings');
-must(ia.includes("link('settings', '/studio/advanced.html#programs'"),'Settings primary link must open Catalogue Media');
+must(ia.includes("settings: [['programs', 'Catalogue Media']"),'Catalogue Media must remain first in the historical advanced control group');
+must(ia.includes("link('catalog', '/studio/advanced.html#programs'"),'Catalogue Media must own its approved primary navigation entry');
+must(ia.includes("link('settings-main', '/studio/advanced.html#settings'"),'Réglage must remain separate from Catalogue Media');
 must(router.includes("'settings/catalogue':'/studio/advanced.html#programs'"),'compatibility router must open Catalogue Media');
 must(entry.includes("const STUDIO_NAV_JS='/studio/studio-information-architecture-v65-1.js?v=107'"),'current Studio JS cache key mismatch');
 must(entry.includes("const STUDIO_SHELL_CSS='/studio/studio-shell-v105.css?v=3'"),'current Studio CSS cache key mismatch');

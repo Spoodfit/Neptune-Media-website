@@ -94,9 +94,9 @@ try {
     assert(metrics.columns.every((column) => column.width >= 250), `${viewport.name}: workflow column below 250px`);
     assert(metrics.cards.every((card) => card.width >= 220), `${viewport.name}: client card below 220px`);
     assert(metrics.activeNavigationCount === 1, `${viewport.name}: canonical navigation must have exactly one active state`);
-    assert(JSON.stringify(metrics.primary) === JSON.stringify(['◎Parcours clients', '✦Production vidéo', '▶Diffusion', '⚙Réglages']), `${viewport.name}: canonical primary navigation changed`);
+    assert(JSON.stringify(metrics.primary) === JSON.stringify(['◎Parcours clients', '▶Diffusion', '▦Catalogue Média', '€Finance', '⚙Réglage']), `${viewport.name}: canonical primary navigation changed`);
     assert(metrics.canonicalLogoutCount === 1, `${viewport.name}: expected one canonical logout block`);
-    assert(metrics.productionVisibleCount === 1, `${viewport.name}: Production vidéo must be visible exactly once in primary navigation`);
+    assert(metrics.productionVisibleCount === 0, `${viewport.name}: Production vidéo must stay outside primary navigation`);
     assert(metrics.reducedMotionRulePresent, `${viewport.name}: reduced motion rule missing`);
 
     const toggle = page.locator('#neptuneStudioMenuToggle, #studioMenuToggle').first();
@@ -134,7 +134,7 @@ try {
 const blockingErrors = results.flatMap((result) => result.errors.filter((error) => !error.includes('favicon')));
 assert(blockingErrors.length === 0, `Browser errors: ${blockingErrors.join(' | ')}`);
 await writeFile(path.join(outputDir, 'report.json'), JSON.stringify({ ok: true, results }, null, 2));
-console.log(`Studio clients v138 four-tab canonical-shell audit passed for ${viewports.length} viewports.`);
+console.log(`Studio clients v138 approved five-section canonical-shell audit passed for ${viewports.length} viewports.`);
 
 function order(id, email, fullName, company, format, status) {
   const now = new Date();

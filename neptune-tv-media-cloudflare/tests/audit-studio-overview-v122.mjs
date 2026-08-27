@@ -6,7 +6,7 @@ const baseURL=process.env.STUDIO_BASE_URL||'http://127.0.0.1:8787';
 const outputDir=process.env.OUTPUT_DIR||'test-results/studio-overview-v122';
 await mkdir(outputDir,{recursive:true});
 
-const expectedNav=['Parcours clients','Production vidéo','Diffusion','Réglages'];
+const expectedNav=['Parcours clients','Diffusion','Catalogue Média','Finance','Réglage'];
 const adminState={
   user:{id:'admin-1',email:'contact@neptunebusiness.com',fullName:'Neptune Media',role:'admin'},
   programs:[{id:'program-1',name:'Hors Norme',slug:'hors-norme',description:'Interview signature',displayOrder:10,active:true}],
@@ -57,9 +57,9 @@ const publishedCatalog={
 const portal={clients:[],orders:[],supplierPayments:[],refundRequests:[],deletionRequests:[],finance:adminState.finance};
 const screens=[
   {id:'webtv',path:'/studio/webtv.html',active:'Diffusion',kind:'webtv'},
-  {id:'catalogue',path:'/studio/advanced.html#programs',active:'Réglages',kind:'catalogue'},
-  {id:'finance',path:'/studio/advanced.html#finances',active:'Réglages',kind:'finance'},
-  {id:'settings',path:'/studio/advanced.html#settings',active:'Réglages',kind:'settings'},
+  {id:'catalogue',path:'/studio/advanced.html#programs',active:'Catalogue Média',kind:'catalogue'},
+  {id:'finance',path:'/studio/advanced.html#finances',active:'Finance',kind:'finance'},
+  {id:'settings',path:'/studio/advanced.html#settings',active:'Réglage',kind:'settings'},
   {id:'programme',path:'/studio/advanced.html#episodes',active:'Diffusion',kind:'programme'},
 ];
 const viewports=[{id:'desktop',width:1440,height:900},{id:'mobile',width:390,height:844}];
@@ -171,7 +171,7 @@ try{
   }
 }finally{await browser.close();}
 
-await writeFile(path.join(outputDir,'report.json'),JSON.stringify({ok:true,release:'studio-overview-v122-canonical-v145',reports},null,2));
+await writeFile(path.join(outputDir,'report.json'),JSON.stringify({ok:true,release:'studio-overview-v122-approved-five-section-v145',reports},null,2));
 console.log(JSON.stringify({ok:true,checks:reports.length,nav:expectedNav,catalogue:'v145'},null,2));
 
 function assert(condition,message){if(!condition)throw new Error(message);}

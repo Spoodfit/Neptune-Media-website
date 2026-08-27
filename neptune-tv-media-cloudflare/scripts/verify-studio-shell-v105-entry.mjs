@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
-const packageRoot = fs.existsSync(path.join(root, 'src/entry-v41.js')) && fs.existsSync(path.join(root, 'public/studio/studio-information-architecture-v65-1.js'));
+const packageRoot = fs.existsSync(path.join(root, 'src/entry-v44.js')) && fs.existsSync(path.join(root, 'public/studio/studio-information-architecture-v65-1.js'));
 const prefix = packageRoot ? '' : 'neptune-tv-media-cloudflare/';
 const wranglerPath = path.join(root, 'wrangler.jsonc');
 const wrangler = fs.readFileSync(wranglerPath, 'utf8');
@@ -13,18 +13,27 @@ const activeEntryRaw = mainMatch[1];
 const activeEntry = packageRoot
   ? activeEntryRaw.replace(/^neptune-tv-media-cloudflare\//u, '')
   : activeEntryRaw;
-const entry41Path = packageRoot ? 'src/entry-v41.js' : 'neptune-tv-media-cloudflare/src/entry-v41.js';
+const entry44Path = packageRoot ? 'src/entry-v44.js' : 'neptune-tv-media-cloudflare/src/entry-v44.js';
+const entry40PathRelative = packageRoot ? 'src/entry-v40.js' : 'neptune-tv-media-cloudflare/src/entry-v40.js';
 const activeChain = traceEntryChain(activeEntry);
-if (!activeChain.includes(entry41Path)) {
-  throw new Error(`Studio active Worker must preserve v41 in its runtime chain: ${activeChain.join(' -> ')}`);
+if (activeChain[0] !== entry44Path || !activeChain.includes(entry40PathRelative)) {
+  throw new Error(`Studio active Worker must use canonical v44 -> v40 runtime: ${activeChain.join(' -> ')}`);
+}
+if (activeChain.some((entryPath) => /entry-v4[123]\.js$/u.test(entryPath))) {
+  throw new Error(`Studio active Worker must not reintroduce flattened v41-v43 wrappers: ${activeChain.join(' -> ')}`);
 }
 
-const entry41 = fs.readFileSync(path.join(root, entry41Path), 'utf8');
-if (!entry41.includes("from './entry-v40.js'")) {
-  throw new Error('Preserved v41 entry must preserve the complete v40 runtime');
-}
-if (!entry41.includes("from './drive-upload-resilience-v137.js'")) {
-  throw new Error('Preserved v41 entry must activate Drive upload resilience v137');
+const entry44 = fs.readFileSync(path.join(root, entry44Path), 'utf8');
+for (const marker of [
+  "from './entry-v40.js'",
+  "from './drive-upload-resilience-v137.js'",
+  "from './drive-upload-recovery-v137.js'",
+  "from './drive-manual-validation-v138.js'",
+  'handleDriveManualValidationV138(request,env)',
+  'recoverDriveStagingUploadsV137(env)',
+  "controller?.cron==='*/5 * * * *'",
+]) {
+  if (!entry44.includes(marker)) throw new Error(`Canonical v44 entry is missing Drive runtime marker: ${marker}`);
 }
 
 const entry40Path = path.join(root, `${prefix}src/entry-v40.js`);
@@ -118,16 +127,16 @@ function traceEntryChain(start) {
   const chain = [];
   const seen = new Set();
   let current = start;
-  for (let depth = 0; depth < 20; depth += 1) {
+  for (let depth = 0; depth < 64; depth += 1) {
     if (seen.has(current)) throw new Error(`Studio entry chain contains a cycle at ${current}`);
     seen.add(current);
     chain.push(current);
-    if (current === entry41Path) return chain;
+    if (current === entry40PathRelative) return chain;
     const sourcePath = path.join(root, current);
     if (!fs.existsSync(sourcePath)) throw new Error(`Studio entry chain file is missing: ${current}`);
     const source = fs.readFileSync(sourcePath, 'utf8');
     const parent = source.match(/from\s+['"]\.\/(entry-v\d+\.js)['"]/u)?.[1];
-    if (!parent) throw new Error(`Studio entry chain from ${current} does not reach v41`);
+    if (!parent) throw new Error(`Studio entry chain from ${current} does not reach v40`);
     current = path.posix.join(path.posix.dirname(current), parent);
   }
   throw new Error(`Studio entry chain is unexpectedly deep: ${chain.join(' -> ')}`);

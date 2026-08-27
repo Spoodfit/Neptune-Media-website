@@ -48,9 +48,12 @@ jobs:
           grep -Fq '"main": "neptune-tv-media-cloudflare/src/entry-v44.js"' wrangler.jsonc
           test -L neptune-tv-media-cloudflare/wrangler.jsonc
           test "$(readlink neptune-tv-media-cloudflare/wrangler.jsonc)" = '../wrangler.jsonc'
-          grep -Fq "from './entry-v41.js'" neptune-tv-media-cloudflare/src/entry-v44.js
+          grep -Fq "from './entry-v40.js'" neptune-tv-media-cloudflare/src/entry-v44.js
+          ! grep -Fq "from './entry-v41.js'" neptune-tv-media-cloudflare/src/entry-v44.js
           ! grep -Fq "from './entry-v42.js'" neptune-tv-media-cloudflare/src/entry-v44.js
           ! grep -Fq "from './entry-v43.js'" neptune-tv-media-cloudflare/src/entry-v44.js
+          grep -Fq 'handleDriveManualValidationV138' neptune-tv-media-cloudflare/src/entry-v44.js
+          grep -Fq 'recoverDriveStagingUploadsV137' neptune-tv-media-cloudflare/src/entry-v44.js
           grep -Fq 'studio-catalog-commercial-cockpit-v145.css?v=1' neptune-tv-media-cloudflare/src/entry-v44.js
           grep -Fq 'studio-catalog-commercial-cockpit-v145.js?v=1' neptune-tv-media-cloudflare/src/entry-v44.js
           grep -Fq 'studio-catalog-visual-polish-v132-1.css?v=1' neptune-tv-media-cloudflare/public/studio/advanced.html

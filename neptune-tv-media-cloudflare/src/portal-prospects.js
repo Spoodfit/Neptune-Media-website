@@ -19,17 +19,19 @@ export async function startProspect(store, raw = {}) {
   const now = new Date();
   const nowIso = now.toISOString();
   const fullName = `${firstName} ${lastName}`.trim();
-  let client = store.sql.exec('SELECT id FROM portal_clients WHERE email=?', email).toArray()[0];
+  let client = store.sql.exec('SELECT id,active FROM portal_clients WHERE email=?', email).toArray()[0];
 
   if (!client) {
-    client = { id: crypto.randomUUID() };
+    client = { id: crypto.randomUUID(), active: 0 };
     store.sql.exec(
-      'INSERT INTO portal_clients (id,email,full_name,company,active,created_at,updated_at,last_access_at) VALUES (?,?,?,?,1,?,?,NULL)',
+      'INSERT INTO portal_clients (id,email,full_name,company,active,created_at,updated_at,last_access_at) VALUES (?,?,?,?,0,?,?,NULL)',
       client.id, email, fullName, company, nowIso, nowIso,
     );
   } else {
+    // A captured lead must never grant portal access. Existing paying clients keep
+    // their current entitlement; inactive leads remain inactive until payment.
     store.sql.exec(
-      'UPDATE portal_clients SET full_name=?,company=?,active=1,updated_at=? WHERE id=?',
+      'UPDATE portal_clients SET full_name=?,company=?,updated_at=? WHERE id=?',
       fullName, company, nowIso, client.id,
     );
   }

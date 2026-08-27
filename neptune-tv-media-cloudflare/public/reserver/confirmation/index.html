@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#081635">
+  <title>Réservation confirmée · Neptune Media</title>
+  <meta name="description" content="Confirmation de votre réservation Neptune Media et prise de rendez-vous de préparation.">
+  <link rel="icon" href="/reserver/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/reserver/confirmation/confirmation.css?v=1">
+</head>
+<body>
+  <main class="confirmation-shell">
+    <a class="brand" href="/reserver" aria-label="Neptune Media"><img src="/reserver/favicon.svg" alt=""><span>Neptune Media</span></a>
+    <section class="confirmation-card" id="confirmationCard" aria-live="polite">
+      <div class="confirmation-state" id="confirmationState">
+        <span class="state-icon is-loading" id="stateIcon" aria-hidden="true"></span>
+        <p class="eyebrow">PAIEMENT STRIPE</p>
+        <h1 id="confirmationTitle">Nous confirmons votre paiement.</h1>
+        <p id="confirmationText">Cela prend généralement quelques secondes. Vous n’avez rien à valider manuellement.</p>
+      </div>
+      <div class="booking" id="booking" hidden>
+        <div>
+          <p class="eyebrow">ÉTAPE SUIVANTE</p>
+          <h2>Choisissez votre rendez-vous de préparation.</h2>
+          <p>Votre passage est réservé. Sélectionnez maintenant le créneau qui vous convient dans Google Agenda.</p>
+        </div>
+        <a class="primary" id="bookingLink" href="#" target="_blank" rel="noopener">Choisir mon rendez-vous <span>→</span></a>
+      </div>
+      <div class="summary" id="summary" hidden></div>
+      <div class="support" id="support" hidden>
+        <strong>La confirmation prend plus de temps que prévu.</strong>
+        <p>Ne payez pas une seconde fois. Stripe et Neptune continuent la vérification automatiquement.</p>
+        <button type="button" id="retry">Vérifier à nouveau</button>
+      </div>
+    </section>
+    <p class="secure-note">Paiement sécurisé par Stripe · Votre dossier Neptune se met à jour automatiquement.</p>
+  </main>
+  <script type="module" src="/reserver/confirmation/confirmation.js?v=1"></script>
+</body>
+</html>

@@ -179,10 +179,9 @@ jobs:
                   && grep -Fq "dropzone('long', 'Long format'" "/tmp/neptune-drive-upload-v137/$slug-upload.js" \
                   && grep -Fq "dropzone('short', 'Shorts'" "/tmp/neptune-drive-upload-v137/$slug-upload.js" \
                   && grep -Fq 'grid-template-columns:repeat(2,minmax(0,1fr))' "/tmp/neptune-drive-upload-v137/$slug-upload.css"; then
-                  ready=1
-                  echo "$base: Studio Drive upload v94/v137 verified on attempt $attempt."
-                  break
-                fi
+                ready=1
+                echo "$base: Studio Drive upload v94/v137 verified on attempt $attempt."
+                break
               fi
               sleep 5
             done
@@ -205,16 +204,18 @@ jobs:
           grep -Fq '"providerKeyAccepted":true' /tmp/email-health.json
           grep -Fq '"transport":"resend-node-6.18.0"' /tmp/email-health.json
 
-      - name: Verify trusted Neptune client login
+      - name: Verify client login cannot bypass OTP
+        shell: bash
         run: |
-          curl --silent --show-error --cookie-jar /tmp/client-cookie.txt \
+          set -euo pipefail
+          headers=/tmp/client-auth-probe.headers
+          body=/tmp/client-auth-probe.json
+          curl --fail --silent --show-error -D "$headers" \
             -X POST "$PUBLIC_URL/api/client/request-code" \
             -H "Origin: $PUBLIC_URL" -H 'Content-Type: application/json' \
-            --data '{"email":"contact@neptunebusiness.com"}' > /tmp/trusted-login.json
-          grep -Fq '"ok":true' /tmp/trusted-login.json
-          grep -Fq '"authenticated":true' /tmp/trusted-login.json
-          grep -Fq '"trustedAccess":true' /tmp/trusted-login.json
-          curl --fail --silent --show-error --cookie /tmp/client-cookie.txt \
-            "$PUBLIC_URL/api/client/session" > /tmp/client-session.json
-          grep -Fq '"client"' /tmp/client-session.json
-          grep -Fq '"orders"' /tmp/client-session.json
+            --data '{"email":"security-probe-neptune@example.invalid"}' > "$body"
+          grep -Fq '"ok":true' "$body"
+          grep -Fq '"codeExpected":true' "$body"
+          ! grep -Fqi '^set-cookie:' "$headers"
+          ! grep -Fq '"authenticated":true' "$body"
+          ! grep -Fq '"trustedAccess":true' "$body"

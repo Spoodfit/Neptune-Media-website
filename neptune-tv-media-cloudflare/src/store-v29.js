@@ -16,6 +16,7 @@ import {
 import { prepareClientDirectBookingV1185 } from './portal-client-direct-booking-v118-5.js';
 import { startTunnelProspectV121, enrichProspectContextV121 } from './portal-sales-prospect-v121.js';
 import { ensureSupplierPaymentIntegrityV121 } from './portal-supplier-integrity-v121.js';
+import { handleMediaPresentersV146 } from './portal-presenters-v146.js';
 
 const STUDIO_EMAIL='contact@neptunebusiness.com';
 const RESET_WINDOW_MS=15*60*1000;
@@ -27,6 +28,9 @@ export class StudioStore extends LegacyStore {
     const url=new URL(request.url),method=request.method.toUpperCase();
     const body=async()=>request.clone().json().catch(()=>({}));
     ensureSupplierPaymentIntegrityV121(this);
+
+    const presenters=await handleMediaPresentersV146(this,request);
+    if(presenters)return presenters;
 
     if(method==='POST'&&url.pathname==='/auth/request-reset'){
       const payload=await body();

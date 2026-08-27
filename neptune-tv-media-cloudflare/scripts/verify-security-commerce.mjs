@@ -20,7 +20,8 @@ assert.ok(!tunnelGuard.includes('currentTierKey('),'legacy global tier remapping
 assert.ok(!tunnelGuard.includes('offerId:effective.id'),'checkout must never silently replace the held offer id');
 
 assert.ok(!deployWorkflow.includes('Verify trusted Neptune client login'),'production deployment must not certify an authentication bypass');
-assert.ok(!deployWorkflow.includes('"trustedAccess":true'),'production deployment must never expect trusted-access login');
+assert.ok(!deployWorkflow.includes('/tmp/trusted-login.json'),'production deployment must not use the legacy privileged-login fixture');
 assert.ok(deployWorkflow.includes('Verify client login cannot bypass OTP'),'deployment must probe that OTP cannot be bypassed');
+assert.ok(deployWorkflow.includes("! grep -Fq '\"trustedAccess\":true' \"$body\""),'deployment must explicitly reject a trusted-access response');
 
 console.log('Security/commerce regression verification passed.');

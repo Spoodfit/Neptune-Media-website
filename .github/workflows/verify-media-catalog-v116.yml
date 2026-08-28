@@ -44,19 +44,50 @@ jobs:
         run: |
           npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
           npx playwright install --with-deps chromium
-      - name: Start local Worker from canonical config
+      - name: Start local Catalogue Worker from canonical config
         shell: bash
         run: |
           set -euo pipefail
-          ./neptune-tv-media-cloudflare/node_modules/.bin/wrangler dev --config wrangler.jsonc --local --port 8787 > /tmp/wrangler-v116.log 2>&1 &
+
+          # The production config contains a Cloudflare Container-backed Durable Object
+          # used by WebTV. GitHub's local V116 browser audit only exercises the Catalogue
+          # and does not provide a Docker daemon suitable for that Container. Derive a
+          # temporary local config from the canonical root config instead of maintaining
+          # a second Wrangler source of truth or weakening the production configuration.
+          node <<'NODE'
+          const fs = require('fs');
+          const source = JSON.parse(fs.readFileSync('wrangler.jsonc', 'utf8'));
+          delete source.containers;
+          if (source.durable_objects?.bindings) {
+            source.durable_objects.bindings = source.durable_objects.bindings.filter(
+              (binding) => binding.name !== 'WEBTV_ENCODER' && binding.class_name !== 'WebTvEncoder'
+            );
+          }
+          if (Array.isArray(source.migrations)) {
+            source.migrations = source.migrations.filter(
+              (migration) => !(migration.new_sqlite_classes || []).includes('WebTvEncoder')
+            );
+          }
+          fs.writeFileSync('.wrangler-v116.local.jsonc', JSON.stringify(source, null, 2));
+          NODE
+
+          ./neptune-tv-media-cloudflare/node_modules/.bin/wrangler dev --config .wrangler-v116.local.jsonc --local --port 8787 > /tmp/wrangler-v116.log 2>&1 &
+          worker_pid=$!
+          trap 'kill "$worker_pid" 2>/dev/null || true; rm -f .wrangler-v116.local.jsonc' EXIT
+
           ready=0
-          for attempt in $(seq 1 120); do
+          for attempt in $(seq 1 60); do
+            if ! kill -0 "$worker_pid" 2>/dev/null; then
+              echo "Catalogue Worker exited before becoming ready"
+              cat /tmp/wrangler-v116.log
+              exit 1
+            fi
             if curl --fail --silent --max-time 3 http://127.0.0.1:8787/studio/advanced.html >/dev/null; then
               ready=1
               echo "Catalogue Worker ready after ${attempt} attempts"
               break
             fi
-            if (( attempt % 20 == 0 )); then echo "Waiting for Catalogue Worker (${attempt}/120)…"; fi
+            if (( attempt % 15 == 0 )); then echo "Waiting for Catalogue Worker (${attempt}/60)…"; fi
             sleep 2
           done
           if [ "$ready" != 1 ]; then cat /tmp/wrangler-v116.log; exit 1; fi

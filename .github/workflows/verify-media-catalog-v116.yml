@@ -50,8 +50,13 @@ jobs:
           set -euo pipefail
           ./neptune-tv-media-cloudflare/node_modules/.bin/wrangler dev --config wrangler.jsonc --local --port 8787 > /tmp/wrangler-v116.log 2>&1 &
           ready=0
-          for attempt in $(seq 1 60); do
-            if curl --fail --silent http://127.0.0.1:8787/studio/advanced.html >/dev/null; then ready=1; break; fi
+          for attempt in $(seq 1 120); do
+            if curl --fail --silent --max-time 3 http://127.0.0.1:8787/studio/advanced.html >/dev/null; then
+              ready=1
+              echo "Catalogue Worker ready after ${attempt} attempts"
+              break
+            fi
+            if (( attempt % 20 == 0 )); then echo "Waiting for Catalogue Worker (${attempt}/120)…"; fi
             sleep 2
           done
           if [ "$ready" != 1 ]; then cat /tmp/wrangler-v116.log; exit 1; fi

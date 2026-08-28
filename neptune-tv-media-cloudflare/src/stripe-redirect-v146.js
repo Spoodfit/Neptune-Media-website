@@ -1,5 +1,5 @@
-export const STRIPE_CONFIRMATION_V146_RELEASE='neptune-stripe-confirmation-20260827-v146';
-export const STRIPE_CONFIRMATION_URL='https://media.neptunebusiness.com/reserver/confirmation/?payment=success&session_id={CHECKOUT_SESSION_ID}';
+export const STRIPE_CONFIRMATION_V146_RELEASE='neptune-stripe-confirmation-20260828-v146.1';
+export const STRIPE_CONFIRMATION_URL='https://tv.neptunebusiness.com/reserver/confirmation/?payment=success&session_id={CHECKOUT_SESSION_ID}';
 const STATE_KEY='stripe_redirect_sync_v146';
 const SUCCESS_RECHECK_MS=6*60*60*1000;
 const FAILURE_RECHECK_MS=10*60*1000;

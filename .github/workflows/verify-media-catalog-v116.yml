@@ -15,7 +15,6 @@ on:
       - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-manager-v147.js'
       - 'neptune-tv-media-cloudflare/public/studio/studio-catalog-manager-v147.css'
       - 'neptune-tv-media-cloudflare/scripts/verify-media-catalog-v116.mjs'
-      - 'neptune-tv-media-cloudflare/tests/audit-media-catalog-v116.mjs'
       - 'neptune-tv-media-cloudflare/tests/audit-catalog-commercial-v145.mjs'
       - 'neptune-tv-media-cloudflare/tests/audit-catalog-manager-v147.mjs'
       - 'wrangler.jsonc'
@@ -31,10 +30,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - name: Install Worker dependencies
-        working-directory: neptune-tv-media-cloudflare
-        run: npm install --package-lock=false --ignore-scripts --no-audit --no-fund
-      - name: Syntaxe et contrats Catalogue
+      - name: Syntaxe et contrat de données V116
         working-directory: neptune-tv-media-cloudflare
         run: |
           node --check src/portal-media-catalog-v98.js
@@ -44,10 +40,12 @@ jobs:
           node --check public/studio/media-catalog-runtime-fix-v115.js
           node --check public/studio/studio-catalog-commerce-v143-4.js
           node --check public/studio/studio-catalog-manager-v147.js
-          node --check tests/audit-media-catalog-v116.mjs
           node --check tests/audit-catalog-commercial-v145.mjs
           node --check tests/audit-catalog-manager-v147.mjs
           node scripts/verify-media-catalog-v116.mjs
+      - name: Install Worker dependencies
+        working-directory: neptune-tv-media-cloudflare
+        run: npm install --package-lock=false --ignore-scripts --no-audit --no-fund
       - name: Install Chromium
         run: |
           npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.55.0
@@ -92,15 +90,11 @@ jobs:
             sleep 2
           done
           if [ "$ready" != 1 ]; then cat /tmp/wrangler-v116.log; exit 1; fi
-      - name: Audit Catalogue v116 dans Chromium
-        env:
-          STUDIO_BASE_URL: http://127.0.0.1:8787
-        run: node neptune-tv-media-cloudflare/tests/audit-media-catalog-v116.mjs
-      - name: Audit cockpit commercial v145 + manager v147
+      - name: Audit interface Catalogue actuelle v145 + manager v147
         env:
           STUDIO_BASE_URL: http://127.0.0.1:8787
         run: node neptune-tv-media-cloudflare/tests/audit-catalog-commercial-v145.mjs
-      - name: Audit gestion complète et synchronisation tunnel v147
+      - name: Audit toutes les actions de gestion et synchronisation tunnel v147
         env:
           STUDIO_BASE_URL: http://127.0.0.1:8787
         run: node neptune-tv-media-cloudflare/tests/audit-catalog-manager-v147.mjs

@@ -49,14 +49,10 @@ jobs:
         run: |
           set -euo pipefail
 
-          # The production config contains a Cloudflare Container-backed Durable Object
-          # used by WebTV. GitHub's local V116 browser audit only exercises the Catalogue
-          # and does not provide a Docker daemon suitable for that Container. Derive a
-          # temporary local config from the canonical root config instead of maintaining
-          # a second Wrangler source of truth or weakening the production configuration.
           node <<'NODE'
           const fs = require('fs');
           const source = JSON.parse(fs.readFileSync('wrangler.jsonc', 'utf8'));
+          source.compatibility_date = '2026-07-17';
           delete source.containers;
           if (source.durable_objects?.bindings) {
             source.durable_objects.bindings = source.durable_objects.bindings.filter(

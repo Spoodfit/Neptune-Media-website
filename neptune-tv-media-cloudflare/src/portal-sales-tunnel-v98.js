@@ -14,6 +14,11 @@ import {
   formatVisualV98,
   configurationVisualV98,
 } from './media-catalog-visuals-v98.js';
+import {
+  ensureStripeConfirmationRedirectV146,
+  STRIPE_CONFIRMATION_V146_RELEASE,
+  STRIPE_CONFIRMATION_URL,
+} from './stripe-redirect-v146.js';
 
 export const SALES_CATALOG_RELEASE='neptune-sales-catalog-20260811-v98';
 
@@ -22,7 +27,8 @@ export async function publicSalesCatalogV98(store){
   const response=await publicSalesCatalogGuardedV109(store),data=await response.json().catch(()=>({}));
   if(!response.ok)return json(data,response.status);
   enhanceCatalog(store,data);
-  return json({...data,catalogRelease:SALES_CATALOG_RELEASE,visualsRelease:MEDIA_CATALOG_VISUALS_RELEASE,dataGuardRelease:SALES_TUNNEL_GUARD_RELEASE});
+  const stripeConfirmation=await ensureStripeConfirmationRedirectV146(store);
+  return json({...data,catalogRelease:SALES_CATALOG_RELEASE,visualsRelease:MEDIA_CATALOG_VISUALS_RELEASE,dataGuardRelease:SALES_TUNNEL_GUARD_RELEASE,stripeConfirmation:{release:STRIPE_CONFIRMATION_V146_RELEASE,url:STRIPE_CONFIRMATION_URL,synced:Boolean(stripeConfirmation?.synced)}});
 }
 
 export async function startTunnelProspectV98(store,raw={}){

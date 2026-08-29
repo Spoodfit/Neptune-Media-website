@@ -1,129 +1,109 @@
-const RELEASE='neptune-hors-norme-personalization-client-20260824-v139.2';
-const API='/api/client/hors-norme-personalization';
-const PHASES=[
-  {id:'ouverture',title:'Ouverture de l’émission',objective:'Faire comprendre pourquoi cette conversation mérite d’exister, sans tomber dans la présentation corporate.',options:['Quel problème vous a tellement marqué que vous avez fini par vous dire : “je ne peux pas laisser les gens seuls avec ça” ?','Qui avez-vous vu galérer trop longtemps avant de comprendre qu’il avait besoin d’aide ?','Quelle situation vous révolte encore aujourd’hui dans votre métier ?'],placeholder:'Expliquez pourquoi cette question révèle le mieux votre vraie raison d’être.'},
-  {id:'silence',title:'Ce qu’il vit en silence',objective:'Faire reconnaître le spectateur dans ce qu’il n’ose pas forcément dire.',options:['Qu’est-ce que votre client vit en silence, mais qu’il n’avouera presque jamais au premier rendez-vous ?','Quelle phrase se répète-t-il pour se rassurer alors qu’au fond il sait que ça bloque ?','À quel moment son problème commence à lui prendre plus que de l’argent : de l’énergie, de la confiance ou de la paix mentale ?'],placeholder:'Expliquez quelle émotion ou vérité cachée vous voulez faire remonter.'},
-  {id:'scene',title:'La scène qui révèle tout',objective:'Faire sortir une scène réelle, pas une explication abstraite.',options:['Racontez une scène précise où vous avez vu quelqu’un comprendre trop tard qu’il s’était trompé de problème.','Quel moment client vous revient encore parce qu’il résume tout ce que votre métier cherche à éviter ?','Décrivez la scène : qui est là, qu’est-ce qui se passe, et qu’est-ce qu’on comprend à ce moment-là ?'],placeholder:'Expliquez pourquoi cette scène rend le problème impossible à ignorer.'},
-  {id:'erreurs',title:'Les erreurs qui l’épuisent',objective:'Nommer les mauvais réflexes sans humilier le spectateur.',options:['Quelle erreur votre client répète en pensant se protéger, alors qu’elle l’enfonce ?','Quel réflexe paraît raisonnable sur le moment, mais coûte très cher à long terme ?','Qu’est-ce qu’il continue de faire parce qu’il croit gagner du temps, alors qu’il en perd ?'],placeholder:'Expliquez l’erreur que vous voulez faire reconnaître sans jugement.'},
-  {id:'croyances',title:'Les croyances qui bloquent',objective:'Casser une fausse croyance qui maintient le problème en place.',options:['Quelle croyance donne l’impression d’être prudent, alors qu’elle bloque tout ?','Quelle phrase votre client se raconte pour ne pas prendre la décision qu’il sait nécessaire ?','Quelle vérité dérangeante ferait gagner des mois à ceux qui vous écoutent ?'],placeholder:'Expliquez la croyance à casser et la vérité à faire accepter.'},
-  {id:'chemin',title:'Le chemin qui rassure',objective:'Montrer une voie claire, humaine et accessible.',options:['Si quelqu’un se reconnaît, quel est le premier pas intelligent, pas spectaculaire, juste intelligent ?','Par où faut-il commencer quand on est fatigué de tourner autour du même problème ?','Quelle étape paraît simple, mais change tout parce qu’elle remet de l’ordre dans la tête ?'],placeholder:'Expliquez pourquoi cette question rend votre accompagnement concret et rassurant.'},
-  {id:'freins',title:'Les freins qu’il n’ose pas dire',objective:'Faire émerger les objections profondes sans les traiter comme de simples excuses.',options:['Quand il dit “je n’ai pas le budget”, quelle peur est souvent cachée derrière ?','Quand il dit “je vais attendre”, qu’est-ce qu’il espère éviter de regarder en face ?','Quelle objection mérite d’être respectée, mais ne doit pas devenir une prison ?'],placeholder:'Expliquez le frein émotionnel que vous voulez traiter avec justesse.'},
-  {id:'verites',title:'Les vérités qui restent',objective:'Obtenir une phrase courte que le spectateur peut garder en tête.',options:['Quelle phrase aimeriez-vous que votre client se répète demain matin ?','Quelle vérité simple ferait mal à entendre, mais du bien à accepter ?','Si vous deviez réveiller quelqu’un en une phrase, vous lui diriez quoi ?'],placeholder:'Expliquez la phrase ou l’idée que vous voulez ancrer.'},
-  {id:'avant_apres',title:'Le déclic avant / après',objective:'Faire sentir la transformation vécue, pas seulement le résultat obtenu.',options:['À quoi ressemblait la personne avant de comprendre ce qui bloquait vraiment ?','Quel déclic a changé sa façon de voir le problème ?','Qu’est-ce qui a changé dans sa posture, sa confiance ou ses décisions après ?'],placeholder:'Expliquez quelle transformation humaine vous voulez rendre visible.'},
-  {id:'message_final',title:'Ce qu’il devait entendre',objective:'Finir sur une parole utile, humaine, sans basculer dans la promo.',options:['Qu’avez-vous envie de dire à quelqu’un qui se reconnaît, mais qui n’a encore rien osé changer ?','Quelle phrase aurait pu l’aider plus tôt s’il l’avait entendue au bon moment ?','Qu’est-ce qu’il doit arrêter de porter seul à partir d’aujourd’hui ?'],placeholder:'Expliquez le message final que vous voulez transmettre sans vendre.'},
-  {id:'cloture',title:'Clôture d’émission',objective:'Laisser une idée forte et un premier mouvement simple.',options:['Quelle idée doit rester quand l’écran s’éteint ?','Quel premier pas peut-il faire dans les prochaines 24 heures sans tout bouleverser ?','Si cette conversation devait enlever un poids à quelqu’un, lequel ?'],placeholder:'Expliquez l’impression finale que l’audience doit garder.'}
-];
-let data=null,index=0,saveTimer=0,saving=false,dirty=false,mountObserver=null,editRevision=0;
-document.documentElement.dataset.horsNormePersonalization=RELEASE;
+const RELEASE='neptune-client-preparation-simplification-20260827-v146';
+const SESSION_API='/api/client/session';
+const CATALOG_API='/api/reservation/catalog-v96';
+let session=null,catalog=null,loading=false,refreshTimer=0;
+
+document.documentElement.dataset.clientPreparationSimplification=RELEASE;
 start();
 
 function start(){document.readyState==='loading'?document.addEventListener('DOMContentLoaded',boot,{once:true}):boot();}
-async function boot(){
+function boot(){
   if(!['/espace-client','/espace-client/','/espace-client/index.html'].includes(location.pathname))return;
+  removeQuestionPersonalization();
+  window.addEventListener('click',captureIntent,true);
+  new MutationObserver(scheduleRefresh).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['hidden','data-stage']});
+  window.addEventListener('focus',()=>hydrate(true));
+  hydrate(false);
+  scheduleRefresh();
+}
+
+function captureIntent(event){
+  const stage=event.target.closest?.('[data-cc-stage],[data-cc-track]');
+  if(stage){
+    const region=document.getElementById('ccDetailRegion');
+    if(region){region.dataset.neptuneUserOpen='1';region.hidden=false;}
+    setTimeout(()=>{compactDetail();mountFormatPreparation();},0);
+    return;
+  }
+  if(event.target.closest?.('[data-v118-close]')){
+    const region=document.getElementById('ccDetailRegion');
+    if(region)delete region.dataset.neptuneUserOpen;
+  }
+}
+
+function scheduleRefresh(){clearTimeout(refreshTimer);refreshTimer=setTimeout(()=>{removeQuestionPersonalization();compactDetail();mountFormatPreparation();},45);}
+function removeQuestionPersonalization(){
+  for(const id of ['hnPersonalizationV139','hnPersonalizationDialogV139','hnToastV139'])document.getElementById(id)?.remove();
+  document.querySelectorAll('.hn-personalization-v139,.hn-personalization-dialog-v139,.hn-toast-v139').forEach(node=>node.remove());
+}
+function compactDetail(){
+  const region=document.getElementById('ccDetailRegion');
+  if(!region)return;
+  if(region.dataset.neptuneUserOpen!=='1')region.hidden=true;
+}
+
+async function hydrate(force=false){
+  if(loading||(!force&&session&&catalog))return;
+  loading=true;
   try{
-    const response=await fetch(API,{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
-    if(!response.ok)return;
-    data=await response.json();
-    hydrate();
-    index=firstIncompleteIndex();
-    mount();
-    mountObserver=new MutationObserver(()=>mount());
-    mountObserver.observe(document.body,{childList:true,subtree:true});
-  }catch(error){console.error('hors_norme_personalization_v139_boot_failed',error);}
+    const [sessionResponse,catalogResponse]=await Promise.all([
+      fetch(SESSION_API,{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json','Cache-Control':'no-cache'}}),
+      fetch(CATALOG_API,{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json','Cache-Control':'no-cache'}}),
+    ]);
+    const [sessionData,catalogData]=await Promise.all([sessionResponse.json().catch(()=>({})),catalogResponse.json().catch(()=>({}))]);
+    if(sessionResponse.ok&&sessionData.authenticated!==false)session=sessionData;
+    if(catalogResponse.ok)catalog=catalogData;
+    mountFormatPreparation();
+  }catch(error){console.error('client_preparation_simplification_v146_failed',error);}
+  finally{loading=false;}
 }
-function hydrate(){
-  const saved=new Map((data.personalization?.phases||[]).map(phase=>[phase.id,phase]));
-  data.personalization=data.personalization||{};
-  data.personalization.phases=PHASES.map(phase=>({...phase,question:String(saved.get(phase.id)?.question||''),pourquoi:String(saved.get(phase.id)?.pourquoi||'')}));
+
+function mountFormatPreparation(){
+  const region=document.getElementById('ccDetailRegion');
+  if(!region||region.dataset.stage!=='preparation'||region.dataset.neptuneUserOpen!=='1')return;
+  const order=currentOrder();
+  if(!order||/hors\s*norme/iu.test(String(order.format||order.title||'')))return;
+  const format=findFormat(order);
+  const cards=formatPreparationCards(format);
+  let section=document.getElementById('formatPreparationCardsV146');
+  if(!cards.length){section?.remove();return;}
+  if(!section){
+    section=document.createElement('section');
+    section.id='formatPreparationCardsV146';
+    section.className='format-preparation-v146';
+    const anchor=region.querySelector('.cc-v118-note')||region.querySelector('.cc-v118-facts');
+    anchor?.after(section);
+  }
+  const signature=cards.map(card=>`${card.label}|${card.image||card.imageBase64||''}|${card.description||''}`).join('||');
+  if(section.dataset.signature===signature)return;
+  section.dataset.signature=signature;
+  section.innerHTML=`<header><div><span>PRÉPARER VOTRE FORMAT</span><h4>${esc(format?.name||order.format||'Votre passage')}</h4><p>Les cartes configurées pour ce format apparaissent automatiquement ici.</p></div><small>${cards.length} carte${cards.length>1?'s':''}</small></header><div class="format-preparation-track-v146">${cards.map((card,index)=>cardMarkup(card,index)).join('')}</div>`;
+  hydrateBase64(section);
 }
-function firstIncompleteIndex(){const found=data.personalization.phases.findIndex(phase=>!phase.question||phase.pourquoi.trim().length<12);return found<0?0:found;}
-function mount(){
-  if(document.getElementById('hnPersonalizationV139'))return;
-  const deck=document.getElementById('ccPreparationDeckV118');
-  const target=deck?.parentElement||document.getElementById('horsNormePreparationV77')?.parentElement||document.querySelector('.dashboard-canvas');
-  if(!target)return;
-  const card=document.createElement('section');
-  card.id='hnPersonalizationV139';
-  card.className='hn-personalization-v139';
-  if(deck)deck.after(card);else target.append(card);
-  renderCard(card);
-  ensureDialog();
+
+function currentOrder(){const orders=Array.isArray(session?.orders)?session.orders:[];return orders.find(order=>order?.id&&!['delivered','completed'].includes(String(order.status||'').toLowerCase()))||orders[0]||null;}
+function findFormat(order){
+  const key=normal(order?.format||order?.title||'');if(!key)return null;
+  for(const city of catalog?.cities||[])for(const format of city?.formats||[]){
+    if([format.id,format.slug,format.name].some(value=>normal(value)===key))return format;
+  }
+  return null;
 }
-function renderCard(card=document.getElementById('hnPersonalizationV139')){
-  if(!card||!data)return;
-  const p=data.personalization;
-  const done=countDone();
-  const submitted=p.status==='submitted';
-  card.innerHTML=`<div class="hn-personalization-copy"><span>PERSONNALISATION HORS NORME</span><h3>${submitted?'Votre conducteur est personnalisé':'Choisissez les questions qui vous ressemblent'}</h3><p>${submitted?'Neptune dispose de vos choix pour préparer l’interview. Vous pouvez encore les relire avant votre passage.':'11 séquences, une décision simple à chaque étape. Vos réponses sont sauvegardées automatiquement dans votre dossier.'}</p></div><div class="hn-personalization-progress"><strong>${done}/${PHASES.length}</strong><span>${submitted?'envoyées':'complétées'}</span><div><i style="width:${Math.round(done/PHASES.length*100)}%"></i></div></div><button type="button" data-hn-open>${submitted?'Relire mes choix':done?'Continuer':'Commencer'}</button>`;
-  card.querySelector('[data-hn-open]').onclick=openDialog;
+function formatPreparationCards(format){
+  const seen=new Set(),cards=[];
+  for(const offer of format?.offers||[])for(const raw of offer?.configurations||[]){
+    const card=typeof raw==='string'?{label:raw}:raw||{},label=String(card.label||'').trim();
+    const key=normal(label);if(!key||seen.has(key))continue;seen.add(key);
+    cards.push({label,description:String(card.description||'').trim(),image:safeImage(card.image||''),imageBase64:safePath(card.imageBase64||'')});
+  }
+  return cards;
 }
-function ensureDialog(){
-  if(document.getElementById('hnPersonalizationDialogV139'))return;
-  const dialog=document.createElement('dialog');
-  dialog.id='hnPersonalizationDialogV139';dialog.className='hn-personalization-dialog-v139';
-  dialog.innerHTML='<section><header><div><span data-hn-meta></span><h2 data-hn-title></h2><p data-hn-objective></p></div><button type="button" data-hn-close aria-label="Fermer">×</button></header><div class="hn-personalization-body"><div data-hn-choices></div><label class="hn-personalization-why"><span>Pourquoi ce choix ?</span><textarea data-hn-why rows="5"></textarea><small data-hn-error></small></label></div><footer><button type="button" class="secondary" data-hn-back>Retour</button><span data-hn-save>Enregistré automatiquement</span><button type="button" class="primary" data-hn-next>Continuer</button></footer></section>';
-  document.body.append(dialog);
-  dialog.querySelector('[data-hn-close]').onclick=()=>closeDialog();
-  dialog.querySelector('[data-hn-back]').onclick=()=>previous();
-  dialog.querySelector('[data-hn-next]').onclick=()=>next();
-  dialog.querySelector('[data-hn-why]').addEventListener('input',event=>{current().pourquoi=event.target.value;markDirty();});
-  dialog.addEventListener('cancel',event=>{event.preventDefault();closeDialog();});
-  dialog.addEventListener('click',event=>{if(event.target===dialog)closeDialog();});
+function cardMarkup(card,index){
+  const visual=card.image?`<img src="${esc(card.image)}" alt="" loading="lazy" decoding="async">`:card.imageBase64?`<img data-v146-b64="${esc(card.imageBase64)}" alt="" loading="lazy">`:`<span class="format-preparation-fallback-v146">${String(index+1).padStart(2,'0')}</span>`;
+  return `<article class="format-preparation-card-v146"><div>${visual}</div><strong>${esc(card.label)}</strong>${card.description?`<p>${esc(card.description)}</p>`:''}</article>`;
 }
-function openDialog(){
-  const dialog=document.getElementById('hnPersonalizationDialogV139');
-  if(!dialog)return;
-  index=data.personalization.status==='submitted'?0:firstIncompleteIndex();
-  renderStep();dialog.showModal();
-}
-async function closeDialog(){await save('draft',false);document.getElementById('hnPersonalizationDialogV139')?.close();renderCard();}
-function renderStep(){
-  const dialog=document.getElementById('hnPersonalizationDialogV139'),phase=current();if(!dialog||!phase)return;
-  dialog.querySelector('[data-hn-meta]').textContent=`Phase ${index+1} / ${PHASES.length} · ${countDone()} complétées`;
-  dialog.querySelector('[data-hn-title]').textContent=phase.title;
-  dialog.querySelector('[data-hn-objective]').innerHTML=`<strong>Objectif :</strong> ${esc(phase.objective)}`;
-  dialog.querySelector('[data-hn-choices]').innerHTML=phase.options.map(option=>`<label class="hn-choice ${phase.question===option?'selected':''}"><input type="radio" name="hn-question" value="${esc(option)}" ${phase.question===option?'checked':''}><i></i><span>${esc(option)}</span></label>`).join('');
-  dialog.querySelectorAll('input[name="hn-question"]').forEach(input=>input.onchange=()=>{phase.question=input.value;dialog.querySelectorAll('.hn-choice').forEach(label=>label.classList.toggle('selected',label.querySelector('input')?.checked));markDirty();});
-  const why=dialog.querySelector('[data-hn-why]');why.value=phase.pourquoi;why.placeholder=phase.placeholder;
-  dialog.querySelector('[data-hn-error]').textContent='';
-  dialog.querySelector('[data-hn-back]').disabled=index===0;
-  dialog.querySelector('[data-hn-next]').textContent=index===PHASES.length-1?'Confirmer mes choix':'Continuer';
-}
-function previous(){if(index>0){index-=1;renderStep();}}
-async function next(){
-  const phase=current(),error=document.querySelector('[data-hn-error]');
-  phase.pourquoi=String(document.querySelector('[data-hn-why]')?.value||'').trim();
-  if(!phase.question){error.textContent='Sélectionnez une formulation.';return;}
-  if(phase.pourquoi.length<12){error.textContent='Expliquez votre choix en une phrase claire.';return;}
-  markDirty();
-  if(index<PHASES.length-1){const ok=await save('draft',false);if(!ok)return;index+=1;renderStep();return;}
-  const ok=await save('submitted',true);
-  if(!ok)return;
-  document.getElementById('hnPersonalizationDialogV139').close();renderCard();toast('Vos choix sont enregistrés dans votre dossier Neptune.');
-}
-function markDirty(){editRevision+=1;dirty=true;if(data?.personalization)data.personalization.status='draft';clearTimeout(saveTimer);saveTimer=setTimeout(()=>save('draft',false),650);updateSaveLabel('Sauvegarde…');}
-async function save(status='draft',showErrors=false){
-  if(!data)return false;
-  if(saving){await waitForSave();if(saving)return false;if(status==='draft'&&!dirty)return true;}
-  clearTimeout(saveTimer);
-  if(status==='draft'&&!dirty)return true;
-  const revisionAtStart=editRevision;
-  const payload={orderId:data.order.id,status,phases:data.personalization.phases.map(({id,title,objective,question,pourquoi})=>({id,title,objective,question,pourquoi}))};
-  saving=true;updateSaveLabel('Sauvegarde…');
-  try{
-    const response=await fetch(API,{method:'PUT',credentials:'same-origin',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(payload)});
-    const result=await response.json().catch(()=>({}));
-    if(!response.ok)throw new Error(result.error||`http_${response.status}`);
-    if(editRevision===revisionAtStart){
-      data.personalization=result.personalization;hydrate();dirty=false;updateSaveLabel(status==='submitted'?'Choix confirmés':'Enregistré automatiquement');renderCard();return true;
-    }
-    dirty=true;updateSaveLabel('Modifications en attente…');clearTimeout(saveTimer);saveTimer=setTimeout(()=>save('draft',false),180);renderCard();return status!=='submitted';
-  }catch(error){console.error('hors_norme_personalization_v139_save_failed',error);updateSaveLabel('Sauvegarde impossible · réessayez');if(showErrors)document.querySelector('[data-hn-error]').textContent='Impossible d’enregistrer pour le moment. Réessayez.';return false;}
-  finally{saving=false;}
-}
-async function waitForSave(){for(let attempt=0;attempt<40&&saving;attempt+=1)await new Promise(resolve=>setTimeout(resolve,50));}
-function countDone(){return (data?.personalization?.phases||[]).filter(phase=>phase.question&&String(phase.pourquoi||'').trim().length>=12).length;}
-function current(){return data.personalization.phases[index];}
-function updateSaveLabel(value){const node=document.querySelector('[data-hn-save]');if(node)node.textContent=value;}
-function toast(message){let node=document.getElementById('hnToastV139');if(!node){node=document.createElement('div');node.id='hnToastV139';node.className='hn-toast-v139';document.body.append(node);}node.textContent=message;node.classList.add('show');setTimeout(()=>node.classList.remove('show'),3200);}
+async function hydrateBase64(root){for(const image of root.querySelectorAll('img[data-v146-b64]')){if(image.dataset.loaded)return;image.dataset.loaded='1';try{const response=await fetch(image.dataset.v146B64,{cache:'force-cache'});if(!response.ok)throw new Error('image');const text=(await response.text()).trim();image.src=`data:image/webp;base64,${text}`;}catch{image.remove();}}}
+function safeImage(value){const raw=String(value||'').trim();if(!raw)return'';if(raw.startsWith('/'))return raw;try{const url=new URL(raw);return url.protocol==='https:'?url.toString():'';}catch{return'';}}
+function safePath(value){const raw=String(value||'').trim();return raw.startsWith('/')?raw:'';}
+function normal(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/gu,'').trim().toLowerCase().replace(/[^a-z0-9]+/gu,'-').replace(/^-|-$/gu,'');}
 function esc(value){return String(value??'').replace(/[&<>"']/gu,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));}

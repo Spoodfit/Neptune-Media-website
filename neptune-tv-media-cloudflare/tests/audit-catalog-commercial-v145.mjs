@@ -27,13 +27,16 @@ async function main(){
   const headers=await response.headers();
   assert((headers['x-neptune-catalog-cockpit']||'')===release,`Header cockpit incorrect: ${headers['x-neptune-catalog-cockpit']||'absent'}`);
   await waitForStableOffers(page,2,650,30000);
+  await page.waitForSelector('[data-v147-manage]',{timeout:5000});
 
   const snap=await page.evaluate(()=>({
     runtime:document.body.dataset.neptuneCatalogCockpit||'',
+    manager:document.documentElement.dataset.neptuneCatalogManager||'',
     offers:document.querySelectorAll('.v145-offer').length,
     cityText:document.querySelector('.v145-city-chips')?.textContent||'',
     hero:document.querySelector('.c98-hero')?getComputedStyle(document.querySelector('.c98-hero')).display:'none',
     refresh:document.querySelector('#refresh')?getComputedStyle(document.querySelector('#refresh')).display:'none',
+    filter:document.querySelector('[data-v145-filter]')?getComputedStyle(document.querySelector('[data-v145-filter]')).display:'none',
     overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth,
     text:document.querySelector('#studioCatalogCommercialCockpitV145')?.textContent||'',
     firstMargin:document.querySelector('.v145-offer .v145-money>div:nth-child(3) strong')?.textContent||'',
@@ -41,31 +44,31 @@ async function main(){
     shellReady:document.documentElement.dataset.neptuneStudioShellReady||'',
   }));
   assert(snap.runtime==='v145',`Runtime incorrect: ${snap.runtime}`);
+  assert(snap.manager.includes('v147'),`Manager Catalogue v147 absent: ${snap.manager||'absent'}`);
   assert(snap.shellReady==='v105',`Shell Studio non stabilisé: ${snap.shellReady||'absent'}`);
   assert(snap.offers===2,`Offres attendues 2, reçues ${snap.offers}`);
-  assert(!snap.cityText.includes('Carcassonne'),'Ville sans offre encore visible dans les filtres commerciaux');
+  assert(!snap.cityText.includes('Carcassonne'),'Ville sans offre encore visible dans les raccourcis commerciaux');
   assert(snap.hero==='none','Hero historique encore visible');
   assert(snap.refresh==='none','Actualiser manuel encore visible dans le Catalogue');
+  assert(snap.filter==='none','Filtres techniques encore exposés dans le Catalogue simplifié');
   assert(snap.overflow<=1,`Débordement horizontal: ${snap.overflow}px`);
-  for(const text of ['Pilotage des offres','Prix client TTC','Coût fournisseur TTC','Marge brute','Toulouse','RECBOX','Hors Norme','Libre','Nouvelle offre'])assert(snap.text.includes(text),`Cockpit sans « ${text} »`);
-  assert(snap.firstMargin.includes('170'),'Marge TTC attendue de 170 € non affichée');
-  assert(snap.firstPlaces.trim()==='2','Quota lancement réel 2/3 non affiché');
+  for(const text of ['Villes et formats','Prix client TTC','Coût fournisseur TTC','Marge brute','Toulouse','RECBOX','Hors Norme','Libre','+ Ajouter','Gérer'])assert(snap.text.includes(text),`Cockpit sans « ${text} »`);
+  assert(snap.firstMargin.includes('170'),'Marge TTC attendue de 170 € non calculée');
+  assert(snap.firstPlaces.trim()==='2','Quota lancement réel 2/3 non calculé');
 
-  await page.locator('[data-v145-filter]').click();
-  await page.waitForSelector('[data-v145-status]');
-  await page.waitForSelector('[data-v145-supplier]');
-  await page.waitForSelector('[data-v145-margin]');
-  await page.locator('[data-v145-margin]').selectOption('strong');
-  await page.waitForFunction(()=>document.querySelectorAll('.v145-offer').length===0,null,{timeout:3000});
-  await page.locator('[data-v145-reset]').click();
-  await waitForStableOffers(page,2,250,3000);
+  await page.locator('[data-v147-manage]').click();
+  await page.waitForSelector('#v147CatalogManager .v147-hub',{state:'attached',timeout:5000});
+  const hubText=await page.locator('#v147CatalogManager').textContent();
+  for(const label of ['Ville','Fournisseur','Concept éditorial','Format physique','Offre dans le tunnel'])assert(hubText.includes(label),`Gestion « ${label} » absente`);
+  await page.locator('[data-v147-close]').first().click();
   await page.locator('[data-v145-configure]').first().click();
-  await page.waitForSelector('.v143-offer-drawer',{state:'attached',timeout:5000});
+  await page.waitForSelector('#v147CatalogManager [data-v147-form="offer"]',{state:'attached',timeout:5000});
+  assert(await page.locator('.v143-offer-drawer').count()===0,'Configurer utilise encore le drawer legacy');
 
   const blockingErrors=errors.filter(error=>!error.includes('favicon')&&!isKnownPermissionsPolicyNoise(error));
   assert(blockingErrors.length===0,`Erreurs navigateur: ${blockingErrors.join(' | ')}`);
   await page.screenshot({path:process.env.CATALOG_SCREENSHOT||'/tmp/catalog-commercial-v145.png',fullPage:false});
-  console.log('Catalogue commercial v145 browser audit: OK');
+  console.log('Catalogue commercial v145 + manager v147 browser audit: OK');
  }finally{
   await context.close();
   await browser.close();
@@ -100,6 +103,7 @@ function mockApi(path){
  if(path==='/api/admin/clients')return{clients:[],orders:[],supplierPayments:[],refundRequests:[],deletionRequests:[],finance:{}};
  if(path==='/api/admin/media-catalog-v98/context')return catalog;
  if(path==='/api/admin/media-catalog-v143/policies')return policies;
+ if(path==='/api/admin/sales-config-v96/stripe-links')return{ok:true,links:[]};
  if(path==='/api/reservation/catalog-v96')return{ok:true,cities:[],pricing:{}};
  return{ok:true};
 }

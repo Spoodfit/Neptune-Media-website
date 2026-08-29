@@ -1,6 +1,6 @@
-const RELEASE='neptune-reservation-catalog-commerce-20260825-v143';
+const RELEASE='neptune-reservation-catalog-commerce-20260827-v146';
 const nativeFetch=window.fetch.bind(window);
-let geoPromise=null;
+let geoPromise=null,cleanupTimer=0;
 
 document.documentElement.dataset.catalogCommerceV143=RELEASE;
 window.fetch=async function(input,init){
@@ -14,6 +14,24 @@ window.fetch=async function(input,init){
     return new Response(JSON.stringify(data),{status:response.status,statusText:response.statusText,headers});
   }catch{return response;}
 };
+
+installPaymentAuthorityGuard();
+
+function installPaymentAuthorityGuard(){
+  const run=()=>{clearTimeout(cleanupTimer);cleanupTimer=setTimeout(removeManualPaymentValidation,20);};
+  document.readyState==='loading'?document.addEventListener('DOMContentLoaded',run,{once:true}):run();
+  new MutationObserver(run).observe(document.documentElement,{childList:true,subtree:true});
+}
+function removeManualPaymentValidation(){
+  const root=document.getElementById('app-content');if(!root)return;
+  const manual=/^(?:j['’]?ai\s+(?:valid[eé]|effectu[eé]|termin[eé])\s+(?:le\s+)?paiement|paiement\s+(?:valid[eé]|effectu[eé])|je\s+viens\s+de\s+payer)$/iu;
+  for(const control of root.querySelectorAll('button,a,[role="button"]')){
+    const label=String(control.textContent||'').replace(/\s+/gu,' ').trim();
+    if(manual.test(label)){control.remove();continue;}
+    if(control.matches('[data-payment-confirm],[data-payment-done],[data-paid-confirm]'))control.remove();
+  }
+  for(const node of root.querySelectorAll('[data-manual-payment-confirmation]'))node.remove();
+}
 
 function locateUser(){if(geoPromise)return geoPromise;geoPromise=new Promise(resolve=>{if(!navigator.geolocation)return resolve(null);let settled=false;const finish=v=>{if(settled)return;settled=true;resolve(v)};navigator.geolocation.getCurrentPosition(p=>finish({lat:p.coords.latitude,lng:p.coords.longitude}),()=>finish(null),{enableHighAccuracy:false,timeout:1400,maximumAge:30*60*1000});setTimeout(()=>finish(null),1550);});return geoPromise;}
 function sortCities(cities,pos){for(const city of cities){const lat=Number(city.latitude),lng=Number(city.longitude);city.distanceKm=pos&&Number.isFinite(lat)&&Number.isFinite(lng)?distance(pos.lat,pos.lng,lat,lng):null;}cities.sort((a,b)=>{if(pos){const da=Number.isFinite(a.distanceKm)?a.distanceKm:Infinity,db=Number.isFinite(b.distanceKm)?b.distanceKm:Infinity;if(da!==db)return da-db;}return String(a.name||'').localeCompare(String(b.name||''),'fr',{sensitivity:'base'});});}

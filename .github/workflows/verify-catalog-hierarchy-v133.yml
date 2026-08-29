@@ -39,14 +39,39 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          sed -i 's/"compatibility_date": "2026-07-30"/"compatibility_date": "2026-07-07"/' neptune-tv-media-cloudflare/wrangler.jsonc
-          ./neptune-tv-media-cloudflare/node_modules/.bin/wrangler dev --config neptune-tv-media-cloudflare/wrangler.jsonc --local --port 8787 > /tmp/wrangler-v133.log 2>&1 &
+          node <<'NODE'
+          const fs = require('fs');
+          const source = JSON.parse(fs.readFileSync('wrangler.jsonc', 'utf8'));
+          source.compatibility_date = '2026-07-17';
+          delete source.containers;
+          if (source.durable_objects?.bindings) {
+            source.durable_objects.bindings = source.durable_objects.bindings.filter(
+              (binding) => binding.name !== 'WEBTV_ENCODER' && binding.class_name !== 'WebTvEncoder'
+            );
+          }
+          if (Array.isArray(source.migrations)) {
+            source.migrations = source.migrations.filter(
+              (migration) => !(migration.new_sqlite_classes || []).includes('WebTvEncoder')
+            );
+          }
+          fs.writeFileSync('.wrangler-v133.local.jsonc', JSON.stringify(source, null, 2));
+          NODE
+          ./neptune-tv-media-cloudflare/node_modules/.bin/wrangler dev --config .wrangler-v133.local.jsonc --local --port 8787 > /tmp/wrangler-v133.log 2>&1 &
+          echo $! > /tmp/wrangler-v133.pid
+          ready=0
           for attempt in $(seq 1 60); do
-            if curl --fail --silent http://127.0.0.1:8787/studio/advanced.html >/tmp/v133.html; then exit 0; fi
+            worker_pid="$(cat /tmp/wrangler-v133.pid)"
+            if ! kill -0 "$worker_pid" 2>/dev/null; then
+              cat /tmp/wrangler-v133.log
+              exit 1
+            fi
+            if curl --fail --silent --max-time 3 http://127.0.0.1:8787/studio/advanced.html >/tmp/v133.html; then
+              ready=1
+              break
+            fi
             sleep 2
           done
-          cat /tmp/wrangler-v133.log
-          exit 1
+          if [ "$ready" != 1 ]; then cat /tmp/wrangler-v133.log; exit 1; fi
       - name: Audit hierarchy in Chrome
         env:
           STUDIO_BASE_URL: http://127.0.0.1:8787
@@ -62,3 +87,8 @@ jobs:
             /tmp/wrangler-v133.log
           retention-days: 2
           if-no-files-found: warn
+      - name: Stop local Worker
+        if: always()
+        run: |
+          if [ -f /tmp/wrangler-v133.pid ]; then kill "$(cat /tmp/wrangler-v133.pid)" 2>/dev/null || true; fi
+          rm -f .wrangler-v133.local.jsonc /tmp/wrangler-v133.pid

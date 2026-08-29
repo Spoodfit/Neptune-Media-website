@@ -1,0 +1,57 @@
+name: Verify Catalogue Presentation V149 Production
+
+on:
+  workflow_run:
+    workflows: ["Deploy Neptune Media to Cloudflare"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-production:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Verify global Studio injection and assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          RELEASE='neptune-studio-catalog-presentation-20260829-v149'
+          mkdir -p /tmp/catalog-v149
+          verify_domain() {
+            local base="$1"
+            local slug="$2"
+            local ready=0
+            for attempt in $(seq 1 18); do
+              local q="catalog_v149=${{ github.run_id }}-$attempt"
+              curl --fail --silent --show-error -L -D "/tmp/catalog-v149/$slug.headers" -H 'Cache-Control: no-cache, no-store' "$base/studio/advanced.html?$q" > "/tmp/catalog-v149/$slug-advanced.html" || true
+              curl --fail --silent --show-error -L -H 'Cache-Control: no-cache, no-store' "$base/studio/clients?$q" > "/tmp/catalog-v149/$slug-clients.html" || true
+              curl --fail --silent --show-error -L -H 'Cache-Control: no-cache, no-store' "$base/studio/studio-catalog-manager-v149.js?$q" > "/tmp/catalog-v149/$slug-v149.js" || true
+              curl --fail --silent --show-error -L -H 'Cache-Control: no-cache, no-store' "$base/studio/studio-catalog-manager-v149.css?$q" > "/tmp/catalog-v149/$slug-v149.css" || true
+              if grep -Fqi "x-neptune-catalog-presentation: $RELEASE" "/tmp/catalog-v149/$slug.headers" \
+                && grep -Fq '/studio/studio-catalog-manager-v149.js?v=1' "/tmp/catalog-v149/$slug-advanced.html" \
+                && grep -Fq '/studio/studio-catalog-manager-v149.css?v=1' "/tmp/catalog-v149/$slug-advanced.html" \
+                && grep -Fq '/studio/studio-catalog-manager-v149.js?v=1' "/tmp/catalog-v149/$slug-clients.html" \
+                && grep -Fq "$RELEASE" "/tmp/catalog-v149/$slug-v149.js" \
+                && grep -Fq 'Prix & Stripe' "/tmp/catalog-v149/$slug-v149.js" \
+                && grep -Fq 'v149-visual-preview' "/tmp/catalog-v149/$slug-v149.js" \
+                && grep -Fq '.v149-tabs' "/tmp/catalog-v149/$slug-v149.css"; then
+                ready=1
+                echo "$base: Catalogue Presentation v149 verified on advanced.html AND /studio/clients (attempt $attempt)."
+                break
+              fi
+              sleep 5
+            done
+            if [ "$ready" != 1 ]; then
+              echo "Catalogue Presentation v149 missing on $base"
+              echo '--- headers ---'; cat "/tmp/catalog-v149/$slug.headers" || true
+              echo '--- advanced refs ---'; grep -o 'studio-catalog-manager-v[0-9][^" ]*' "/tmp/catalog-v149/$slug-advanced.html" || true
+              echo '--- clients refs ---'; grep -o 'studio-catalog-manager-v[0-9][^" ]*' "/tmp/catalog-v149/$slug-clients.html" || true
+              exit 1
+            fi
+          }
+          verify_domain 'https://neptune-media-webtv.neptunebusinessclub.workers.dev' workers
+          verify_domain 'https://tv.neptunebusiness.com' public

@@ -57,8 +57,9 @@ async function main(){
   assert(snap.firstPlaces.trim()==='2','Quota lancement réel 2/3 non calculé');
 
   await page.locator('[data-v147-manage]').click();
-  await page.waitForSelector('#v147CatalogManager',{state:'attached',timeout:5000});
-  for(const label of ['Villes','Fournisseurs','Concepts éditoriaux','Formats physiques','Offres du tunnel'])assert((await page.locator('#v147CatalogManager').textContent()).includes(label),`Gestion « ${label} » absente`);
+  await page.waitForSelector('#v147CatalogManager .v147-hub',{state:'attached',timeout:5000});
+  const hubText=await page.locator('#v147CatalogManager').textContent();
+  for(const label of ['Ville','Fournisseur','Concept éditorial','Format physique','Offre dans le tunnel'])assert(hubText.includes(label),`Gestion « ${label} » absente`);
   await page.locator('[data-v147-close]').first().click();
   await page.locator('[data-v145-configure]').first().click();
   await page.waitForSelector('#v147CatalogManager [data-v147-form="offer"]',{state:'attached',timeout:5000});

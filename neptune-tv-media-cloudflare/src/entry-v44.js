@@ -38,6 +38,9 @@ const STUDIO_V142_CSS='/studio/studio-business-v142.css?v=1';
 const STUDIO_V143_CSS='/studio/studio-catalog-commercial-cockpit-v145.css?v=1';
 const STUDIO_V143_JS='/studio/studio-catalog-commercial-cockpit-v145.js?v=1';
 const BOOKING_V143_JS='/reserver/assets/catalog-commerce-v143.js?v=1';
+const STUDIO_CATALOG_PRESENTATION_V149_JS='/studio/studio-catalog-manager-v149.js?v=1';
+const STUDIO_CATALOG_PRESENTATION_V149_CSS='/studio/studio-catalog-manager-v149.css?v=1';
+const CATALOG_PRESENTATION_V149_RELEASE='neptune-studio-catalog-presentation-20260829-v149';
 
 export class StudioStore extends BaseStudioStore{
   async fetch(request){
@@ -121,7 +124,10 @@ async function maybeEnhanceBusinessV142(request,response){
 async function maybeEnhanceCatalogV143(request,response){
   if(!response?.ok)return response;
   const url=new URL(request.url),type=response.headers.get('Content-Type')||'';
-  if(request.method==='GET'&&type.includes('text/html')&&isStudio(url.pathname))return injectCatalogAssets(response,STUDIO_V143_CSS,STUDIO_V143_JS,'studio');
+  if(request.method==='GET'&&type.includes('text/html')&&isStudio(url.pathname)){
+    response=await injectCatalogAssets(response,STUDIO_V143_CSS,STUDIO_V143_JS,'studio');
+    return injectCatalogPresentationV149(response);
+  }
   if(request.method==='GET'&&type.includes('text/html')&&(url.pathname==='/reserver'||url.pathname==='/reserver/'))return injectCatalogAssets(response,'',BOOKING_V143_JS,'booking');
   return markCatalog(response);
 }
@@ -184,6 +190,21 @@ async function injectCatalogAssets(response,css,js,kind){
   headers.set('X-Neptune-Catalog-Commerce',CATALOG_COMMERCE_V143_RELEASE);
   headers.set('X-Neptune-City-Drawer','v143.4');
   headers.set('X-Neptune-Catalog-Cockpit','v145');
+  return new Response(body,{status:response.status,statusText:response.statusText,headers});
+}
+
+async function injectCatalogPresentationV149(response){
+  let body=await response.text();
+  body=removeAsset(body,'link','/studio/studio-catalog-manager-v148.css');
+  body=removeAsset(body,'script','/studio/studio-catalog-manager-v148.js');
+  body=removeAsset(body,'link',STUDIO_CATALOG_PRESENTATION_V149_CSS.split('?')[0]);
+  body=removeAsset(body,'script',STUDIO_CATALOG_PRESENTATION_V149_JS.split('?')[0]);
+  body=body.replace('</head>',`<link rel="stylesheet" href="${STUDIO_CATALOG_PRESENTATION_V149_CSS}"></head>`);
+  body=body.replace('</body>',`<script type="module" src="${STUDIO_CATALOG_PRESENTATION_V149_JS}"></script></body>`);
+  const headers=new Headers(response.headers);
+  for(const name of ['Content-Length','Content-Encoding','ETag','Last-Modified'])headers.delete(name);
+  headers.set('Cache-Control','private, no-store, max-age=0');
+  headers.set('X-Neptune-Catalog-Presentation',CATALOG_PRESENTATION_V149_RELEASE);
   return new Response(body,{status:response.status,statusText:response.statusText,headers});
 }
 

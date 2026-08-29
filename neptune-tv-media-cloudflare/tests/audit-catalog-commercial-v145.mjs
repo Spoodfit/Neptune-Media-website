@@ -36,6 +36,7 @@ async function main(){
     cityText:document.querySelector('.v145-city-chips')?.textContent||'',
     hero:document.querySelector('.c98-hero')?getComputedStyle(document.querySelector('.c98-hero')).display:'none',
     refresh:document.querySelector('#refresh')?getComputedStyle(document.querySelector('#refresh')).display:'none',
+    filter:document.querySelector('[data-v145-filter]')?getComputedStyle(document.querySelector('[data-v145-filter]')).display:'none',
     overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth,
     text:document.querySelector('#studioCatalogCommercialCockpitV145')?.textContent||'',
     firstMargin:document.querySelector('.v145-offer .v145-money>div:nth-child(3) strong')?.textContent||'',
@@ -46,22 +47,19 @@ async function main(){
   assert(snap.manager.includes('v147'),`Manager Catalogue v147 absent: ${snap.manager||'absent'}`);
   assert(snap.shellReady==='v105',`Shell Studio non stabilisé: ${snap.shellReady||'absent'}`);
   assert(snap.offers===2,`Offres attendues 2, reçues ${snap.offers}`);
-  assert(!snap.cityText.includes('Carcassonne'),'Ville sans offre encore visible dans les filtres commerciaux');
+  assert(!snap.cityText.includes('Carcassonne'),'Ville sans offre encore visible dans les raccourcis commerciaux');
   assert(snap.hero==='none','Hero historique encore visible');
   assert(snap.refresh==='none','Actualiser manuel encore visible dans le Catalogue');
+  assert(snap.filter==='none','Filtres techniques encore exposés dans le Catalogue simplifié');
   assert(snap.overflow<=1,`Débordement horizontal: ${snap.overflow}px`);
   for(const text of ['Villes et formats','Prix client TTC','Coût fournisseur TTC','Marge brute','Toulouse','RECBOX','Hors Norme','Libre','+ Ajouter','Gérer'])assert(snap.text.includes(text),`Cockpit sans « ${text} »`);
-  assert(snap.firstMargin.includes('170'),'Marge TTC attendue de 170 € non affichée');
-  assert(snap.firstPlaces.trim()==='2','Quota lancement réel 2/3 non affiché');
+  assert(snap.firstMargin.includes('170'),'Marge TTC attendue de 170 € non calculée');
+  assert(snap.firstPlaces.trim()==='2','Quota lancement réel 2/3 non calculé');
 
-  await page.locator('[data-v145-filter]').click();
-  await page.waitForSelector('[data-v145-status]');
-  await page.waitForSelector('[data-v145-supplier]');
-  await page.waitForSelector('[data-v145-margin]');
-  await page.locator('[data-v145-margin]').selectOption('strong');
-  await page.waitForFunction(()=>document.querySelectorAll('.v145-offer').length===0,null,{timeout:3000});
-  await page.locator('[data-v145-reset]').click();
-  await waitForStableOffers(page,2,250,3000);
+  await page.locator('[data-v147-manage]').click();
+  await page.waitForSelector('#v147CatalogManager',{state:'attached',timeout:5000});
+  for(const label of ['Villes','Fournisseurs','Concepts éditoriaux','Formats physiques','Offres du tunnel'])assert((await page.locator('#v147CatalogManager').textContent()).includes(label),`Gestion « ${label} » absente`);
+  await page.locator('[data-v147-close]').first().click();
   await page.locator('[data-v145-configure]').first().click();
   await page.waitForSelector('#v147CatalogManager [data-v147-form="offer"]',{state:'attached',timeout:5000});
   assert(await page.locator('.v143-offer-drawer').count()===0,'Configurer utilise encore le drawer legacy');

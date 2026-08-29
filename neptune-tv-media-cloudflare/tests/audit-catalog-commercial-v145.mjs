@@ -50,7 +50,7 @@ async function main(){
   assert(snap.hero==='none','Hero historique encore visible');
   assert(snap.refresh==='none','Actualiser manuel encore visible dans le Catalogue');
   assert(snap.overflow<=1,`Débordement horizontal: ${snap.overflow}px`);
-  for(const text of ['Pilotage des offres','Prix client TTC','Coût fournisseur TTC','Marge brute','Toulouse','RECBOX','Hors Norme','Libre','+ Ajouter'])assert(snap.text.includes(text),`Cockpit sans « ${text} »`);
+  for(const text of ['Villes et formats','Prix client TTC','Coût fournisseur TTC','Marge brute','Toulouse','RECBOX','Hors Norme','Libre','+ Ajouter','Gérer'])assert(snap.text.includes(text),`Cockpit sans « ${text} »`);
   assert(snap.firstMargin.includes('170'),'Marge TTC attendue de 170 € non affichée');
   assert(snap.firstPlaces.trim()==='2','Quota lancement réel 2/3 non affiché');
 

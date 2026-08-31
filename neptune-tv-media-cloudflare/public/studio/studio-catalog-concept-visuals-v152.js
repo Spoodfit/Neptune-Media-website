@@ -1,4 +1,4 @@
-const RELEASE='neptune-studio-catalog-concept-visuals-20260831-v153';
+const RELEASE='neptune-studio-catalog-concept-visuals-20260831-v154';
 const CONTEXT_API='/api/admin/media-catalog-v98/context';
 const CONTEXT_TTL_MS=3000;
 let contextCache=null;
@@ -21,7 +21,7 @@ function boot(){
 
 function schedule(delay=70){
   clearTimeout(timer);
-  timer=setTimeout(()=>applyConceptVisuals().catch(error=>console.warn('catalog_concept_visuals_v153_failed',String(error?.message||error))),delay);
+  timer=setTimeout(()=>applyConceptVisuals().catch(error=>console.warn('catalog_concept_visuals_v154_failed',String(error?.message||error))),delay);
 }
 
 function isCatalog(){
@@ -35,7 +35,10 @@ async function applyConceptVisuals(){
   if(!isCatalog())return;
   const cards=[...document.querySelectorAll('#studioCatalogCommercialCockpitV145 .v145-offer')];
   if(!cards.length)return;
-  const context=await getContext().catch(()=>null);
+  const context=await getContext().catch(error=>{
+    console.warn('catalog_concept_context_v154_failed',String(error?.message||error));
+    return null;
+  });
   for(const card of cards)applyCardVisual(card,context||{});
 }
 
@@ -62,10 +65,12 @@ function applyCardVisual(card,context){
   image.loading='lazy';
   image.decoding='async';
   image.dataset.v152ConceptVisual='1';
+  image.dataset.v154ImageSource=preferred?'catalog':'fallback';
   let usedBackup=source===backup;
   image.addEventListener('error',()=>{
     if(!usedBackup&&backup&&image.src!==new URL(backup,location.href).href){
       usedBackup=true;
+      image.dataset.v154ImageSource='fallback';
       image.src=backup;
       return;
     }
@@ -111,20 +116,58 @@ function removeImageFrame(art,image){
 async function getContext(){
   if(contextCache&&Date.now()-contextLoadedAt<CONTEXT_TTL_MS)return contextCache;
   if(contextPromise)return contextPromise;
-  contextPromise=fetch(CONTEXT_API,{
-    method:'POST',
-    credentials:'same-origin',
-    cache:'no-store',
-    headers:{'Content-Type':'application/json','Cache-Control':'no-cache, no-store'},
-    body:'{}',
-  }).then(async response=>{
+  contextPromise=(async()=>{
+    const token=await getCsrfToken();
+    const headers={
+      'Content-Type':'application/json',
+      'Accept':'application/json',
+      'Cache-Control':'no-cache, no-store',
+    };
+    if(token)headers['X-CSRF-Token']=token;
+    let response=await fetch(CONTEXT_API,{
+      method:'POST',
+      credentials:'same-origin',
+      cache:'no-store',
+      headers,
+      body:'{}',
+    });
+    if(response.status===403){
+      sessionStorage.removeItem('neptune_csrf');
+      const refreshed=await getCsrfToken(true);
+      if(refreshed){
+        headers['X-CSRF-Token']=refreshed;
+        response=await fetch(CONTEXT_API,{
+          method:'POST',
+          credentials:'same-origin',
+          cache:'no-store',
+          headers,
+          body:'{}',
+        });
+      }
+    }
     if(!response.ok)throw new Error(`Catalogue HTTP ${response.status}`);
     const data=await response.json();
     contextCache=data;
     contextLoadedAt=Date.now();
     return data;
-  }).finally(()=>{contextPromise=null});
+  })().finally(()=>{contextPromise=null});
   return contextPromise;
+}
+
+async function getCsrfToken(force=false){
+  if(!force){
+    const cached=sessionStorage.getItem('neptune_csrf')||'';
+    if(cached)return cached;
+  }
+  try{
+    const response=await fetch('/api/auth/status',{credentials:'same-origin',cache:'no-store'});
+    const auth=await response.json().catch(()=>({}));
+    const token=String(auth.csrfToken||'').trim();
+    if(token)sessionStorage.setItem('neptune_csrf',token);
+    return token;
+  }catch{
+    return'';
+  }
 }
 
 function invalidate(){

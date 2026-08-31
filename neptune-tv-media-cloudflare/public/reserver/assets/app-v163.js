@@ -44,8 +44,8 @@ async function submitCompany(event){event.preventDefault();const form=event.curr
 function resetCommercialSelection(){state.concept=null;state.city=null;state.format=null;state.offer=null;state.physicalFormat='';state.requestedDate='';state.requestedDaypart='';}
 
 function renderConcepts(){
-  const concepts=concepts();
-  host.innerHTML=`<div class="eyebrow">Étape 2 · Le bon concept</div><h1>Quel type de prise de parole vous ressemble ?</h1><p class="lead">Commencez par l’intention. Chaque concept répond à une manière différente d’incarner votre entreprise — vous choisirez ensuite la ville et le décor.</p><div class="concept-grid-v163">${concepts.map(conceptCard).join('')}</div><div class="actions"><button class="btn btn-secondary" data-back>Modifier mon entreprise</button></div>`;
+  const conceptList=concepts();
+  host.innerHTML=`<div class="eyebrow">Étape 2 · Le bon concept</div><h1>Quel type de prise de parole vous ressemble ?</h1><p class="lead">Commencez par l’intention. Chaque concept répond à une manière différente d’incarner votre entreprise — vous choisirez ensuite la ville et le décor.</p><div class="concept-grid-v163">${conceptList.map(conceptCard).join('')}</div><div class="actions"><button class="btn btn-secondary" data-back>Modifier mon entreprise</button></div>`;
   host.querySelectorAll('[data-concept]').forEach(button=>button.addEventListener('click',()=>chooseConcept(button.dataset.concept)));
   host.querySelector('[data-back]').addEventListener('click',()=>{state.stage='company';render();});
 }

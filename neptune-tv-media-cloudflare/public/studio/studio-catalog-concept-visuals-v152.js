@@ -1,4 +1,4 @@
-const RELEASE='neptune-studio-catalog-concept-visuals-20260830-v152';
+const RELEASE='neptune-studio-catalog-concept-visuals-20260831-v153';
 const CONTEXT_API='/api/admin/media-catalog-v98/context';
 const CONTEXT_TTL_MS=3000;
 let contextCache=null;
@@ -21,7 +21,7 @@ function boot(){
 
 function schedule(delay=70){
   clearTimeout(timer);
-  timer=setTimeout(()=>applyConceptVisuals().catch(error=>console.warn('catalog_concept_visuals_v152_failed',String(error?.message||error))),delay);
+  timer=setTimeout(()=>applyConceptVisuals().catch(error=>console.warn('catalog_concept_visuals_v153_failed',String(error?.message||error))),delay);
 }
 
 function isCatalog(){
@@ -41,7 +41,12 @@ async function applyConceptVisuals(){
 
 function applyCardVisual(card,context){
   const art=card.querySelector('.v145-art');
-  if(!art||art.querySelector('img'))return;
+  if(!art)return;
+  const existing=art.querySelector(':scope > img:not(.v153-concept-backdrop)');
+  if(existing){
+    decorateImageFrame(art,existing);
+    return;
+  }
   const fallback=art.querySelector('.v145-art-fallback');
   if(!fallback)return;
   const name=String(card.querySelector('.v145-offer-title h3')?.textContent||fallback.textContent||'').trim();
@@ -64,11 +69,43 @@ function applyCardVisual(card,context){
       image.src=backup;
       return;
     }
+    removeImageFrame(art,image);
     image.remove();
     if(!art.querySelector('.v145-art-fallback'))art.prepend(fallback);
   });
   image.src=source;
   fallback.replaceWith(image);
+  decorateImageFrame(art,image);
+}
+
+function decorateImageFrame(art,image){
+  art.classList.add('v153-art-preserve');
+  image.classList.add('v153-concept-foreground');
+  let backdrop=art.querySelector(':scope > .v153-concept-backdrop');
+  if(!backdrop){
+    backdrop=document.createElement('img');
+    backdrop.className='v153-concept-backdrop';
+    backdrop.alt='';
+    backdrop.setAttribute('aria-hidden','true');
+    backdrop.decoding='async';
+    art.prepend(backdrop);
+  }
+  const sync=()=>{
+    const source=image.currentSrc||image.getAttribute('src')||image.src||'';
+    if(source&&backdrop.getAttribute('src')!==source)backdrop.src=source;
+  };
+  if(image.dataset.v153FrameBound!=='1'){
+    image.dataset.v153FrameBound='1';
+    image.addEventListener('load',sync);
+    image.addEventListener('error',()=>{backdrop.removeAttribute('src')});
+  }
+  sync();
+}
+
+function removeImageFrame(art,image){
+  image.classList.remove('v153-concept-foreground');
+  art.querySelector(':scope > .v153-concept-backdrop')?.remove();
+  art.classList.remove('v153-art-preserve');
 }
 
 async function getContext(){

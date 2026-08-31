@@ -1,14 +1,16 @@
-const RELEASE='neptune-studio-advanced-navigation-guard-v156';
+const RELEASE='neptune-studio-advanced-navigation-guard-v157';
 const ROUTE_TO_TAB={catalog:'programs',finance:'finances','settings-main':'settings'};
 let reconcileTimer=0;
+let previousHash=location.hash;
+let catalogReloading=false;
 
-document.documentElement.dataset.neptuneAdvancedNavigationGuard='v156';
+document.documentElement.dataset.neptuneAdvancedNavigationGuard='v157';
 boot();
 
 function boot(){
   const start=()=>{
     document.addEventListener('click',capturePrimaryNavigation,true);
-    window.addEventListener('hashchange',()=>scheduleReconcile(0));
+    window.addEventListener('hashchange',handleHashChange);
     new MutationObserver(()=>scheduleReconcile(20)).observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class','aria-current']});
     scheduleReconcile(0);
   };
@@ -16,22 +18,50 @@ function boot(){
 }
 
 function capturePrimaryNavigation(event){
+  const catalogTarget=event.target.closest?.('[data-studio-route="catalog"],[data-context-tab="programs"]');
+  if(catalogTarget && location.hash!=='#programs'){
+    // The modern Catalogue cockpit is bootstrapped once at document load. Legacy Studio
+    // renderers replace #content when Finance/Settings are opened, so returning to programs
+    // inside the same document would expose the old Formats screen. Reload this route
+    // automatically to rebuild the current Catalogue runtime instead of asking for F5.
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    reloadCatalogue();
+    return;
+  }
+
   const link=event.target.closest?.('[data-studio-route]');
   if(!link)return;
   const tab=ROUTE_TO_TAB[link.dataset.studioRoute];
   if(!tab)return;
-
-  // The canonical shell intercepts these links and clicks the hidden legacy tab.
-  // Keep the URL state in sync before that handler runs, otherwise Catalogue modules
-  // keep seeing the stale #programs hash and remount underneath Finance/Settings.
   setHashSilently(tab);
   scheduleReconcile(0);
+}
+
+function handleHashChange(){
+  const oldHash=previousHash;
+  previousHash=location.hash;
+  if(location.hash==='#programs' && oldHash && oldHash!=='#programs'){
+    reloadCatalogue();
+    return;
+  }
+  scheduleReconcile(0);
+}
+
+function reloadCatalogue(){
+  if(catalogReloading)return;
+  catalogReloading=true;
+  location.assign(`${location.pathname}${location.search}#programs`);
+  // assign() with only a hash normally performs in-document navigation. Force an actual
+  // document reload so every current Catalogue layer (v145+) boots again cleanly.
+  setTimeout(()=>location.reload(),0);
 }
 
 function setHashSilently(tab){
   const wanted=`#${tab}`;
   if(location.hash===wanted)return;
   history.replaceState(history.state,'',`${location.pathname}${location.search}${wanted}`);
+  previousHash=wanted;
 }
 
 function scheduleReconcile(delay=20){
@@ -49,7 +79,6 @@ function reconcile(){
   const financeRoute=document.querySelector('[data-studio-route="finance"]');
   const settingsRoute=document.querySelector('[data-studio-route="settings-main"]');
 
-  // Enforce a single primary active route even if a legacy renderer mutates classes later.
   setRouteState(catalogRoute,catalogActive);
   setRouteState(financeRoute,activeTab==='finances');
   setRouteState(settingsRoute,['settings','users','audit'].includes(activeTab));
@@ -70,4 +99,4 @@ function teardownCatalogue(){
   document.querySelectorAll('.v145-menu,.v147-dialog,.v148-dialog,.v149-dialog').forEach(node=>node.remove());
 }
 
-window.__neptuneStudioAdvancedNavigationGuardV156={release:RELEASE,reconcile};
+window.__neptuneStudioAdvancedNavigationGuardV156={release:RELEASE,reconcile,reloadCatalogue};

@@ -1,11 +1,12 @@
-const RELEASE='neptune-webtv-monitor-controls-20260827-v146';
+const RELEASE='neptune-webtv-monitor-controls-20260831-v161';
 
 document.documentElement.dataset.webtvMonitorControlsV135=RELEASE;
 
 if(location.pathname.includes('/studio/webtv')){
   ensureLandscapeMonitor();
+  ensureScrollableLayout();
   ensureControls();
-  new MutationObserver(()=>{ensureLandscapeMonitor();ensureControls();}).observe(document.body,{childList:true,subtree:true});
+  new MutationObserver(()=>{ensureLandscapeMonitor();ensureScrollableLayout();ensureControls();}).observe(document.body,{childList:true,subtree:true});
 }
 
 function ensureLandscapeMonitor(){
@@ -13,13 +14,21 @@ function ensureLandscapeMonitor(){
   const style=document.createElement('style');
   style.id='neptuneWebTvLandscapeV146';
   style.textContent=`
-    .webtv-v125-mounted .v125-monitor-slot{display:grid!important;min-height:0!important;place-items:center!important;overflow:hidden!important}
-    .webtv-v125-mounted .v125-monitor-slot .antenna-monitor{width:100%!important;height:100%!important;min-height:0!important;grid-template-rows:auto minmax(0,1fr) auto!important}
-    .webtv-v125-mounted .v125-monitor-slot .antenna-screen{width:min(100%,calc((100dvh - 240px) * 16 / 9))!important;height:auto!important;max-width:100%!important;max-height:100%!important;aspect-ratio:16/9!important;align-self:center!important;justify-self:center!important}
+    .webtv-v125-mounted .v125-monitor-slot{display:grid!important;min-height:0!important;place-items:center!important}
+    .webtv-v125-mounted .v125-monitor-slot .antenna-monitor{width:100%!important;min-height:0!important}
+    .webtv-v125-mounted .v125-monitor-slot .antenna-screen{width:100%!important;height:auto!important;max-width:100%!important;aspect-ratio:16/9!important;align-self:center!important;justify-self:center!important}
     .webtv-v125-mounted .v125-monitor-slot .antenna-screen iframe,.webtv-v125-mounted .v125-monitor-slot .antenna-screen video{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;object-fit:contain!important}
-    @media(max-width:900px){.webtv-v125-mounted .v125-monitor-slot .antenna-screen{width:100%!important;max-height:none!important}}
   `;
   document.head.append(style);
+}
+
+function ensureScrollableLayout(){
+  if(document.getElementById('neptuneWebTvLayoutV161'))return;
+  const link=document.createElement('link');
+  link.id='neptuneWebTvLayoutV161';
+  link.rel='stylesheet';
+  link.href='/studio/webtv-layout-v161.css?v=20260831-161';
+  document.head.append(link);
 }
 
 function ensureControls(){

@@ -1,10 +1,10 @@
-const RELEASE='neptune-studio-advanced-navigation-guard-v159';
-const ROUTE_TO_TAB={diffusion:'episodes',catalog:'programs',finance:'finances','settings-main':'settings'};
+const RELEASE='neptune-studio-advanced-navigation-guard-v160';
+const ROUTE_TO_TAB={catalog:'programs',finance:'finances','settings-main':'settings'};
 let reconcileTimer=0;
 let previousHash=location.hash;
 let activating=false;
 
-document.documentElement.dataset.neptuneAdvancedNavigationGuard='v159';
+document.documentElement.dataset.neptuneAdvancedNavigationGuard='v160';
 boot();
 
 function boot(){
@@ -28,12 +28,16 @@ function capturePrimaryNavigation(event){
 
   const link=event.target.closest?.('[data-studio-route]');
   if(!link)return;
+
+  // Diffusion has its own canonical WebTV application. Never translate this route to the
+  // legacy "episodes" tab in advanced.html: allow the native /studio/webtv.html link to
+  // navigate exactly as it does from Parcours clients.
+  if(link.dataset.studioRoute==='diffusion')return;
+
   const tab=ROUTE_TO_TAB[link.dataset.studioRoute];
   if(!tab)return;
 
-  // Catalogue, Diffusion, Finance and Settings all live in the same advanced Studio shell.
-  // Never reload/navigate the document for these primary routes: switch the existing
-  // legacy control in-place and let the current renderers refresh their data in background.
+  // Catalogue, Finance and Settings share the advanced Studio shell and can switch in-place.
   event.preventDefault();
   event.stopImmediatePropagation();
   activateInPlace(tab);
@@ -52,8 +56,6 @@ function activateInPlace(tab){
   const control=document.querySelector(`#studioLegacyTabControlsV105 [data-tab="${cssEscape(tab)}"]`);
   if(control&&!control.hidden)control.click();
 
-  // replaceState does not emit hashchange. Current Catalogue layers use hashchange as a
-  // cheap invalidation signal, so emit one without causing a document navigation.
   if(previous!==wanted)window.dispatchEvent(new Event('hashchange'));
   scheduleReconcile(0);
   queueMicrotask(()=>{activating=false;});

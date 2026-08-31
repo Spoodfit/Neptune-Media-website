@@ -15,14 +15,14 @@ body.v145-catalog-active .v145-art.v153-art-preserve::after{
   content:"";
   position:absolute;
   inset:0;
-  z-index:0;
+  z-index:1;
   pointer-events:none;
-  background:linear-gradient(180deg,rgba(4,10,29,.10),rgba(4,10,29,.24));
+  background:linear-gradient(180deg,rgba(4,10,29,.08),rgba(4,10,29,.22));
 }
 body.v145-catalog-active .v145-art.v153-art-preserve>.v153-concept-backdrop{
   position:absolute!important;
   inset:-10%!important;
-  z-index:-1!important;
+  z-index:0!important;
   width:120%!important;
   height:120%!important;
   max-width:none!important;
@@ -35,7 +35,7 @@ body.v145-catalog-active .v145-art.v153-art-preserve>.v153-concept-backdrop{
 }
 body.v145-catalog-active .v145-art.v153-art-preserve>img:not(.v153-concept-backdrop){
   position:relative;
-  z-index:1;
+  z-index:2;
   width:100%!important;
   height:100%!important;
   object-fit:contain!important;

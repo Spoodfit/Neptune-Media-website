@@ -27,7 +27,6 @@ export async function publicSalesCatalogV98(store){
   const response=await publicSalesCatalogGuardedV109(store),data=await response.json().catch(()=>({}));
   if(!response.ok)return json(data,response.status);
   enhanceCatalog(store,data);
-  data.concepts=buildConcepts(data.cities||[]);
   data.journey={order:['company','concept','city','physical_format','date','payment'],release:'concept-city-format-v163'};
   const stripeConfirmation=await ensureStripeConfirmationRedirectV146(store);
   return json({...data,catalogRelease:SALES_CATALOG_RELEASE,visualsRelease:MEDIA_CATALOG_VISUALS_RELEASE,dataGuardRelease:SALES_TUNNEL_GUARD_RELEASE,stripeConfirmation:{release:STRIPE_CONFIRMATION_V146_RELEASE,url:STRIPE_CONFIRMATION_URL,synced:Boolean(stripeConfirmation?.synced)}});
@@ -71,22 +70,6 @@ function enhanceCatalog(store,data){
       }
     }
   }
-}
-
-function buildConcepts(cities){
-  const map=new Map();
-  for(const city of cities){
-    for(const format of city.formats||[]){
-      let concept=map.get(format.id);
-      if(!concept){
-        concept={id:format.id,slug:format.slug,name:format.name,image:format.image||'',editorialLine:format.concept||'',description:format.description||'',durationLabel:format.durationLabel||'',cities:[]};
-        map.set(format.id,concept);
-      }
-      const offer=(format.offers||[])[0]||null;
-      concept.cities.push({id:city.id,slug:city.slug,name:city.name,country:city.country||'France',offerId:offer?.id||'',physicalFormats:(offer?.configurations||[]).map(x=>typeof x==='string'?{label:x}:x).filter(x=>x?.label)});
-    }
-  }
-  return [...map.values()];
 }
 
 function enhanceSelection(store,selection){

@@ -1,10 +1,10 @@
-const RELEASE='neptune-studio-advanced-navigation-guard-v157';
-const ROUTE_TO_TAB={catalog:'programs',finance:'finances','settings-main':'settings'};
+const RELEASE='neptune-studio-advanced-navigation-guard-v159';
+const ROUTE_TO_TAB={diffusion:'episodes',catalog:'programs',finance:'finances','settings-main':'settings'};
 let reconcileTimer=0;
 let previousHash=location.hash;
-let catalogReloading=false;
+let activating=false;
 
-document.documentElement.dataset.neptuneAdvancedNavigationGuard='v157';
+document.documentElement.dataset.neptuneAdvancedNavigationGuard='v159';
 boot();
 
 function boot(){
@@ -18,15 +18,11 @@ function boot(){
 }
 
 function capturePrimaryNavigation(event){
-  const catalogTarget=event.target.closest?.('[data-studio-route="catalog"],[data-context-tab="programs"]');
-  if(catalogTarget && location.hash!=='#programs'){
-    // The modern Catalogue cockpit is bootstrapped once at document load. Legacy Studio
-    // renderers replace #content when Finance/Settings are opened, so returning to programs
-    // inside the same document would expose the old Formats screen. Reload this route
-    // automatically to rebuild the current Catalogue runtime instead of asking for F5.
+  const contextCatalog=event.target.closest?.('[data-context-tab="programs"]');
+  if(contextCatalog){
     event.preventDefault();
     event.stopImmediatePropagation();
-    reloadCatalogue();
+    activateInPlace('programs');
     return;
   }
 
@@ -34,27 +30,38 @@ function capturePrimaryNavigation(event){
   if(!link)return;
   const tab=ROUTE_TO_TAB[link.dataset.studioRoute];
   if(!tab)return;
-  setHashSilently(tab);
+
+  // Catalogue, Diffusion, Finance and Settings all live in the same advanced Studio shell.
+  // Never reload/navigate the document for these primary routes: switch the existing
+  // legacy control in-place and let the current renderers refresh their data in background.
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  activateInPlace(tab);
+}
+
+function activateInPlace(tab){
+  if(activating)return;
+  activating=true;
+  const previous=location.hash;
+  const wanted=`#${tab}`;
+  if(previous!==wanted){
+    history.replaceState(history.state,'',`${location.pathname}${location.search}${wanted}`);
+    previousHash=wanted;
+  }
+
+  const control=document.querySelector(`#studioLegacyTabControlsV105 [data-tab="${cssEscape(tab)}"]`);
+  if(control&&!control.hidden)control.click();
+
+  // replaceState does not emit hashchange. Current Catalogue layers use hashchange as a
+  // cheap invalidation signal, so emit one without causing a document navigation.
+  if(previous!==wanted)window.dispatchEvent(new Event('hashchange'));
   scheduleReconcile(0);
+  queueMicrotask(()=>{activating=false;});
 }
 
 function handleHashChange(){
-  const oldHash=previousHash;
   previousHash=location.hash;
-  if(location.hash==='#programs' && oldHash && oldHash!=='#programs'){
-    reloadCatalogue();
-    return;
-  }
   scheduleReconcile(0);
-}
-
-function reloadCatalogue(){
-  if(catalogReloading)return;
-  catalogReloading=true;
-  location.assign(`${location.pathname}${location.search}#programs`);
-  // assign() with only a hash normally performs in-document navigation. Force an actual
-  // document reload so every current Catalogue layer (v145+) boots again cleanly.
-  setTimeout(()=>location.reload(),0);
 }
 
 function setHashSilently(tab){
@@ -74,16 +81,12 @@ function reconcile(){
   const activeTab=String(activeControl?.dataset.tab||decodeURIComponent(location.hash.slice(1))||'').trim();
   if(activeTab)setHashSilently(activeTab);
 
-  const catalogActive=activeTab==='programs';
-  const catalogRoute=document.querySelector('[data-studio-route="catalog"]');
-  const financeRoute=document.querySelector('[data-studio-route="finance"]');
-  const settingsRoute=document.querySelector('[data-studio-route="settings-main"]');
+  setRouteState(document.querySelector('[data-studio-route="diffusion"]'),['episodes','ads','insights'].includes(activeTab));
+  setRouteState(document.querySelector('[data-studio-route="catalog"]'),activeTab==='programs');
+  setRouteState(document.querySelector('[data-studio-route="finance"]'),activeTab==='finances');
+  setRouteState(document.querySelector('[data-studio-route="settings-main"]'),['settings','users','audit'].includes(activeTab));
 
-  setRouteState(catalogRoute,catalogActive);
-  setRouteState(financeRoute,activeTab==='finances');
-  setRouteState(settingsRoute,['settings','users','audit'].includes(activeTab));
-
-  if(!catalogActive)teardownCatalogue();
+  if(activeTab!=='programs')closeCatalogueOverlays();
 }
 
 function setRouteState(node,active){
@@ -93,10 +96,13 @@ function setRouteState(node,active){
   else node.removeAttribute('aria-current');
 }
 
-function teardownCatalogue(){
+function closeCatalogueOverlays(){
   document.body.classList.remove('v145-catalog-active');
-  document.querySelector('#studioCatalogCommercialCockpitV145')?.remove();
   document.querySelectorAll('.v145-menu,.v147-dialog,.v148-dialog,.v149-dialog').forEach(node=>node.remove());
 }
 
-window.__neptuneStudioAdvancedNavigationGuardV156={release:RELEASE,reconcile,reloadCatalogue};
+function cssEscape(value){
+  return window.CSS?.escape?window.CSS.escape(String(value)):String(value).replace(/[^a-z0-9_-]/gi,'\\$&');
+}
+
+window.__neptuneStudioAdvancedNavigationGuardV156={release:RELEASE,reconcile,activateInPlace};

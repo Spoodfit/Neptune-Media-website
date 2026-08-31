@@ -1,0 +1,67 @@
+/* Neptune Studio catalogue concept visuals v153 — preserve artwork instead of cropping it */
+body.v145-catalog-active .v145-offer{
+  grid-template-columns:clamp(230px,36%,285px) minmax(0,1fr)!important;
+}
+body.v145-catalog-active .v145-art.v153-art-preserve{
+  position:relative;
+  isolation:isolate;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+  background:#07122f;
+}
+body.v145-catalog-active .v145-art.v153-art-preserve::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  background:linear-gradient(180deg,rgba(4,10,29,.10),rgba(4,10,29,.24));
+}
+body.v145-catalog-active .v145-art.v153-art-preserve>.v153-concept-backdrop{
+  position:absolute!important;
+  inset:-10%!important;
+  z-index:-1!important;
+  width:120%!important;
+  height:120%!important;
+  max-width:none!important;
+  object-fit:cover!important;
+  object-position:center!important;
+  filter:blur(18px) saturate(.9)!important;
+  opacity:.42!important;
+  transform:scale(1.05);
+  pointer-events:none;
+}
+body.v145-catalog-active .v145-art.v153-art-preserve>img:not(.v153-concept-backdrop){
+  position:relative;
+  z-index:1;
+  width:100%!important;
+  height:100%!important;
+  object-fit:contain!important;
+  object-position:center!important;
+  background:transparent!important;
+}
+body.v145-catalog-active .v145-art.v153-art-preserve>.v145-status{
+  z-index:3;
+}
+
+@media(max-width:1450px){
+  body.v145-catalog-active .v145-offer{
+    grid-template-columns:clamp(220px,34%,270px) minmax(0,1fr)!important;
+  }
+}
+@media(max-width:980px){
+  body.v145-catalog-active .v145-offer{
+    grid-template-columns:220px minmax(0,1fr)!important;
+  }
+}
+@media(max-width:650px){
+  body.v145-catalog-active .v145-offer{
+    grid-template-columns:1fr!important;
+  }
+  body.v145-catalog-active .v145-art.v153-art-preserve{
+    min-height:0!important;
+    aspect-ratio:16/9;
+  }
+}

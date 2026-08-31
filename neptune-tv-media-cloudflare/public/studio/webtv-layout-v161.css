@@ -1,0 +1,45 @@
+/* Neptune WebTV Layout v161 — scrollable control room, true 16:9 monitor */
+html[data-webtv-cockpit-v125],html[data-webtv-cockpit-v125] body{height:auto!important;min-height:100%;overflow-x:hidden!important;overflow-y:auto!important}
+.webtv-v125-mounted .workspace{height:auto!important;min-height:100vh!important;overflow:visible!important}
+.webtv-v125-mounted .main{height:auto!important;min-height:calc(100vh - 66px)!important;overflow:visible!important;padding:14px 18px 40px!important}
+.webtv-v125-mounted .v125-cockpit{height:auto!important;min-height:0!important;display:grid!important;grid-template-rows:auto auto auto!important;gap:12px!important}
+.webtv-v125-mounted .v125-workspace,.webtv-v125-mounted .v125-pane{height:auto!important;min-height:0!important;overflow:visible!important}
+
+/* Compact status strip: operational data stays visible without consuming the first screen. */
+.webtv-v125-mounted .v125-summary{grid-template-columns:minmax(210px,.72fr) minmax(420px,1.45fr) auto!important;gap:8px!important}
+.webtv-v125-mounted .v125-summary .live-card{min-height:58px!important;padding:8px 11px!important;border-radius:13px!important}
+.webtv-v125-mounted .v125-summary .live-card strong{font-size:.74rem!important}
+.webtv-v125-mounted .v125-summary .live-card small{font-size:.57rem!important}
+.webtv-v125-mounted .v125-metrics-slot .metrics{gap:6px!important}
+.webtv-v125-mounted .v125-metrics-slot .metrics article{min-height:58px!important;padding:8px 10px!important;border-radius:12px!important}
+.webtv-v125-mounted .v125-metrics-slot .metrics b{font-size:.88rem!important}
+.webtv-v125-mounted .v125-metrics-slot .metrics span{font-size:.54rem!important}
+.webtv-v125-mounted .v125-summary-actions{gap:6px!important}
+.webtv-v125-mounted .v125-summary-actions .v125-button{min-height:34px!important;padding:6px 10px!important;font-size:.66rem!important}
+
+/* Antenna becomes a true video workspace, not a stretched dashboard band. */
+.webtv-v125-mounted .v125-antenna-grid{height:auto!important;display:grid!important;grid-template-columns:minmax(0,1.55fr) minmax(330px,.62fr)!important;gap:14px!important;align-items:start!important}
+.webtv-v125-mounted .v125-monitor-slot,.webtv-v125-mounted .v125-program{height:auto!important;min-height:0!important}
+.webtv-v125-mounted .v125-monitor-slot .antenna-monitor{height:auto!important;display:block!important;padding:14px!important;overflow:visible!important}
+.webtv-v125-mounted .v125-monitor-slot .antenna-screen{width:100%!important;height:auto!important;min-height:0!important;aspect-ratio:16/9!important;border-radius:16px!important;background:#020817!important}
+.webtv-v125-mounted .v125-monitor-slot .antenna-screen iframe,.webtv-v125-mounted .v125-monitor-slot .antenna-screen video{width:100%!important;height:100%!important;object-fit:contain!important}
+.webtv-v125-mounted .v125-monitor-slot .antenna-monitor-foot{margin-top:10px!important}
+.webtv-v125-mounted .v125-program{height:auto!important;max-height:none!important;overflow:visible!important}
+.webtv-v125-mounted .v125-program-list{max-height:none!important;overflow:visible!important}
+
+/* Other tabs also participate in the document flow instead of creating nested scroll prisons. */
+.webtv-v125-mounted .v125-library,.webtv-v125-mounted .v125-config,.webtv-v125-mounted .v125-analysis{height:auto!important;overflow:visible!important}
+.webtv-v125-mounted .v125-library-grid,.webtv-v125-mounted .v125-library-list,.webtv-v125-mounted .v125-library-editor,.webtv-v125-mounted .v125-config-grid{min-height:0!important;overflow:visible!important}
+
+@media (max-width:1180px){
+  .webtv-v125-mounted .v125-summary{grid-template-columns:1fr!important}
+  .webtv-v125-mounted .v125-summary-actions{justify-content:flex-start!important}
+  .webtv-v125-mounted .v125-antenna-grid{grid-template-columns:1fr!important}
+}
+
+@media (max-width:760px){
+  .webtv-v125-mounted .main{padding:10px 10px 28px!important}
+  .webtv-v125-mounted .v125-metrics-slot .metrics{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .webtv-v125-mounted .v125-monitor-slot .antenna-monitor{padding:10px!important}
+  .webtv-v125-mounted .v125-monitor-slot .antenna-monitor-foot{grid-template-columns:1fr!important}
+}

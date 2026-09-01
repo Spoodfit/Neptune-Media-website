@@ -1,6 +1,6 @@
 import { adminAuth } from './portal-http-utils.js';
 import { isSameOrigin, json } from './security.js';
-import { sendWorkflowOutboxItem } from './portal-workflow-email-v6.js';
+import { sendWorkflowOutboxItem } from './portal-workflow-email-v7.js';
 
 export async function handleWorkflowRoute(request, env, studio) {
   const url = new URL(request.url);
@@ -62,6 +62,13 @@ export async function flushWorkflowOutbox(env, requestUrl, studio) {
   let failed = 0;
   const sentItems = [];
   for (const item of result.items || []) {
+    if (String(item.messageKey || '').startsWith('supplier_date_confirmation') && item.payload?.supplierToken) {
+      const activation = await callStore(studio, '/portal/zero-touch-activate-email-v168', { item });
+      if (!activation.ok && activation.status !== 404) {
+        console.error('supplier_token_activation_v168_failed', { id: item.id, status: activation.status });
+      }
+    }
+
     const delivery = await sendWorkflowOutboxItem(env, requestUrl, item);
     const outcome = delivery.ok ? 'sent' : 'failed';
     const eventAt = new Date().toISOString();

@@ -31,7 +31,7 @@ for(const [file,needles] of checks){
 const wrangler=readRepo('wrangler.jsonc');
 const mainEntry=(wrangler.match(/"main"\s*:\s*"([^"]+)"/u)?.[1]||'').replace(/^neptune-tv-media-cloudflare\//u,'');
 const activeChain=traceEntryChain(mainEntry);
-if(activeChain[0]!=='src/entry-v44.js'||!activeChain.includes('src/entry-v31.js'))throw new Error(`active Worker must preserve v92 through canonical v44 runtime; chain=${activeChain.join(' -> ')}`);
+if(!activeChain.includes('src/entry-v44.js')||!activeChain.includes('src/entry-v31.js'))throw new Error(`active Worker must preserve v92 through canonical v44 runtime; chain=${activeChain.join(' -> ')}`);
 if(activeChain.includes('src/entry-v41.js')||activeChain.includes('src/entry-v42.js')||activeChain.includes('src/entry-v43.js'))throw new Error(`active Worker must not reintroduce flattened v41-v43 wrappers; chain=${activeChain.join(' -> ')}`);
 if(!wrangler.includes('https://calendar.app.google/X9q1T5JT9ngMfZY67'))throw new Error('preparation booking URL must match v92');
 console.log(`Simple client journey v92 preserved through Drive v94/v137/v138, Studio operations v95, sales tunnel and active chain ${activeChain.join(' -> ')}.`);

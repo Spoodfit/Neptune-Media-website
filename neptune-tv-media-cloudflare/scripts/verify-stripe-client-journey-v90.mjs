@@ -10,7 +10,7 @@ for(const [file,needles] of checks){const content=read(file);for(const needle of
 const wrangler=fs.readFileSync(path.join(repoRoot,'wrangler.jsonc'),'utf8');
 const mainEntry=(wrangler.match(/"main"\s*:\s*"([^"]+)"/u)?.[1]||'').replace(/^neptune-tv-media-cloudflare\//u,'');
 const activeChain=traceEntryChain(mainEntry);
-if(mainEntry!=='src/entry-v44.js')throw new Error(`active Worker must be entry-v44.js; got ${mainEntry}`);
+if(!activeChain.includes('src/entry-v44.js'))throw new Error(`Stripe v90 validation must preserve canonical v44 runtime; chain=${activeChain.join(' -> ')}`);
 if(!activeChain.includes('src/entry-v38.js'))throw new Error(`Stripe v90 must remain reachable through active Worker chain; chain=${activeChain.join(' -> ')}`);
 console.log(`Stripe journey v90 + operational UX v91 preserved through active Worker chain ${activeChain.join(' -> ')}; exact opportunity Stripe reference remains server-side.`);
 

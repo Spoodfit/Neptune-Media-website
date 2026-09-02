@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      BASE_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
+      BASE_URL: https://tv.neptunebusiness.com
     steps:
       - uses: actions/checkout@v4
 
@@ -41,6 +41,15 @@ jobs:
             if curl --fail --silent --show-error "$BASE_URL/api/health" | grep -q '"ok":true'; then break; fi
             sleep 10
           done
+          reserver_ready=0
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$BASE_URL/reserver?visual_release=$GITHUB_SHA&attempt=$attempt" | grep -Fq '/assets/logo-neptune.svg?v=20260902'; then
+              reserver_ready=1
+              break
+            fi
+            sleep 5
+          done
+          test "$reserver_ready" = 1
           cat > /tmp/neptune-visual-audit/audit.mjs <<'JS'
           import { chromium } from 'playwright';
           import fs from 'node:fs/promises';
@@ -55,7 +64,7 @@ jobs:
             {name:'mobile-390',width:390,height:844},
             {name:'mobile-360',width:360,height:800},
           ];
-          const routes=[{name:'home',url:'/'},{name:'emissions',url:'/emissions/'},{name:'direct',url:'/direct/'}];
+          const routes=[{name:'home',url:'/'},{name:'emissions',url:'/emissions/'},{name:'direct',url:'/direct/'},{name:'reserver',url:'/reserver'}];
           const report={generatedAt:new Date().toISOString(),base,captures:[],issues:[]};
           const browser=await chromium.launch({headless:true,args:['--disable-dev-shm-usage']});
           const safe=(value)=>value.replace(/[^a-z0-9-]+/gi,'-').toLowerCase();
@@ -84,7 +93,8 @@ jobs:
                 const brokenImages=[...document.images].filter((img)=>visible(img)&&img.complete&&img.naturalWidth===0).map((img)=>({selector:selector(img),src:img.currentSrc||img.src}));
                 const clippedText=[...document.querySelectorAll('h1,h2,h3,p,blockquote,button,a,span')].filter((el)=>visible(el)&&(el.textContent||'').trim().length>8).filter((el)=>{const style=getComputedStyle(el);if(['auto','scroll'].includes(style.overflowX)||['auto','scroll'].includes(style.overflowY))return false;return el.scrollWidth>el.clientWidth+2||el.scrollHeight>el.clientHeight+2;}).slice(0,30).map((el)=>({selector:selector(el),text:el.textContent.trim().slice(0,120)}));
                 const offscreen=[...document.querySelectorAll('main *')].filter(visible).filter((el)=>{const rect=el.getBoundingClientRect();const style=getComputedStyle(el);const allowed=el.closest('[data-rail-track], .seo-grid-shorts, .media-filter-row');return !allowed&&(rect.left<-3||rect.right>innerWidth+3)&&style.position!=='fixed';}).slice(0,30).map((el)=>({selector:selector(el)}));
-                return {horizontalOverflow,brokenImages,clippedText,offscreen};
+                const iconHref=document.querySelector('link[rel~="icon"]')?.href||'';
+                return {horizontalOverflow,brokenImages,clippedText,offscreen,iconHref};
               });
 
               const prefix=`${safe(route.name)}-${viewport.name}`;

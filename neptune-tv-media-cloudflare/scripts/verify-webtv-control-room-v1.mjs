@@ -12,7 +12,10 @@ const rootChain=await traceEntryChain(normalizeMain(root.main));
 const localChain=await traceEntryChain(normalizeMain(local.main));
 
 for(const [name,chain] of [['racine',rootChain],['local',localChain]]){
-  expect(chain[0]==='src/entry-v44.js'&&chain.includes('src/entry-v40.js')&&chain.includes('src/entry-v33.js'),`le Worker ${name} doit préserver la WebTV à travers la chaîne canonique v44 -> v40 -> v33 (${chain.join(' -> ')})`);
+  const entry44Index=chain.indexOf('src/entry-v44.js');
+  const entry40Index=chain.indexOf('src/entry-v40.js');
+  const entry33Index=chain.indexOf('src/entry-v33.js');
+  expect(entry44Index>=0&&entry40Index>entry44Index&&entry33Index>entry40Index,`le Worker ${name} doit préserver la WebTV à travers la chaîne canonique v44 -> v40 -> v33, même derrière des wrappers actifs plus récents (${chain.join(' -> ')})`);
   expect(!chain.some(file=>['src/entry-v41.js','src/entry-v42.js','src/entry-v43.js'].includes(file)),`le Worker ${name} ne doit pas réintroduire les wrappers aplatis v41-v43 (${chain.join(' -> ')})`);
 }
 expect(entry44.includes("from './entry-v40.js'")&&entry44.includes("from './drive-upload-recovery-v137.js'"),'entry-v44 doit composer directement v40 tout en conservant la reprise Drive');

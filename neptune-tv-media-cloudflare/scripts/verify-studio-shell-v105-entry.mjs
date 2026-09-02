@@ -16,8 +16,9 @@ const activeEntry = packageRoot
 const entry44Path = packageRoot ? 'src/entry-v44.js' : 'neptune-tv-media-cloudflare/src/entry-v44.js';
 const entry40PathRelative = packageRoot ? 'src/entry-v40.js' : 'neptune-tv-media-cloudflare/src/entry-v40.js';
 const activeChain = traceEntryChain(activeEntry);
-if (activeChain[0] !== entry44Path || !activeChain.includes(entry40PathRelative)) {
-  throw new Error(`Studio active Worker must use canonical v44 -> v40 runtime: ${activeChain.join(' -> ')}`);
+const entry44Index = activeChain.indexOf(entry44Path);
+if (entry44Index < 0 || activeChain[entry44Index + 1] !== entry40PathRelative) {
+  throw new Error(`Studio active Worker must preserve canonical v44 -> v40 runtime: ${activeChain.join(' -> ')}`);
 }
 if (activeChain.some((entryPath) => /entry-v4[123]\.js$/u.test(entryPath))) {
   throw new Error(`Studio active Worker must not reintroduce flattened v41-v43 wrappers: ${activeChain.join(' -> ')}`);

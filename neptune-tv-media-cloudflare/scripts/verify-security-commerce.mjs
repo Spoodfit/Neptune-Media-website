@@ -8,6 +8,8 @@ const catalogCommerce=read('neptune-tv-media-cloudflare/src/catalog-commerce-v14
 const prospectLifecycle=read('neptune-tv-media-cloudflare/src/portal-prospects.js');
 const lifecycleRuntime=read('neptune-tv-media-cloudflare/src/portal-lifecycle-v144.js');
 const activeEntry=read('neptune-tv-media-cloudflare/src/entry-v44.js');
+const entry45=read('neptune-tv-media-cloudflare/src/entry-v45.js');
+const entry46=read('neptune-tv-media-cloudflare/src/entry-v46.js');
 const rootWrangler=read('wrangler.jsonc');
 const deployWorkflow=read('.github/workflows/deploy-cloudflare.yml');
 
@@ -28,18 +30,18 @@ assert.ok(!prospectLifecycle.includes('SET full_name=?,company=?,active=1,update
 assert.ok(lifecycleRuntime.includes("WHEN NEW.status='paid'"),'paid prospect transition must explicitly activate its client entitlement');
 assert.ok(lifecycleRuntime.includes("AFTER INSERT ON portal_orders"),'paid order creation must activate client entitlement');
 assert.ok(lifecycleRuntime.includes("AFTER UPDATE OF payment_status ON portal_orders"),'paid order updates must activate client entitlement');
-assert.ok(activeEntry.includes("ensurePortalLifecycleV144(this)"),'the active store runtime must install lifecycle guards before lower-level routes');
+assert.ok(activeEntry.includes("ensurePortalLifecycleV144(this)"),'the canonical store runtime must install lifecycle guards before lower-level routes');
 
 const legacyWranglerPath='neptune-tv-media-cloudflare/wrangler.jsonc';
-assert.ok(fs.lstatSync(legacyWranglerPath).isSymbolicLink(),'legacy Wrangler path must be a symlink, never a second config');
-assert.equal(fs.readlinkSync(legacyWranglerPath),'../wrangler.jsonc','legacy Wrangler path must resolve to the canonical root config');
-assert.equal(read(legacyWranglerPath),rootWrangler,'legacy Wrangler compatibility path must expose exactly the canonical config');
-assert.ok(rootWrangler.includes('"main": "neptune-tv-media-cloudflare/src/entry-v44.js"'),'root Wrangler config must point to the canonical active entry');
+assert.equal(read(legacyWranglerPath),rootWrangler,'Worker Wrangler compatibility copy must expose exactly the canonical root config');
+assert.ok(rootWrangler.includes('"main": "neptune-tv-media-cloudflare/src/entry-v46.js"'),'root Wrangler config must point to the active v46 entry');
+assert.ok(entry46.includes("from './entry-v45.js'"),'active v46 entry must preserve the v45 sales/callback wrapper');
+assert.ok(entry45.includes("from './entry-v44.js'"),'v45 wrapper must compose on the canonical v44 runtime');
 assert.ok(rootWrangler.includes('"WEBTV_VIDEO_BITRATE_KBPS": "4000"'),'canonical WebTV bitrate must remain 4000 kbps');
-assert.ok(!activeEntry.includes("from './entry-v43.js'"),'active entry must not retain the redundant v43 wrapper layer');
-assert.ok(!activeEntry.includes("from './entry-v42.js'"),'active entry must not retain the redundant v42 personalization wrapper layer');
-assert.ok(!activeEntry.includes("from './entry-v41.js'"),'active entry must not retain the redundant v41 Drive wrapper layer');
-assert.ok(activeEntry.includes("from './entry-v40.js'"),'active entry must now compose directly on the preserved v40 runtime');
+assert.ok(!activeEntry.includes("from './entry-v43.js'"),'canonical v44 entry must not retain the redundant v43 wrapper layer');
+assert.ok(!activeEntry.includes("from './entry-v42.js'"),'canonical v44 entry must not retain the redundant v42 personalization wrapper layer');
+assert.ok(!activeEntry.includes("from './entry-v41.js'"),'canonical v44 entry must not retain the redundant v41 Drive wrapper layer');
+assert.ok(activeEntry.includes("from './entry-v40.js'"),'canonical v44 entry must compose directly on the preserved v40 runtime');
 assert.ok(activeEntry.includes('handleDriveManualValidationV138'),'Drive v138 manual validation must remain active after flattening v41');
 assert.ok(activeEntry.includes('injectDriveUploadResilienceV137'),'Drive v137 document resilience must remain active after flattening v41');
 assert.ok(activeEntry.includes('recoverDriveStagingUploadsV137'),'Drive v137 recovery must remain active after flattening v41');

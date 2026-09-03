@@ -11,6 +11,9 @@ import {
 
 export {WebTvEncoder};
 
+const RESERVATION_LOGO='/assets/logo-neptune.svg?v=20260902';
+const RESERVATION_BRAND_RELEASE='neptune-reservation-brand-20260903-v1';
+
 export class StudioStore extends BaseStudioStore{
   async fetch(request){
     const url=new URL(request.url),method=request.method.toUpperCase();
@@ -74,12 +77,31 @@ export default{
       }
     }
 
+    if(request.method==='GET'&&isReservationDocument(url.pathname)&&response.ok&&(response.headers.get('Content-Type')||'').includes('text/html')){
+      response=await enforceReservationBrand(response);
+    }
+
     const headers=new Headers(response.headers);
     headers.set('X-Neptune-Zero-Touch',ZERO_TOUCH_V168_RELEASE);
     return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
   },
   scheduled:base.scheduled,
 };
+
+async function enforceReservationBrand(response){
+  let body=await response.text();
+  body=body.replace(/<link\b(?=[^>]*\brel=["'][^"']*\bicon\b[^"']*["'])[^>]*>\s*/giu,'');
+  body=body.replace(/\/reserver\/favicon\.svg(?:\?[^"'<> ]*)?/giu,RESERVATION_LOGO);
+  const icon=`<link rel="icon" href="${RESERVATION_LOGO}" type="image/svg+xml" sizes="any">`;
+  if(body.includes('</head>'))body=body.replace('</head>',`${icon}</head>`);
+  const headers=new Headers(response.headers);
+  for(const name of ['Content-Length','Content-Encoding','ETag','Last-Modified'])headers.delete(name);
+  headers.set('Cache-Control','no-store, max-age=0');
+  headers.set('X-Neptune-Reservation-Brand',RESERVATION_BRAND_RELEASE);
+  return new Response(body,{status:response.status,statusText:response.statusText,headers});
+}
+
+function isReservationDocument(pathname){return pathname==='/reserver'||pathname==='/reserver/';}
 
 function callStore(env,path,body){
   const studio=env.STUDIO.get(env.STUDIO.idFromName('neptune-media-main'));

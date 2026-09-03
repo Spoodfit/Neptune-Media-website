@@ -1,0 +1,212 @@
+/* Neptune reservation conversion polish v176
+   Keeps the slot-selection screen usable in normal browser windows and makes real limited pricing legible. */
+
+/* The stage remains the only scroll container. It must always remain manually scrollable. */
+.stage{
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior-y:contain;
+  touch-action:pan-y;
+}
+
+/* Date screen: normal laptop/browser heights must show the whole decision without requiring fullscreen. */
+@media (min-width:761px) and (max-height:920px){
+  body[data-focus-stage="date"] .stage{
+    padding:16px 24px!important;
+  }
+  body[data-focus-stage="date"] .screen{
+    min-height:calc(100dvh - 32px)!important;
+  }
+  body[data-focus-stage="date"] #app-content{
+    padding:26px 34px 28px!important;
+  }
+  body[data-focus-stage="date"] .tunnel-focus-brand-v172{
+    margin-bottom:18px!important;
+  }
+  body[data-focus-stage="date"] #app-content>.eyebrow{
+    margin-bottom:7px!important;
+  }
+  body[data-focus-stage="date"] #app-content>h1{
+    margin-bottom:8px!important;
+    font-size:clamp(31px,2.35vw,39px)!important;
+  }
+  body[data-focus-stage="date"] #app-content>.lead{
+    margin-bottom:12px!important;
+    font-size:13px!important;
+    line-height:1.42!important;
+  }
+  body[data-focus-stage="date"] #app-content>.sales-v165-date-note{
+    margin:-3px 0 11px!important;
+    font-size:10px!important;
+  }
+  body[data-focus-stage="date"] .calendar-shell{
+    gap:14px!important;
+    margin-top:0!important;
+  }
+  body[data-focus-stage="date"] .calendar-card,
+  body[data-focus-stage="date"] .slot-card{
+    padding:13px 15px!important;
+  }
+  body[data-focus-stage="date"] .cal-head{
+    margin-bottom:8px!important;
+  }
+  body[data-focus-stage="date"] .cal-head strong{
+    font-size:15px!important;
+  }
+  body[data-focus-stage="date"] .cal-nav{
+    width:36px!important;
+    height:36px!important;
+    min-width:36px!important;
+    min-height:36px!important;
+  }
+  body[data-focus-stage="date"] .weekdays{
+    margin-bottom:4px!important;
+  }
+  body[data-focus-stage="date"] .weekdays,
+  body[data-focus-stage="date"] .days{
+    gap:5px!important;
+  }
+  body[data-focus-stage="date"] .day{
+    height:36px!important;
+    min-height:36px!important;
+    border-radius:9px!important;
+    font-size:11.5px!important;
+  }
+  body[data-focus-stage="date"] .slot-card h2{
+    margin-top:7px!important;
+    font-size:20px!important;
+  }
+  body[data-focus-stage="date"] .slots{
+    margin-top:10px!important;
+    gap:7px!important;
+  }
+  body[data-focus-stage="date"] .slot{
+    min-height:52px!important;
+    padding:8px 11px!important;
+  }
+  body[data-focus-stage="date"] .slot-result{
+    padding-top:9px!important;
+  }
+  body[data-focus-stage="date"] #app-content>.actions,
+  body[data-focus-stage="date"] #app-content .actions{
+    margin-top:14px!important;
+  }
+  body[data-focus-stage="date"] #app-content .btn{
+    min-height:46px!important;
+  }
+}
+
+@media (min-width:761px) and (max-height:760px){
+  body[data-focus-stage="date"] #app-content{
+    padding:20px 30px 22px!important;
+  }
+  body[data-focus-stage="date"] .tunnel-focus-brand-v172{
+    margin-bottom:12px!important;
+  }
+  body[data-focus-stage="date"] #app-content>.lead{
+    display:none!important;
+  }
+  body[data-focus-stage="date"] #app-content>.sales-v165-date-note{
+    margin:0 0 8px!important;
+  }
+  body[data-focus-stage="date"] .day{
+    height:33px!important;
+    min-height:33px!important;
+  }
+}
+
+/* Payment: real scarcity is the primary visual signal, not a sentence in body copy. */
+body[data-focus-stage="payment"] .pricing-alert.pricing-alert-v176{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  align-items:center!important;
+  gap:24px!important;
+  padding:20px 22px!important;
+  border:1px solid rgba(255,167,71,.5)!important;
+  background:linear-gradient(110deg,rgba(255,151,50,.14),rgba(138,87,255,.11) 55%,rgba(6,11,29,.75))!important;
+  box-shadow:0 18px 44px rgba(0,0,0,.18)!important;
+}
+body[data-focus-stage="payment"] .pricing-alert-v176>div:first-child{
+  min-width:0;
+}
+body[data-focus-stage="payment"] .pricing-alert-v176 .pricing-kicker{
+  display:block!important;
+  margin-bottom:8px!important;
+  color:#ffc16d!important;
+  font-size:10px!important;
+  font-weight:950!important;
+  letter-spacing:.12em!important;
+  text-transform:uppercase!important;
+}
+body[data-focus-stage="payment"] .pricing-alert-v176>div:first-child>strong{
+  display:inline-block!important;
+  font-size:32px!important;
+  line-height:1!important;
+  letter-spacing:-.035em!important;
+}
+body[data-focus-stage="payment"] .pricing-alert-v176>div:first-child>s{
+  margin-left:10px!important;
+  color:#737d97!important;
+  font-size:15px!important;
+}
+.pricing-saving-v176{
+  margin-top:8px;
+  color:#f4d8ae;
+  font-size:11px;
+  font-weight:800;
+}
+.pricing-urgency-v176{
+  display:flex;
+  align-items:center;
+  gap:11px;
+  min-width:210px;
+  padding:12px 15px;
+  border:1px solid rgba(255,187,90,.34);
+  border-radius:15px;
+  background:rgba(255,166,63,.09);
+}
+.pricing-urgency-number-v176{
+  display:block;
+  min-width:42px;
+  color:#fff2dc;
+  font-size:36px;
+  font-weight:950;
+  line-height:.9;
+  letter-spacing:-.05em;
+  text-align:center;
+}
+.pricing-urgency-copy-v176{
+  display:grid;
+  gap:2px;
+}
+.pricing-urgency-copy-v176 b{
+  color:#fff;
+  font-size:13px;
+  line-height:1.05;
+}
+.pricing-urgency-copy-v176 small{
+  color:#d9a967;
+  font-size:9px;
+  font-weight:850;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+/* The manual "already paid" status block is intentionally removed from the payment screen. */
+body[data-focus-stage="payment"] .payment-wait{
+  display:none!important;
+}
+
+@media(max-width:760px){
+  body[data-focus-stage="payment"] .pricing-alert.pricing-alert-v176{
+    grid-template-columns:1fr!important;
+    gap:14px!important;
+    padding:17px!important;
+  }
+  .pricing-urgency-v176{
+    width:100%;
+    min-width:0;
+    justify-content:flex-start;
+  }
+}

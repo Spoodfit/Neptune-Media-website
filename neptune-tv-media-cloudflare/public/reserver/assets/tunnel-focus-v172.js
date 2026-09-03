@@ -1,5 +1,5 @@
 (() => {
-  const RELEASE='neptune-reservation-focus-20260903-v172';
+  const RELEASE='neptune-reservation-focus-20260903-v173';
   const host=document.getElementById('app-content');
   if(!host)return;
 
@@ -26,10 +26,12 @@
     scheduled=false;
     const stage=detectStage();
     if(!stage)return;
-    const title=host.querySelector(':scope > h1, :scope > .confirmation-hero h1, :scope .sales-v165-intro h1')?.textContent?.trim()||'';
-    const signature=`${stage}|${title}`;
 
     ensureBrand();
+    if(stage==='company')simplifyCompanyStep();
+
+    const title=host.querySelector(':scope > h1, :scope > .confirmation-hero h1, :scope .sales-v165-intro h1')?.textContent?.trim()||'';
+    const signature=`${stage}|${title}`;
     document.body.dataset.focusStage=stage;
 
     if(signature!==lastSignature){
@@ -50,6 +52,35 @@
     host.prepend(brand);
   }
 
+  function simplifyCompanyStep(){
+    const form=host.querySelector('#companyForm');
+    if(!form)return;
+
+    const eyebrow=host.querySelector(':scope > .eyebrow');
+    const title=host.querySelector(':scope > h1');
+    const lead=host.querySelector(':scope > .lead');
+    const legal=form.querySelector('.legal-note');
+    const label=form.querySelector('.company-field > span');
+    const input=form.querySelector('input[name="companyIdentity"]');
+    const button=form.querySelector('button[type="submit"]');
+
+    if(eyebrow)eyebrow.textContent='1 · Votre entreprise';
+    if(title)title.textContent='Quel est le nom de votre entreprise ?';
+    lead?.remove();
+    legal?.remove();
+    if(label)label.textContent='Nom de l’entreprise';
+    if(input){
+      input.placeholder='Ex. Neptune Business';
+      input.setAttribute('autocomplete','organization');
+      input.setAttribute('enterkeyhint','next');
+      if(!input.dataset.focusedOnce){
+        input.dataset.focusedOnce='1';
+        requestAnimationFrame(()=>{try{input.focus({preventScroll:true});}catch{input.focus();}});
+      }
+    }
+    if(button)button.textContent='Continuer';
+  }
+
   function detectStage(){
     if(host.querySelector('.prep-embedded,.confirmation-hero'))return'done';
     if(host.querySelector('#payLink,.payment-box,.payment-box-v97,.terms-box'))return'payment';
@@ -64,7 +95,7 @@
     if(text.includes('format physique'))return'physical';
     if(text.includes('ville')||text.includes('où tourner'))return'city';
     if(text.includes('concept')||text.includes('expérience'))return'concept';
-    if(text.includes('réservation commence'))return'company';
+    if(text.includes('réservation commence')||text.includes('votre entreprise'))return'company';
     return'';
   }
 

@@ -6,7 +6,8 @@
   "workers_dev": true,
   "keep_vars": true,
   "routes": [
-    { "pattern": "tv.neptunebusiness.com", "custom_domain": true }
+    { "pattern": "tv.neptunebusiness.com", "custom_domain": true },
+    { "pattern": "media.neptunebusiness.com", "custom_domain": true }
   ],
   "triggers": { "crons": ["*/5 * * * *", "* * * * *"] },
   "assets": {
@@ -44,7 +45,7 @@
   "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "neptune-media-assets" }],
   "ai": { "binding": "AI" },
   "vars": {
-    "BOOKING_URL": "https://tv.neptunebusiness.com/reserver",
+    "BOOKING_URL": "https://media.neptunebusiness.com/reserver",
     "PREPARATION_BOOKING_URL": "https://calendar.app.google/X9q1T5JT9ngMfZY67",
     "PUBLIC_ORIGIN": "https://tv.neptunebusiness.com",
     "AI_MODEL": "@cf/openai/gpt-oss-120b",

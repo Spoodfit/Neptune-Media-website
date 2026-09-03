@@ -3,7 +3,7 @@
   if (!document.querySelector('link[data-sales-experience-v166]')) {
     const link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = '/reserver/assets/sales-experience-v166.css?v=1';
+    link.href = '/reserver/assets/sales-experience-v166.css?v=20260903-2';
     link.dataset.salesExperienceV166 = '1';
     document.head.append(link);
   }

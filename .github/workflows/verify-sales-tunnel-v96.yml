@@ -18,6 +18,7 @@ on:
       - 'neptune-tv-media-cloudflare/public/espace-client/sales-catalog-v96.*'
       - 'neptune-tv-media-cloudflare/scripts/verify-sales-tunnel-v96.mjs'
       - 'neptune-tv-media-cloudflare/tests/sales-tunnel-v96.mjs'
+      - 'neptune-tv-media-cloudflare/tests/debug-format-click-v170.mjs'
       - 'neptune-tv-media-cloudflare/wrangler.jsonc'
       - 'wrangler.jsonc'
   pull_request:
@@ -63,6 +64,10 @@ jobs:
           python3 -m http.server 4173 --directory neptune-tv-media-cloudflare/public >/tmp/tunnel-v97.log 2>&1 &
           for attempt in $(seq 1 30); do curl --fail --silent http://127.0.0.1:4173/reserver/ >/dev/null && exit 0; sleep 1; done
           cat /tmp/tunnel-v97.log; exit 1
+      - name: Diagnose format click progression
+        env:
+          LOCAL_BASE_URL: http://127.0.0.1:4173
+        run: node neptune-tv-media-cloudflare/tests/debug-format-click-v170.mjs
       - name: Audit v97 desktop and mobile
         env:
           LOCAL_BASE_URL: http://127.0.0.1:4173

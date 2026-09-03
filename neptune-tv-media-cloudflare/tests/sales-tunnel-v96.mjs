@@ -76,7 +76,8 @@ async function run(viewport,label){
 
   await page.getByRole('button',{name:/Hors Norme/}).first().click();
   if(!anonymousStarted)throw new Error(`${label}: anonymous prospect was not started after format click`);
-  await page.getByText('Où souhaitez-vous réaliser',{exact:false}).waitFor();
+  await page.locator('[data-city="toulouse"]').waitFor();
+  await page.getByText('Où souhaitez-vous tourner ?',{exact:true}).waitFor();
   await page.getByText('Toulouse',{exact:true}).waitFor();
   await page.getByText('Lyon',{exact:true}).waitFor();
   if(!page.url().includes('reservation_token='))throw new Error(`${label}: reservation token missing after format click`);

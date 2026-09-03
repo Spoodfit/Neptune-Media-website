@@ -65,5 +65,40 @@
 <script type="module" src="/reserver/assets/app-v163.js?v=3"></script>
 <script src="/reserver/assets/sales-experience-v165.js?v=1"></script>
 <script src="/reserver/assets/sales-experience-v166.js?v=1"></script>
+<script>
+(() => {
+  const STORAGE = 'neptune_media_reservation_v163';
+  const token = new URLSearchParams(location.search).get('reservation_token');
+  if (!token) return;
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(STORAGE) || 'null'); } catch {}
+  if (!saved?.conceptId || saved.cityId) return;
+
+  const host = document.getElementById('app-content');
+  if (!host) return;
+  let replayed = false;
+  let observer = null;
+
+  const replayPendingConcept = () => {
+    if (replayed) return true;
+    const selector = `[data-concept="${CSS.escape(String(saved.conceptId))}"]`;
+    const button = host.querySelector(selector);
+    if (!button) return false;
+    replayed = true;
+    observer?.disconnect();
+    button.click();
+    return true;
+  };
+
+  observer = new MutationObserver(replayPendingConcept);
+  observer.observe(host, { childList: true, subtree: true });
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', replayPendingConcept, { once: true });
+  } else {
+    replayPendingConcept();
+  }
+  setTimeout(() => observer?.disconnect(), 5000);
+})();
+</script>
 </body>
 </html>

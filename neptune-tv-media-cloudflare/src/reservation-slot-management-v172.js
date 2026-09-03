@@ -37,7 +37,7 @@ export function ensureReservationSlotsV172Schema(store){
     store.reservationSlotsV172Ready=true;
   }
   cleanupExpiredHolds(store);
-  syncMaterializedPaidOrders(store);
+  if(!store.reservationSlotsV172LegacySynced){syncMaterializedPaidOrders(store);store.reservationSlotsV172LegacySynced=true;}
 }
 
 export async function reservationAvailabilityV172(store,raw={}){
@@ -101,14 +101,28 @@ export function confirmReservationSlotForOrderV172(store,orderId){
   ensureReservationSlotsV172Schema(store);
   const cleanOrder=clean(orderId);
   if(!cleanOrder)return {ok:false,error:'order_required'};
+  const existingOrderSlot=store.sql.exec(`SELECT id,status FROM portal_reservation_slots_v172 WHERE order_id=? AND status IN ('confirmed','payment_conflict','cancelled') ORDER BY updated_at DESC LIMIT 1`,cleanOrder).toArray()[0]||null;
+  if(existingOrderSlot){
+    if(existingOrderSlot.status==='confirmed')return {ok:true,slotId:existingOrderSlot.id,status:'confirmed'};
+    if(existingOrderSlot.status==='payment_conflict')return {ok:false,error:'slot_payment_conflict',conflict:true,slotId:existingOrderSlot.id};
+    if(existingOrderSlot.status==='cancelled')return {ok:false,error:'slot_cancelled_by_studio',conflict:true,slotId:existingOrderSlot.id};
+  }
   const prospect=store.sql.exec(`SELECT id,client_id AS clientId FROM portal_prospects WHERE order_id=? ORDER BY updated_at DESC LIMIT 1`,cleanOrder).toArray()[0]||null;
   if(!prospect)return {ok:false,error:'prospect_not_found'};
-  const intent=store.sql.exec(`SELECT offer_id AS offerId,requested_date AS requestedDate,requested_daypart AS requestedDaypart
+  const intent=store.sql.exec(`SELECT offer_id AS offerId,requested_date AS requestedDate,requested_daypart AS requestedDaypart,status AS intentStatus
     FROM portal_reservation_intents_v96 WHERE prospect_id=? LIMIT 1`,prospect.id).toArray()[0]||null;
   const offer=intent?.offerId?offerContext(store,intent.offerId):null;
   const slotDate=cleanDate(intent?.requestedDate),daypart=cleanDaypart(intent?.requestedDaypart);
   if(!offer||!slotDate||!daypart)return {ok:false,error:'reservation_slot_missing'};
   const at=new Date().toISOString();
+  if(intent.intentStatus==='cancelled_by_studio'){
+    const conflictId=crypto.randomUUID();
+    store.sql.exec(`INSERT INTO portal_reservation_slots_v172(
+      id,supplier_id,offer_id,prospect_id,client_id,order_id,slot_date,daypart,status,source,note,expires_at,created_at,updated_at
+    ) VALUES(?,?,?,?,?,?,?,?, 'payment_conflict','stripe','Paiement reçu après annulation du créneau par le Studio',NULL,?,?)`,
+      conflictId,offer.supplierId,offer.id,prospect.id,prospect.clientId,cleanOrder,slotDate,daypart,at,at);
+    return {ok:false,error:'slot_cancelled_by_studio',conflict:true,slotId:conflictId};
+  }
   const existing=activeSlot(store,offer.supplierId,slotDate,daypart);
   if(existing&&existing.prospectId!==prospect.id&&existing.orderId!==cleanOrder){
     const conflictId=crypto.randomUUID();
@@ -230,7 +244,7 @@ function syncMaterializedPaidOrders(store){
     ORDER BY s.updated_at DESC LIMIT 500`).toArray();
   const at=new Date().toISOString();
   for(const row of rows){
-    if(store.sql.exec(`SELECT id FROM portal_reservation_slots_v172 WHERE order_id=? AND status IN ('confirmed','payment_conflict') LIMIT 1`,row.orderId).toArray()[0])continue;
+    if(store.sql.exec(`SELECT id FROM portal_reservation_slots_v172 WHERE order_id=? AND status IN ('confirmed','payment_conflict','cancelled') LIMIT 1`,row.orderId).toArray()[0])continue;
     const occupied=activeSlot(store,row.supplierId,row.slotDate,row.daypart);
     if(occupied&&occupied.prospectId===row.prospectId){
       store.sql.exec(`UPDATE portal_reservation_slots_v172 SET status='confirmed',order_id=?,offer_id=?,client_id=?,source='legacy_sync',expires_at=NULL,updated_at=? WHERE id=?`,row.orderId,row.offerId,row.clientId||null,at,occupied.id);

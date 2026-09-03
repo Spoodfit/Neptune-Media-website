@@ -110,6 +110,10 @@
     }
   }
 
+  function setText(element,value){
+    if(element&&element.textContent!==value)element.textContent=value;
+  }
+
   function polishCurrentStep(){
     const eyebrow=host.querySelector(':scope > .eyebrow');
     const title=host.querySelector(':scope > h1');
@@ -117,18 +121,18 @@
     if(!title||!lead)return;
     const text=(eyebrow?.textContent||'').toLowerCase();
     if(text.includes('où tourner')){
-      title.textContent='Où souhaitez-vous tourner ?';
-      lead.textContent='Choisissez simplement la ville qui vous convient. Nous affichons uniquement les studios où le format sélectionné est réellement disponible.';
+      setText(title,'Où souhaitez-vous tourner ?');
+      setText(lead,'Choisissez simplement la ville qui vous convient. Nous affichons uniquement les studios où le format sélectionné est réellement disponible.');
     }else if(text.includes('format physique')){
-      title.textContent='Quel décor vous correspond le mieux ?';
-      lead.textContent='Le contenu ne change pas. Ici, vous choisissez seulement l’ambiance visuelle dans laquelle vous serez le plus à l’aise.';
+      setText(title,'Quel décor vous correspond le mieux ?');
+      setText(lead,'Le contenu ne change pas. Ici, vous choisissez seulement l’ambiance visuelle dans laquelle vous serez le plus à l’aise.');
     }else if(text.includes('créneau')){
-      title.textContent='Quand souhaitez-vous tourner ?';
-      lead.textContent='Pour préparer votre passage correctement, les tournages sont réservables au minimum 15 jours à l’avance. Choisissez ensuite le jour qui vous convient.';
+      setText(title,'Quand souhaitez-vous tourner ?');
+      setText(lead,'Pour préparer votre passage correctement, les tournages sont réservables au minimum 15 jours à l’avance. Choisissez ensuite le jour qui vous convient.');
       if(!host.querySelector('.sales-v165-date-note'))lead.insertAdjacentHTML('afterend','<small class="sales-v165-date-note">Les dates trop proches sont volontairement bloquées afin de laisser le temps nécessaire à la préparation.</small>');
     }else if(text.includes('paiement')){
-      title.textContent='Votre passage est presque réservé.';
-      lead.textContent='Vérifiez votre choix puis sécurisez votre réservation. Vous recevrez ensuite les prochaines étapes de préparation.';
+      setText(title,'Votre passage est presque réservé.');
+      setText(lead,'Vérifiez votre choix puis sécurisez votre réservation. Vous recevrez ensuite les prochaines étapes de préparation.');
     }
   }
 

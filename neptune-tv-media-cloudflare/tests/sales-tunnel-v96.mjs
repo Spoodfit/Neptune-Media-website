@@ -46,28 +46,26 @@ async function visualGuard(page,label,stage,mobile){
 
 async function run(viewport,label){
   const page=await browser.newPage({viewport});
-  let paid=false,selectionBody=null,anonymousStarted=false;
+  let paid=false,selectionBody=null;
   await page.route('https://calendar.google.com/**',route=>route.fulfill({status:200,contentType:'text/html',body:'<!doctype html><title>Calendar mock</title>'}));
   await page.route('**/api/reservation/catalog-v96*',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(catalog)}));
-  await page.route('**/api/reservation/prospect/anonymous-v165',route=>{
-    anonymousStarted=true;
-    route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,token,prospectId:'11111111-1111-4111-8111-111111111111'})});
-  });
   await page.route('**/api/reservation/selection-v96',async route=>{
     selectionBody=JSON.parse(route.request().postData()||'{}');
     const paymentUrl=`${paymentBase}?client_reference_id=NPOPP_${opportunityId}&locked_prefilled_email=contact%40example.com`;
     route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,status:'date_selected',paymentUrl,selection:{city:{id:'toulouse',name:'Toulouse',slug:'toulouse'},format:{id:'hn',name:'Hors Norme',slug:'hors-norme',image:'/assets/posters/hors-norme-wide.webp'},offer:{id:'hn-launch',name:'Prix coûtant · lancement',clientPriceCents:89000,currency:'eur',priceSuffix:'',pricing,configurations},configurationChoice:selectionBody.configurationChoice,requestedDate:selectionBody.requestedDate,requestedDaypart:selectionBody.requestedDaypart}})});
   });
   await page.route('**/api/reservation/prospect/context*',route=>{
+    const contact={firstName:'Test',lastName:'Neptune',email:'contact@example.com',phone:'0600000000'};
     if(!selectionBody){
-      route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,release:'neptune-sales-tunnel-20260811-v96',enhancementRelease:'neptune-sales-tunnel-20260811-v97',prospectId:'11111111-1111-4111-8111-111111111111',status:'tunnel_started',orderId:'',contact:null,selection:{}})});
+      route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,release:'neptune-sales-tunnel-20260811-v96',enhancementRelease:'neptune-sales-tunnel-20260811-v97',prospectId:'11111111-1111-4111-8111-111111111111',status:'tunnel_started',orderId:'',contact,selection:{}})});
       return;
     }
     const requestedDate=selectionBody.requestedDate||'2026-09-10',requestedDaypart=selectionBody.requestedDaypart||'morning';
-    route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,release:'neptune-sales-tunnel-20260811-v96',enhancementRelease:'neptune-sales-tunnel-20260811-v97',prospectId:'11111111-1111-4111-8111-111111111111',status:paid?'paid':'tunnel_started',orderId:paid?'33333333-3333-4333-8333-333333333333':'',contact:null,selection:{city:{id:'toulouse',name:'Toulouse',slug:'toulouse'},format:{id:'hn',name:'Hors Norme',slug:'hors-norme',image:'/assets/posters/hors-norme-wide.webp'},offer:{id:'hn-launch',name:'Prix coûtant · lancement',clientPriceCents:89000,currency:'eur',priceSuffix:'',pricing,configurations},configurationChoice:'Chaise',requestedDate,requestedDaypart,paymentUrl:paid?'':`${paymentBase}?client_reference_id=NPOPP_${opportunityId}`}})});
+    route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,release:'neptune-sales-tunnel-20260811-v96',enhancementRelease:'neptune-sales-tunnel-20260811-v97',prospectId:'11111111-1111-4111-8111-111111111111',status:paid?'paid':'tunnel_started',orderId:paid?'33333333-3333-4333-8333-333333333333':'',contact,selection:{city:{id:'toulouse',name:'Toulouse',slug:'toulouse'},format:{id:'hn',name:'Hors Norme',slug:'hors-norme',image:'/assets/posters/hors-norme-wide.webp'},offer:{id:'hn-launch',name:'Prix coûtant · lancement',clientPriceCents:89000,currency:'eur',priceSuffix:'',pricing,configurations},configurationChoice:'Chaise',requestedDate,requestedDaypart,paymentUrl:paid?'':`${paymentBase}?client_reference_id=NPOPP_${opportunityId}`}})});
   });
 
-  await page.goto(`${base}/reserver/`,{waitUntil:'networkidle'});
+  await page.goto(`${base}/reserver/?reservation_token=${token}`,{waitUntil:'networkidle'});
+  if(await page.locator('#neptuneMemberGateV170').count())throw new Error(`${label}: member gate must be bypassed for an authenticated reservation token`);
   await page.locator('[data-v165-concept]').first().waitFor();
   await shot(page,label,'formats');
   const publicText=await page.locator('#app-content').innerText();
@@ -75,11 +73,10 @@ async function run(viewport,label){
   await visualGuard(page,label,'formats',viewport.width<=420);
 
   await page.getByRole('button',{name:/Hors Norme/}).first().click();
-  if(!anonymousStarted)throw new Error(`${label}: anonymous prospect was not started after format click`);
   await page.locator('[data-city="toulouse"]').waitFor();
   await page.getByText('Où souhaitez-vous tourner ?',{exact:true}).waitFor();
   await page.getByText('Toulouse',{exact:true}).waitFor();
-  if(!page.url().includes('reservation_token='))throw new Error(`${label}: reservation token missing after format click`);
+  if(!page.url().includes('reservation_token='))throw new Error(`${label}: authenticated reservation token missing after format click`);
   await shot(page,label,'cities');
   await visualGuard(page,label,'cities',viewport.width<=420);
 
@@ -131,6 +128,6 @@ async function run(viewport,label){
 
 const desktop=await run({width:1440,height:900},'desktop');
 const mobile=await run({width:390,height:844},'mobile');
-await fs.writeFile(path.join(out,'report.json'),JSON.stringify({release:'neptune-sales-tunnel-20260811-v97',desktop,mobile},null,2));
+await fs.writeFile(path.join(out,'report.json'),JSON.stringify({release:'neptune-sales-tunnel-20260811-v97',memberGate:'required-before-token',desktop,mobile},null,2));
 await browser.close();
-console.log('Sales tunnel browser audit passed: anonymous format click resumes on city selection, then configuration, calendar, payment and confirmation remain responsive.');
+console.log('Sales tunnel browser audit passed after Neptune member authentication: concept, city, configuration, calendar, payment and confirmation remain responsive.');

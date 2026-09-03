@@ -1,0 +1,241 @@
+/* Neptune reservation rhythm v175
+   One decision per screen, wider breathing room, compact headings that stay on one line on desktop. */
+
+.stage{
+  padding:clamp(24px,4vh,48px) clamp(18px,3vw,42px)!important;
+}
+.screen{
+  min-height:calc(100dvh - clamp(48px,8vh,96px))!important;
+}
+
+#app-content{
+  width:min(940px,calc(100vw - 64px))!important;
+  max-width:940px!important;
+  padding:clamp(38px,3.3vw,50px) clamp(40px,4vw,56px) clamp(42px,3.7vw,54px)!important;
+  border-radius:27px!important;
+}
+body[data-focus-stage="concept"] #app-content,
+body[data-focus-stage="city"] #app-content,
+body[data-focus-stage="physical"] #app-content{
+  width:min(1040px,calc(100vw - 64px))!important;
+  max-width:1040px!important;
+}
+body[data-focus-stage="date"] #app-content{
+  width:min(1120px,calc(100vw - 64px))!important;
+  max-width:1120px!important;
+}
+body[data-focus-stage="payment"] #app-content{
+  width:min(940px,calc(100vw - 64px))!important;
+  max-width:940px!important;
+}
+body[data-focus-stage="done"] #app-content{
+  width:min(1040px,calc(100vw - 64px))!important;
+  max-width:1040px!important;
+}
+
+.tunnel-focus-brand-v172{
+  margin-bottom:32px!important;
+}
+#app-content>.eyebrow{
+  margin-bottom:12px!important;
+}
+#app-content>h1,
+#app-content .sales-v165-intro h1,
+#app-content .confirmation-hero h1{
+  max-width:none!important;
+  margin:0 0 14px!important;
+  font-size:clamp(34px,2.55vw,44px)!important;
+  line-height:1.04!important;
+  letter-spacing:-.038em!important;
+  white-space:nowrap!important;
+  text-wrap:nowrap!important;
+}
+#app-content>.lead,
+#app-content .sales-v165-intro .lead,
+#app-content .confirmation-hero .lead{
+  max-width:820px!important;
+  margin:0 0 30px!important;
+  font-size:14px!important;
+  line-height:1.62!important;
+}
+
+#app-content>.panel,
+.company-first-panel{
+  margin-top:2px!important;
+}
+.company-first-panel .company-field{
+  gap:9px!important;
+}
+.company-first-panel .company-field input{
+  height:58px!important;
+  padding-inline:18px!important;
+}
+.company-first-panel .actions{
+  margin-top:18px!important;
+}
+
+.concept-grid-v163,
+.sales-v165-grid,
+.city-choice-grid-v163,
+.configuration-grid{
+  gap:16px!important;
+  margin-top:4px!important;
+}
+.concept-card-v163,
+.sales-v165-card,
+.city-choice-v163,
+.configuration-card{
+  border-radius:18px!important;
+}
+.concept-copy-v163,
+.sales-v165-copy,
+.configuration-copy{
+  padding:17px!important;
+}
+.city-choice-v163{
+  padding:18px!important;
+}
+
+#app-content>.actions,
+#app-content .actions{
+  margin-top:26px!important;
+  gap:14px!important;
+}
+#app-content .btn{
+  min-height:52px!important;
+}
+
+body[data-focus-stage="date"] #app-content>h1{
+  font-size:clamp(34px,2.55vw,44px)!important;
+}
+.calendar-shell{
+  gap:18px!important;
+  margin-top:4px!important;
+}
+.calendar-card,
+.slot-card{
+  padding:18px!important;
+  border-radius:19px!important;
+}
+.cal-head{
+  margin-bottom:14px!important;
+}
+.weekdays{
+  margin-bottom:8px!important;
+}
+.weekdays,.days{
+  gap:7px!important;
+}
+.slot-card h2{
+  margin-top:12px!important;
+}
+.slots{
+  margin-top:16px!important;
+  gap:10px!important;
+}
+.slot-result{
+  padding-top:16px!important;
+}
+
+body[data-focus-stage="payment"] .pricing-alert{
+  margin-bottom:18px!important;
+  padding:16px 18px!important;
+}
+.payment-box{
+  gap:18px!important;
+  padding:20px!important;
+}
+.terms-box{
+  margin-top:14px!important;
+  padding:14px 16px!important;
+}
+
+.confirmation-hero{
+  margin-bottom:20px!important;
+  gap:17px!important;
+}
+.prep-embedded{
+  margin-top:20px!important;
+}
+.prep-embedded .prep-heading{
+  padding:18px 20px!important;
+}
+
+@media (min-width:761px) and (max-width:980px){
+  #app-content,
+  body[data-focus-stage] #app-content{
+    width:min(900px,calc(100vw - 44px))!important;
+    max-width:calc(100vw - 44px)!important;
+    padding:36px 38px 40px!important;
+  }
+  #app-content>h1,
+  #app-content .sales-v165-intro h1,
+  #app-content .confirmation-hero h1{
+    font-size:clamp(30px,3.7vw,37px)!important;
+  }
+}
+
+@media(max-width:760px){
+  .stage{
+    padding:14px!important;
+  }
+  .screen{
+    min-height:calc(100dvh - 28px)!important;
+  }
+  #app-content,
+  body[data-focus-stage] #app-content{
+    width:100%!important;
+    max-width:none!important;
+    padding:27px 22px 31px!important;
+    border-radius:22px!important;
+  }
+  .tunnel-focus-brand-v172{
+    margin-bottom:24px!important;
+  }
+  #app-content>h1,
+  #app-content .sales-v165-intro h1,
+  #app-content .confirmation-hero h1{
+    margin-bottom:12px!important;
+    font-size:clamp(23px,5.6vw,30px)!important;
+    line-height:1.06!important;
+    letter-spacing:-.032em!important;
+    white-space:nowrap!important;
+  }
+  #app-content>.lead,
+  #app-content .sales-v165-intro .lead,
+  #app-content .confirmation-hero .lead{
+    margin-bottom:24px!important;
+    font-size:13px!important;
+    line-height:1.56!important;
+  }
+  .concept-grid-v163,
+  .sales-v165-grid,
+  .city-choice-grid-v163,
+  .configuration-grid{
+    gap:12px!important;
+  }
+  #app-content>.actions,
+  #app-content .actions{
+    margin-top:22px!important;
+  }
+  .calendar-shell{
+    gap:12px!important;
+  }
+  .calendar-card,.slot-card{
+    padding:14px!important;
+  }
+}
+
+@media(max-width:430px){
+  #app-content,
+  body[data-focus-stage] #app-content{
+    padding:24px 18px 28px!important;
+  }
+  #app-content>h1,
+  #app-content .sales-v165-intro h1,
+  #app-content .confirmation-hero h1{
+    font-size:clamp(22px,6.4vw,27px)!important;
+    white-space:normal!important;
+    text-wrap:balance!important;
+  }
+}

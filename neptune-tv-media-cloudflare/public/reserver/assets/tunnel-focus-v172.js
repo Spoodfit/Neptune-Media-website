@@ -1,5 +1,6 @@
 (() => {
-  const RELEASE='neptune-reservation-focus-20260903-v173';
+  const RELEASE='neptune-reservation-focus-20260903-v174';
+  const STORAGE='neptune_media_reservation_v163';
   const host=document.getElementById('app-content');
   if(!host)return;
 
@@ -9,6 +10,7 @@
   let scheduled=false;
 
   document.body.dataset.tunnelFocusRelease=RELEASE;
+  installIdentityBridge();
 
   const observer=new MutationObserver(schedule);
   observer.observe(host,{childList:true});
@@ -63,22 +65,69 @@
     const label=form.querySelector('.company-field > span');
     const input=form.querySelector('input[name="companyIdentity"]');
     const button=form.querySelector('button[type="submit"]');
+    const actions=form.querySelector('.actions');
 
-    if(eyebrow)eyebrow.textContent='1 · Votre entreprise';
+    eyebrow?.remove();
     if(title)title.textContent='Quel est le nom de votre entreprise ?';
     lead?.remove();
     legal?.remove();
-    if(label)label.textContent='Nom de l’entreprise';
+    label?.remove();
+
     if(input){
       input.placeholder='Ex. Neptune Business';
+      input.setAttribute('aria-label','Nom de votre entreprise');
       input.setAttribute('autocomplete','organization');
       input.setAttribute('enterkeyhint','next');
+      input.setAttribute('autocapitalize','words');
       if(!input.dataset.focusedOnce){
         input.dataset.focusedOnce='1';
         requestAnimationFrame(()=>{try{input.focus({preventScroll:true});}catch{input.focus();}});
       }
     }
-    if(button)button.textContent='Continuer';
+
+    if(actions){
+      actions.querySelector(':scope > span')?.remove();
+      actions.style.gridTemplateColumns='1fr';
+    }
+    if(button){
+      button.textContent='Continuer';
+      button.style.width='100%';
+    }
+  }
+
+  function installIdentityBridge(){
+    if(window.__neptuneReservationIdentityBridgeV174)return;
+    window.__neptuneReservationIdentityBridgeV174=true;
+    const nativeFetch=window.fetch.bind(window);
+
+    window.fetch=async(input,init={})=>{
+      const requestUrl=typeof input==='string'?input:String(input?.url||'');
+      const method=String(init?.method||input?.method||'GET').toUpperCase();
+      if(method!=='POST'||!requestUrl.includes('/api/reservation/prospect/start'))return nativeFetch(input,init);
+
+      let payload={};
+      try{
+        if(typeof init?.body==='string')payload=JSON.parse(init.body)||{};
+      }catch{}
+
+      const identity=readIdentity();
+      if(identity.email&&!payload.email)payload.email=identity.email;
+      if(identity.token&&!payload.reservationToken)payload.reservationToken=identity.token;
+
+      const headers=new Headers(init?.headers||input?.headers||{});
+      headers.set('Content-Type','application/json');
+      headers.set('Accept','application/json');
+      return nativeFetch(input,{...init,method:'POST',headers,body:JSON.stringify(payload)});
+    };
+  }
+
+  function readIdentity(){
+    let saved=null;
+    try{saved=JSON.parse(localStorage.getItem(STORAGE)||'null');}catch{}
+    const params=new URLSearchParams(location.search);
+    const email=String(saved?.contact?.email||'').trim().toLowerCase();
+    const token=String(params.get('reservation_token')||saved?.token||'').trim();
+    return{email,token};
   }
 
   function detectStage(){

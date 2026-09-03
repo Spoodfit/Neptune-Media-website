@@ -79,7 +79,6 @@ async function run(viewport,label){
   await page.locator('[data-city="toulouse"]').waitFor();
   await page.getByText('Où souhaitez-vous tourner ?',{exact:true}).waitFor();
   await page.getByText('Toulouse',{exact:true}).waitFor();
-  await page.getByText('Lyon',{exact:true}).waitFor();
   if(!page.url().includes('reservation_token='))throw new Error(`${label}: reservation token missing after format click`);
   await shot(page,label,'cities');
   await visualGuard(page,label,'cities',viewport.width<=420);

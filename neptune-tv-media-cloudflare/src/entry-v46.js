@@ -1,5 +1,6 @@
 import base,{StudioStore as BaseStudioStore,WebTvEncoder} from './entry-v45.js';
 import {json} from './security.js';
+import {handleCatalogFamilyUpdateV169Store,CATALOG_FAMILY_UPDATE_V169_RELEASE} from './catalog-family-update-v169.js';
 import {
   ZERO_TOUCH_V168_RELEASE,
   activateSupplierTokenForEmailV168,
@@ -13,10 +14,16 @@ export {WebTvEncoder};
 
 const RESERVATION_LOGO='/assets/logo-neptune.svg?v=20260902';
 const RESERVATION_BRAND_RELEASE='neptune-reservation-brand-20260903-v1';
+const CATALOG_VISIBILITY_JS='/studio/studio-catalog-effective-visibility-v169.js?v=20260903-169';
+const CATALOG_VISIBILITY_CSS='/studio/studio-catalog-effective-visibility-v169.css?v=20260903-169';
+const CATALOG_VISIBILITY_RELEASE='neptune-studio-catalog-effective-visibility-20260903-v169';
 
 export class StudioStore extends BaseStudioStore{
   async fetch(request){
     const url=new URL(request.url),method=request.method.toUpperCase();
+
+    const catalogFamilyHandled=await handleCatalogFamilyUpdateV169Store(this,request);
+    if(catalogFamilyHandled)return catalogFamilyHandled;
 
     if(method==='POST'&&url.pathname==='/portal/workflow-supplier-context'){
       const body=await request.clone().json().catch(()=>({}));
@@ -80,9 +87,13 @@ export default{
     if(request.method==='GET'&&isReservationDocument(url.pathname)&&response.ok&&(response.headers.get('Content-Type')||'').includes('text/html')){
       response=await enforceReservationBrand(response);
     }
+    if(request.method==='GET'&&isStudioDocument(url.pathname)&&response.ok&&(response.headers.get('Content-Type')||'').includes('text/html')){
+      response=await injectCatalogVisibilityAssets(response);
+    }
 
     const headers=new Headers(response.headers);
     headers.set('X-Neptune-Zero-Touch',ZERO_TOUCH_V168_RELEASE);
+    headers.set('X-Neptune-Catalog-Family-Update',CATALOG_FAMILY_UPDATE_V169_RELEASE);
     return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
   },
   scheduled:base.scheduled,
@@ -101,7 +112,19 @@ async function enforceReservationBrand(response){
   return new Response(body,{status:response.status,statusText:response.statusText,headers});
 }
 
+async function injectCatalogVisibilityAssets(response){
+  let body=await response.text();
+  if(!body.includes(CATALOG_VISIBILITY_CSS.split('?')[0]))body=body.replace('</head>',`<link rel="stylesheet" href="${CATALOG_VISIBILITY_CSS}"></head>`);
+  if(!body.includes(CATALOG_VISIBILITY_JS.split('?')[0]))body=body.replace('</body>',`<script type="module" src="${CATALOG_VISIBILITY_JS}"></script></body>`);
+  const headers=new Headers(response.headers);
+  for(const name of ['Content-Length','Content-Encoding','ETag','Last-Modified'])headers.delete(name);
+  headers.set('Cache-Control','private, no-store, max-age=0');
+  headers.set('X-Neptune-Catalog-Effective-Visibility',CATALOG_VISIBILITY_RELEASE);
+  return new Response(body,{status:response.status,statusText:response.statusText,headers});
+}
+
 function isReservationDocument(pathname){return pathname==='/reserver'||pathname==='/reserver/';}
+function isStudioDocument(pathname){return pathname==='/studio'||pathname==='/studio/'||pathname.startsWith('/studio/');}
 
 function callStore(env,path,body){
   const studio=env.STUDIO.get(env.STUDIO.idFromName('neptune-media-main'));

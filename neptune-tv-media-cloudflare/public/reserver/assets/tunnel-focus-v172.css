@@ -1,0 +1,77 @@
+/* Neptune reservation focused flow v172
+   Keeps every step visually aligned with the email-entry card: one centered decision,
+   minimal chrome, no dashboard feeling. */
+html,body{min-height:100%;background:#030510!important}
+body{background:radial-gradient(circle at 16% 7%,rgba(36,143,255,.19),transparent 31rem),radial-gradient(circle at 89% 7%,rgba(255,88,208,.14),transparent 29rem),linear-gradient(145deg,#061224 0%,#030510 52%,#1b0b1e 100%)!important}
+.app{height:100dvh!important;display:grid!important;grid-template-rows:minmax(0,1fr)!important;overflow:hidden!important}
+.topbar,.launch-banner{display:none!important}
+.stage{min-height:0!important;height:100dvh!important;overflow-y:auto!important;overflow-x:hidden!important;padding:clamp(16px,3vh,34px) 18px!important;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.16) transparent;overscroll-behavior:contain}
+.stage::-webkit-scrollbar{width:6px}.stage::-webkit-scrollbar-track{background:transparent}.stage::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:99px}
+.screen{min-height:calc(100dvh - clamp(32px,6vh,68px))!important;display:flex!important;align-items:center!important;justify-content:center!important}
+#app-content{position:relative;width:min(760px,100%)!important;max-width:760px!important;margin:auto!important;padding:clamp(26px,3.2vw,36px)!important;border:1px solid rgba(255,255,255,.11)!important;border-radius:25px!important;background:linear-gradient(150deg,rgba(12,18,42,.985),rgba(5,8,23,.995))!important;box-shadow:0 34px 100px rgba(0,0,0,.5)!important;isolation:isolate;transform:translateZ(0)}
+body[data-focus-stage="concept"] #app-content,body[data-focus-stage="city"] #app-content,body[data-focus-stage="physical"] #app-content{width:min(820px,100%)!important;max-width:820px!important}
+body[data-focus-stage="date"] #app-content{width:min(900px,100%)!important;max-width:900px!important}
+body[data-focus-stage="payment"] #app-content,body[data-focus-stage="done"] #app-content{width:min(800px,100%)!important;max-width:800px!important}
+
+.tunnel-focus-brand-v172{display:flex;align-items:center;gap:11px;width:max-content;max-width:100%;margin:0 0 24px;color:#fff;text-decoration:none}.tunnel-focus-brand-v172 img{width:34px;height:34px;display:block}.tunnel-focus-brand-v172 b{display:block;font-size:17px;line-height:1.05}.tunnel-focus-brand-v172 span span{display:block;margin-top:3px;color:#8996b5;font-size:10px;font-weight:850;letter-spacing:.08em;text-transform:uppercase}
+#neptuneBookingMacroV166{display:none!important}
+.sales-v165-help{display:none!important}
+#app-content>.eyebrow{margin:0 0 8px!important;color:#a28cff!important;font-size:10px!important;font-weight:950!important;letter-spacing:.14em!important;line-height:1.2!important;text-transform:uppercase!important}
+#app-content>.eyebrow:before{display:none!important}
+#app-content>h1{max-width:700px!important;margin:0 0 9px!important;font-size:clamp(34px,4.2vw,46px)!important;line-height:.98!important;letter-spacing:-.045em!important}
+#app-content>.lead{max-width:690px!important;margin:0 0 21px!important;color:#adb8d3!important;font-size:14px!important;line-height:1.5!important}
+#app-content>.sales-v165-date-note{margin:-12px 0 18px!important;color:#77849f!important;font-size:10.5px!important;line-height:1.45!important}
+#app-content>.selection-summary{display:none!important}
+#app-content>.panel{margin:0!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important}
+#app-content>.actions{margin-top:16px!important;gap:10px!important}
+#app-content .btn{min-height:50px!important;border-radius:14px!important;padding:0 17px!important;font-size:13px!important;font-weight:900!important}
+#app-content .btn-primary{background:linear-gradient(120deg,#2f69ff,#8254ff 54%,#df3fc3 82%,#ff7b19)!important;box-shadow:0 15px 36px rgba(66,65,225,.22)!important}
+#app-content .btn-secondary{border:0!important;background:transparent!important;color:#8996b5!important;padding-left:2px!important;padding-right:8px!important;box-shadow:none!important}
+#app-content .btn-secondary:hover{color:#fff!important}
+#app-content .error{margin-top:10px!important;min-height:15px!important;font-size:11px!important}
+
+/* Company fallback: same one-field interaction as the entry card. */
+.company-first-panel{max-width:none!important;margin:0!important}.company-first-panel .company-field input{height:54px!important;border-radius:14px!important;background:#070c20!important;border:1px solid rgba(255,255,255,.13)!important;font-size:15px!important}.company-first-panel .company-field input:focus{border-color:#745fff!important;box-shadow:0 0 0 4px rgba(116,95,255,.1)!important}.company-first-panel .legal-note{color:#77849f!important;font-size:10.5px!important}.company-first-panel .actions{margin-top:14px!important}.company-first-panel .actions .btn-primary{width:100%!important}
+
+/* Concept: two clear visual choices, no sales-page density. */
+.concept-grid-v163{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important}.concept-card-v163{grid-template-rows:118px auto!important;border-radius:17px!important;box-shadow:none!important;background:linear-gradient(150deg,rgba(17,25,49,.96),rgba(8,13,29,.97))!important}.concept-card-v163:hover{transform:translateY(-2px)!important;box-shadow:0 16px 36px rgba(0,0,0,.24)!important}.concept-image-v163>span{left:12px!important;bottom:10px!important;padding:5px 8px!important;font-size:8px!important}.concept-copy-v163{padding:14px!important}.concept-copy-v163 .eyebrow{font-size:8px!important}.concept-copy-v163 h2{margin:5px 0 7px!important;font-size:21px!important}.concept-for-v163,.concept-line-v163,.concept-meta-v163{display:none!important}.concept-benefit-v163{display:-webkit-box!important;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;margin:0!important;color:#aeb8d1!important;font-size:11px!important;line-height:1.42!important}.concept-benefit-v163 b{display:none!important}
+.sales-v165-shell{max-width:none!important}.sales-v165-intro{max-width:690px!important;margin-bottom:18px!important}.sales-v165-intro h1{margin:0 0 9px!important;font-size:clamp(34px,4.2vw,46px)!important}.sales-v165-intro .lead{font-size:14px!important}.sales-v165-grid{gap:12px!important}.sales-v165-card{grid-template-columns:120px 1fr!important;min-height:150px!important;border-radius:17px!important}.sales-v165-copy{padding:14px!important}.sales-v165-copy h2{margin:4px 0 6px!important;font-size:20px!important}.sales-v165-promise{margin:0!important;font-size:11px!important;line-height:1.42!important}.sales-v165-fit,.sales-v165-result{display:none!important}.sales-v165-cta{margin-top:auto!important;font-size:10px!important}
+
+/* City: answer one question, without a catalog of metadata. */
+.city-choice-grid-v163{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:10px!important}.city-choice-v163{min-height:126px!important;padding:16px!important;border-radius:16px!important;background:linear-gradient(145deg,rgba(16,23,45,.95),rgba(8,13,29,.97))!important}.city-choice-v163>.eyebrow{font-size:8px!important}.city-choice-v163>strong{margin:8px 0 3px!important;font-size:22px!important}.city-choice-v163>small{font-size:10px!important}.city-choice-v163>div{display:none!important}.city-choice-v163>b{margin-top:auto!important;color:#bdb0ff!important;font-size:10px!important}
+
+/* Physical setup: image + one short meaning. */
+.configuration-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important;margin-top:0!important}.configuration-card{grid-template-columns:112px 1fr!important;min-height:132px!important;border-radius:16px!important;box-shadow:none!important}.configuration-visual{min-height:132px!important}.configuration-copy{padding:14px!important}.configuration-copy .eyebrow{font-size:8px!important}.configuration-copy strong{font-size:19px!important}.configuration-copy p{margin:6px 0 0!important;font-size:10.5px!important;line-height:1.4!important}
+
+/* Date: compact calendar, only the decision and its timeslot. */
+body[data-focus-stage="date"] #app-content>h1{font-size:clamp(32px,3.5vw,42px)!important}.calendar-shell{grid-template-columns:minmax(0,1.35fr) minmax(220px,.65fr)!important;gap:12px!important}.calendar-card,.slot-card{padding:14px!important;border-radius:18px!important;box-shadow:none!important;background:rgba(8,14,31,.72)!important}.cal-head{grid-template-columns:40px 1fr 40px!important;gap:8px!important;margin-bottom:10px!important}.cal-head strong{font-size:16px!important}.cal-nav{width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;border-radius:11px!important;font-size:22px!important}.weekdays,.days{gap:5px!important}.weekdays{margin-bottom:5px!important}.day{height:42px!important;min-height:42px!important;aspect-ratio:auto!important;border-radius:10px!important;font-size:12px!important}.slot-card h2{margin:9px 0 0!important;font-size:22px!important}.slots{gap:8px!important;margin-top:12px!important}.slot{min-height:58px!important;padding:10px 12px!important;border-radius:12px!important}.slot b{font-size:14px!important}.slot span{font-size:10px!important}.slot-result{padding-top:12px!important;font-size:10.5px!important}.calendar-note{margin-top:8px!important}.calendar-shell + .error + .actions .btn-primary{min-width:210px!important}
+
+/* Payment: price, legal consent, action. Remove duplicated marketing blocks. */
+body[data-focus-stage="payment"] .pricing-alert{margin:0 0 12px!important;padding:13px 15px!important;border-radius:15px!important;gap:12px!important}.pricing-alert strong{font-size:22px!important}.pricing-alert p{font-size:10.5px!important}.payment-box{grid-template-columns:1fr auto!important;gap:14px!important;padding:16px!important;border-radius:17px!important;box-shadow:none!important}.payment-box .total{font-size:27px!important}.payment-box-v97 #payLink{min-width:210px!important}.terms-box{margin-top:10px!important;padding:11px 13px!important;border-radius:13px!important;font-size:10px!important}.status-card{padding:15px!important;border-radius:15px!important}
+
+/* Post-payment remains focused but can expand for the calendar embed. */
+body[data-focus-stage="done"] #app-content{width:min(900px,100%)!important;max-width:900px!important}.confirmation-hero{grid-template-columns:54px 1fr!important;gap:14px!important;margin:0 0 12px!important}.confirmation-icon{width:54px!important;height:54px!important;border-radius:16px!important}.confirmation-hero h1{font-size:clamp(31px,3.4vw,40px)!important}.confirmation-hero .lead{font-size:13px!important}.prep-embedded{margin-top:12px!important;border-radius:18px!important}.prep-embedded .prep-heading{padding:15px 17px!important}.prep-embedded .prep-heading h2{font-size:23px!important}
+
+/* Motion class is added by tunnel-focus-v172.js. Frame stays still; content advances. */
+#app-content.tunnel-focus-pulse-v172{box-shadow:0 34px 100px rgba(0,0,0,.5),0 0 0 1px rgba(124,104,255,.08)!important}
+@media (prefers-reduced-motion:reduce){#app-content *{scroll-behavior:auto!important}}
+
+@media(max-width:760px){
+  .stage{padding:12px!important}.screen{min-height:calc(100dvh - 24px)!important;align-items:flex-start!important}
+  #app-content,body[data-focus-stage] #app-content{width:100%!important;max-width:none!important;padding:22px 18px!important;border-radius:21px!important}
+  .tunnel-focus-brand-v172{margin-bottom:19px!important}
+  #app-content>h1{font-size:32px!important;line-height:1!important}
+  #app-content>.lead{font-size:13px!important;line-height:1.45!important;margin-bottom:18px!important}
+  .concept-grid-v163,.city-choice-grid-v163,.configuration-grid,.sales-v165-grid{grid-template-columns:1fr!important}
+  .concept-card-v163{grid-template-columns:115px 1fr!important;grid-template-rows:none!important;min-height:130px!important}.concept-image-v163{min-height:130px!important}.concept-copy-v163{justify-content:center!important}.concept-benefit-v163{-webkit-line-clamp:2}
+  .city-choice-v163{min-height:112px!important}
+  .configuration-card{grid-template-columns:105px 1fr!important;min-height:120px!important}.configuration-visual{min-height:120px!important}
+  .calendar-shell{grid-template-columns:1fr!important}.calendar-card,.slot-card{padding:12px!important}.day{height:40px!important;min-height:40px!important}.slots{grid-template-columns:1fr 1fr!important}.slot-result{margin-top:6px!important}
+  .payment-box{grid-template-columns:1fr!important}.payment-box-v97 #payLink{width:100%!important;min-width:0!important}
+  #app-content>.actions{align-items:stretch!important}.actions .btn-primary{flex:1!important}
+}
+
+@media(max-width:430px){
+  #app-content{padding:20px 16px!important}.tunnel-focus-brand-v172 img{width:31px;height:31px}.tunnel-focus-brand-v172 b{font-size:16px}
+  #app-content>h1{font-size:29px!important}.concept-card-v163{grid-template-columns:96px 1fr!important}.concept-image-v163{min-height:118px!important}.concept-copy-v163 h2{font-size:18px!important}.calendar-card{padding:10px!important}.weekdays,.days{gap:4px!important}.day{height:37px!important;min-height:37px!important;font-size:11px!important}.slots{grid-template-columns:1fr!important}
+}

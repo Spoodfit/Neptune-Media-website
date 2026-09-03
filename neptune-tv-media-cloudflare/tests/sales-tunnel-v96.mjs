@@ -46,12 +46,12 @@ async function visualGuard(page,label,stage,mobile){
 
 async function run(viewport,label){
   const page=await browser.newPage({viewport});
-  let paid=false,selectionBody=null;
+  let paid=false,selectionBody=null,anonymousStarted=false;
   await page.route('https://calendar.google.com/**',route=>route.fulfill({status:200,contentType:'text/html',body:'<!doctype html><title>Calendar mock</title>'}));
   await page.route('**/api/reservation/catalog-v96*',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(catalog)}));
-  await page.route('**/api/reservation/prospect/start',async route=>{
-    const body=JSON.parse(route.request().postData()||'{}');
-    route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,token,prospectId:'11111111-1111-4111-8111-111111111111',contact:{firstName:body.firstName,lastName:body.lastName,fullName:`${body.firstName} ${body.lastName}`,company:body.company,email:body.email,phone:body.phone}})});
+  await page.route('**/api/reservation/prospect/anonymous-v165',route=>{
+    anonymousStarted=true;
+    route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,token,prospectId:'11111111-1111-4111-8111-111111111111'})});
   });
   await page.route('**/api/reservation/selection-v96',async route=>{
     selectionBody=JSON.parse(route.request().postData()||'{}');
@@ -59,29 +59,32 @@ async function run(viewport,label){
     route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,status:'date_selected',paymentUrl,selection:{city:{id:'toulouse',name:'Toulouse',slug:'toulouse'},format:{id:'hn',name:'Hors Norme',slug:'hors-norme',image:'/assets/posters/hors-norme-wide.webp'},offer:{id:'hn-launch',name:'Prix coûtant · lancement',clientPriceCents:89000,currency:'eur',priceSuffix:'',pricing,configurations},configurationChoice:selectionBody.configurationChoice,requestedDate:selectionBody.requestedDate,requestedDaypart:selectionBody.requestedDaypart}})});
   });
   await page.route('**/api/reservation/prospect/context*',route=>{
-    const requestedDate=selectionBody?.requestedDate||'2026-09-10',requestedDaypart=selectionBody?.requestedDaypart||'morning';
-    route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,release:'neptune-sales-tunnel-20260811-v96',enhancementRelease:'neptune-sales-tunnel-20260811-v97',prospectId:'11111111-1111-4111-8111-111111111111',status:paid?'paid':'tunnel_started',orderId:paid?'33333333-3333-4333-8333-333333333333':'',contact:{firstName:'Johan',lastName:'Zambelli',fullName:'Johan Zambelli',company:'Atelier Neptune',email:'contact@example.com',phone:'0612345678'},selection:{city:{id:'toulouse',name:'Toulouse',slug:'toulouse'},format:{id:'hn',name:'Hors Norme',slug:'hors-norme',image:'/assets/posters/hors-norme-wide.webp'},offer:{id:'hn-launch',name:'Prix coûtant · lancement',clientPriceCents:89000,currency:'eur',priceSuffix:'',pricing,configurations},configurationChoice:'Chaise',requestedDate,requestedDaypart,paymentUrl:paid?'':`${paymentBase}?client_reference_id=NPOPP_${opportunityId}`}})});
+    if(!selectionBody){
+      route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,release:'neptune-sales-tunnel-20260811-v96',enhancementRelease:'neptune-sales-tunnel-20260811-v97',prospectId:'11111111-1111-4111-8111-111111111111',status:'tunnel_started',orderId:'',contact:null,selection:{}})});
+      return;
+    }
+    const requestedDate=selectionBody.requestedDate||'2026-09-10',requestedDaypart=selectionBody.requestedDaypart||'morning';
+    route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,release:'neptune-sales-tunnel-20260811-v96',enhancementRelease:'neptune-sales-tunnel-20260811-v97',prospectId:'11111111-1111-4111-8111-111111111111',status:paid?'paid':'tunnel_started',orderId:paid?'33333333-3333-4333-8333-333333333333':'',contact:null,selection:{city:{id:'toulouse',name:'Toulouse',slug:'toulouse'},format:{id:'hn',name:'Hors Norme',slug:'hors-norme',image:'/assets/posters/hors-norme-wide.webp'},offer:{id:'hn-launch',name:'Prix coûtant · lancement',clientPriceCents:89000,currency:'eur',priceSuffix:'',pricing,configurations},configurationChoice:'Chaise',requestedDate,requestedDaypart,paymentUrl:paid?'':`${paymentBase}?client_reference_id=NPOPP_${opportunityId}`}})});
   });
 
   await page.goto(`${base}/reserver/`,{waitUntil:'networkidle'});
-  await shot(page,label,'contact');
-  await page.getByLabel('Prénom',{exact:true}).fill('Johan');
-  await page.getByLabel('Nom',{exact:true}).fill('Zambelli');
-  await page.getByLabel('E-mail',{exact:true}).fill('contact@example.com');
-  await page.getByLabel('Entreprise',{exact:true}).fill('Atelier Neptune');
-  await page.getByLabel('Téléphone',{exact:true}).fill('06 12 34 56 78');
-  await page.getByRole('button',{name:'Voir les formats disponibles',exact:true}).click();
-  await page.getByText('Toulouse',{exact:true}).waitFor();
-  await page.getByText('Lyon',{exact:true}).waitFor();
+  await page.locator('[data-v165-concept]').first().waitFor();
+  await shot(page,label,'formats');
   const publicText=await page.locator('#app-content').innerText();
   if(/RECBOX|fournisseur/iu.test(publicText))throw new Error(`${label}: supplier leaked into public tunnel`);
-  const formatImage=page.locator('.visual-format-card').first().locator('img');
-  await formatImage.waitFor();
-  await page.waitForFunction(el=>el.naturalWidth>0,await formatImage.elementHandle());
-  await shot(page,label,'formats');await visualGuard(page,label,'formats',viewport.width<=420);
+  await visualGuard(page,label,'formats',viewport.width<=420);
 
   await page.getByRole('button',{name:/Hors Norme/}).first().click();
-  await page.getByText('Quel univers souhaitez-vous ?',{exact:true}).waitFor();
+  if(!anonymousStarted)throw new Error(`${label}: anonymous prospect was not started after format click`);
+  await page.getByText('Où souhaitez-vous réaliser',{exact:false}).waitFor();
+  await page.getByText('Toulouse',{exact:true}).waitFor();
+  await page.getByText('Lyon',{exact:true}).waitFor();
+  if(!page.url().includes('reservation_token='))throw new Error(`${label}: reservation token missing after format click`);
+  await shot(page,label,'cities');
+  await visualGuard(page,label,'cities',viewport.width<=420);
+
+  await page.locator('[data-city="toulouse"]').click();
+  await page.getByText('Dans quel univers voulez-vous apparaître ?',{exact:true}).waitFor();
   const configImage=page.locator('.configuration-card').first().locator('img');
   await configImage.waitFor();
   await page.waitForFunction(el=>String(el.src||'').startsWith('data:image/webp;base64,')&&el.naturalWidth>0,await configImage.elementHandle());
@@ -130,4 +133,4 @@ const desktop=await run({width:1440,height:900},'desktop');
 const mobile=await run({width:390,height:844},'mobile');
 await fs.writeFile(path.join(out,'report.json'),JSON.stringify({release:'neptune-sales-tunnel-20260811-v97',desktop,mobile},null,2));
 await browser.close();
-console.log('Sales tunnel v97 browser audit passed: visual formats, visual configurations, slot calendar, dynamic launch price, Stripe link and embedded preparation confirmation are responsive.');
+console.log('Sales tunnel browser audit passed: anonymous format click resumes on city selection, then configuration, calendar, payment and confirmation remain responsive.');

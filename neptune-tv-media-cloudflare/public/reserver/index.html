@@ -34,9 +34,35 @@
   new MutationObserver(() => { resetStage(); requestAnimationFrame(resetStage); }).observe(content, { childList: true });
 })();
 </script>
+<script>
+(() => {
+  const nativeFetch = window.fetch.bind(window);
+  window.fetch = async (input, init) => {
+    const response = await nativeFetch(input, init);
+    try {
+      const requestUrl = typeof input === 'string' ? input : String(input?.url || '');
+      if (!requestUrl.includes('/api/reservation/prospect/context') || !response.ok) return response;
+      const data = await response.clone().json();
+      const selection = data?.selection;
+      const incompleteSelection = selection && !selection.city && !selection.format && !selection.offer;
+      if (!incompleteSelection) return response;
+      data.selection = null;
+      const headers = new Headers(response.headers);
+      headers.delete('content-length');
+      return new Response(JSON.stringify(data), {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+      });
+    } catch {
+      return response;
+    }
+  };
+})();
+</script>
 <script src="/reserver/assets/production-readiness-v121.js?v=1"></script>
 <script src="/reserver/assets/session-recovery-v134.js?v=1"></script>
-<script type="module" src="/reserver/assets/app-v163.js?v=2"></script>
+<script type="module" src="/reserver/assets/app-v163.js?v=3"></script>
 <script src="/reserver/assets/sales-experience-v165.js?v=1"></script>
 <script src="/reserver/assets/sales-experience-v166.js?v=1"></script>
 </body>

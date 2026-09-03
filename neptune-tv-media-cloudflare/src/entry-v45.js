@@ -72,7 +72,7 @@ async function createCallback(store,raw={}){
   let prospectId='',clientId='';
   const token=String(raw.reservationToken||'').trim();
   if(token){const hash=await sha256(token),row=store.sql.exec('SELECT id,client_id AS clientId FROM portal_prospects WHERE token_hash=? LIMIT 1',hash).toArray()[0];if(row){prospectId=row.id;clientId=row.clientId||'';}}
-  store.sql.exec(`INSERT INTO portal_prospect_callbacks_v165(id,prospect_id,client_id,first_name,last_name,email,phone,page,status,requested_at,due_at,resolved_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,'pending',?,?,NULL,?,?)`,id,prospectId,clientId,firstName,lastName,email,phone,page,requestedAt,dueAt,requestedAt,requestedAt);
+  store.sql.exec(`INSERT INTO portal_prospect_callbacks_v165(id,prospect_id,client_id,first_name,last_name,email,phone,page,status,requested_at,due_at,resolved_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,'pending',?,?,NULL,?,?)`,id,prospectId,clientId,firstName,lastName,email,phone,page,requestedAt,dueAt,requestedAt,requestedAt);
   return json({ok:true,release:RELEASE,callback:{id,firstName,lastName,email,phone,requestedAt,dueAt,prospectId,clientId}});
 }
 

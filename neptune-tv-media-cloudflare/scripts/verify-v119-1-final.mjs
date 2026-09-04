@@ -8,6 +8,9 @@ const expect=(name,condition)=>checks.push({name,ok:Boolean(condition)});
 
 const rootWrangler=read('../wrangler.jsonc');
 const localWrangler=read('wrangler.jsonc');
+const entry47=read('src/entry-v47.js');
+const entry46=read('src/entry-v46.js');
+const entry45=read('src/entry-v45.js');
 const entry44=read('src/entry-v44.js');
 const entry43=read('src/entry-v43.js');
 const entry42=read('src/entry-v42.js');
@@ -21,9 +24,12 @@ const docker=read('containers/webtv/Dockerfile');
 const studio=read('public/studio/webtv-native-v118.js');
 const wizard=read('public/studio/client-passage-wizard-v118.js');
 
-expect('root Worker targets v44',rootWrangler.includes('neptune-tv-media-cloudflare/src/entry-v44.js'));
-expect('local Worker targets canonical root config',fs.lstatSync('wrangler.jsonc').isSymbolicLink()&&fs.readlinkSync('wrangler.jsonc')==='../wrangler.jsonc');
-expect('v44 directly preserves v42 after v43 flattening',entry44.includes("from './entry-v42.js'")&&!entry44.includes("from './entry-v43.js'"));
+expect('root Worker targets finalized v47',rootWrangler.includes('neptune-tv-media-cloudflare/src/entry-v47.js'));
+expect('local Worker config is byte-identical to canonical root config',localWrangler===rootWrangler);
+expect('v47 preserves v46',entry47.includes("from './entry-v46.js'"));
+expect('v46 preserves v45',entry46.includes("from './entry-v45.js'"));
+expect('v45 preserves v44',entry45.includes("from './entry-v44.js'"));
+expect('v44 directly preserves v40 after compatibility flattening',entry44.includes("from './entry-v40.js'")&&!entry44.includes("from './entry-v41.js'")&&!entry44.includes("from './entry-v42.js'")&&!entry44.includes("from './entry-v43.js'"));
 expect('historical v43 preserves v42',entry43.includes("from './entry-v42.js'"));
 expect('v42 preserves v41',entry42.includes("from './entry-v41.js'"));
 expect('v41 preserves v40',entry41.includes("from './entry-v40.js'"));
@@ -35,7 +41,8 @@ expect('v39 exposes public direct',entry39.includes("url.pathname==='/direct/'")
 expect('v39 injects guided passage wizard',entry39.includes('client-passage-wizard-v118.js')&&entry39.includes('client-passage-wizard-v118.css'));
 expect('v39 injects native WebTV controls',entry39.includes('webtv-native-v118.js'));
 expect('v39 cron maintains native WebTV',entry39.includes("controller?.cron==='* * * * *'")&&entry39.includes('maintainWebTvV118(env)'));
-expect('media.neptunebusiness.com remains external to Worker custom-domain ownership',!rootWrangler.includes('"pattern": "media.neptunebusiness.com"')&&!localWrangler.includes('"pattern": "media.neptunebusiness.com"'));
+expect('media.neptunebusiness.com is owned by Worker custom-domain routing',rootWrangler.includes('"pattern": "media.neptunebusiness.com"')&&localWrangler.includes('"pattern": "media.neptunebusiness.com"'));
+expect('canonical booking URL uses media.neptunebusiness.com',rootWrangler.includes('"BOOKING_URL": "https://media.neptunebusiness.com/reserver"'));
 
 expect('WebTV primary provider is Neptune HLS',control.includes("provider:'neptune'")&&control.includes("protocol:'hls'")&&control.includes("manifestUrl:'/direct/live/index.m3u8'"));
 expect('YouTube remains optional',control.includes('youtube_start')&&control.includes('youtube_stop'));
@@ -64,4 +71,4 @@ expect('Google appointment schedule remains integrated',wizard.includes('calenda
 const failed=checks.filter(check=>!check.ok);
 for(const check of checks)console.log(`${check.ok?'✓':'✗'} ${check.name}`);
 if(failed.length){console.error(`v119.1 final verification failed: ${failed.length} check(s).`);process.exit(1);}
-console.log(`v119.1 final contract verified through active chain v44 -> v42 -> v41 -> v40; v43 retained only as historical compatibility code: ${checks.length} checks.`);
+console.log(`v119.1 final contract verified through active chain v47 -> v46 -> v45 -> v44 -> v40 -> v39; historical v41-v43 retained as compatibility code: ${checks.length} checks.`);

@@ -18,11 +18,20 @@ import {
 import {
   RESERVATION_SLOTS_V172_RELEASE,
   confirmReservationSlotForOrderV172,
-  holdReservationSlotV172,
   listAdminReservationSlotsV172,
-  mutateAdminReservationSlotV172,
-  reservationAvailabilityV172,
 } from './reservation-slot-management-v172.js';
+import {
+  RESERVATION_DOMAIN_V173_RELEASE,
+  backfillPaidOrderSnapshotsV173,
+  capturePaidOrderSnapshotV173,
+  confirmOrderLifecycleV173,
+  enhanceReservationCatalogV173,
+  enrichPortalSessionResponseV173,
+  holdReservationSlotV173,
+  mutateAdminReservationSlotV173,
+  reservationAvailabilityV173,
+  validateReservationSelectionV173,
+} from './reservation-domain-v173.js';
 
 export {WebTvEncoder};
 
@@ -33,7 +42,7 @@ const CATALOG_VISIBILITY_CSS='/studio/studio-catalog-effective-visibility-v169.c
 const CATALOG_VISIBILITY_RELEASE='neptune-studio-catalog-effective-visibility-20260903-v169';
 const MEMBER_VISITS_JS='/studio/studio-member-visits-v171.js?v=20260903-1';
 const MEMBER_VISITS_CSS='/studio/studio-member-visits-v171.css?v=20260903-1';
-const RESERVATION_AVAILABILITY_JS='/reserver/assets/reservation-availability-v172.js?v=20260903-1';
+const RESERVATION_AVAILABILITY_JS='/reserver/assets/reservation-availability-v172.js?v=20260904-2';
 const RESERVATION_AVAILABILITY_CSS='/reserver/assets/reservation-availability-v172.css?v=20260903-1';
 const STUDIO_RESERVATIONS_JS='/studio/studio-reservations-v172.js?v=20260903-1';
 const STUDIO_RESERVATIONS_CSS='/studio/studio-reservations-v172.css?v=20260903-1';
@@ -51,17 +60,20 @@ export class StudioStore extends BaseStudioStore{
     if(method==='POST'&&url.pathname==='/sales-v171/member-visits'){
       return listReservationMemberVisitsV171(this,await request.clone().json().catch(()=>({})));
     }
+    if(method==='POST'&&url.pathname==='/sales-v173/validate-selection'){
+      return validateReservationSelectionV173(this,await request.clone().json().catch(()=>({})));
+    }
     if(method==='POST'&&url.pathname==='/sales-v172/availability'){
-      return reservationAvailabilityV172(this,await request.clone().json().catch(()=>({})));
+      return reservationAvailabilityV173(this,await request.clone().json().catch(()=>({})));
     }
     if(method==='POST'&&url.pathname==='/sales-v172/hold'){
-      return holdReservationSlotV172(this,await request.clone().json().catch(()=>({})));
+      return holdReservationSlotV173(this,await request.clone().json().catch(()=>({})));
     }
     if(method==='POST'&&url.pathname==='/sales-v172/admin-list'){
       return listAdminReservationSlotsV172(this,await request.clone().json().catch(()=>({})));
     }
     if(method==='POST'&&url.pathname==='/sales-v172/admin-mutate'){
-      return mutateAdminReservationSlotV172(this,await request.clone().json().catch(()=>({})));
+      return mutateAdminReservationSlotV173(this,await request.clone().json().catch(()=>({})));
     }
     if(method==='POST'&&url.pathname==='/portal/workflow-supplier-context'){
       const body=await request.clone().json().catch(()=>({}));
@@ -75,14 +87,21 @@ export class StudioStore extends BaseStudioStore{
       const body=await request.clone().json().catch(()=>({}));
       const result=await materializePaidOrderV168(this,body);
       if(body.orderId){
-        try{confirmReservationSlotForOrderV172(this,body.orderId);}
-        catch(error){console.error('reservation_slot_confirm_v172_failed',safeError(error));}
+        try{
+          confirmReservationSlotForOrderV172(this,body.orderId);
+          capturePaidOrderSnapshotV173(this,body.orderId,{source:'payment'});
+          confirmOrderLifecycleV173(this,body.orderId);
+        }catch(error){console.error('reservation_domain_payment_v173_failed',safeError(error));}
       }
-      return json(result);
+      return json({...result,reservationDomainRelease:RESERVATION_DOMAIN_V173_RELEASE});
     }
     if(method==='POST'&&url.pathname==='/portal/zero-touch-reconcile-v168'){
       const body=await request.clone().json().catch(()=>({}));
-      return json(await reconcilePaidOrdersV168(this,body));
+      const result=await reconcilePaidOrdersV168(this,body);
+      let snapshots=null;
+      try{snapshots=backfillPaidOrderSnapshotsV173(this,{limit:Math.max(40,Number(body.limit||40))});}
+      catch(error){console.error('reservation_snapshot_reconcile_v173_failed',safeError(error));}
+      return json({...result,snapshots,reservationDomainRelease:RESERVATION_DOMAIN_V173_RELEASE});
     }
     if(method==='POST'&&url.pathname==='/portal/zero-touch-activate-email-v168'){
       const body=await request.clone().json().catch(()=>({}));
@@ -93,6 +112,7 @@ export class StudioStore extends BaseStudioStore{
       if(response.ok){
         try{
           await reconcilePaidOrdersV168(this,{limit:40});
+          backfillPaidOrderSnapshotsV173(this,{limit:80});
         }catch(error){
           console.error('zero_touch_reconcile_v168_failed',safeError(error));
         }
@@ -106,12 +126,23 @@ export class StudioStore extends BaseStudioStore{
       if(data.orderId){
         try{await materializePaidOrderV168(this,{orderId:data.orderId});}
         catch(error){console.error('zero_touch_stripe_v168_failed',safeError(error));}
-        try{confirmReservationSlotForOrderV172(this,data.orderId);}
-        catch(error){console.error('reservation_slot_stripe_confirm_v172_failed',safeError(error));}
+        try{
+          confirmReservationSlotForOrderV172(this,data.orderId);
+          capturePaidOrderSnapshotV173(this,data.orderId,{source:'stripe'});
+          confirmOrderLifecycleV173(this,data.orderId);
+        }catch(error){console.error('reservation_domain_stripe_v173_failed',safeError(error));}
       }
       return response;
     }
-    return super.fetch(request);
+
+    let response=await super.fetch(request);
+    if(method==='POST'&&url.pathname==='/portal/session'&&response.ok){
+      response=await enrichPortalSessionResponseV173(this,response);
+    }
+    if(url.pathname.endsWith('/catalog-v96')&&response.ok){
+      response=await enhanceReservationCatalogV173(this,response);
+    }
+    return response;
   }
 }
 
@@ -145,6 +176,12 @@ export default{
       const payload=await request.json().catch(()=>({}));
       return secureReleaseResponse(await callStore(env,'/sales-v172/admin-mutate',{...adminAuth(request),...payload}));
     }
+    if(request.method==='POST'&&(url.pathname==='/api/reservation/selection-v96'||url.pathname==='/api/reservation/selection')){
+      if(!isSameOrigin(request))return secureReleaseResponse(json({error:'origin_forbidden'},403));
+      const payload=await request.clone().json().catch(()=>({}));
+      const validation=await callStore(env,'/sales-v173/validate-selection',payload);
+      if(!validation.ok)return secureReleaseResponse(validation);
+    }
 
     let response=await base.fetch(request,env,ctx);
 
@@ -169,6 +206,7 @@ export default{
     headers.set('X-Neptune-Catalog-Family-Update',CATALOG_FAMILY_UPDATE_V169_RELEASE);
     headers.set('X-Neptune-Member-Entry',MEMBER_ENTRY_V171_RELEASE);
     headers.set('X-Neptune-Reservation-Slots',RESERVATION_SLOTS_V172_RELEASE);
+    headers.set('X-Neptune-Reservation-Domain',RESERVATION_DOMAIN_V173_RELEASE);
     return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
   },
   scheduled:base.scheduled,
@@ -186,6 +224,7 @@ async function enforceReservationBrand(response){
   headers.set('Cache-Control','no-store, max-age=0');
   headers.set('X-Neptune-Reservation-Brand',RESERVATION_BRAND_RELEASE);
   headers.set('X-Neptune-Reservation-Slots',RESERVATION_SLOTS_V172_RELEASE);
+  headers.set('X-Neptune-Reservation-Domain',RESERVATION_DOMAIN_V173_RELEASE);
   return new Response(body,{status:response.status,statusText:response.statusText,headers});
 }
 
@@ -203,6 +242,7 @@ async function injectStudioAssets(response){
   headers.set('X-Neptune-Catalog-Effective-Visibility',CATALOG_VISIBILITY_RELEASE);
   headers.set('X-Neptune-Member-Entry',MEMBER_ENTRY_V171_RELEASE);
   headers.set('X-Neptune-Reservation-Slots',RESERVATION_SLOTS_V172_RELEASE);
+  headers.set('X-Neptune-Reservation-Domain',RESERVATION_DOMAIN_V173_RELEASE);
   return new Response(body,{status:response.status,statusText:response.statusText,headers});
 }
 
@@ -221,6 +261,7 @@ function secureReleaseResponse(response){
   headers.set('X-Neptune-Catalog-Family-Update',CATALOG_FAMILY_UPDATE_V169_RELEASE);
   headers.set('X-Neptune-Member-Entry',MEMBER_ENTRY_V171_RELEASE);
   headers.set('X-Neptune-Reservation-Slots',RESERVATION_SLOTS_V172_RELEASE);
+  headers.set('X-Neptune-Reservation-Domain',RESERVATION_DOMAIN_V173_RELEASE);
   return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
 }
 

@@ -3,13 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="neptune-reservation-release" content="20260904-v178">
+<meta name="neptune-reservation-release" content="20260904-v179">
 <title>Neptune Media · Réserver votre passage</title>
 <meta name="description" content="Choisissez le concept Neptune Media adapté à votre objectif, puis votre ville, votre décor et votre date de tournage.">
 <link rel="icon" href="/assets/logo-neptune.svg">
 <link rel="stylesheet" href="/reserver/assets/styles-v96.css?v=163">
 <link rel="stylesheet" href="/reserver/assets/concept-first-v163.css?v=1">
-<link rel="stylesheet" href="/reserver/assets/sales-experience-v165.css?v=20260903-2">
 <link rel="stylesheet" href="/reserver/assets/member-gate-v170.css?v=20260903-4">
 <link rel="stylesheet" href="/reserver/assets/tunnel-focus-v172.css?v=20260903-1">
 <link rel="stylesheet" href="/reserver/assets/tunnel-rhythm-v175.css?v=20260903-1">
@@ -30,75 +29,11 @@
     </section>
   </main>
 </div>
-<script>
-(() => {
-  const nativeFetch = window.fetch.bind(window);
-  window.fetch = async (input, init) => {
-    const response = await nativeFetch(input, init);
-    try {
-      const requestUrl = typeof input === 'string' ? input : String(input?.url || '');
-      if (!requestUrl.includes('/api/reservation/prospect/context') || !response.ok) return response;
-      const data = await response.clone().json();
-      const selection = data?.selection;
-      const incompleteSelection = selection && !selection.city && !selection.format && !selection.offer;
-      if (!incompleteSelection) return response;
-      data.selection = null;
-      const headers = new Headers(response.headers);
-      headers.delete('content-length');
-      return new Response(JSON.stringify(data), {
-        status: response.status,
-        statusText: response.statusText,
-        headers,
-      });
-    } catch {
-      return response;
-    }
-  };
-})();
-</script>
 <script src="/reserver/assets/member-gate-v170.js?v=20260903-4"></script>
 <script src="/reserver/assets/production-readiness-v121.js?v=1"></script>
 <script src="/reserver/assets/session-recovery-v134.js?v=1"></script>
 <script type="module" src="/reserver/assets/app-v163.js?v=4"></script>
-<script src="/reserver/assets/sales-experience-v165.js?v=1"></script>
-<script src="/reserver/assets/sales-experience-v166.js?v=20260903-3"></script>
 <script src="/reserver/assets/tunnel-focus-v172.js?v=20260903-3"></script>
-<script src="/reserver/assets/tunnel-copy-v175.js?v=20260904-1"></script>
-<script src="/reserver/assets/tunnel-conversion-v176.js?v=20260903-2"></script>
-<script>
-(() => {
-  const STORAGE = 'neptune_media_reservation_v163';
-  const token = new URLSearchParams(location.search).get('reservation_token');
-  if (!token) return;
-  let saved = null;
-  try { saved = JSON.parse(localStorage.getItem(STORAGE) || 'null'); } catch {}
-  if (!saved?.conceptId || saved.cityId) return;
-
-  const host = document.getElementById('app-content');
-  if (!host) return;
-  let replayed = false;
-  let observer = null;
-
-  const replayPendingConcept = () => {
-    if (replayed) return true;
-    const selector = `[data-concept="${CSS.escape(String(saved.conceptId))}"]`;
-    const button = host.querySelector(selector);
-    if (!button) return false;
-    replayed = true;
-    observer?.disconnect();
-    button.click();
-    return true;
-  };
-
-  observer = new MutationObserver(replayPendingConcept);
-  observer.observe(host, { childList: true, subtree: true });
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', replayPendingConcept, { once: true });
-  } else {
-    replayPendingConcept();
-  }
-  setTimeout(() => observer?.disconnect(), 5000);
-})();
-</script>
+<script src="/reserver/assets/tunnel-runtime-v179.js?v=20260904-1"></script>
 </body>
 </html>

@@ -12,7 +12,9 @@ const catalogJs=read('neptune-tv-media-cloudflare/public/studio/studio-catalog-c
 const webtvJs=read('neptune-tv-media-cloudflare/public/studio/webtv-monitor-controls-v135.js');
 const presenterJs=read('neptune-tv-media-cloudflare/src/portal-presenters-v146.js');
 const store=read('neptune-tv-media-cloudflare/src/store-v29.js');
-const stripeRedirect=read('neptune-tv-media-cloudflare/src/stripe-redirect-v146.js');
+const historicalStripeRedirect=read('neptune-tv-media-cloudflare/src/stripe-redirect-v146.js');
+const canonicalStripeRedirect=read('neptune-tv-media-cloudflare/src/reservation-stripe-redirect-v180.js');
+const entry47=read('neptune-tv-media-cloudflare/src/entry-v47.js');
 const salesCatalog=read('neptune-tv-media-cloudflare/src/portal-sales-tunnel-v98.js');
 
 // Client preparation: the accidental question-selection product must be retired.
@@ -28,17 +30,22 @@ assert(clientJs.includes('formatPreparationCards'), 'generic format preparation 
 // Payment authority: Stripe/webhook is authoritative; no client-declared payment state.
 assert(bookingJs.includes('installPaymentAuthorityGuard'), 'payment authority guard missing');
 assert(bookingJs.includes('data-payment-confirm'), 'manual payment confirmation controls are not explicitly retired');
-assert(confirmationHtml.includes('Vous n’avez rien à valider manuellement'), 'dedicated confirmation page does not state automatic Stripe verification');
-assert(confirmationJs.includes("String(data.status||'').toLowerCase()==='paid'"), 'booking can open before paid server status');
-assert(confirmationJs.includes('Le paiement a été validé automatiquement par Stripe'), 'Stripe-confirmed copy missing');
-assert(confirmationJs.includes('preparationBookingUrl'), 'confirmation page does not hand off to preparation booking');
+assert(confirmationHtml.includes('Vous n’avez rien à valider manuellement'), 'historical confirmation page does not state automatic Stripe verification');
+assert(confirmationJs.includes("String(data.status||'').toLowerCase()==='paid'"), 'historical confirmation cannot open before paid server status');
+assert(confirmationJs.includes('Le paiement a été validé automatiquement par Stripe'), 'Stripe-confirmed copy missing from historical confirmation route');
+assert(confirmationJs.includes('preparationBookingUrl'), 'historical confirmation route does not hand off to preparation booking');
 
-// Stripe Payment Links must redirect to the dedicated production confirmation page.
-const expectedStripeUrl='https://tv.neptunebusiness.com/reserver/confirmation/?payment=success&session_id={CHECKOUT_SESSION_ID}';
-assert(stripeRedirect.includes(`STRIPE_CONFIRMATION_URL='${expectedStripeUrl}'`), 'Stripe confirmation URL is not the approved production URL');
-assert(stripeRedirect.includes("after_completion[redirect][url]"), 'Stripe Payment Link redirect synchronizer missing');
-assert(salesCatalog.includes('ensureStripeConfirmationRedirectV146'), 'active sales catalogue does not invoke Stripe redirect synchronization');
-assert(salesCatalog.includes('stripeConfirmation'), 'sales catalogue does not expose safe redirect-sync status');
+// The v146 dedicated TV confirmation route remains as backwards compatibility only.
+assert(historicalStripeRedirect.includes("after_completion[redirect][url]"), 'historical Stripe Payment Link redirect synchronizer missing');
+assert(salesCatalog.includes('ensureStripeConfirmationRedirectV146'), 'historical sales catalogue compatibility hook is missing');
+assert(salesCatalog.includes('stripeConfirmation'), 'historical sales catalogue does not expose safe redirect-sync status');
+
+// Canonical production return now stays in the active media-domain tunnel, where payment state is server verified.
+const expectedStripeUrl='https://media.neptunebusiness.com/reserver?payment=success&session_id={CHECKOUT_SESSION_ID}';
+assert(canonicalStripeRedirect.includes(`RESERVATION_STRIPE_RETURN_URL='${expectedStripeUrl}'`), 'canonical Stripe return URL is not the media-domain reservation tunnel');
+assert(canonicalStripeRedirect.includes("after_completion[redirect][url]"), 'canonical Stripe Payment Link redirect synchronizer missing');
+assert(canonicalStripeRedirect.includes("LEGACY_STATE_KEY='stripe_redirect_version'"), 'canonical synchronizer does not freeze the legacy redirect state');
+assert(entry47.includes('ensureCanonicalStripeRedirectV180'), 'active entry does not invoke the canonical Stripe redirect synchronizer');
 
 // Catalogue: simple actions must publish the exact public catalogue, not only write admin data.
 assert(catalogJs.includes('Qu’est-ce que vous ajoutez ?'), 'simple catalogue entry point missing');
@@ -60,4 +67,4 @@ assert(webtvJs.includes('ensureLandscapeMonitor'), 'Diffusion landscape monitor 
 assert(webtvJs.includes('aspect-ratio:16/9!important'), 'Diffusion player is not locked to 16:9');
 assert(webtvJs.includes('object-fit:contain!important'), 'Diffusion video can be stretched/cropped');
 
-console.log(JSON.stringify({ok:true,release:'neptune-simplified-client-catalog-booking-20260828-v146',stripeConfirmationUrl:expectedStripeUrl},null,2));
+console.log(JSON.stringify({ok:true,release:'neptune-simplified-client-catalog-booking-20260905-v180',stripeConfirmationUrl:expectedStripeUrl},null,2));

@@ -1,5 +1,5 @@
 (() => {
-  const RELEASE='neptune-reservation-runtime-20260905-v179.1';
+  const RELEASE='neptune-reservation-runtime-20260905-v179.2';
   const host=document.getElementById('app-content');
   if(!host)return;
 
@@ -22,9 +22,34 @@
   };
   let scheduled=false;
   document.body.dataset.tunnelRuntimeRelease=RELEASE;
+  installEffectiveOfferRecovery();
 
   new MutationObserver(schedule).observe(host,{childList:true,subtree:true});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',schedule,{once:true});else schedule();
+
+  function installEffectiveOfferRecovery(){
+    if(window.__neptuneEffectiveOfferFetchV181)return;
+    window.__neptuneEffectiveOfferFetchV181=true;
+    const nativeFetch=window.fetch.bind(window);
+    window.fetch=async(input,init={})=>{
+      const response=await nativeFetch(input,init);
+      try{
+        const url=new URL(typeof input==='string'?input:input?.url||'',location.origin);
+        const method=String(init?.method||input?.method||'GET').toUpperCase();
+        if(method==='POST'&&url.pathname==='/api/reservation/selection-v96'&&response.status===409){
+          const data=await response.clone().json().catch(()=>({}));
+          if(data.error==='offer_tier_changed'||data.error==='offer_capacity_exhausted'){
+            const message=data.error==='offer_tier_changed'
+              ?'Ce tarif vient d’être épuisé. Le tarif suivant disponible est chargé automatiquement…'
+              :'Les places de ce palier viennent d’être épuisées. Mise à jour des disponibilités…';
+            setTimeout(()=>{const error=host.querySelector('#error,.error');if(error)error.textContent=message;},0);
+            setTimeout(()=>location.reload(),850);
+          }
+        }
+      }catch{}
+      return response;
+    };
+  }
 
   function schedule(){if(scheduled)return;scheduled=true;requestAnimationFrame(apply);}
   function apply(){

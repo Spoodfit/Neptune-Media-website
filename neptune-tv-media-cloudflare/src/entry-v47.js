@@ -1,9 +1,10 @@
 import base,{StudioStore as BaseStudioStore,WebTvEncoder} from './entry-v46.js';
 import {CLIENT_RESERVATION_TRUTH_V179_RELEASE,projectClientReservationTruthV179} from './reservation-client-projection-v179.js';
+import {RESERVATION_STRIPE_REDIRECT_V180_RELEASE,ensureCanonicalStripeRedirectV180} from './reservation-stripe-redirect-v180.js';
 
 export {WebTvEncoder};
 
-const RELEASE='neptune-reservation-finalization-20260905-v179.1';
+const RELEASE='neptune-reservation-finalization-20260905-v180';
 const TUNNEL_RUNTIME='/reserver/assets/tunnel-runtime-v179.js?v=20260905-2';
 const CLIENT_TRUTH='/espace-client/client-reservation-truth-v179.js?v=20260905-3';
 const LEGACY_TUNNEL_SCRIPTS=[
@@ -19,6 +20,10 @@ export class StudioStore extends BaseStudioStore{
     const response=await super.fetch(request);
     const url=new URL(request.url);
     if(request.method==='POST'&&url.pathname==='/portal/session'&&response.ok)return projectClientReservationTruthV179(response);
+    if(request.method==='GET'&&url.pathname.endsWith('/catalog-v96')&&response.ok){
+      try{await ensureCanonicalStripeRedirectV180(this);}
+      catch(error){console.error('reservation_stripe_redirect_v180_failed',String(error?.message||error).slice(0,300));}
+    }
     return response;
   }
 }
@@ -66,13 +71,15 @@ async function augmentRelease(response){
   headers.set('Cache-Control','no-store');
   headers.set('X-Neptune-Reservation-Finalization',RELEASE);
   headers.set('X-Neptune-Client-Reservation-Truth',CLIENT_RESERVATION_TRUTH_V179_RELEASE);
-  return new Response(JSON.stringify({...data,reservationFinalization:RELEASE,clientReservationTruth:CLIENT_RESERVATION_TRUTH_V179_RELEASE,reservationTunnelRuntime:'v179.1'}),{status:response.status,statusText:response.statusText,headers});
+  headers.set('X-Neptune-Stripe-Return',RESERVATION_STRIPE_REDIRECT_V180_RELEASE);
+  return new Response(JSON.stringify({...data,reservationFinalization:RELEASE,clientReservationTruth:CLIENT_RESERVATION_TRUTH_V179_RELEASE,reservationTunnelRuntime:'v179.1',reservationStripeReturn:RESERVATION_STRIPE_REDIRECT_V180_RELEASE}),{status:response.status,statusText:response.statusText,headers});
 }
 
 function mark(response){
   const headers=new Headers(response.headers);
   headers.set('X-Neptune-Reservation-Finalization',RELEASE);
   headers.set('X-Neptune-Client-Reservation-Truth',CLIENT_RESERVATION_TRUTH_V179_RELEASE);
+  headers.set('X-Neptune-Stripe-Return',RESERVATION_STRIPE_REDIRECT_V180_RELEASE);
   return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
 }
 function rewritten(response){const headers=new Headers(response.headers);for(const name of ['Content-Length','Content-Encoding','ETag','Last-Modified'])headers.delete(name);headers.set('Cache-Control','private, no-store, max-age=0');return headers;}

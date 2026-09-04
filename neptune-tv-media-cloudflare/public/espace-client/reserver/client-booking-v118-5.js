@@ -1,4 +1,4 @@
-const RELEASE='neptune-client-direct-booking-ui-20260815-v118.5';
+const RELEASE='neptune-client-direct-booking-ui-20260905-v118.5-v181';
 const $=(selector,root=document)=>root.querySelector(selector);
 const $$=(selector,root=document)=>[...root.querySelectorAll(selector)];
 const params=new URLSearchParams(location.search);
@@ -168,12 +168,34 @@ async function submitBooking(event){
     if(!/^https?:\/\//iu.test(paymentUrl)&&!paymentUrl.startsWith('/'))throw new Error('payment_url_missing');
     location.assign(paymentUrl);
   }catch(submitError){
-    error.textContent=errorMessage(submitError);
+    const code=String(submitError?.message||'');
+    if(code==='offer_tier_changed'){
+      const refreshed=await refreshEffectiveOffer();
+      error.textContent=refreshed?'Le précédent tarif vient d’être épuisé. Le tarif suivant disponible a été chargé automatiquement. Vérifiez le nouveau total puis continuez.':'Ce tarif vient d’être épuisé. Revenez aux formats pour voir la disponibilité actuelle.';
+    }else if(code==='offer_capacity_exhausted'){
+      const refreshed=await refreshEffectiveOffer();
+      error.textContent=refreshed?'La disponibilité a changé. Le tarif actuellement réservable a été chargé.':'Toutes les places actuellement configurées pour ce format sont réservées.';
+    }else error.textContent=errorMessage(submitError);
     error.hidden=false;
     button.disabled=false;
     button.removeAttribute('aria-busy');
     button.innerHTML=original;
   }
+}
+
+async function refreshEffectiveOffer(){
+  try{
+    const currentCity=String(selected.city?.slug||params.get('city')||'');
+    const currentFormat=String(selected.format?.slug||params.get('format')||'');
+    const catalog=await api('/api/reservation/catalog-v96');
+    const city=(catalog?.cities||[]).find(item=>String(item.slug||'')===currentCity);
+    const format=city?.formats?.find(item=>String(item.slug||'')===currentFormat);
+    const offer=(format?.offers||[])[0]||null;
+    if(!city||!format||!offer)return false;
+    selected={city,format,offer,configuration:''};
+    renderSelection();
+    return true;
+  }catch{return false;}
 }
 
 async function logout(){
@@ -194,6 +216,8 @@ async function api(url,options={}){
 function errorMessage(error){
   const code=String(error?.message||'');
   if(code==='selection_not_available'||code==='offer_not_available')return 'Ce format n’est plus disponible à la réservation. Revenez à l’accueil pour voir les formats disponibles.';
+  if(code==='offer_tier_changed')return 'Ce tarif vient d’être épuisé. Le tarif suivant disponible va être chargé.';
+  if(code==='offer_capacity_exhausted')return 'Toutes les places actuellement configurées pour ce format sont réservées.';
   if(code==='invalid_requested_date')return 'Ce jour n’est pas disponible. Choisissez un autre jour ouvré.';
   if(code==='requested_slot_required')return 'Choisissez votre préférence de créneau.';
   if(code==='configuration_required')return 'Choisissez votre configuration de plateau.';

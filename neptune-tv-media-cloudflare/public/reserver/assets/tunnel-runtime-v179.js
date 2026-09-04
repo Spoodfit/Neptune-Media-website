@@ -1,5 +1,6 @@
 (() => {
-  const RELEASE='neptune-reservation-runtime-20260905-v179.2';
+  const RELEASE='neptune-reservation-runtime-20260905-v179.3';
+  const STORAGE='neptune_media_reservation_v163';
   const host=document.getElementById('app-content');
   if(!host)return;
 
@@ -23,6 +24,7 @@
   let scheduled=false;
   document.body.dataset.tunnelRuntimeRelease=RELEASE;
   installEffectiveOfferRecovery();
+  installPreStripeValidation();
 
   new MutationObserver(schedule).observe(host,{childList:true,subtree:true});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',schedule,{once:true});else schedule();
@@ -39,11 +41,7 @@
         if(method==='POST'&&url.pathname==='/api/reservation/selection-v96'&&response.status===409){
           const data=await response.clone().json().catch(()=>({}));
           if(data.error==='offer_tier_changed'||data.error==='offer_capacity_exhausted'){
-            const message=data.error==='offer_tier_changed'
-              ?'Ce tarif vient d’être épuisé. Le tarif suivant disponible est chargé automatiquement…'
-              :'Les places de ce palier viennent d’être épuisées. Mise à jour des disponibilités…';
-            setTimeout(()=>{const error=host.querySelector('#error,.error');if(error)error.textContent=message;},0);
-            setTimeout(()=>location.reload(),850);
+            showTierRefresh(data.error);
           }
         }
       }catch{}
@@ -51,6 +49,75 @@
     };
   }
 
+  function installPreStripeValidation(){
+    if(window.__neptunePreStripeEffectiveOfferV181)return;
+    window.__neptunePreStripeEffectiveOfferV181=true;
+    document.addEventListener('click',event=>{
+      const link=event.target?.closest?.('#payLink');
+      if(!link||link.dataset.v181Navigating==='1')return;
+      const terms=host.querySelector('#terms');
+      if(terms&&!terms.checked)return;
+      const saved=readSaved();
+      if(!saved?.token||!saved?.cityId||!saved?.offerId||!saved?.requestedDate||!saved?.requestedDaypart)return;
+      event.preventDefault();
+      link.dataset.v181Navigating='1';
+      link.setAttribute('aria-busy','true');
+      setTimeout(()=>revalidateBeforeStripe(link,saved),0);
+    },true);
+  }
+
+  async function revalidateBeforeStripe(link,saved){
+    try{
+      const catalogResponse=await fetch('/api/reservation/catalog-v96',{cache:'no-store',headers:{Accept:'application/json','Cache-Control':'no-cache, no-store'}});
+      const catalog=await catalogResponse.json().catch(()=>({}));
+      if(!catalogResponse.ok)throw new Error(catalog.error||`http_${catalogResponse.status}`);
+      const city=(catalog.cities||[]).find(item=>String(item.id||'')===String(saved.cityId||''));
+      const format=(city?.formats||[]).find(item=>(item.offers||[]).some(offer=>String(offer.id||'')===String(saved.offerId||'')));
+      const currentOffer=format?.offers?.find(offer=>String(offer.id||'')===String(saved.offerId||''));
+      if(!city||!format||!currentOffer){
+        showTierRefresh('offer_tier_changed');
+        return;
+      }
+      const response=await fetch('/api/reservation/selection-v96',{
+        method:'POST',
+        headers:{'Content-Type':'application/json',Accept:'application/json'},
+        body:JSON.stringify({
+          token:saved.token,
+          cityId:city.id,
+          formatId:format.id,
+          offerId:currentOffer.id,
+          configurationChoice:String(saved.physicalFormat||''),
+          requestedDate:String(saved.requestedDate||''),
+          requestedDaypart:String(saved.requestedDaypart||''),
+          accepted:true,
+        }),
+      });
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok){
+        if(data.error==='offer_tier_changed'||data.error==='offer_capacity_exhausted')return;
+        throw new Error(data.error||`http_${response.status}`);
+      }
+      const paymentUrl=String(data.paymentUrl||'').trim();
+      if(!/^https:\/\//iu.test(paymentUrl))throw new Error('payment_url_missing');
+      location.assign(paymentUrl);
+    }catch(error){
+      link.dataset.v181Navigating='';
+      link.removeAttribute('aria-busy');
+      const target=host.querySelector('#error,.error');
+      if(target)target.textContent='Impossible de revérifier ce tarif pour le moment. Aucun paiement n’a été lancé. Réessayez.';
+      console.warn('[reservation-v181] pre-stripe validation failed',error);
+    }
+  }
+
+  function showTierRefresh(code){
+    const message=code==='offer_tier_changed'
+      ?'Ce tarif vient d’être épuisé. Le tarif suivant disponible est chargé automatiquement…'
+      :'Les places de ce palier viennent d’être épuisées. Mise à jour des disponibilités…';
+    setTimeout(()=>{const error=host.querySelector('#error,.error');if(error)error.textContent=message;},0);
+    setTimeout(()=>location.reload(),850);
+  }
+
+  function readSaved(){try{return JSON.parse(localStorage.getItem(STORAGE)||'null')}catch{return null}}
   function schedule(){if(scheduled)return;scheduled=true;requestAnimationFrame(apply);}
   function apply(){
     scheduled=false;

@@ -43,6 +43,25 @@ export function effectiveOfferForFormatV181(store,cityId,formatId,{excludeProspe
   return{...effective,pricing:pricingFor(effective,family)};
 }
 
+export function reserveEffectiveOfferHoldV181(store,raw={}){
+  ensureCatalogCommerceV143Schema(store);
+  const prospectId=cleanId(raw.prospectId),offerId=cleanId(raw.offerId);
+  if(!prospectId||!offerId)return{ok:false,status:400,error:'offer_hold_fields_required'};
+  const requested=offerRow(store,offerId);
+  if(!requested||!requested.active)return{ok:false,status:409,error:'offer_not_available'};
+  const effective=effectiveOfferForFormatV181(store,requested.cityId,requested.formatId,{excludeProspectId:prospectId});
+  if(!effective)return{ok:false,status:409,error:'offer_capacity_exhausted'};
+  if(effective.id!==offerId)return{
+    ok:false,status:409,error:'offer_tier_changed',effectiveOfferId:effective.id,effectiveTierCode:effective.tierCode,
+    effectivePriceCents:effective.clientPriceCents,remainingPlaces:effective.remainingPlaces,
+  };
+  if(effective.capacity<=0)return{ok:true,effective,expiresAt:null,unlimited:true,release:EFFECTIVE_OFFER_V181_RELEASE};
+  const now=new Date(),at=now.toISOString(),expiresAt=new Date(now.getTime()+30*60*1000).toISOString();
+  store.sql.exec(`INSERT INTO portal_offer_holds_v143(prospect_id,offer_id,expires_at,updated_at) VALUES(?,?,?,?)
+    ON CONFLICT(prospect_id) DO UPDATE SET offer_id=excluded.offer_id,expires_at=excluded.expires_at,updated_at=excluded.updated_at`,prospectId,offerId,expiresAt,at);
+  return{ok:true,effective,expiresAt,unlimited:false,release:EFFECTIVE_OFFER_V181_RELEASE};
+}
+
 export async function enhanceEffectiveOfferCatalogV181(store,response){
   if(!response?.ok)return response;
   ensureCatalogCommerceV143Schema(store);

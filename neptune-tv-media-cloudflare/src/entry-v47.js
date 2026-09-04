@@ -3,9 +3,9 @@ import {CLIENT_RESERVATION_TRUTH_V179_RELEASE,projectClientReservationTruthV179}
 
 export {WebTvEncoder};
 
-const RELEASE='neptune-reservation-finalization-20260904-v179';
-const TUNNEL_RUNTIME='/reserver/assets/tunnel-runtime-v179.js?v=20260904-1';
-const CLIENT_TRUTH='/espace-client/client-reservation-truth-v179.js?v=20260904-2';
+const RELEASE='neptune-reservation-finalization-20260905-v179.1';
+const TUNNEL_RUNTIME='/reserver/assets/tunnel-runtime-v179.js?v=20260905-2';
+const CLIENT_TRUTH='/espace-client/client-reservation-truth-v179.js?v=20260905-3';
 const LEGACY_TUNNEL_SCRIPTS=[
   '/reserver/assets/sales-experience-v165.js',
   '/reserver/assets/sales-experience-v166.js',
@@ -66,7 +66,7 @@ async function augmentRelease(response){
   headers.set('Cache-Control','no-store');
   headers.set('X-Neptune-Reservation-Finalization',RELEASE);
   headers.set('X-Neptune-Client-Reservation-Truth',CLIENT_RESERVATION_TRUTH_V179_RELEASE);
-  return new Response(JSON.stringify({...data,reservationFinalization:RELEASE,clientReservationTruth:CLIENT_RESERVATION_TRUTH_V179_RELEASE,reservationTunnelRuntime:'v179'}),{status:response.status,statusText:response.statusText,headers});
+  return new Response(JSON.stringify({...data,reservationFinalization:RELEASE,clientReservationTruth:CLIENT_RESERVATION_TRUTH_V179_RELEASE,reservationTunnelRuntime:'v179.1'}),{status:response.status,statusText:response.statusText,headers});
 }
 
 function mark(response){

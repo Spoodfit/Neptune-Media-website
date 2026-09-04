@@ -11,6 +11,7 @@ const activeEntry=read('neptune-tv-media-cloudflare/src/entry-v44.js');
 const entry45=read('neptune-tv-media-cloudflare/src/entry-v45.js');
 const entry46=read('neptune-tv-media-cloudflare/src/entry-v46.js');
 const entry47=read('neptune-tv-media-cloudflare/src/entry-v47.js');
+const entry48=read('neptune-tv-media-cloudflare/src/entry-v48.js');
 const rootWrangler=read('wrangler.jsonc');
 const deployWorkflow=read('.github/workflows/deploy-cloudflare.yml');
 
@@ -35,8 +36,9 @@ assert.ok(activeEntry.includes("ensurePortalLifecycleV144(this)"),'the canonical
 
 const legacyWranglerPath='neptune-tv-media-cloudflare/wrangler.jsonc';
 assert.equal(read(legacyWranglerPath),rootWrangler,'Worker Wrangler compatibility copy must expose exactly the canonical root config');
-assert.ok(rootWrangler.includes('"main": "neptune-tv-media-cloudflare/src/entry-v47.js"'),'root Wrangler config must point to the active v47 entry');
-assert.ok(entry47.includes("from './entry-v46.js'"),'active v47 entry must preserve the v46 reservation/zero-touch wrapper');
+assert.ok(rootWrangler.includes('"main": "neptune-tv-media-cloudflare/src/entry-v48.js"'),'root Wrangler config must point to the active v48 entry');
+assert.ok(entry48.includes("from './entry-v47.js'"),'active v48 entry must preserve the v47 reservation finalization wrapper');
+assert.ok(entry47.includes("from './entry-v46.js'"),'v47 entry must preserve the v46 reservation/zero-touch wrapper');
 assert.ok(entry46.includes("from './entry-v45.js'"),'v46 entry must preserve the v45 sales/callback wrapper');
 assert.ok(entry45.includes("from './entry-v44.js'"),'v45 wrapper must compose on the canonical v44 runtime');
 assert.ok(rootWrangler.includes('"WEBTV_VIDEO_BITRATE_KBPS": "4000"'),'canonical WebTV bitrate must remain 4000 kbps');
@@ -55,6 +57,8 @@ assert.ok(activeEntry.includes('studio-hors-norme-personalization-v139.js'),'Stu
 assert.ok(activeEntry.includes('horsNormePersonalization:HORS_NORME_PERSONALIZATION_RELEASE'),'public release metadata must still expose the Hors Norme personalization release');
 assert.ok(activeEntry.includes('handleBusinessV142Http'),'v142 business runtime must be flattened into the canonical active entry');
 assert.ok(activeEntry.includes('handleCatalogCommerceV143Store'),'v143 commerce runtime must remain in the canonical active entry');
+assert.ok(entry48.includes('validateEffectiveOfferV181'),'v181 effective offer runtime must validate the current price tier before selection');
+assert.ok(entry48.includes('enhanceEffectiveOfferCatalogV181'),'v181 effective offer runtime must expose only the current sellable tier');
 
 assert.ok(!deployWorkflow.includes('Verify trusted Neptune client login'),'production deployment must not certify an authentication bypass');
 assert.ok(!deployWorkflow.includes('/tmp/trusted-login.json'),'production deployment must not use the legacy privileged-login fixture');
@@ -63,4 +67,4 @@ assert.ok(deployWorkflow.includes("! grep -Fq '\"trustedAccess\":true' \"$body\"
 assert.ok(deployWorkflow.includes('wrangler deploy --config wrangler.jsonc --dry-run'),'deployment validation must use the canonical root Wrangler config');
 assert.ok(deployWorkflow.includes('wrangler deploy --config wrangler.jsonc'),'production deployment must use the same canonical Wrangler config');
 
-console.log('Security/commerce/architecture regression verification passed through active v47 -> v46 -> v45 -> v44 chain.');
+console.log('Security/commerce/architecture regression verification passed through active v48 -> v47 -> v46 -> v45 -> v44 chain.');

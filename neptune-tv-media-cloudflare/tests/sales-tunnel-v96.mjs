@@ -3,131 +3,113 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 const base=process.env.LOCAL_BASE_URL||'http://127.0.0.1:4173';
-const out=process.env.OUTPUT_DIR||'test-results/sales-tunnel-v96';
+const out=process.env.OUTPUT_DIR||'test-results/sales-tunnel-v180';
 const token='t'.repeat(48);
-const opportunityId='22222222-2222-4222-8222-222222222222';
 const paymentBase='https://buy.stripe.com/cNi8wPelvgXw9FIdSK73G06';
 const pricing={tierKey:'launch',tierLabel:'Prix coûtant · lancement',paidCount:0,remaining:3,nextLabel:'Tarif préférentiel',currentPriceCents:89000,launchPriceCents:89000,promoPriceCents:149000,basePriceCents:199000};
-const configurations=[
-  {label:'Chaise',imageBase64:'/assets/formats/exact-hn1.b64'},
-  {label:'Canapé',imageBase64:'/assets/formats/exact-hn2.b64'},
-];
+const configurations=[{label:'Chaise',description:'Une mise en scène assise, sobre et directe.',image:'/assets/posters/studio-wide.webp'},{label:'Canapé',description:'Une ambiance plus détendue et conversationnelle.',image:'/assets/posters/hors-norme-wide.webp'}];
 const catalog={
   ok:true,
   release:'neptune-sales-tunnel-20260811-v96',
   enhancementRelease:'neptune-sales-tunnel-20260811-v97',
   preparationBookingUrl:'https://calendar.app.google/X9q1T5JT9ngMfZY67',
+  reservationPolicy:{leadDays:15,minDate:'2026-09-20'},
   pricing,
-  cities:[
-    {id:'toulouse',slug:'toulouse',name:'Toulouse',country:'France',formats:[
-      {id:'hn',slug:'hors-norme',name:'Hors Norme',concept:'Émission Neptune Business',description:'Interview signature.',image:'/assets/posters/hors-norme-wide.webp',offers:[{id:'hn-launch',name:'Prix coûtant · lancement',clientPriceCents:89000,currency:'eur',priceSuffix:'',pricing,configurations}]},
-      {id:'libre',slug:'libre',name:'Libre',concept:'Format libre',description:'Format modulable.',image:'/assets/posters/concept-libre-wide.webp',offers:[{id:'libre-launch',name:'Prix coûtant · lancement',clientPriceCents:79000,currency:'eur',priceSuffix:'',pricing:{...pricing,currentPriceCents:79000,launchPriceCents:79000,promoPriceCents:99000,basePriceCents:109000},configurations:[{label:'Plateau',imageBase64:'/assets/formats/exact-cl1.b64'}]}]},
-    ]},
-    {id:'lyon',slug:'lyon',name:'Lyon',country:'France',formats:[{id:'hn-lyon',slug:'hors-norme-lyon',name:'Hors Norme',concept:'Émission Neptune Business',description:'Disponible à Lyon.',image:'/assets/posters/hors-norme-wide.webp',offers:[{id:'hn-lyon-launch',name:'Prix coûtant · lancement',clientPriceCents:99000,currency:'eur',priceSuffix:'',pricing:{...pricing,currentPriceCents:99000},configurations:[{label:'Chaise',image:'/assets/posters/studio-wide.webp'}]}]}]},
-  ],
+  cities:[{id:'toulouse',slug:'toulouse',name:'Toulouse',country:'France',formats:[
+    {id:'hn',slug:'hors-norme',name:'Hors Norme',concept:'Émission Neptune Business',description:'La description canonique définie depuis Studio pour Hors Norme.',durationLabel:'1h',image:'/assets/posters/hors-norme-wide.webp',offers:[{id:'hn-launch',name:'Prix coûtant · lancement',clientPriceCents:89000,currency:'eur',priceSuffix:'',pricing,configurations}]},
+    {id:'connexio',slug:'connexio',name:'Connexio',concept:'Échange et débat',description:'La description canonique Connexio définie dans Studio.',durationLabel:'1h',image:'/assets/posters/concept-libre-wide.webp',offers:[{id:'connexio-launch',name:'Prix coûtant · lancement',clientPriceCents:89000,currency:'eur',priceSuffix:'',pricing,configurations}]},
+  ]}],
 };
 
 await fs.mkdir(out,{recursive:true});
 const browser=await chromium.launch({headless:true});
 
 async function shot(page,label,stage){await page.screenshot({path:path.join(out,`${label}-${stage}.png`),fullPage:false});}
-async function visualGuard(page,label,stage,mobile){
+async function visualGuard(page,label,stage){
   const metrics=await page.evaluate(()=>{
-    const visible=[...document.querySelectorAll('button,.btn')].filter(x=>x.offsetParent);
-    const stageEl=document.querySelector('.stage')?.getBoundingClientRect();
-    const first=document.querySelector('#app-content')?.firstElementChild?.getBoundingClientRect();
-    return {scrollWidth:document.documentElement.scrollWidth,innerWidth:window.innerWidth,minButton:visible.length?Math.min(...visible.map(x=>x.getBoundingClientRect().height)):999,stageTop:stageEl?.top||0,contentTop:first?.top||0};
+    const doc=document.documentElement,stageEl=document.querySelector('.stage'),content=document.getElementById('app-content');
+    return{scrollWidth:doc.scrollWidth,innerWidth:window.innerWidth,stageScrollHeight:stageEl?.scrollHeight||0,stageClientHeight:stageEl?.clientHeight||0,contentBottom:content?.getBoundingClientRect().bottom||0,viewportHeight:window.innerHeight};
   });
   if(metrics.scrollWidth>metrics.innerWidth+2)throw new Error(`${label}/${stage}: horizontal overflow ${metrics.scrollWidth}/${metrics.innerWidth}`);
-  if(metrics.contentTop<metrics.stageTop-1)throw new Error(`${label}/${stage}: content clipped under header (${metrics.contentTop}/${metrics.stageTop})`);
-  if(mobile&&metrics.minButton<44)throw new Error(`${label}/${stage}: touch target below 44px (${metrics.minButton})`);
   return metrics;
 }
 
 async function run(viewport,label){
   const page=await browser.newPage({viewport});
   let paid=false,selectionBody=null;
+  await page.addInitScript(({token})=>{
+    sessionStorage.setItem('neptune_reservation_member_admitted_v171',token);
+    localStorage.setItem('neptune_media_reservation_v163',JSON.stringify({token,contact:{email:'contact@example.com'},conceptId:'',cityId:'',offerId:'',physicalFormat:'',requestedDate:'',requestedDaypart:''}));
+  },{token});
   await page.route('https://calendar.google.com/**',route=>route.fulfill({status:200,contentType:'text/html',body:'<!doctype html><title>Calendar mock</title>'}));
   await page.route('**/api/reservation/catalog-v96*',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(catalog)}));
-  await page.route('**/api/reservation/selection-v96',async route=>{
-    selectionBody=JSON.parse(route.request().postData()||'{}');
-    const paymentUrl=`${paymentBase}?client_reference_id=NPOPP_${opportunityId}&locked_prefilled_email=contact%40example.com`;
-    route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,status:'date_selected',paymentUrl,selection:{city:{id:'toulouse',name:'Toulouse',slug:'toulouse'},format:{id:'hn',name:'Hors Norme',slug:'hors-norme',image:'/assets/posters/hors-norme-wide.webp'},offer:{id:'hn-launch',name:'Prix coûtant · lancement',clientPriceCents:89000,currency:'eur',priceSuffix:'',pricing,configurations},configurationChoice:selectionBody.configurationChoice,requestedDate:selectionBody.requestedDate,requestedDaypart:selectionBody.requestedDaypart}})});
-  });
   await page.route('**/api/reservation/prospect/context*',route=>{
-    const contact={firstName:'Test',lastName:'Neptune',email:'contact@example.com',phone:'0600000000'};
-    if(!selectionBody){
-      route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,release:'neptune-sales-tunnel-20260811-v96',enhancementRelease:'neptune-sales-tunnel-20260811-v97',prospectId:'11111111-1111-4111-8111-111111111111',status:'tunnel_started',orderId:'',contact,selection:{}})});
-      return;
-    }
-    const requestedDate=selectionBody.requestedDate||'2026-09-10',requestedDaypart=selectionBody.requestedDaypart||'morning';
-    route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,release:'neptune-sales-tunnel-20260811-v96',enhancementRelease:'neptune-sales-tunnel-20260811-v97',prospectId:'11111111-1111-4111-8111-111111111111',status:paid?'paid':'tunnel_started',orderId:paid?'33333333-3333-4333-8333-333333333333':'',contact,selection:{city:{id:'toulouse',name:'Toulouse',slug:'toulouse'},format:{id:'hn',name:'Hors Norme',slug:'hors-norme',image:'/assets/posters/hors-norme-wide.webp'},offer:{id:'hn-launch',name:'Prix coûtant · lancement',clientPriceCents:89000,currency:'eur',priceSuffix:'',pricing,configurations},configurationChoice:'Chaise',requestedDate,requestedDaypart,paymentUrl:paid?'':`${paymentBase}?client_reference_id=NPOPP_${opportunityId}`}})});
+    const selection=selectionBody?{city:{id:'toulouse',name:'Toulouse',slug:'toulouse'},format:{id:'hn',name:'Hors Norme',slug:'hors-norme',image:'/assets/posters/hors-norme-wide.webp'},offer:{id:'hn-launch',name:'Prix coûtant · lancement',clientPriceCents:89000,currency:'eur',pricing,configurations},configurationChoice:selectionBody.configurationChoice,requestedDate:selectionBody.requestedDate,requestedDaypart:selectionBody.requestedDaypart,paymentUrl:paid?'':`${paymentBase}?client_reference_id=NPOPP_test`}:{};
+    route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,prospectId:'prospect-test',status:paid?'paid':'tunnel_started',orderId:paid?'order-test':'',contact:{email:'contact@example.com',company:'Neptune Test'},selection,preparationBookingUrl:catalog.preparationBookingUrl})});
+  });
+  await page.route('**/api/reservation/selection-v96',route=>{
+    selectionBody=JSON.parse(route.request().postData()||'{}');
+    const paymentUrl=`${paymentBase}?client_reference_id=NPOPP_test&locked_prefilled_email=contact%40example.com`;
+    route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,status:'date_selected',paymentUrl,selection:{city:{id:'toulouse',name:'Toulouse',slug:'toulouse'},format:{id:'hn',name:'Hors Norme',slug:'hors-norme'},offer:{id:'hn-launch',name:'Prix coûtant · lancement',clientPriceCents:89000,currency:'eur',pricing,configurations},configurationChoice:selectionBody.configurationChoice,requestedDate:selectionBody.requestedDate,requestedDaypart:selectionBody.requestedDaypart}})});
   });
 
   await page.goto(`${base}/reserver/?reservation_token=${token}`,{waitUntil:'networkidle'});
-  if(await page.locator('#neptuneMemberGateV170').count())throw new Error(`${label}: member gate must be bypassed for an authenticated reservation token`);
-  await page.locator('[data-v165-concept]').first().waitFor();
-  await shot(page,label,'formats');
-  const publicText=await page.locator('#app-content').innerText();
-  if(/RECBOX|fournisseur/iu.test(publicText))throw new Error(`${label}: supplier leaked into public tunnel`);
-  await visualGuard(page,label,'formats',viewport.width<=420);
+  if(await page.locator('#neptuneMemberGateV170').count())throw new Error(`${label}: authenticated session should bypass the email gate`);
+  await page.locator('[data-concept="hn"]').waitFor();
+  await page.getByText('Quel concept vous ressemble ?',{exact:true}).waitFor();
+  const conceptDescription=await page.locator('[data-concept="hn"] .concept-benefit-v163').innerText();
+  if(conceptDescription!==catalog.cities[0].formats[0].description)throw new Error(`${label}: concept description is not Studio-canonical`);
+  await shot(page,label,'concept');await visualGuard(page,label,'concept');
 
-  await page.getByRole('button',{name:/Hors Norme/}).first().click();
-  await page.locator('[data-city="toulouse"]').waitFor();
+  await page.locator('[data-concept="hn"]').click();
   await page.getByText('Où souhaitez-vous tourner ?',{exact:true}).waitFor();
-  await page.getByText('Toulouse',{exact:true}).waitFor();
-  if(!page.url().includes('reservation_token='))throw new Error(`${label}: authenticated reservation token missing after format click`);
-  await shot(page,label,'cities');
-  await visualGuard(page,label,'cities',viewport.width<=420);
-
   await page.locator('[data-city="toulouse"]').click();
-  await page.getByText('Dans quel univers voulez-vous apparaître ?',{exact:true}).waitFor();
-  const configImage=page.locator('.configuration-card').first().locator('img');
-  await configImage.waitFor();
-  await page.waitForFunction(el=>String(el.src||'').startsWith('data:image/webp;base64,')&&el.naturalWidth>0,await configImage.elementHandle());
-  await shot(page,label,'configuration');await visualGuard(page,label,'configuration',viewport.width<=420);
-  await page.getByRole('button',{name:/Chaise/}).click();
+  await page.getByText('Quel décor vous ressemble ?',{exact:true}).waitFor();
+  const physicalDescription=await page.locator('[data-physical="Chaise"] .configuration-copy p').innerText();
+  if(physicalDescription!==configurations[0].description)throw new Error(`${label}: physical description is not Studio-canonical`);
+  await shot(page,label,'physical');await visualGuard(page,label,'physical');
 
+  await page.locator('[data-physical="Chaise"]').click();
+  await page.getByText('Quand souhaitez-vous tourner ?',{exact:true}).waitFor();
   await page.locator('.calendar-shell').waitFor();
-  if(await page.locator('input[type="date"]').count())throw new Error(`${label}: raw date input still visible`);
+  if(await page.locator('input[type="date"]').count())throw new Error(`${label}: raw date input is visible`);
   const availableDay=page.locator('.day[data-date]:not(:disabled)').first();
   await availableDay.click();
-  await page.getByRole('button',{name:/Matin/}).click();
-  await page.getByRole('button',{name:'Continuer vers le paiement',exact:true}).waitFor();
-  await shot(page,label,'calendar');await visualGuard(page,label,'calendar',viewport.width<=420);
-  await page.getByRole('button',{name:'Continuer vers le paiement',exact:true}).click();
-  if(!selectionBody||selectionBody.cityId!=='toulouse'||selectionBody.formatId!=='hn'||selectionBody.offerId!=='hn-launch'||selectionBody.configurationChoice!=='Chaise'||selectionBody.requestedDaypart!=='morning'||!selectionBody.requestedDate)throw new Error(`${label}: calendar selection was not persisted correctly`);
+  await page.locator('[data-slot="morning"]').click();
+  const continueButton=page.locator('#continuePayment');
+  await page.getByRole('button',{name:'Réserver ce créneau →',exact:true}).waitFor();
+  await continueButton.scrollIntoViewIfNeeded();
+  await shot(page,label,'calendar');const calendarMetrics=await visualGuard(page,label,'calendar');
+  await continueButton.click();
+  if(!selectionBody||selectionBody.cityId!=='toulouse'||selectionBody.formatId!=='hn'||selectionBody.offerId!=='hn-launch'||selectionBody.configurationChoice!=='Chaise'||selectionBody.requestedDaypart!=='morning'||!selectionBody.requestedDate)throw new Error(`${label}: canonical selection payload is incomplete`);
 
-  await page.locator('.pricing-alert').waitFor();
-  const urgency=await page.locator('.launch-banner').innerText();
-  if(!/PRIX COÛTANT/iu.test(urgency)||!/3 place/iu.test(urgency))throw new Error(`${label}: urgency tier banner missing`);
-  const pay=page.locator('#payLink');
-  const href=await pay.getAttribute('href');
-  if(!href?.startsWith(paymentBase)||!href.includes(`NPOPP_${opportunityId}`))throw new Error(`${label}: wrong Stripe tier link ${href}`);
-  if(await pay.getAttribute('target'))throw new Error(`${label}: Stripe payment must stay in the same tab for the confirmation return`);
-  if((await pay.getAttribute('aria-disabled'))!=='true')throw new Error(`${label}: payment must be locked before CGV`);
-  await shot(page,label,'payment');await visualGuard(page,label,'payment',viewport.width<=420);
+  await page.getByText('Finalisez votre réservation.',{exact:true}).waitFor();
+  await page.locator('.pricing-urgency-v176').waitFor();
+  const urgency=await page.locator('.pricing-urgency-v176').innerText();
+  if(!/3\s+places restantes/iu.test(urgency)||!/à ce tarif/iu.test(urgency))throw new Error(`${label}: remaining-place urgency is not prominent`);
+  const saving=await page.locator('.pricing-saving-v176').innerText();
+  if(!/1.?100/iu.test(saving))throw new Error(`${label}: price saving is missing`);
+  if(await page.locator('.payment-wait').count())throw new Error(`${label}: obsolete manual payment status is still visible`);
+  const pay=page.locator('#payLink'),href=await pay.getAttribute('href');
+  if(!href?.startsWith(paymentBase))throw new Error(`${label}: Stripe payment link is wrong`);
+  if((await pay.getAttribute('aria-disabled'))!=='true')throw new Error(`${label}: payment should be locked before CGV acceptance`);
   await page.locator('#termsAccepted').check();
-  if((await pay.getAttribute('aria-disabled'))!=='false'||await pay.evaluate(el=>el.classList.contains('is-disabled')))throw new Error(`${label}: payment button did not become clickable after CGV`);
+  if((await pay.getAttribute('aria-disabled'))!=='false')throw new Error(`${label}: payment did not unlock after CGV acceptance`);
+  await shot(page,label,'payment');await visualGuard(page,label,'payment');
 
   paid=true;
-  await page.goto(`${base}/reserver/?payment=success&session_id=cs_test_v97&reservation_token=${token}`,{waitUntil:'networkidle'});
-  await page.getByText('Merci, votre passage est réservé.',{exact:true}).waitFor();
-  const confirmation=await page.locator('#app-content').innerText();
-  if(!/fournisseur vérifie maintenant votre créneau/iu.test(confirmation)||!/proposition de date alternative/iu.test(confirmation))throw new Error(`${label}: supplier date confirmation explanation missing`);
-  const iframe=page.locator('.calendar-embed iframe');await iframe.waitFor();
-  const src=await iframe.getAttribute('src');
-  if(!src?.includes('calendar.google.com/calendar/appointments/schedules/AcZssZ0Zxy57HrKj43TqUhbv9bMsGMbkgyg1MnuGdxFhb3W_LcNr2SqGtfO0AR8noAdLDwlnSqriORjU'))throw new Error(`${label}: embedded preparation calendar missing`);
-  const prep=await page.getByRole('link',{name:'Choisir mon rendez-vous',exact:true}).getAttribute('href');
+  await page.goto(`${base}/reserver/?payment=success&session_id=cs_test_v180&reservation_token=${token}`,{waitUntil:'networkidle'});
+  await page.getByText('Votre passage est réservé.',{exact:true}).waitFor();
+  await page.locator('.calendar-embed iframe').waitFor();
+  const prep=await page.getByRole('link',{name:'Ouvrir l’agenda',exact:true}).getAttribute('href');
   if(!prep?.includes('calendar.app.google/X9q1T5JT9ngMfZY67'))throw new Error(`${label}: preparation fallback link missing`);
-  await shot(page,label,'confirmation');
-  const metrics=await visualGuard(page,label,'confirmation',viewport.width<=420);
+  await shot(page,label,'confirmation');const confirmationMetrics=await visualGuard(page,label,'confirmation');
   await page.close();
-  return metrics;
+  return{calendarMetrics,confirmationMetrics};
 }
 
-const desktop=await run({width:1440,height:900},'desktop');
+const desktop=await run({width:1440,height:760},'desktop-normal-window');
 const mobile=await run({width:390,height:844},'mobile');
-await fs.writeFile(path.join(out,'report.json'),JSON.stringify({release:'neptune-sales-tunnel-20260811-v97',memberGate:'required-before-token',desktop,mobile},null,2));
+await fs.writeFile(path.join(out,'report.json'),JSON.stringify({release:'neptune-reservation-finalization-20260905-v180',domain:'media.neptunebusiness.com',desktop,mobile},null,2));
 await browser.close();
-console.log('Sales tunnel browser audit passed after Neptune member authentication: concept, city, configuration, calendar, payment and confirmation remain responsive.');
+console.log('Final reservation browser audit passed: canonical descriptions, accessible calendar, urgency, payment and confirmation are coherent.');

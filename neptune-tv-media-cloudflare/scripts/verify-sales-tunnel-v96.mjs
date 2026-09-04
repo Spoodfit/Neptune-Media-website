@@ -48,7 +48,7 @@ expect('availability endpoint uses canonical reservation domain',entry46.include
 expect('client availability UI consumes server policy and occupied slots',availability.includes('/api/reservation/availability-v172')&&availability.includes('data.policy?.nonBookableDates')&&availability.includes('data.unavailable'));
 expect('active slot uniqueness prevents double booking',slots.includes('CREATE UNIQUE INDEX IF NOT EXISTS idx_reservation_slots_active_v172')&&slots.includes("WHERE status IN ('hold','confirmed','blocked')"));
 expect('payment hold remains time bounded',slots.includes('const HOLD_MINUTES=20')&&slots.includes("status='hold'"));
-expect('Studio can block move confirm and cancel slots',studioReservations.includes("action:'block'")&&studioReservations.includes("action:'move'")&&studioReservations.includes("action:'confirm'")&&studioReservations.includes("action:'cancel'"));
+expect('Studio can block move confirm and cancel slots',studioReservations.includes("action:'block'")&&studioReservations.includes('data-action="move"')&&studioReservations.includes('data-action="confirm"')&&studioReservations.includes('data-action="cancel"')&&studioReservations.includes("if(action==='move')"));
 
 expect('paid orders have immutable snapshots',domain.includes('portal_order_snapshots_v173')&&domain.includes('INSERT OR IGNORE INTO portal_order_snapshots_v173')&&domain.includes('capturePaidOrderSnapshotV173'));
 expect('reservation lifecycle is separate from immutable purchase snapshot',domain.includes('portal_order_lifecycle_v173')&&domain.includes('syncOrderLifecycleV173'));

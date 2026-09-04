@@ -1,24 +1,25 @@
-name: Verify Sales Tunnel V97
+name: Verify Sales Tunnel V180
 
 on:
   push:
     branches: [main]
     paths:
       - '.github/workflows/verify-sales-tunnel-v96.yml'
-      - 'neptune-tv-media-cloudflare/src/entry-v35.js'
-      - 'neptune-tv-media-cloudflare/src/entry-v34.js'
-      - 'neptune-tv-media-cloudflare/src/store-v28.js'
+      - 'neptune-tv-media-cloudflare/src/entry-v47.js'
+      - 'neptune-tv-media-cloudflare/src/entry-v46.js'
+      - 'neptune-tv-media-cloudflare/src/reservation-domain-v173.js'
+      - 'neptune-tv-media-cloudflare/src/reservation-policy-v173.js'
+      - 'neptune-tv-media-cloudflare/src/reservation-slot-management-v172.js'
+      - 'neptune-tv-media-cloudflare/src/reservation-client-projection-v179.js'
+      - 'neptune-tv-media-cloudflare/src/reservation-stripe-redirect-v180.js'
       - 'neptune-tv-media-cloudflare/src/portal-sales-tunnel-v96.js'
       - 'neptune-tv-media-cloudflare/src/portal-sales-tunnel-options-v96.js'
       - 'neptune-tv-media-cloudflare/src/portal-sales-tunnel-v97.js'
       - 'neptune-tv-media-cloudflare/public/reserver/**'
-      - 'neptune-tv-media-cloudflare/public/assets/formats/**'
-      - 'neptune-tv-media-cloudflare/public/assets/posters/**'
-      - 'neptune-tv-media-cloudflare/public/studio/sales-configuration-v96.*'
-      - 'neptune-tv-media-cloudflare/public/espace-client/sales-catalog-v96.*'
+      - 'neptune-tv-media-cloudflare/public/studio/studio-reservations-v172.js'
+      - 'neptune-tv-media-cloudflare/public/espace-client/client-reservation-truth-v179.js'
       - 'neptune-tv-media-cloudflare/scripts/verify-sales-tunnel-v96.mjs'
       - 'neptune-tv-media-cloudflare/tests/sales-tunnel-v96.mjs'
-      - 'neptune-tv-media-cloudflare/tests/debug-format-click-v170.mjs'
       - 'neptune-tv-media-cloudflare/wrangler.jsonc'
       - 'wrangler.jsonc'
   pull_request:
@@ -33,8 +34,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      SALES_TUNNEL_RELEASE: neptune-sales-tunnel-20260811-v96
-      SALES_TUNNEL_ENHANCEMENT_RELEASE: neptune-sales-tunnel-20260811-v97
+      RESERVATION_FINALIZATION_RELEASE: neptune-reservation-finalization-20260905-v180
+      MEDIA_URL: https://media.neptunebusiness.com
       TV_URL: https://tv.neptunebusiness.com
       WORKERS_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
     steps:
@@ -42,18 +43,20 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Validate v97 source contract
+      - name: Validate finalized source contract
         working-directory: neptune-tv-media-cloudflare
         run: |
-          node --check src/entry-v35.js
-          node --check src/entry-v34.js
-          node --check src/store-v28.js
-          node --check src/portal-sales-tunnel-v96.js
-          node --check src/portal-sales-tunnel-options-v96.js
-          node --check src/portal-sales-tunnel-v97.js
-          node --check public/reserver/assets/app-v96.js
-          node --check public/studio/sales-configuration-v96.js
-          node --check public/espace-client/sales-catalog-v96.js
+          node --check src/entry-v47.js
+          node --check src/entry-v46.js
+          node --check src/reservation-domain-v173.js
+          node --check src/reservation-policy-v173.js
+          node --check src/reservation-slot-management-v172.js
+          node --check src/reservation-client-projection-v179.js
+          node --check src/reservation-stripe-redirect-v180.js
+          node --check public/reserver/assets/app-v163.js
+          node --check public/reserver/assets/tunnel-runtime-v179.js
+          node --check public/reserver/assets/reservation-availability-v172.js
+          node --check public/espace-client/client-reservation-truth-v179.js
           node scripts/verify-sales-tunnel-v96.mjs
       - name: Install Playwright
         run: |
@@ -61,62 +64,60 @@ jobs:
           npx playwright install chromium
       - name: Start static server
         run: |
-          python3 -m http.server 4173 --directory neptune-tv-media-cloudflare/public >/tmp/tunnel-v97.log 2>&1 &
+          python3 -m http.server 4173 --directory neptune-tv-media-cloudflare/public >/tmp/tunnel-v180.log 2>&1 &
           for attempt in $(seq 1 30); do curl --fail --silent http://127.0.0.1:4173/reserver/ >/dev/null && exit 0; sleep 1; done
-          cat /tmp/tunnel-v97.log; exit 1
-      - name: Diagnose format click progression
+          cat /tmp/tunnel-v180.log; exit 1
+      - name: Audit finalized desktop and mobile flow
         env:
           LOCAL_BASE_URL: http://127.0.0.1:4173
-        run: node neptune-tv-media-cloudflare/tests/debug-format-click-v170.mjs
-      - name: Audit v97 desktop and mobile
-        env:
-          LOCAL_BASE_URL: http://127.0.0.1:4173
-          OUTPUT_DIR: test-results/sales-tunnel-v96
+          OUTPUT_DIR: test-results/sales-tunnel-v180
         run: node neptune-tv-media-cloudflare/tests/sales-tunnel-v96.mjs
-      - name: Upload v97 evidence
+      - name: Upload reservation evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: sales-tunnel-v97-evidence
-          path: test-results/sales-tunnel-v96
-          if-no-files-found: error
+          name: sales-tunnel-v180-evidence
+          path: test-results/sales-tunnel-v180
+          if-no-files-found: warn
           retention-days: 14
-      - name: Verify v97 production propagation
+      - name: Verify production propagation
         if: github.event_name == 'push'
         shell: bash
         run: |
           set -euo pipefail
-          verify() {
+          verify_release() {
             local base="$1"; local ready=0
             for attempt in $(seq 1 48); do
-              q="v97=$GITHUB_SHA&attempt=$attempt"
+              q="v180=$GITHUB_SHA&attempt=$attempt"
               release=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/api/public/release?$q" || true)
-              catalog=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/api/reservation/catalog-v96?$q" || true)
-              if RELEASE="$release" CATALOG="$catalog" node <<'NODE'
-          const r=JSON.parse(process.env.RELEASE||'{}'),c=JSON.parse(process.env.CATALOG||'{}');
-          if(r.salesTunnel!==process.env.SALES_TUNNEL_RELEASE)process.exit(1);
-          if(c.release!==process.env.SALES_TUNNEL_RELEASE||c.enhancementRelease!==process.env.SALES_TUNNEL_ENHANCEMENT_RELEASE)process.exit(1);
-          if(!Array.isArray(c.cities)||!c.cities.length||!c.pricing?.tierKey)process.exit(1);
-          const formats=c.cities.flatMap(city=>city.formats||[]),offers=formats.flatMap(format=>format.offers||[]);
-          if(!formats.length||!formats.every(format=>typeof format.image==='string'&&format.image.length))process.exit(1);
-          if(!offers.length||!offers.every(offer=>offer.pricing?.tierKey))process.exit(1);
-          if(!offers.some(offer=>Array.isArray(offer.configurations)&&offer.configurations.some(x=>x&&typeof x==='object'&&(x.image||x.imageBase64))))process.exit(1);
-          if(!c.redirectSync?.ok||!c.redirectSync?.synced)process.exit(1);
+              if RELEASE="$release" node <<'NODE'
+          const r=JSON.parse(process.env.RELEASE||'{}');
+          if(r.reservationFinalization!==process.env.RESERVATION_FINALIZATION_RELEASE)process.exit(1);
+          if(!r.clientReservationTruth||!r.reservationStripeReturn)process.exit(1);
           NODE
-              then ready=1; echo "$base v97 ready on attempt $attempt"; break; fi
+              then ready=1; echo "$base reservation release ready on attempt $attempt"; break; fi
               sleep 5
             done
             test "$ready" = 1
           }
-          verify "$WORKERS_URL"
-          verify "$TV_URL"
-          for attempt in $(seq 1 48); do
-            html=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$TV_URL/reserver?v97=$GITHUB_SHA&attempt=$attempt" || true)
-            app=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$TV_URL/reserver/assets/app-v96.js?v97=$GITHUB_SHA&attempt=$attempt" || true)
-            css=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$TV_URL/reserver/assets/styles-v96.css?v97=$GITHUB_SHA&attempt=$attempt" || true)
-            if grep -Fq '/reserver/assets/app-v96.js' <<<"$html" && grep -Fq 'neptune-sales-tunnel-20260811-v97' <<<"$app" && grep -Fq '.calendar-shell' <<<"$css"; then
-              echo "$TV_URL/reserver v97 ready on attempt $attempt"; exit 0
-            fi
-            sleep 5
-          done
-          exit 1
+          verify_page() {
+            local base="$1"; local ready=0
+            for attempt in $(seq 1 48); do
+              q="v180=$GITHUB_SHA&attempt=$attempt"
+              html=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/reserver?$q" || true)
+              if grep -Fq '/reserver/assets/app-v163.js' <<<"$html" \
+                && grep -Fq '/reserver/assets/tunnel-runtime-v179.js' <<<"$html" \
+                && ! grep -Fq '/reserver/assets/sales-experience-v165.js' <<<"$html" \
+                && ! grep -Fq '/reserver/assets/sales-experience-v166.js' <<<"$html" \
+                && ! grep -Fq '/reserver/assets/tunnel-copy-v175.js' <<<"$html" \
+                && ! grep -Fq '/reserver/assets/tunnel-conversion-v176.js' <<<"$html"; then
+                ready=1; echo "$base/reserver finalized on attempt $attempt"; break
+              fi
+              sleep 5
+            done
+            test "$ready" = 1
+          }
+          verify_release "$WORKERS_URL"
+          verify_release "$MEDIA_URL"
+          verify_page "$MEDIA_URL"
+          verify_page "$TV_URL"

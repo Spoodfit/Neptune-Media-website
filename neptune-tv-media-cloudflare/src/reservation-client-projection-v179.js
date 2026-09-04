@@ -1,4 +1,4 @@
-export const CLIENT_RESERVATION_TRUTH_V179_RELEASE='neptune-client-reservation-truth-20260905-v179.1';
+export const CLIENT_RESERVATION_TRUTH_V179_RELEASE='neptune-client-reservation-truth-20260905-v179.2';
 
 export async function projectClientReservationTruthV179(response){
   if(!response?.ok)return response;
@@ -69,7 +69,9 @@ function projectOrder(order){
 function slotDateTime(date,daypart){
   if(!/^\d{4}-\d{2}-\d{2}$/u.test(String(date||'')))return'';
   const time=daypart==='afternoon'?'14:00:00':'09:00:00';
-  return`${date}T${time}+02:00`;
+  // Keep this as a local wall-clock value. The client renders it in Europe/Paris context,
+  // which avoids hard-coding +01:00/+02:00 and therefore remains correct across DST changes.
+  return`${date}T${time}`;
 }
 function supplierStatus(status,fallback=''){
   if(status==='confirmed')return'confirmed';

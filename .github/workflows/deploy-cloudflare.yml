@@ -30,6 +30,7 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       PUBLIC_URL: https://tv.neptunebusiness.com
+      MEDIA_URL: https://media.neptunebusiness.com
       WORKERS_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
       RELEASE_ID: neptune-verified-content-runtime-20260730-v18
       EDITORIAL_RELEASE: neptune-editorial-workspace-20260730-v2
@@ -41,6 +42,7 @@ jobs:
       HORIZONTAL_JOURNEY_RELEASE: neptune-horizontal-client-journey-20260810-v93
       DRIVE_UPLOAD_RELEASE: neptune-studio-drive-upload-20260811-v94
       DRIVE_UPLOAD_RESILIENCE_RELEASE: neptune-drive-upload-resilience-20260824-v137
+      RESERVATION_FINALIZATION_RELEASE: neptune-reservation-finalization-20260905-v180
 
     steps:
       - name: Checkout
@@ -61,8 +63,72 @@ jobs:
       - name: Validate Worker bundle
         run: npx wrangler deploy --config wrangler.jsonc --dry-run --outdir .wrangler-dry-run
 
+      - name: Prepare deploy config without domain mutations
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs=require('node:fs');
+          const config=JSON.parse(fs.readFileSync('wrangler.jsonc','utf8'));
+          delete config.route;
+          delete config.routes;
+          fs.writeFileSync('.wrangler-ci-deploy.jsonc',JSON.stringify(config,null,2)+'\n');
+          NODE
+          node -e "const c=require('./.wrangler-ci-deploy.jsonc'); if(c.routes||c.route) process.exit(1); if(c.main!=='neptune-tv-media-cloudflare/src/entry-v47.js') process.exit(1);"
+
       - name: Deploy Worker and Studio assets
-        run: npx wrangler deploy --config wrangler.jsonc
+        # The custom domains are already attached to this Worker. The CI token can deploy
+        # code/assets/Containers but is not authorized to mutate Workers Custom Domain
+        # records. Omitting route keys here follows Cloudflare's dashboard-managed-route
+        # model and prevents a successful Worker rollout from failing on /domains/records.
+        run: npx wrangler deploy --config .wrangler-ci-deploy.jsonc
+
+      - name: Verify reservation v180 on workers.dev and media domain
+        shell: bash
+        run: |
+          set -euo pipefail
+          verify_release() {
+            local base="$1"
+            local ready=0
+            for attempt in $(seq 1 36); do
+              local query="reservation_v180=$GITHUB_SHA&attempt=$attempt"
+              release=$(curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/api/public/release?$query" || true)
+              if RELEASE="$release" node <<'NODE'
+          const data=JSON.parse(process.env.RELEASE||'{}');
+          if(data.reservationFinalization!==process.env.RESERVATION_FINALIZATION_RELEASE)process.exit(1);
+          if(!data.clientReservationTruth||!data.reservationStripeReturn)process.exit(1);
+          NODE
+              then
+                ready=1
+                echo "$base: reservation v180 verified on attempt $attempt."
+                break
+              fi
+              sleep 5
+            done
+            test "$ready" = 1
+          }
+          verify_page() {
+            local base="$1"
+            local ready=0
+            for attempt in $(seq 1 36); do
+              local query="reservation_v180=$GITHUB_SHA&attempt=$attempt"
+              html=$(curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/reserver?$query" || true)
+              if grep -Fq '/reserver/assets/tunnel-runtime-v179.js' <<<"$html" \
+                && ! grep -Fq '/reserver/assets/sales-experience-v165.js' <<<"$html" \
+                && ! grep -Fq '/reserver/assets/sales-experience-v166.js' <<<"$html" \
+                && ! grep -Fq '/reserver/assets/tunnel-copy-v175.js' <<<"$html" \
+                && ! grep -Fq '/reserver/assets/tunnel-conversion-v176.js' <<<"$html"; then
+                ready=1
+                echo "$base/reserver: finalized runtime verified on attempt $attempt."
+                break
+              fi
+              sleep 5
+            done
+            test "$ready" = 1
+          }
+          verify_release "$WORKERS_URL"
+          verify_release "$MEDIA_URL"
+          verify_page "$MEDIA_URL"
 
       - name: Verify Catalogue cockpit v131 on both production domains
         shell: bash

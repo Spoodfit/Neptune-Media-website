@@ -1,5 +1,6 @@
 import { json, sanitizeText } from './security.js';
 import { requireOperator } from './workflow-db-v5.js';
+import { reservationDatePolicyV173 } from './reservation-policy-v173.js';
 import {
   ensureSalesTunnelV96Schema as ensureBase,
   publicSalesCatalogV96 as baseCatalog,
@@ -58,7 +59,10 @@ export async function tunnelProspectContextWithOptionsV96(store,raw={}){
 
 export async function saveTunnelSelectionWithOptionsV96(store,raw={}){
   ensureSalesTunnelOptionsV96Schema(store);
-  if(raw.requestedDate&&!isBusinessDay(raw.requestedDate))return json({error:'invalid_requested_date'},400);
+  if(raw.requestedDate){
+    const policy=reservationDatePolicyV173(raw.requestedDate);
+    if(!policy.ok)return json({error:policy.reason==='lead_time'?'reservation_lead_time_15_days':'invalid_requested_date',policy},400);
+  }
   const offerId=sanitizeText(raw.offerId,120),choice=sanitizeText(raw.configurationChoice,120);
   const options=store.sql.exec('SELECT label FROM portal_offer_configurations_v96 WHERE offer_id=? AND active=1 ORDER BY public_order,label',offerId).toArray().map(x=>x.label);
   if(options.length&&!choice)return json({error:'configuration_required'},400);
@@ -121,7 +125,3 @@ function seedDefaultConfigurations(store){const defaults={
   'offer-libre-toulouse-recbox-launch':['Plateau','Bar','Chaise','Canapé','Sur-mesure'],'offer-libre-toulouse-recbox-promo':['Plateau','Bar','Chaise','Canapé','Sur-mesure'],'offer-libre-toulouse-recbox-standard':['Plateau','Bar','Chaise','Canapé','Sur-mesure']};
   for(const [offerId,labels] of Object.entries(defaults)){if(!store.sql.exec('SELECT id FROM portal_media_offers_v96 WHERE id=? LIMIT 1',offerId).toArray()[0])continue;if(Number(store.sql.exec('SELECT COUNT(*) AS n FROM portal_offer_configurations_v96 WHERE offer_id=?',offerId).toArray()[0]?.n||0))continue;replaceOfferConfigurations(store,offerId,labels);}
 }
-function isBusinessDay(value){if(!/^\d{4}-\d{2}-\d{2}$/u.test(String(value||'')))return false;const [y,m,d]=String(value).split('-').map(Number),date=new Date(y,m-1,d);if(date.getFullYear()!==y||date.getMonth()!==m-1||date.getDate()!==d||date.getDay()===0||date.getDay()===6)return false;return !frenchHolidays(y).has(value);}
-function frenchHolidays(year){const e=easterDate(year),set=new Set(['01-01','05-01','05-08','07-14','08-15','11-01','11-11','12-25'].map(md=>`${year}-${md}`));for(const n of [1,39,50]){const d=new Date(e);d.setDate(d.getDate()+n);set.add(iso(d));}return set;}
-function easterDate(year){const a=year%19,b=Math.floor(year/100),c=year%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),month=Math.floor((h+l-7*m+114)/31)-1,day=(h+l-7*m+114)%31+1;return new Date(year,month,day);}
-function iso(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}

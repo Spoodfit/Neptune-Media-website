@@ -9,6 +9,7 @@ const entry44=read('neptune-tv-media-cloudflare/src/entry-v44.js');
 const entry45=read('neptune-tv-media-cloudflare/src/entry-v45.js');
 const entry46=read('neptune-tv-media-cloudflare/src/entry-v46.js');
 const entry47=read('neptune-tv-media-cloudflare/src/entry-v47.js');
+const entry48=read('neptune-tv-media-cloudflare/src/entry-v48.js');
 const booking=read('neptune-tv-media-cloudflare/public/reserver/assets/booking-slots-v142.js');
 const studio=read('neptune-tv-media-cloudflare/public/studio/studio-business-v142.js');
 const rootWrangler=read('wrangler.jsonc');
@@ -33,7 +34,7 @@ const checks=[
 ['exact slot transmitted by client',booking.includes('slotStart:slot.startAt')&&booking.includes('slotEnd:slot.endAt')],
 ['duration driven slot API',booking.includes('/api/reservation/slots-v142')&&core.includes('generateSlots')],
 ['Studio TTC/HT rate editor and preparation editor',studio.includes('Montant exprimé en')&&studio.includes('Cartes de préparation')],
-['active v47 preserves v142 through v46 -> v45 -> v44 while both Worker configs target the same entry and v44 preserves v40, Drive v137/v138 and v139 personalization',rootWrangler.includes('neptune-tv-media-cloudflare/src/entry-v47.js')&&workerWrangler.includes('neptune-tv-media-cloudflare/src/entry-v47.js')&&entry47.includes("from './entry-v46.js'")&&entry46.includes("from './entry-v45.js'")&&entry45.includes("from './entry-v44.js'")&&entry44.includes("from './entry-v40.js'")&&!entry44.includes("from './entry-v41.js'")&&!entry44.includes("from './entry-v42.js'")&&!entry44.includes("from './entry-v43.js'")&&entry44.includes('handleDriveManualValidationV138')&&entry44.includes('recoverDriveStagingUploadsV137')&&entry44.includes('handleHorsNormePersonalizationV139')&&entry44.includes('handleBusinessV142Store')&&entry44.includes('handleBusinessV142Http')&&entry44.includes('sendDuePreparationPacksV142')],
+['active v48 preserves v142 through v47 -> v46 -> v45 -> v44 while both Worker configs target the same entry and v44 preserves v40, Drive v137/v138 and v139 personalization',rootWrangler.includes('neptune-tv-media-cloudflare/src/entry-v48.js')&&workerWrangler.includes('neptune-tv-media-cloudflare/src/entry-v48.js')&&entry48.includes("from './entry-v47.js'")&&entry47.includes("from './entry-v46.js'")&&entry46.includes("from './entry-v45.js'")&&entry45.includes("from './entry-v44.js'")&&entry44.includes("from './entry-v40.js'")&&!entry44.includes("from './entry-v41.js'")&&!entry44.includes("from './entry-v42.js'")&&!entry44.includes("from './entry-v43.js'")&&entry44.includes('handleDriveManualValidationV138')&&entry44.includes('recoverDriveStagingUploadsV137')&&entry44.includes('handleHorsNormePersonalizationV139')&&entry44.includes('handleBusinessV142Store')&&entry44.includes('handleBusinessV142Http')&&entry44.includes('sendDuePreparationPacksV142')],
 ['720 TTC / 180 min = 240 TTC/h',Math.round(72000*60/180)===24000],
 ];
 const failures=checks.filter(([,ok])=>!ok);for(const[name,ok]of checks)console.log(`${ok?'✓':'✗'} ${name}`);if(failures.length){console.error(`Business v142 verification failed: ${failures.length}/${checks.length}`);process.exit(1)}console.log(`Business v142 verification passed: ${checks.length}/${checks.length}`);

@@ -1,5 +1,5 @@
 (() => {
-  const RELEASE='neptune-reservation-availability-ui-20260903-v172';
+  const RELEASE='neptune-reservation-availability-ui-20260904-v173';
   const STORAGE='neptune_media_reservation_v163';
   const AVAILABILITY='/api/reservation/availability-v172';
   const HOLD='/api/reservation/hold-v172';
@@ -19,13 +19,13 @@
           method:'POST',
           credentials:'same-origin',
           headers:{'Content-Type':'application/json',Accept:'application/json'},
-          body:JSON.stringify({token:payload.token,offerId:payload.offerId,requestedDate:payload.requestedDate,requestedDaypart:payload.requestedDaypart}),
+          body:JSON.stringify({token:payload.token,offerId:payload.offerId,cityId:payload.cityId,formatId:payload.formatId,requestedDate:payload.requestedDate,requestedDaypart:payload.requestedDaypart}),
         });
         if(!holdResponse.ok){
           const holdData=await holdResponse.json().catch(()=>({}));
           cache.clear();
           scheduleDecorate();
-          setTimeout(()=>{const error=document.getElementById('error');if(error)error.textContent=holdData.error==='slot_unavailable'?'Ce créneau vient d’être réservé. Choisissez-en un autre.':'Impossible de sécuriser ce créneau. Réessayez.';},0);
+          setTimeout(()=>{const error=document.getElementById('error');if(error)error.textContent=holdError(holdData.error);},0);
           return new Response(JSON.stringify({error:holdData.error||'slot_unavailable'}),{
             status:holdResponse.status||409,
             headers:{'Content-Type':'application/json'},
@@ -77,32 +77,47 @@
     }
 
     const unavailable=data.unavailable||{};
+    const policyByDate=new Map((data.policy?.nonBookableDates||[]).map(item=>[item.date,item.reason]));
     dayButtons.forEach(button=>{
-      const slots=unavailable[button.dataset.date]||[];
+      const date=button.dataset.date;
+      const slots=unavailable[date]||[];
       const fullyUnavailable=slots.includes('morning')&&slots.includes('afternoon');
-      if(fullyUnavailable){
+      const policyReason=policyByDate.get(date)||'';
+      if(policyReason){
+        button.disabled=true;
+        button.classList.add('is-policy-blocked-v173');
+        button.classList.remove('is-booked-v172');
+        button.title=policyTitle(policyReason,data.policy);
+      }else if(fullyUnavailable){
         button.disabled=true;
         button.classList.add('is-booked-v172');
+        button.classList.remove('is-policy-blocked-v173');
         button.title='Complet';
       }else{
-        button.classList.remove('is-booked-v172');
-        if(button.title==='Complet')button.removeAttribute('title');
+        button.disabled=false;
+        button.classList.remove('is-booked-v172','is-policy-blocked-v173');
+        if(button.title==='Complet'||button.title.startsWith('Réservable')||button.title==='Week-end'||button.title==='Jour férié')button.removeAttribute('title');
       }
     });
 
     const selectedDate=String(saved?.requestedDate||document.querySelector('#daysGrid .selected')?.dataset.date||'');
     const selectedUnavailable=unavailable[selectedDate]||[];
-    const selectedBusy=Boolean(saved?.requestedDaypart&&selectedUnavailable.includes(saved.requestedDaypart));
+    const selectedPolicyBlocked=policyByDate.has(selectedDate);
+    const selectedBusy=selectedPolicyBlocked||Boolean(saved?.requestedDaypart&&selectedUnavailable.includes(saved.requestedDaypart));
     const continueButton=document.getElementById('continuePayment');
-    if(selectedBusy&&continueButton){continueButton.disabled=true;const error=document.getElementById('error');if(error)error.textContent='Ce créneau n’est plus disponible. Choisissez un autre horaire.';}
+    if(selectedBusy&&continueButton){
+      continueButton.disabled=true;
+      const error=document.getElementById('error');
+      if(error)error.textContent=selectedPolicyBlocked?'Ce jour ne respecte pas les règles de réservation. Choisissez une autre date.':'Ce créneau n’est plus disponible. Choisissez un autre horaire.';
+    }
     document.querySelectorAll('[data-slot]').forEach(button=>{
-      const busy=selectedUnavailable.includes(button.dataset.slot);
+      const busy=selectedPolicyBlocked||selectedUnavailable.includes(button.dataset.slot);
       if(busy){
         button.disabled=true;
         button.classList.add('is-booked-v172');
         button.setAttribute('aria-disabled','true');
         const span=button.querySelector('span');
-        if(span&&!span.dataset.originalSlotText){span.dataset.originalSlotText=span.textContent||'';span.textContent='Indisponible';}
+        if(span&&!span.dataset.originalSlotText){span.dataset.originalSlotText=span.textContent||'';span.textContent=selectedPolicyBlocked?'Date non réservable':'Indisponible';}
       }else{
         button.classList.remove('is-booked-v172');
         if(selectedDate)button.disabled=false;
@@ -113,9 +128,9 @@
     });
 
     const lead=shell.parentElement?.querySelector('.lead')||null;
-    if(lead&&!lead.dataset.availabilityCopyV172){
+    if(lead){
       lead.dataset.availabilityCopyV172='1';
-      lead.textContent='Choisissez un créneau réellement disponible. Il est temporairement sécurisé pendant votre paiement, puis confirmé automatiquement.';
+      lead.textContent=`Choisissez un créneau réellement disponible, au minimum ${Number(data.policy?.leadDays||15)} jours à l’avance. Il est temporairement sécurisé pendant votre paiement, puis confirmé automatiquement.`;
     }
   }
 
@@ -140,7 +155,7 @@
         if(!response.ok){
           cache.clear();
           const status=document.getElementById('paymentStatus');
-          if(status)status.textContent=data.error==='slot_unavailable'?'Ce créneau vient d’être réservé. Choisissez-en un autre.':'Le créneau doit être revérifié.';
+          if(status)status.textContent=holdError(data.error);
           return;
         }
         location.href=href;
@@ -151,5 +166,18 @@
     },true);
   }
 
+  function policyTitle(reason,policy){
+    if(reason==='lead_time')return`Réservable au minimum ${Number(policy?.leadDays||15)} jours à l’avance`;
+    if(reason==='weekend')return'Week-end';
+    if(reason==='holiday')return'Jour férié';
+    return'Date non réservable';
+  }
+  function holdError(code){
+    if(code==='slot_unavailable')return'Ce créneau vient d’être réservé. Choisissez-en un autre.';
+    if(code==='reservation_lead_time_15_days')return'Ce créneau est trop proche. Choisissez une date au minimum 15 jours à l’avance.';
+    if(code==='invalid_requested_date')return'Choisissez un jour ouvré proposé dans le calendrier.';
+    if(code==='reservation_already_paid')return'Cette réservation est déjà payée et ne peut plus être modifiée depuis le tunnel.';
+    return'Impossible de sécuriser ce créneau. Réessayez.';
+  }
   function readSaved(){try{return JSON.parse(localStorage.getItem(STORAGE)||'null');}catch{return null;}}
 })();

@@ -5,7 +5,7 @@ export {WebTvEncoder};
 
 const RELEASE='neptune-reservation-finalization-20260904-v179';
 const TUNNEL_RUNTIME='/reserver/assets/tunnel-runtime-v179.js?v=20260904-1';
-const CLIENT_TRUTH='/espace-client/client-reservation-truth-v179.js?v=20260904-1';
+const CLIENT_TRUTH='/espace-client/client-reservation-truth-v179.js?v=20260904-2';
 const LEGACY_TUNNEL_SCRIPTS=[
   '/reserver/assets/sales-experience-v165.js',
   '/reserver/assets/sales-experience-v166.js',

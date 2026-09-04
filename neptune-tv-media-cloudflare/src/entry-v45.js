@@ -3,12 +3,12 @@ import {ensureSalesTunnelV96Schema} from './portal-sales-tunnel-v96.js';
 import {requireOperator} from './workflow-db-v5.js';
 import {adminAuth} from './portal-http-utils.js';
 import {isSameOrigin,json,randomToken,sanitizeText,sha256} from './security.js';
+import {reservationDatePolicyV173} from './reservation-policy-v173.js';
 
 export {WebTvEncoder};
 
 const RELEASE='neptune-sales-journey-20260831-v165';
 const TOKEN_TTL_SECONDS=7*24*60*60;
-const MIN_LEAD_DAYS=15;
 const STUDIO_CALLBACK_JS='/studio/studio-callbacks-v165.js?v=1';
 const STUDIO_CALLBACK_CSS='/studio/studio-callbacks-v165.css?v=1';
 
@@ -45,7 +45,10 @@ export default{
     }
     if(request.method==='POST'&&(url.pathname==='/api/reservation/selection-v96'||url.pathname==='/api/reservation/selection')){
       const payload=await request.clone().json().catch(()=>({}));
-      if(payload.requestedDate&&!meetsLeadTime(payload.requestedDate))return json({error:'reservation_lead_time_15_days'},400);
+      if(payload.requestedDate){
+        const policy=reservationDatePolicyV173(payload.requestedDate);
+        if(!policy.ok)return json({error:policy.reason==='lead_time'?'reservation_lead_time_15_days':'invalid_requested_date',policy},400);
+      }
     }
     let response=await base.fetch(request,env,ctx);
     if(request.method==='GET'&&response.ok&&(response.headers.get('Content-Type')||'').includes('text/html')&&isStudio(url.pathname))response=await injectStudioCallbacks(response);
@@ -100,7 +103,6 @@ async function sendCallbackEmail(env,data){
   if(!response.ok)throw new Error(`resend_${response.status}`);
 }
 
-function meetsLeadTime(value){const [y,m,d]=String(value||'').split('-').map(Number);if(!y||!m||!d)return false;const requested=new Date(y,m-1,d);requested.setHours(0,0,0,0);const min=new Date();min.setHours(0,0,0,0);min.setDate(min.getDate()+MIN_LEAD_DAYS);return requested>=min;}
 function normalizePhone(value){const raw=String(value||'').trim(),digits=raw.replace(/\D/g,'');return digits.length>=8&&digits.length<=15?raw.slice(0,40):'';}
 function validEmail(value){return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/u.test(String(value||''));}
 function callStore(env,path,body){const studio=env.STUDIO.get(env.STUDIO.idFromName('neptune-media-main'));return studio.fetch(`https://store${path}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});}

@@ -1,5 +1,5 @@
 (() => {
-  const RELEASE='neptune-reservation-runtime-20260905-v179.3';
+  const RELEASE='neptune-reservation-runtime-20260905-v179.4';
   const STORAGE='neptune_media_reservation_v163';
   const host=document.getElementById('app-content');
   if(!host)return;
@@ -55,8 +55,8 @@
     document.addEventListener('click',event=>{
       const link=event.target?.closest?.('#payLink');
       if(!link||link.dataset.v181Navigating==='1')return;
-      const terms=host.querySelector('#terms');
-      if(terms&&!terms.checked)return;
+      const terms=host.querySelector('#termsAccepted');
+      if(!terms?.checked)return;
       const saved=readSaved();
       if(!saved?.token||!saved?.cityId||!saved?.offerId||!saved?.requestedDate||!saved?.requestedDaypart)return;
       event.preventDefault();

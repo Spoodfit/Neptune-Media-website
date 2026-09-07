@@ -47,8 +47,10 @@ jobs:
           delete config.route;
           delete config.routes;
           fs.writeFileSync('.wrangler-hors-norme.jsonc', JSON.stringify(config, null, 2) + '\n');
+          const prepared = JSON.parse(fs.readFileSync('.wrangler-hors-norme.jsonc', 'utf8'));
+          if (prepared.routes || prepared.route) process.exit(1);
+          if (prepared.main !== 'neptune-tv-media-cloudflare/src/entry-v48.js') process.exit(1);
           NODE
-          node -e "const c=require('./.wrangler-hors-norme.jsonc'); if(c.routes||c.route) process.exit(1); if(c.main!=='neptune-tv-media-cloudflare/src/entry-v48.js') process.exit(1);"
 
       - name: Deploy Worker assets
         run: npx wrangler deploy --config .wrangler-hors-norme.jsonc

@@ -1,0 +1,46 @@
+name: Verify HORS NORME route
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-hors-norme-route.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      WORKERS_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
+    steps:
+      - name: Diagnose HORS NORME public routes
+        shell: bash
+        run: |
+          set -u
+          mkdir -p /tmp/hn
+          check() {
+            local path="$1"
+            local slug="$2"
+            echo "===== $path ====="
+            curl --silent --show-error --location --max-time 20 \
+              -D "/tmp/hn/$slug.headers" \
+              -H 'Cache-Control: no-cache, no-store' \
+              "$WORKERS_URL$path?diag=$GITHUB_SHA" \
+              > "/tmp/hn/$slug.body" || true
+            echo "--- headers ---"
+            cat "/tmp/hn/$slug.headers" || true
+            echo "--- markers ---"
+            grep -F '30 contenus minimum garantis' "/tmp/hn/$slug.body" | head -1 || true
+            grep -F 'Arrêtez de chercher quoi publier' "/tmp/hn/$slug.body" | head -1 || true
+            grep -F '<title>' "/tmp/hn/$slug.body" | head -1 || true
+            echo "--- body preview ---"
+            head -c 1400 "/tmp/hn/$slug.body" || true
+            echo
+          }
+          check '/hors-norme' 'no-slash'
+          check '/hors-norme/' 'slash'
+          check '/hors-norme/index.html' 'index'

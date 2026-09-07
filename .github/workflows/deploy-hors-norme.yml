@@ -61,7 +61,7 @@ jobs:
           set -euo pipefail
           ready=0
           for attempt in $(seq 1 24); do
-            html=$(curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$WORKERS_URL/hors-norme?release=$GITHUB_SHA&attempt=$attempt" || true)
+            html=$(curl --fail --silent --show-error --location -H 'Cache-Control: no-cache, no-store' "$WORKERS_URL/hors-norme?release=$GITHUB_SHA&attempt=$attempt" || true)
             if grep -Fq '30 contenus minimum garantis' <<<"$html" \
               && grep -Fq '3 mois de contenus' <<<"$html" \
               && grep -Fq 'Arrêtez de chercher quoi publier' <<<"$html"; then

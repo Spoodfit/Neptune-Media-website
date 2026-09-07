@@ -1,4 +1,4 @@
-name: Verify HORS NORME production
+name: Diagnose HORS NORME routing
 
 on:
   push:
@@ -10,32 +10,33 @@ permissions:
   contents: read
 
 jobs:
-  verify:
+  diagnose:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Verify landing on public and workers domains
+      - name: Compare workers.dev and media domain
         shell: bash
         env:
           MEDIA_URL: https://media.neptunebusiness.com
           WORKERS_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
         run: |
           set -euo pipefail
-          verify_landing() {
+          check() {
             local base="$1"
-            local ready=0
-            for attempt in $(seq 1 12); do
-              html=$(curl -L --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/hors-norme?release=$GITHUB_SHA&attempt=$attempt" || true)
-              if grep -Fq "Une demi-journée." <<<"$html" \
-                && grep -Fq "3 mois de contenus" <<<"$html" \
-                && grep -Fq "Diffusé aussi par Neptune" <<<"$html"; then
-                ready=1
-                echo "$base/hors-norme: landing verified on attempt $attempt."
-                break
-              fi
-              sleep 3
-            done
-            test "$ready" = 1
+            local slug="$2"
+            echo "=== $base ==="
+            curl -sS -L -D "/tmp/$slug.headers" -o "/tmp/$slug.html" -H 'Cache-Control: no-cache, no-store' "$base/hors-norme?diag=$GITHUB_SHA" || true
+            echo "--- final headers ---"
+            grep -Ei '^(HTTP/|location:|server:|cf-ray:|cf-cache-status:|x-neptune-|content-type:)' "/tmp/$slug.headers" || true
+            echo "--- landing markers ---"
+            grep -oF 'Une demi-journée.' "/tmp/$slug.html" | head -1 || true
+            grep -oF '3 mois de contenus' "/tmp/$slug.html" | head -1 || true
+            grep -oF 'Diffusé aussi par Neptune' "/tmp/$slug.html" | head -1 || true
+            echo "--- title ---"
+            grep -oE '<title>[^<]+' "/tmp/$slug.html" | head -1 || true
+            echo "--- release endpoint ---"
+            curl -sS -L -H 'Cache-Control: no-cache, no-store' "$base/api/public/release?diag=$GITHUB_SHA" | head -c 1200 || true
+            echo
           }
-          verify_landing "$WORKERS_URL"
-          verify_landing "$MEDIA_URL"
+          check "$WORKERS_URL" workers
+          check "$MEDIA_URL" media

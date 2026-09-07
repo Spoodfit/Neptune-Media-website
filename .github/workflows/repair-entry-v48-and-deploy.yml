@@ -1,4 +1,4 @@
-name: Diagnose HORS NORME routing
+name: Diagnose HORS NORME Cloudflare routing
 
 on:
   push:
@@ -13,30 +13,34 @@ jobs:
   diagnose:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
-      - name: Compare workers.dev and media domain
+      - name: Inspect DNS and Workers custom domains
         shell: bash
-        env:
-          MEDIA_URL: https://media.neptunebusiness.com
-          WORKERS_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
         run: |
           set -euo pipefail
-          check() {
-            local base="$1"
-            local slug="$2"
-            echo "=== $base ==="
-            curl -sS -L -D "/tmp/$slug.headers" -o "/tmp/$slug.html" -H 'Cache-Control: no-cache, no-store' "$base/hors-norme?diag=$GITHUB_SHA" || true
-            echo "--- final headers ---"
-            grep -Ei '^(HTTP/|location:|server:|cf-ray:|cf-cache-status:|x-neptune-|content-type:)' "/tmp/$slug.headers" || true
-            echo "--- landing markers ---"
-            grep -oF 'Une demi-journée.' "/tmp/$slug.html" | head -1 || true
-            grep -oF '3 mois de contenus' "/tmp/$slug.html" | head -1 || true
-            grep -oF 'Diffusé aussi par Neptune' "/tmp/$slug.html" | head -1 || true
-            echo "--- title ---"
-            grep -oE '<title>[^<]+' "/tmp/$slug.html" | head -1 || true
-            echo "--- release endpoint ---"
-            curl -sS -L -H 'Cache-Control: no-cache, no-store' "$base/api/public/release?diag=$GITHUB_SHA" | head -c 1200 || true
-            echo
-          }
-          check "$WORKERS_URL" workers
-          check "$MEDIA_URL" media
+          echo '=== public DNS ==='
+          dig +short CNAME media.neptunebusiness.com || true
+          dig +short A media.neptunebusiness.com || true
+          dig +short AAAA media.neptunebusiness.com || true
+
+          echo '=== Cloudflare zone lookup ==='
+          zone_json=$(curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Content-Type: application/json' 'https://api.cloudflare.com/client/v4/zones?name=neptunebusiness.com')
+          echo "$zone_json" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);console.log(JSON.stringify({success:j.success,errors:j.errors,result:(j.result||[]).map(z=>({id:z.id,name:z.name,status:z.status}))},null,2))})"
+          zone_id=$(echo "$zone_json" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);process.stdout.write((j.result&&j.result[0]&&j.result[0].id)||'')})")
+
+          if [ -n "$zone_id" ]; then
+            echo '=== Cloudflare DNS record ==='
+            dns_json=$(curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Content-Type: application/json' "https://api.cloudflare.com/client/v4/zones/$zone_id/dns_records?name=media.neptunebusiness.com")
+            echo "$dns_json" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);console.log(JSON.stringify({success:j.success,errors:j.errors,result:(j.result||[]).map(r=>({id:r.id,type:r.type,name:r.name,content:r.content,proxied:r.proxied,ttl:r.ttl}))},null,2))})"
+
+            echo '=== Workers routes on zone ==='
+            route_json=$(curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Content-Type: application/json' "https://api.cloudflare.com/client/v4/zones/$zone_id/workers/routes")
+            echo "$route_json" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);console.log(JSON.stringify({success:j.success,errors:j.errors,result:j.result||[]},null,2))})"
+          fi
+
+          echo '=== Workers custom domains ==='
+          domains_json=$(curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" -H 'Content-Type: application/json' "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/domains")
+          echo "$domains_json" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);console.log(JSON.stringify({success:j.success,errors:j.errors,result:(j.result||[]).map(d=>({id:d.id,hostname:d.hostname,service:d.service,zone_id:d.zone_id,environment:d.environment}))},null,2))})"

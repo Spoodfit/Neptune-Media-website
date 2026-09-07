@@ -1,4 +1,4 @@
-name: Repair deploy guard and deploy entry v48
+name: Verify HORS NORME production
 
 on:
   push:
@@ -7,90 +7,35 @@ on:
       - '.github/workflows/repair-entry-v48-and-deploy.yml'
 
 permissions:
-  contents: write
-
-concurrency:
-  group: neptune-media-production
-  cancel-in-progress: false
+  contents: read
 
 jobs:
-  repair-and-deploy:
+  verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      MEDIA_URL: https://media.neptunebusiness.com
+    timeout-minutes: 5
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Repair stale deploy entry guard
+      - name: Verify landing on public and workers domains
         shell: bash
+        env:
+          MEDIA_URL: https://media.neptunebusiness.com
+          WORKERS_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
         run: |
           set -euo pipefail
-          node <<'NODE'
-          const fs=require('node:fs');
-          const config=JSON.parse(fs.readFileSync('wrangler.jsonc','utf8'));
-          if(config.main!=='neptune-tv-media-cloudflare/src/entry-v48.js') process.exit(1);
-          NODE
-          grep -Fq "entry-v47.js" .github/workflows/deploy-cloudflare.yml
-          sed -i "s#neptune-tv-media-cloudflare/src/entry-v47.js#neptune-tv-media-cloudflare/src/entry-v48.js#g" .github/workflows/deploy-cloudflare.yml
-          grep -Fq "entry-v48.js" .github/workflows/deploy-cloudflare.yml
-
-      - name: Persist repaired deployment guard
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .github/workflows/deploy-cloudflare.yml
-          if ! git diff --cached --quiet; then
-            git commit -m "ci: align Cloudflare deploy guard with entry v48"
-            git push origin HEAD:main || echo "Guard repair push was blocked; continuing with the corrected working tree for this deployment."
-          fi
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          registry-url: https://registry.npmjs.org
-
-      - name: Install dependencies
-        run: npm install --package-lock=false --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org
-
-      - name: Prepare deploy config
-        shell: bash
-        run: |
-          set -euo pipefail
-          node <<'NODE'
-          const fs=require('node:fs');
-          const config=JSON.parse(fs.readFileSync('wrangler.jsonc','utf8'));
-          delete config.route;
-          delete config.routes;
-          if(config.main!=='neptune-tv-media-cloudflare/src/entry-v48.js') process.exit(1);
-          fs.writeFileSync('.wrangler-ci-deploy.jsonc',JSON.stringify(config,null,2)+'\n');
-          NODE
-
-      - name: Deploy Worker and assets
-        run: npx wrangler deploy --config .wrangler-ci-deploy.jsonc
-
-      - name: Verify HORS NORME landing in production
-        shell: bash
-        run: |
-          set -euo pipefail
-          ready=0
-          for attempt in $(seq 1 18); do
-            html=$(curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$MEDIA_URL/hors-norme?release=$GITHUB_SHA&attempt=$attempt" || true)
-            if grep -Fq "Une demi-journée." <<<"$html" \
-              && grep -Fq "3 mois de contenus" <<<"$html" \
-              && grep -Fq "Diffusé aussi par Neptune" <<<"$html"; then
-              ready=1
-              echo "HORS NORME landing verified on production attempt $attempt."
-              break
-            fi
-            sleep 5
-          done
-          test "$ready" = 1
+          verify_landing() {
+            local base="$1"
+            local ready=0
+            for attempt in $(seq 1 12); do
+              html=$(curl -L --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/hors-norme?release=$GITHUB_SHA&attempt=$attempt" || true)
+              if grep -Fq "Une demi-journée." <<<"$html" \
+                && grep -Fq "3 mois de contenus" <<<"$html" \
+                && grep -Fq "Diffusé aussi par Neptune" <<<"$html"; then
+                ready=1
+                echo "$base/hors-norme: landing verified on attempt $attempt."
+                break
+              fi
+              sleep 3
+            done
+            test "$ready" = 1
+          }
+          verify_landing "$WORKERS_URL"
+          verify_landing "$MEDIA_URL"

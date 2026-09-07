@@ -63,8 +63,8 @@ jobs:
           for attempt in $(seq 1 24); do
             html=$(curl --fail --silent --show-error --location -H 'Cache-Control: no-cache, no-store' "$WORKERS_URL/hors-norme?release=$GITHUB_SHA&attempt=$attempt" || true)
             if grep -Fq '30 contenus minimum garantis' <<<"$html" \
-              && grep -Fq '3 mois de contenus' <<<"$html" \
-              && grep -Fq 'Arrêtez de chercher quoi publier' <<<"$html"; then
+              && grep -Fq '3 mois de communication' <<<"$html" \
+              && grep -Fq "La preuve avant l'explication" <<<"$html"; then
               ready=1
               echo "HORS NORME landing verified on attempt $attempt."
               break

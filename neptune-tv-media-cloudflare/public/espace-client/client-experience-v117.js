@@ -1,8 +1,9 @@
-const RELEASE='neptune-client-experience-20260814-v117';
+const RELEASE='neptune-client-experience-20260908-v117.1-no-legacy-command-center';
 const RETRY_TEXT=/impossible|indisponible|erreur|réessay/iu;
 
-document.documentElement.dataset.clientExperience='v117';
+document.documentElement.dataset.clientExperience='v117.1';
 document.documentElement.dataset.clientExperienceRelease=RELEASE;
+document.documentElement.dataset.clientLegacyCommandCenter='disabled-v181';
 installSharedStyles();
 start();
 
@@ -17,7 +18,10 @@ function installSharedStyles(){
 
 function start(){document.readyState==='loading'?document.addEventListener('DOMContentLoaded',boot,{once:true}):boot();}
 function boot(){
-  if(isHome())import('/espace-client/client-command-center-v117.js?v=1').catch(error=>console.error('client_command_center_import_failed',error));
+  // Command-center ownership belongs exclusively to client-command-center-v118-1.js.
+  // Do not dynamically import the legacy v117 command center here: running both
+  // runtimes concurrently causes competing DOM mutations on .formats-panel and
+  // can reset the user's vertical viewport during async catalogue/session updates.
   installPrimaryNavigation();
   installLoadingStates();
   enhanceFeedbackStates();

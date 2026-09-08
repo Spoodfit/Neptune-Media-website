@@ -31,6 +31,9 @@ jobs:
       CLIENT_RELEASE: neptune-client-experience-20260908-v118.8-single-command-center
       EXPERIENCE_RELEASE: neptune-client-experience-20260908-v117.1-no-legacy-command-center
       LEGACY_SHIM_RELEASE: neptune-client-command-center-legacy-disabled-20260908-v181
+      CLIENT_CATALOG_CLICK_RELEASE: neptune-client-catalog-click-20260908-v181
+      CLIENT_VISUAL_RELEASE: neptune-client-visual-coherence-20260908-v118.8
+      CLIENT_INTERACTION_RELEASE: neptune-client-catalog-interaction-20260908-v118.8
 
     steps:
       - name: Checkout
@@ -44,19 +47,30 @@ jobs:
       - name: Install dependencies
         run: npm install --package-lock=false --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org
 
-      - name: Validate single command-center ownership
+      - name: Validate single command-center ownership and catalog clicks
         shell: bash
         run: |
           set -euo pipefail
           node --check neptune-tv-media-cloudflare/public/espace-client/client-experience-v117.js
           node --check neptune-tv-media-cloudflare/public/espace-client/client-command-center-v117.js
           node --check neptune-tv-media-cloudflare/public/espace-client/client-command-center-v118-1.js
+          node --check neptune-tv-media-cloudflare/public/espace-client/client-visual-coherence-v118-2.js
+          node --check neptune-tv-media-cloudflare/public/espace-client/client-catalog-interaction-v118-7.js
           node --check neptune-tv-media-cloudflare/src/entry-v38.js
+          node --check neptune-tv-media-cloudflare/src/entry-v48.js
           grep -Fq "$EXPERIENCE_RELEASE" neptune-tv-media-cloudflare/public/espace-client/client-experience-v117.js
           grep -Fq "$LEGACY_SHIM_RELEASE" neptune-tv-media-cloudflare/public/espace-client/client-command-center-v117.js
           ! grep -Fq "import('/espace-client/client-command-center-v117.js" neptune-tv-media-cloudflare/public/espace-client/client-experience-v117.js
           grep -Fq "client-experience-v117.js?v=20260908-1" neptune-tv-media-cloudflare/src/entry-v38.js
           grep -Fq "$CLIENT_RELEASE" neptune-tv-media-cloudflare/src/entry-v38.js
+          grep -Fq "$CLIENT_VISUAL_RELEASE" neptune-tv-media-cloudflare/public/espace-client/client-visual-coherence-v118-2.js
+          grep -Fq 'document.addEventListener('\''click'\'',navigateCatalogCard,true)' neptune-tv-media-cloudflare/public/espace-client/client-visual-coherence-v118-2.js
+          grep -Fq 'location.assign(target)' neptune-tv-media-cloudflare/public/espace-client/client-visual-coherence-v118-2.js
+          grep -Fq "$CLIENT_INTERACTION_RELEASE" neptune-tv-media-cloudflare/public/espace-client/client-catalog-interaction-v118-7.js
+          ! grep -Fq "addEventListener('pointerdown'" neptune-tv-media-cloudflare/public/espace-client/client-catalog-interaction-v118-7.js
+          grep -Fq "$CLIENT_CATALOG_CLICK_RELEASE" neptune-tv-media-cloudflare/src/entry-v48.js
+          grep -Fq 'client-visual-coherence-v118-2.js?v=20260908-2' neptune-tv-media-cloudflare/src/entry-v48.js
+          grep -Fq 'client-catalog-interaction-v118-7.js?v=20260908-2' neptune-tv-media-cloudflare/src/entry-v48.js
           test "$(wc -l < neptune-tv-media-cloudflare/public/espace-client/client-command-center-v117.js)" -lt 20
 
       - name: Validate current Worker bundle
@@ -80,7 +94,7 @@ jobs:
       - name: Deploy current Worker and client assets
         run: npx wrangler deploy --config .wrangler-ci-client-v181.jsonc
 
-      - name: Verify client stability release in production
+      - name: Verify client stability and catalog clicks in production
         shell: bash
         run: |
           set -euo pipefail
@@ -88,23 +102,32 @@ jobs:
             local base="$1"
             local ready=0
             for attempt in $(seq 1 30); do
-              local q="client_stability_v181=$GITHUB_SHA&attempt=$attempt"
+              local q="client_catalog_click_v181=$GITHUB_SHA&attempt=$attempt"
               html=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/espace-client/?$q" || true)
               experience=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/espace-client/client-experience-v117.js?$q" || true)
               legacy=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/espace-client/client-command-center-v117.js?$q" || true)
+              visual=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/espace-client/client-visual-coherence-v118-2.js?$q" || true)
+              interaction=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/espace-client/client-catalog-interaction-v118-7.js?$q" || true)
               release=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/api/public/release?$q" || true)
               if grep -Fq 'client-experience-v117.js?v=20260908-1' <<<"$html" \
                 && grep -Fq '/espace-client/client-command-center-v118-1.js?v=1' <<<"$html" \
+                && grep -Fq 'client-visual-coherence-v118-2.js?v=20260908-2' <<<"$html" \
+                && grep -Fq 'client-catalog-interaction-v118-7.js?v=20260908-2' <<<"$html" \
                 && grep -Fq "$EXPERIENCE_RELEASE" <<<"$experience" \
                 && ! grep -Fq "import('/espace-client/client-command-center-v117.js" <<<"$experience" \
                 && grep -Fq "$LEGACY_SHIM_RELEASE" <<<"$legacy" \
+                && grep -Fq "$CLIENT_VISUAL_RELEASE" <<<"$visual" \
+                && grep -Fq 'location.assign(target)' <<<"$visual" \
+                && grep -Fq "$CLIENT_INTERACTION_RELEASE" <<<"$interaction" \
+                && ! grep -Fq "addEventListener('pointerdown'" <<<"$interaction" \
                 && RELEASE_JSON="$release" node <<'NODE'
           const data=JSON.parse(process.env.RELEASE_JSON||'{}');
           if(data.clientExperience!==process.env.CLIENT_RELEASE)process.exit(1);
+          if(data.clientCatalogClick!==process.env.CLIENT_CATALOG_CLICK_RELEASE)process.exit(1);
           NODE
               then
                 ready=1
-                echo "$base: single command-center client release verified on attempt $attempt"
+                echo "$base: clickable single-owner client catalog verified on attempt $attempt"
                 break
               fi
               sleep 4

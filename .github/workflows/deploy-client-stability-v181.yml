@@ -1,0 +1,115 @@
+name: Deploy Client Stability V181
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'neptune-tv-media-cloudflare/public/espace-client/**'
+      - 'neptune-tv-media-cloudflare/src/entry-v38.js'
+      - 'neptune-tv-media-cloudflare/src/entry-v48.js'
+      - 'wrangler.jsonc'
+      - 'neptune-tv-media-cloudflare/wrangler.jsonc'
+      - '.github/workflows/deploy-client-stability-v181.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: neptune-media-client-production
+  cancel-in-progress: true
+
+jobs:
+  deploy-client:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      PUBLIC_URL: https://tv.neptunebusiness.com
+      WORKERS_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
+      CLIENT_RELEASE: neptune-client-experience-20260908-v118.8-single-command-center
+      EXPERIENCE_RELEASE: neptune-client-experience-20260908-v117.1-no-legacy-command-center
+      LEGACY_SHIM_RELEASE: neptune-client-command-center-legacy-disabled-20260908-v181
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install --package-lock=false --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org
+
+      - name: Validate single command-center ownership
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check neptune-tv-media-cloudflare/public/espace-client/client-experience-v117.js
+          node --check neptune-tv-media-cloudflare/public/espace-client/client-command-center-v117.js
+          node --check neptune-tv-media-cloudflare/public/espace-client/client-command-center-v118-1.js
+          node --check neptune-tv-media-cloudflare/src/entry-v38.js
+          grep -Fq "$EXPERIENCE_RELEASE" neptune-tv-media-cloudflare/public/espace-client/client-experience-v117.js
+          grep -Fq "$LEGACY_SHIM_RELEASE" neptune-tv-media-cloudflare/public/espace-client/client-command-center-v117.js
+          ! grep -Fq "import('/espace-client/client-command-center-v117.js" neptune-tv-media-cloudflare/public/espace-client/client-experience-v117.js
+          grep -Fq "client-experience-v117.js?v=20260908-1" neptune-tv-media-cloudflare/src/entry-v38.js
+          grep -Fq "$CLIENT_RELEASE" neptune-tv-media-cloudflare/src/entry-v38.js
+          test "$(wc -l < neptune-tv-media-cloudflare/public/espace-client/client-command-center-v117.js)" -lt 20
+
+      - name: Validate current Worker bundle
+        run: npx wrangler deploy --config wrangler.jsonc --dry-run --outdir .wrangler-dry-run
+
+      - name: Prepare deploy config without domain mutations
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs=require('node:fs');
+          const config=JSON.parse(fs.readFileSync('wrangler.jsonc','utf8'));
+          delete config.route;
+          delete config.routes;
+          if(config.main!=='neptune-tv-media-cloudflare/src/entry-v48.js'){
+            throw new Error(`Unexpected Worker entry: ${config.main}`);
+          }
+          fs.writeFileSync('.wrangler-ci-client-v181.jsonc',JSON.stringify(config,null,2)+'\n');
+          NODE
+
+      - name: Deploy current Worker and client assets
+        run: npx wrangler deploy --config .wrangler-ci-client-v181.jsonc
+
+      - name: Verify client stability release in production
+        shell: bash
+        run: |
+          set -euo pipefail
+          verify_base() {
+            local base="$1"
+            local ready=0
+            for attempt in $(seq 1 30); do
+              local q="client_stability_v181=$GITHUB_SHA&attempt=$attempt"
+              html=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/espace-client/?$q" || true)
+              experience=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/espace-client/client-experience-v117.js?$q" || true)
+              legacy=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/espace-client/client-command-center-v117.js?$q" || true)
+              release=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/api/public/release?$q" || true)
+              if grep -Fq 'client-experience-v117.js?v=20260908-1' <<<"$html" \
+                && grep -Fq '/espace-client/client-command-center-v118-1.js?v=1' <<<"$html" \
+                && grep -Fq "$EXPERIENCE_RELEASE" <<<"$experience" \
+                && ! grep -Fq "import('/espace-client/client-command-center-v117.js" <<<"$experience" \
+                && grep -Fq "$LEGACY_SHIM_RELEASE" <<<"$legacy" \
+                && RELEASE_JSON="$release" node <<'NODE'
+          const data=JSON.parse(process.env.RELEASE_JSON||'{}');
+          if(data.clientExperience!==process.env.CLIENT_RELEASE)process.exit(1);
+          NODE
+              then
+                ready=1
+                echo "$base: single command-center client release verified on attempt $attempt"
+                break
+              fi
+              sleep 4
+            done
+            test "$ready" = 1
+          }
+          verify_base "$WORKERS_URL"
+          verify_base "$PUBLIC_URL"

@@ -9,6 +9,9 @@ import {
 export {WebTvEncoder};
 
 const RELEASE='neptune-effective-offer-runtime-20260905-v181.1';
+const CLIENT_CATALOG_CLICK_RELEASE='neptune-client-catalog-click-20260908-v181';
+const CLIENT_VISUAL_ASSET='/espace-client/client-visual-coherence-v118-2.js?v=20260908-2';
+const CLIENT_INTERACTION_ASSET='/espace-client/client-catalog-interaction-v118-7.js?v=20260908-2';
 
 export class StudioStore extends BaseStudioStore{
   async fetch(request){
@@ -65,18 +68,38 @@ export default{
   async fetch(request,env,ctx){
     let response=await base.fetch(request,env,ctx);
     const url=new URL(request.url);
+    const type=response.headers.get('Content-Type')||'';
+    if(request.method==='GET'&&response.ok&&type.includes('text/html')&&isClientHome(url.pathname)){
+      response=await pinClientCatalogRuntime(response);
+    }
     if(request.method==='GET'&&url.pathname==='/api/public/release'&&response.ok){
       const data=await response.json().catch(()=>({}));
       const headers=new Headers(response.headers);
       headers.delete('Content-Length');
       headers.set('Content-Type','application/json; charset=utf-8');
       headers.set('Cache-Control','no-store');
-      response=new Response(JSON.stringify({...data,effectiveOffer:EFFECTIVE_OFFER_V181_RELEASE}),{status:response.status,statusText:response.statusText,headers});
+      response=new Response(JSON.stringify({...data,effectiveOffer:EFFECTIVE_OFFER_V181_RELEASE,clientCatalogClick:CLIENT_CATALOG_CLICK_RELEASE}),{status:response.status,statusText:response.statusText,headers});
     }
     const headers=new Headers(response.headers);
     headers.set('X-Neptune-Effective-Offer',EFFECTIVE_OFFER_V181_RELEASE);
     headers.set('X-Neptune-Effective-Offer-Runtime',RELEASE);
+    headers.set('X-Neptune-Client-Catalog-Click',CLIENT_CATALOG_CLICK_RELEASE);
     return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
   },
   scheduled(controller,env,ctx){return typeof base.scheduled==='function'?base.scheduled(controller,env,ctx):undefined;},
 };
+
+async function pinClientCatalogRuntime(response){
+  let body=await response.text();
+  body=body.replace(/\/espace-client\/client-visual-coherence-v118-2\.js(?:\?[^"'<> ]*)?/gu,CLIENT_VISUAL_ASSET);
+  body=body.replace(/\/espace-client\/client-catalog-interaction-v118-7\.js(?:\?[^"'<> ]*)?/gu,CLIENT_INTERACTION_ASSET);
+  const headers=new Headers(response.headers);
+  for(const name of ['Content-Length','Content-Encoding','ETag','Last-Modified'])headers.delete(name);
+  headers.set('Cache-Control','private, no-store, max-age=0');
+  headers.set('X-Neptune-Client-Catalog-Click',CLIENT_CATALOG_CLICK_RELEASE);
+  return new Response(body,{status:response.status,statusText:response.statusText,headers});
+}
+
+function isClientHome(pathname){
+  return pathname==='/espace-client'||pathname==='/espace-client/'||pathname==='/espace-client/index.html';
+}

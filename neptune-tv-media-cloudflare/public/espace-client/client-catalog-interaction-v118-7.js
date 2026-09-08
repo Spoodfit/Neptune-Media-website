@@ -1,4 +1,4 @@
-const RELEASE='neptune-client-catalog-interaction-20260815-v118.7';
+const RELEASE='neptune-client-catalog-interaction-20260908-v118.8';
 const ROOT=document.documentElement;
 let queued=false;
 
@@ -25,8 +25,8 @@ function boot(){
     attributes:true,
     attributeFilter:['class','aria-current'],
   });
-  // Safety normalization is allowed on deliberate interaction, never on hover.
-  document.addEventListener('pointerdown',queueFromTarget,true);
+  // Never mutate/replace a card between pointerdown and click: doing so can
+  // cancel the browser click sequence. Keyboard focus may still normalize.
   document.addEventListener('focusin',queueFromTarget,true);
 }
 
@@ -148,6 +148,7 @@ html[data-client-catalog-interaction-v1187="1"] .dashboard-v37 a.cc-v1187-format
   box-shadow:0 12px 30px rgba(11,31,68,.055)!important;
   outline:0!important;
   cursor:pointer!important;
+  pointer-events:auto!important;
   transform:none!important;
   -webkit-tap-highlight-color:transparent!important;
   touch-action:manipulation;
@@ -155,7 +156,7 @@ html[data-client-catalog-interaction-v1187="1"] .dashboard-v37 a.cc-v1187-format
 }
 html[data-client-catalog-interaction-v1187="1"] .dashboard-v37 a.cc-v1187-format-card>*{pointer-events:none}
 html[data-client-catalog-interaction-v1187="1"] .dashboard-v37 a.cc-v1187-format-card::before,
-html[data-client-catalog-interaction-v1187="1"] .dashboard-v37 a.cc-v1187-format-card::after{display:none!important;content:none!important}
+html[data-client-catalog-interaction-v1187="1"] .dashboard-v37 a.cc-v1187-format-card::after{display:none!important;content:none!important;pointer-events:none!important}
 html[data-client-catalog-interaction-v1187="1"] .dashboard-v37 a.cc-v1187-format-card .cc-v118-catalog-visual img{
   transform:none!important;
   transition:none!important;

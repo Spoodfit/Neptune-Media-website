@@ -1,0 +1,102 @@
+name: Deploy Reservation V181
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'neptune-tv-media-cloudflare/public/reserver/**'
+      - 'neptune-tv-media-cloudflare/src/entry-v48.js'
+      - 'neptune-tv-media-cloudflare/src/effective-offer-v181.js'
+      - 'wrangler.jsonc'
+      - 'neptune-tv-media-cloudflare/wrangler.jsonc'
+      - '.github/workflows/deploy-reservation-v181.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: neptune-media-reservation-production
+  cancel-in-progress: true
+
+jobs:
+  deploy-reservation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      MEDIA_URL: https://media.neptunebusiness.com
+      WORKERS_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
+      SCROLL_RELEASE: neptune-reservation-scroll-stability-20260908-v181
+      HTML_RELEASE: 20260908-v181-scroll-stability
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install --package-lock=false --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org
+
+      - name: Validate reservation scroll fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check neptune-tv-media-cloudflare/public/reserver/assets/scroll-stability-v181.js
+          grep -Fq 'scroll-stability-v181.js?v=20260908-1' neptune-tv-media-cloudflare/public/reserver/index.html
+          grep -Fq "$HTML_RELEASE" neptune-tv-media-cloudflare/public/reserver/index.html
+          grep -Fq "$SCROLL_RELEASE" neptune-tv-media-cloudflare/public/reserver/assets/scroll-stability-v181.js
+          grep -Fq 'overflow-anchor:none' neptune-tv-media-cloudflare/public/reserver/index.html
+
+      - name: Validate current Worker bundle
+        run: npx wrangler deploy --config wrangler.jsonc --dry-run --outdir .wrangler-dry-run
+
+      - name: Prepare deploy config without domain mutations
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs=require('node:fs');
+          const config=JSON.parse(fs.readFileSync('wrangler.jsonc','utf8'));
+          delete config.route;
+          delete config.routes;
+          if(config.main!=='neptune-tv-media-cloudflare/src/entry-v48.js'){
+            throw new Error(`Unexpected Worker entry: ${config.main}`);
+          }
+          fs.writeFileSync('.wrangler-ci-reservation-v181.jsonc',JSON.stringify(config,null,2)+'\n');
+          NODE
+
+      - name: Deploy current Worker and assets
+        run: npx wrangler deploy --config .wrangler-ci-reservation-v181.jsonc
+
+      - name: Verify scroll fix in production
+        shell: bash
+        run: |
+          set -euo pipefail
+          verify_base() {
+            local base="$1"
+            local ready=0
+            for attempt in $(seq 1 30); do
+              local q="scroll_v181=$GITHUB_SHA&attempt=$attempt"
+              html=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/reserver?$q" || true)
+              js=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/reserver/assets/scroll-stability-v181.js?$q" || true)
+              if grep -Fq "$HTML_RELEASE" <<<"$html" \
+                && grep -Fq 'scroll-stability-v181.js?v=20260908-1' <<<"$html" \
+                && grep -Fq "$SCROLL_RELEASE" <<<"$js" \
+                && grep -Fq 'unexpectedReset' <<<"$js" \
+                && grep -Fq 'restoreStablePosition' <<<"$js"; then
+                ready=1
+                echo "$base: reservation scroll stability v181 verified on attempt $attempt"
+                break
+              fi
+              sleep 4
+            done
+            test "$ready" = 1
+          }
+          verify_base "$WORKERS_URL"
+          verify_base "$MEDIA_URL"

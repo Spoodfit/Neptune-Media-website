@@ -5,11 +5,11 @@ import {isSameOrigin,json} from './security.js';
 export {StudioStore,WebTvEncoder};
 
 const BASE_CLIENT_EXPERIENCE='neptune-client-experience-20260814-v118.2';
-const RELEASE='neptune-client-experience-20260815-v118.7';
+const RELEASE='neptune-client-experience-20260908-v118.8-single-command-center';
 const DIRECT_BOOKING_RELEASE='neptune-client-direct-reservation-20260815-v118.5';
 const CATALOG_INTERACTION_RELEASE='neptune-client-catalog-interaction-20260815-v118.7';
 const CLIENT_CSS='/espace-client/client-experience-v117.css?v=1';
-const CLIENT_JS='/espace-client/client-experience-v117.js?v=1';
+const CLIENT_JS='/espace-client/client-experience-v117.js?v=20260908-1';
 const COMMAND_CSS='/espace-client/client-command-center-v118.css?v=1';
 const CATALOG_RAIL_CSS='/espace-client/client-catalog-rail-v118.css?v=1';
 const VISUAL_CSS='/espace-client/client-visual-coherence-v118-2.css?v=2';

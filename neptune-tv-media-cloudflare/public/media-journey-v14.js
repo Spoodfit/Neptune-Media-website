@@ -81,8 +81,21 @@
       url.searchParams.set('utm_campaign', 'neptune_media');
       cta.href = url.toString();
       cta.textContent = `Voir ${offer.label} et les créneaux`;
+
+      // Revealing the recommendation must never take control of the user's viewport.
+      // The previous scrollIntoView() caused the visible jump back to the formats block.
+      const scrollYBeforeReveal = window.scrollY;
       guidance.hidden = false;
-      if (focusGuidance) guidance.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'nearest' });
+
+      if (focusGuidance) {
+        requestAnimationFrame(() => {
+          // Protect against scroll anchoring / focus side effects while the hidden
+          // recommendation block is inserted into the document flow.
+          if (Math.abs(window.scrollY - scrollYBeforeReveal) > 2) {
+            window.scrollTo({ top: scrollYBeforeReveal, left: window.scrollX, behavior: 'auto' });
+          }
+        });
+      }
     };
 
     formatCards.forEach((card, index) => {
@@ -100,7 +113,7 @@
         if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
           event.preventDefault();
           const next = event.key === 'ArrowRight' ? (index + 1) % formatCards.length : (index - 1 + formatCards.length) % formatCards.length;
-          formatCards[next].focus();
+          formatCards[next].focus({ preventScroll: true });
           selectFormat(next, false);
         }
       });

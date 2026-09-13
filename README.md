@@ -63,6 +63,7 @@ Le cockpit **Studio** reste le point central de gestion pour l'équipe Neptune. 
 Commencer par :
 
 - [`migration/TRANSFER_MANIFEST.md`](./migration/TRANSFER_MANIFEST.md) — périmètre exact du dépôt à transférer ;
+- [`migration/VPS_FILE_MAP.md`](./migration/VPS_FILE_MAP.md) — correspondance précise source → fichiers `Neptune-main` ;
 - [`MIGRATION.md`](./MIGRATION.md) — architecture et principes ;
 - [`migration/PORTING_PLAN.md`](./migration/PORTING_PLAN.md) — ordre de portage ;
 - [`migration/CUTOVER_CHECKLIST.md`](./migration/CUTOVER_CHECKLIST.md) — critères GO/NO-GO ;

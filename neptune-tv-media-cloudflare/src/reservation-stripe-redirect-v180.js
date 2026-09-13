@@ -1,5 +1,5 @@
 export const RESERVATION_STRIPE_REDIRECT_V180_RELEASE='neptune-reservation-stripe-redirect-20260905-v180';
-export const RESERVATION_STRIPE_RETURN_URL='https://media.neptunebusiness.com/reserver?payment=success&session_id={CHECKOUT_SESSION_ID}';
+export const RESERVATION_STRIPE_RETURN_URL='https://neptune-media-webtv.neptunebusinessclub.workers.dev/reserver?payment=success&session_id={CHECKOUT_SESSION_ID}';
 const STATE_KEY='reservation_stripe_redirect_v180';
 const LEGACY_STATE_KEY='stripe_redirect_version';
 const LEGACY_STATE_VALUE='v97-confirmation-20260811';

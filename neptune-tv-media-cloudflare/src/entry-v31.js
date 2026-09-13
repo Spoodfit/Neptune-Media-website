@@ -259,7 +259,7 @@ async function augmentRelease(response) {
     simpleClientJourney: RELEASE,
     passageModel: 'one-order-one-passage-multiple-passages-per-client-v92',
     studioJourneySteps: 8,
-    reservationLink: 'https://media.neptunebusiness.com/reserver',
+    reservationLink: 'https://neptune-media-webtv.neptunebusinessclub.workers.dev/reserver',
     preparationBookingLink: 'https://calendar.app.google/X9q1T5JT9ngMfZY67',
     supplierSlaHours: 48,
     clientDateChangeMinimumDays: 15,

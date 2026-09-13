@@ -55,6 +55,6 @@ function card(format){
   return `<article class="format-card cmc95-card" data-format="${esc(format.slug||format.name||'format')}"><span class="format-symbol">${symbol}</span><div class="cmc95-copy"><span class="cmc95-concept">${esc(format.concept||'NEPTUNE MEDIA')}</span><strong>${esc(format.name)}</strong>${format.durationLabel?`<small>${esc(format.durationLabel)}</small>`:''}<p>${esc(format.description||'Format Neptune Media disponible à la réservation.')}</p></div><div class="cmc95-footer">${Number(format.priceCents||0)>0?`<strong>${money(format.priceCents)}</strong>`:'<strong>Inclus selon votre offre</strong>'}<a href="${esc(url)}">Choisir ce format</a></div></article>`;
 }
 
-function fallbackBooking(slug){const url=new URL('https://media.neptunebusiness.com/reserver');if(slug)url.searchParams.set('format',slug);return url.toString();}
+function fallbackBooking(slug){const url=new URL('https://neptune-media-webtv.neptunebusinessclub.workers.dev/reserver');if(slug)url.searchParams.set('format',slug);return url.toString();}
 function money(cents){return new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(Number(cents||0)/100);}
 function esc(value){return String(value??'').replace(/[&<>"']/gu,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}

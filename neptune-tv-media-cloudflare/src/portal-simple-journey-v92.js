@@ -15,7 +15,7 @@ import {
 
 const FIFTEEN_DAYS = 15 * 24 * 60 * 60 * 1000;
 const PREPARATION_URL = 'https://calendar.app.google/X9q1T5JT9ngMfZY67';
-const RESERVATION_URL = 'https://media.neptunebusiness.com/reserver';
+const RESERVATION_URL = 'https://neptune-media-webtv.neptunebusinessclub.workers.dev/reserver';
 const SOURCE_TYPES = new Set(['rushes', 'raw', 'source', 'video']);
 const FINAL_TYPES = new Set(['final', 'emission', 'full', 'master', 'episode']);
 const SHORT_TYPES = new Set(['short', 'shorts', 'reel', 'teaser']);

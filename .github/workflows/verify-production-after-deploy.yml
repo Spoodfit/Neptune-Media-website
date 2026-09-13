@@ -1,0 +1,132 @@
+name: Verify Neptune Media after deploy
+
+on:
+  workflow_run:
+    workflows: ['Deploy Neptune Media to Cloudflare']
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: neptune-media-production-verification
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PUBLIC_URL: https://tv.neptunebusiness.com
+      MEDIA_URL: https://media.neptunebusiness.com
+      WORKERS_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
+      CLIENT_RELEASE: neptune-client-experience-20260908-v118.8-single-command-center
+      CLIENT_CATALOG_CLICK_RELEASE: neptune-client-catalog-click-20260913-v181.5-single-owner-native-anchor
+      CLIENT_VISUAL_RELEASE: neptune-client-visual-coherence-20260913-v118.12-single-owner-native-anchor
+      CLIENT_INTERACTION_RELEASE: neptune-client-catalog-interaction-20260913-v118.10-native-anchor-shim
+      LEGACY_SALES_RELEASE: neptune-sales-tunnel-20260913-v96.1-visual-owner-aware
+      LEGACY_MEDIA_RELEASE: neptune-client-media-catalog-20260913-v95.1-visual-owner-aware
+      SCROLL_RELEASE: neptune-reservation-scroll-stability-20260908-v181
+      HTML_RELEASE: 20260908-v181-scroll-stability
+
+    steps:
+      - name: Verify public surfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha="${{ github.event.workflow_run.head_sha || github.sha }}"
+          for path in /studio/ /espace-client/ /reserver /hors-norme; do
+            curl --fail --silent --show-error --location -H 'Cache-Control: no-cache, no-store' "$WORKERS_URL$path?verify=$sha" >/dev/null
+          done
+          curl --fail --silent --show-error --location -H 'Cache-Control: no-cache, no-store' "$PUBLIC_URL/espace-client/?verify=$sha" >/dev/null
+          curl --fail --silent --show-error --location -H 'Cache-Control: no-cache, no-store' "$MEDIA_URL/reserver?verify=$sha" >/dev/null
+
+      - name: Verify client catalog production contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha="${{ github.event.workflow_run.head_sha || github.sha }}"
+          verify_base() {
+            local base="$1"
+            local ready=0
+            for attempt in $(seq 1 24); do
+              local q="client_catalog_owner=$sha&attempt=$attempt"
+              html=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/espace-client/?$q" || true)
+              visual=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/espace-client/client-visual-coherence-v118-2.js?$q" || true)
+              interaction=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/espace-client/client-catalog-interaction-v118-7.js?$q" || true)
+              sales=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/espace-client/sales-catalog-v96.js?$q" || true)
+              media=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/espace-client/media-catalog-v95.js?$q" || true)
+              release=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/api/public/release?$q" || true)
+              if grep -Fq 'client-visual-coherence-v118-2.js?v=20260913-4' <<<"$html" \
+                && grep -Fq "$CLIENT_VISUAL_RELEASE" <<<"$visual" \
+                && grep -Fq "clientCatalogDomOwner='visual-v1182'" <<<"$visual" \
+                && grep -Fq "$CLIENT_INTERACTION_RELEASE" <<<"$interaction" \
+                && grep -Fq "clientCatalogNavigationOwner='native-anchor'" <<<"$interaction" \
+                && grep -Fq "$LEGACY_SALES_RELEASE" <<<"$sales" \
+                && grep -Fq "$LEGACY_MEDIA_RELEASE" <<<"$media" \
+                && RELEASE_JSON="$release" node <<'NODE'
+          const data = JSON.parse(process.env.RELEASE_JSON || '{}');
+          if (data.clientExperience !== process.env.CLIENT_RELEASE) process.exit(1);
+          if (data.clientCatalogClick !== process.env.CLIENT_CATALOG_CLICK_RELEASE) process.exit(1);
+          NODE
+              then
+                ready=1
+                echo "$base: client catalog verified on attempt $attempt"
+                break
+              fi
+              sleep 5
+            done
+            test "$ready" = 1
+          }
+          verify_base "$WORKERS_URL"
+          verify_base "$PUBLIC_URL"
+
+      - name: Verify reservation production contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha="${{ github.event.workflow_run.head_sha || github.sha }}"
+          verify_base() {
+            local base="$1"
+            local ready=0
+            for attempt in $(seq 1 24); do
+              local q="reservation_contract=$sha&attempt=$attempt"
+              html=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/reserver?$q" || true)
+              js=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/reserver/assets/scroll-stability-v181.js?$q" || true)
+              if grep -Fq "$HTML_RELEASE" <<<"$html" \
+                && grep -Fq 'scroll-stability-v181.js?v=20260908-1' <<<"$html" \
+                && grep -Fq "$SCROLL_RELEASE" <<<"$js" \
+                && grep -Fq 'unexpectedReset' <<<"$js" \
+                && grep -Fq 'restoreStablePosition' <<<"$js"; then
+                ready=1
+                echo "$base: reservation contract verified on attempt $attempt"
+                break
+              fi
+              sleep 5
+            done
+            test "$ready" = 1
+          }
+          verify_base "$WORKERS_URL"
+          verify_base "$MEDIA_URL"
+
+      - name: Verify HORS NORME landing contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha="${{ github.event.workflow_run.head_sha || github.sha }}"
+          ready=0
+          for attempt in $(seq 1 24); do
+            html=$(curl --fail --silent --show-error --location -H 'Cache-Control: no-cache, no-store' "$WORKERS_URL/hors-norme?release=$sha&attempt=$attempt" || true)
+            if grep -Fq '30 contenus minimum garantis' <<<"$html" \
+              && grep -Fq '3 mois de communication' <<<"$html" \
+              && grep -Fq 'Le parcours VIP clé en main' <<<"$html" \
+              && grep -Fq 'Vérifier mon éligibilité' <<<"$html"; then
+              ready=1
+              echo "HORS NORME landing verified on attempt $attempt."
+              break
+            fi
+            sleep 5
+          done
+          test "$ready" = 1

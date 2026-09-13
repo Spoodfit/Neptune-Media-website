@@ -37,6 +37,10 @@ function walk(directory, predicate, output = []) {
   return output;
 }
 
+function hasRealWorkerDeploy(content) {
+  return content.split(/\r?\n/u).some(line => /wrangler\s+deploy/u.test(line) && !/--dry-run/u.test(line) && !/^\s*#/u.test(line));
+}
+
 for (const required of [
   'migration/manifest.json',
   'MIGRATION.md',
@@ -82,8 +86,13 @@ if (manifest) {
   const canonicalDeploy = manifest.current?.canonicalDeployWorkflow;
   if (!canonicalDeploy || !exists(canonicalDeploy)) {
     fail(`Canonical deploy workflow is missing: ${canonicalDeploy || '(undefined)'}`);
-  } else if (!read(canonicalDeploy).includes('wrangler deploy')) {
-    fail(`${canonicalDeploy} does not contain a Worker deployment step`);
+  } else if (!hasRealWorkerDeploy(read(canonicalDeploy))) {
+    fail(`${canonicalDeploy} does not contain the production Worker deployment step`);
+  }
+
+  const postDeploy = manifest.current?.postDeployVerificationWorkflow;
+  if (!postDeploy || !exists(postDeploy)) {
+    fail(`Post-deploy verification workflow is missing: ${postDeploy || '(undefined)'}`);
   }
 }
 
@@ -111,14 +120,18 @@ if (canonicalDeploy && exists(canonicalDeploy) && manifest?.current?.workerEntry
     .map(match => match[0])
     .filter(name => name !== expectedBasename);
   if (staleEntryRefs.length) {
-    warn(`${canonicalDeploy} contains legacy entry references while canonical entry is ${expectedBasename}: ${[...new Set(staleEntryRefs)].join(', ')}`);
+    fail(`${canonicalDeploy} contains legacy entry references while canonical entry is ${expectedBasename}: ${[...new Set(staleEntryRefs)].join(', ')}`);
   }
 }
 
-const deployWorkflows = walk('.github/workflows', file => /deploy.*\.ya?ml$/iu.test(file));
-const workerDeployers = deployWorkflows.filter(file => /wrangler\s+deploy/u.test(read(file)));
-if (workerDeployers.length > 1) {
-  warn(`${workerDeployers.length} workflows can run wrangler deploy on the Media Worker: ${workerDeployers.join(', ')}`);
+const workflowFiles = walk('.github/workflows', file => /\.ya?ml$/iu.test(file));
+const workerDeployers = workflowFiles.filter(file => hasRealWorkerDeploy(read(file)));
+if (workerDeployers.length !== 1) {
+  fail(`Exactly one workflow must deploy the Media Worker; found ${workerDeployers.length}: ${workerDeployers.join(', ') || '(none)'}`);
+} else if (canonicalDeploy && workerDeployers[0] !== canonicalDeploy) {
+  fail(`Worker deployer ${workerDeployers[0]} does not match canonical workflow ${canonicalDeploy}.`);
+} else {
+  note(`Single Worker deploy owner: ${workerDeployers[0]}.`);
 }
 
 const rootGeneratedArtifacts = fs.readdirSync(root, { withFileTypes: true })

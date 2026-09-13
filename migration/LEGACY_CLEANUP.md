@@ -9,7 +9,7 @@ Même si leur architecture n'est pas la cible, les éléments suivants participe
 - `src/entry-v48.js` et ses imports descendants ;
 - les modules Store appelés par la chaîne active ;
 - les assets réellement injectés dans Studio, Espace client et Réservation ;
-- les workflows de déploiement Cloudflare encore utilisés pendant la finalisation ;
+- le pipeline Cloudflare canonique pendant la finalisation ;
 - les scripts d'intégration Drive / Stripe / Resend / WebTV en production.
 
 Leur statut est **LEGACY_REQUIRED** : à documenter et encapsuler, pas à supprimer prématurément.
@@ -48,6 +48,29 @@ Ils n'appartiennent ni au runtime ni au modèle de données à migrer. `.gitigno
 
 `ui-quality-status.json` n'est pas supprimé dans ce lot : il reste traité séparément tant que le workflow de qualité UI n'a pas été consolidé.
 
+## Déploiement Cloudflare consolidé
+
+Les trois déploiements spécialisés suivants ont été supprimés :
+
+```text
+.github/workflows/deploy-client-stability-v181.yml
+.github/workflows/deploy-reservation-v181.yml
+.github/workflows/deploy-hors-norme.yml
+```
+
+Le seul workflow autorisé à exécuter le déploiement Worker est désormais :
+
+```text
+.github/workflows/deploy-cloudflare.yml
+```
+
+Les contrats critiques auparavant dispersés dans ces workflows sont conservés de deux façons :
+
+- validation source : `neptune-tv-media-cloudflare/scripts/verify-current-release-invariants.mjs` ;
+- validation après déploiement : `.github/workflows/verify-production-after-deploy.yml`.
+
+Le pipeline canonique utilise `entry-v48.js`, retire `route/routes` de sa configuration CI afin de ne pas muter les domaines, exécute l'audit de migration et la suite de tests avant le déploiement.
+
 ## Dette de structure encore présente
 
 ### Chaîne `entry-vXX.js`
@@ -56,23 +79,9 @@ Le Worker courant repose sur une succession de wrappers historiques. `entry-v48.
 
 Cible : routes par domaine + services métier + adaptateurs.
 
-### Multiples workflows de déploiement
+### Workflows historiques de diagnostic et vérification
 
-Plusieurs workflows peuvent encore exécuter `wrangler deploy` sur le même Worker. Le pipeline général déclaré canonique dans `migration/manifest.json` est :
-
-```text
-.github/workflows/deploy-cloudflare.yml
-```
-
-Les workflows spécialisés restent une dette de livraison à convertir en contrôles sans déploiement ou à absorber dans le pipeline canonique.
-
-Cible avant cutover :
-
-```text
-checks spécialisés
-        ↓
-un seul pipeline de déploiement canonique
-```
+Il reste de nombreux workflows versionnés de diagnostic et de vérification. Ils ne déploient plus le Worker canonique, mais constituent encore une dette de maintenance. Ils doivent être classés entre contrôle encore utile et contrôle remplacé avant suppression par lots.
 
 ## Politique de suppression
 
@@ -87,7 +96,7 @@ Avant de supprimer un fichier legacy :
 
 ## Ordre du nettoyage destructif restant
 
-1. workflows de vérification historiques manifestement remplacés ;
+1. workflows de diagnostic/vérification manifestement remplacés ;
 2. assets frontend non injectés et non référencés ;
 3. shims frontend neutralisés ;
 4. anciens wrappers serveur non atteignables depuis l'entrée canonique ;

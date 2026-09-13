@@ -1,11 +1,12 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "project": "Neptune Media",
   "purpose": "Reference implementation being prepared for migration into the Neptune VPS monorepo",
   "current": {
     "applicationRoot": "neptune-tv-media-cloudflare",
     "workerEntry": "neptune-tv-media-cloudflare/src/entry-v48.js",
     "canonicalDeployWorkflow": ".github/workflows/deploy-cloudflare.yml",
+    "postDeployVerificationWorkflow": ".github/workflows/verify-production-after-deploy.yml",
     "wranglerFiles": [
       "wrangler.jsonc",
       "neptune-tv-media-cloudflare/wrangler.jsonc"
@@ -73,6 +74,7 @@
     "HORS NORME must hand off through a persisted prospect and reservation token",
     "Migrate domain behavior before platform-specific implementation details",
     "One business capability must have one canonical owner",
-    "Generated diagnostics and deployment markers must not be committed at repository root"
+    "Generated diagnostics and deployment markers must not be committed at repository root",
+    "Exactly one GitHub workflow may perform the production Worker deployment"
   ]
 }

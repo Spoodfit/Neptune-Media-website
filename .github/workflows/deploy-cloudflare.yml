@@ -4,14 +4,14 @@ on:
   push:
     branches: [main]
     paths:
-      - 'neptune-video-engine/**'
-      - 'neptune-tv-media-cloudflare/**'
+      - 'neptune-tv-media-cloudflare/src/**'
+      - 'neptune-tv-media-cloudflare/public/**'
+      - 'neptune-tv-media-cloudflare/containers/**'
+      - 'neptune-tv-media-cloudflare/local-video-engine/**'
       - 'wrangler.jsonc'
+      - 'neptune-tv-media-cloudflare/wrangler.jsonc'
       - 'package.json'
-      - 'package-lock.json'
       - '.github/workflows/deploy-cloudflare.yml'
-  issue_comment:
-    types: [created]
   workflow_dispatch:
 
 permissions:
@@ -23,26 +23,12 @@ concurrency:
 
 jobs:
   deploy:
-    if: github.event_name != 'issue_comment' || (github.actor == 'neptunebusinessclub' && github.event.issue.pull_request && github.event.comment.body == '/deploy-neptune-media')
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-      PUBLIC_URL: https://tv.neptunebusiness.com
-      MEDIA_URL: https://media.neptunebusiness.com
       WORKERS_URL: https://neptune-media-webtv.neptunebusinessclub.workers.dev
-      RELEASE_ID: neptune-verified-content-runtime-20260730-v18
-      EDITORIAL_RELEASE: neptune-editorial-workspace-20260730-v2
-      STUDIO_OPERATIONS_RELEASE: neptune-studio-client-journey-20260805-v77
-      STUDIO_UI_RELEASE: neptune-studio-ui-20260812-v105-three-tab-canonical-shell
-      CATALOG_AUDIT_RELEASE: neptune-media-catalog-audit-20260813-v109
-      CATALOG_RUNTIME_RELEASE: neptune-studio-catalog-cockpit-20260820-v131
-      SMART_EMAIL_RELEASE: neptune-smart-email-governor-20260806-v84
-      HORIZONTAL_JOURNEY_RELEASE: neptune-horizontal-client-journey-20260810-v93
-      DRIVE_UPLOAD_RELEASE: neptune-studio-drive-upload-20260811-v94
-      DRIVE_UPLOAD_RESILIENCE_RELEASE: neptune-drive-upload-resilience-20260824-v137
-      RESERVATION_FINALIZATION_RELEASE: neptune-reservation-finalization-20260905-v180
 
     steps:
       - name: Checkout
@@ -57,232 +43,50 @@ jobs:
       - name: Install dependencies
         run: npm install --package-lock=false --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org
 
-      - name: Build and validate application
+      - name: Verify migration boundaries
+        run: npm run audit:migration
+
+      - name: Validate application
         run: npm run check
 
       - name: Validate Worker bundle
         run: npx wrangler deploy --config wrangler.jsonc --dry-run --outdir .wrangler-dry-run
 
-      - name: Prepare deploy config without domain mutations
+      - name: Prepare immutable deploy config
         shell: bash
         run: |
           set -euo pipefail
           node <<'NODE'
-          const fs=require('node:fs');
-          const config=JSON.parse(fs.readFileSync('wrangler.jsonc','utf8'));
+          const fs = require('node:fs');
+          const config = JSON.parse(fs.readFileSync('wrangler.jsonc', 'utf8'));
           delete config.route;
           delete config.routes;
-          fs.writeFileSync('.wrangler-ci-deploy.jsonc',JSON.stringify(config,null,2)+'\n');
+          const expected = 'neptune-tv-media-cloudflare/src/entry-v48.js';
+          if (config.main !== expected) {
+            throw new Error(`Unexpected Worker entry: ${config.main}; expected ${expected}`);
+          }
+          fs.writeFileSync('.wrangler-ci-deploy.jsonc', JSON.stringify(config, null, 2) + '\n');
           NODE
-          node -e "const c=require('./.wrangler-ci-deploy.jsonc'); if(c.routes||c.route) process.exit(1); if(c.main!=='neptune-tv-media-cloudflare/src/entry-v47.js') process.exit(1);"
 
-      - name: Deploy Worker and Studio assets
-        # The custom domains are already attached to this Worker. The CI token can deploy
-        # code/assets/Containers but is not authorized to mutate Workers Custom Domain
-        # records. Omitting route keys here follows Cloudflare's dashboard-managed-route
-        # model and prevents a successful Worker rollout from failing on /domains/records.
+      - name: Deploy Worker and assets
         run: npx wrangler deploy --config .wrangler-ci-deploy.jsonc
 
-      - name: Verify reservation v180 on workers.dev and media domain
+      - name: Verify deployed Worker responds
         shell: bash
         run: |
           set -euo pipefail
-          verify_release() {
-            local base="$1"
-            local ready=0
-            for attempt in $(seq 1 36); do
-              local query="reservation_v180=$GITHUB_SHA&attempt=$attempt"
-              release=$(curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/api/public/release?$query" || true)
-              if RELEASE="$release" node <<'NODE'
-          const data=JSON.parse(process.env.RELEASE||'{}');
-          if(data.reservationFinalization!==process.env.RESERVATION_FINALIZATION_RELEASE)process.exit(1);
-          if(!data.clientReservationTruth||!data.reservationStripeReturn)process.exit(1);
+          ready=0
+          for attempt in $(seq 1 24); do
+            release=$(curl --fail --silent --show-error --location -H 'Cache-Control: no-cache, no-store' "$WORKERS_URL/api/public/release?deploy=$GITHUB_SHA&attempt=$attempt" || true)
+            if RELEASE_JSON="$release" node <<'NODE'
+          const payload = JSON.parse(process.env.RELEASE_JSON || '{}');
+          if (!payload || typeof payload !== 'object' || Array.isArray(payload)) process.exit(1);
           NODE
-              then
-                ready=1
-                echo "$base: reservation v180 verified on attempt $attempt."
-                break
-              fi
-              sleep 5
-            done
-            test "$ready" = 1
-          }
-          verify_page() {
-            local base="$1"
-            local ready=0
-            for attempt in $(seq 1 36); do
-              local query="reservation_v180=$GITHUB_SHA&attempt=$attempt"
-              html=$(curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/reserver?$query" || true)
-              if grep -Fq '/reserver/assets/tunnel-runtime-v179.js' <<<"$html" \
-                && ! grep -Fq '/reserver/assets/sales-experience-v165.js' <<<"$html" \
-                && ! grep -Fq '/reserver/assets/sales-experience-v166.js' <<<"$html" \
-                && ! grep -Fq '/reserver/assets/tunnel-copy-v175.js' <<<"$html" \
-                && ! grep -Fq '/reserver/assets/tunnel-conversion-v176.js' <<<"$html"; then
-                ready=1
-                echo "$base/reserver: finalized runtime verified on attempt $attempt."
-                break
-              fi
-              sleep 5
-            done
-            test "$ready" = 1
-          }
-          verify_release "$WORKERS_URL"
-          verify_release "$MEDIA_URL"
-          verify_page "$MEDIA_URL"
-
-      - name: Verify Catalogue cockpit v131 on both production domains
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p /tmp/neptune-catalog-v131
-          verify_catalog_runtime() {
-            local base="$1"
-            local slug="$2"
-            local ready=0
-            for attempt in $(seq 1 24); do
-              local query="catalog_runtime=$GITHUB_SHA&attempt=$attempt"
-              curl --fail --silent --show-error -D "/tmp/neptune-catalog-v131/$slug-advanced.headers" -H 'Cache-Control: no-cache, no-store' "$base/studio/advanced.html?$query" > "/tmp/neptune-catalog-v131/$slug-advanced.html" || true
-              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/api/public/release?$query" > "/tmp/neptune-catalog-v131/$slug-release.json" || true
-              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/studio-catalog-cockpit-v131.js?$query" > "/tmp/neptune-catalog-v131/$slug-runtime.js" || true
-              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/studio-catalog-cockpit-v131.css?$query" > "/tmp/neptune-catalog-v131/$slug-cockpit.css" || true
-              if RELEASE_FILE="/tmp/neptune-catalog-v131/$slug-release.json" node <<'NODE'
-          const fs = require('node:fs');
-          let data;
-          try { data = JSON.parse(fs.readFileSync(process.env.RELEASE_FILE, 'utf8')); } catch { process.exit(1); }
-          if (data.catalogRuntime !== process.env.CATALOG_RUNTIME_RELEASE) process.exit(1);
-          NODE
-              then
-                if grep -Fqi "x-neptune-catalog-runtime: $CATALOG_RUNTIME_RELEASE" "/tmp/neptune-catalog-v131/$slug-advanced.headers" \
-                  && grep -Fq '/studio/studio-catalog-cockpit-v131.js?v=1' "/tmp/neptune-catalog-v131/$slug-advanced.html" \
-                  && grep -Fq '/studio/studio-catalog-cockpit-v131.css?v=1' "/tmp/neptune-catalog-v131/$slug-advanced.html" \
-                  && ! grep -Fq '/studio/studio-catalog-runtime-v130.js' "/tmp/neptune-catalog-v131/$slug-advanced.html" \
-                  && ! grep -Fq '/studio/studio-catalog-visibility-v130-1.js' "/tmp/neptune-catalog-v131/$slug-advanced.html" \
-                  && grep -Fq "$CATALOG_RUNTIME_RELEASE" "/tmp/neptune-catalog-v131/$slug-runtime.js" \
-                  && grep -Fq 'Vue d’ensemble' "/tmp/neptune-catalog-v131/$slug-runtime.js" \
-                  && grep -Fq 'Éléments du catalogue' "/tmp/neptune-catalog-v131/$slug-runtime.js" \
-                  && grep -Fq '.v131-table' "/tmp/neptune-catalog-v131/$slug-cockpit.css"; then
-                  ready=1
-                  echo "$base: Catalogue cockpit v131 verified on attempt $attempt."
-                  break
-                fi
-              fi
-              sleep 5
-            done
-            test "$ready" = 1
-          }
-          verify_catalog_runtime "$WORKERS_URL" workers
-          verify_catalog_runtime "$PUBLIC_URL" public
-
-      - name: Verify Studio v105 and Catalogue v109 on both production domains
-        env:
-          STUDIO_PRODUCTION_BASE_URLS: https://neptune-media-webtv.neptunebusinessclub.workers.dev,https://tv.neptunebusiness.com
-          STUDIO_PRODUCTION_ATTEMPTS: '24'
-          STUDIO_PRODUCTION_DELAY_MS: '5000'
-        run: node neptune-tv-media-cloudflare/scripts/verify-studio-information-architecture-production-v65.mjs
-
-      - name: Verify horizontal client journey v93 in production
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p /tmp/neptune-horizontal-v93
-          verify_horizontal() {
-            local base="$1"
-            local slug="$2"
-            local ready=0
-            for attempt in $(seq 1 24); do
-              local query="horizontal_v93=$GITHUB_SHA&attempt=$attempt"
-              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/clients?$query" > "/tmp/neptune-horizontal-v93/$slug-clients.html" || true
-              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/horizontal-journey-v93.js?$query" > "/tmp/neptune-horizontal-v93/$slug-journey.js" || true
-              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/horizontal-journey-v93.css?$query" > "/tmp/neptune-horizontal-v93/$slug-journey.css" || true
-              if grep -Fq '/studio/horizontal-journey-v93.js?v=1' "/tmp/neptune-horizontal-v93/$slug-clients.html" \
-                && grep -Fq "$HORIZONTAL_JOURNEY_RELEASE" "/tmp/neptune-horizontal-v93/$slug-journey.js" \
-                && grep -Fq 'cards.length !== 8' "/tmp/neptune-horizontal-v93/$slug-journey.js" \
-                && grep -Fq 'grid-template-columns:repeat(8,minmax(0,1fr))' "/tmp/neptune-horizontal-v93/$slug-journey.css" \
-                && grep -Fq 'overflow-x:auto' "/tmp/neptune-horizontal-v93/$slug-journey.css"; then
-                ready=1
-                echo "$base: horizontal client journey v93 verified on attempt $attempt."
-                break
-              fi
-              sleep 5
-            done
-            test "$ready" = 1
-          }
-          verify_horizontal "$WORKERS_URL" workers
-          verify_horizontal "$PUBLIC_URL" public
-
-      - name: Verify Studio Drive upload v94/v137 in production
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p /tmp/neptune-drive-upload-v137
-          verify_drive_upload() {
-            local base="$1"
-            local slug="$2"
-            local ready=0
-            for attempt in $(seq 1 24); do
-              local query="drive_upload_v137=$GITHUB_SHA&attempt=$attempt"
-              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/api/public/release?$query" > "/tmp/neptune-drive-upload-v137/$slug-release.json" || true
-              curl --fail --silent --show-error -D "/tmp/neptune-drive-upload-v137/$slug-clients.headers" -H 'Cache-Control: no-cache, no-store' "$base/studio/clients?$query" > "/tmp/neptune-drive-upload-v137/$slug-clients.html" || true
-              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/drive-upload-v94.js?$query" > "/tmp/neptune-drive-upload-v137/$slug-upload.js" || true
-              curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$base/studio/drive-upload-v94.css?$query" > "/tmp/neptune-drive-upload-v137/$slug-upload.css" || true
-              if RELEASE_FILE="/tmp/neptune-drive-upload-v137/$slug-release.json" node <<'NODE'
-          const fs = require('node:fs');
-          let data;
-          try { data = JSON.parse(fs.readFileSync(process.env.RELEASE_FILE, 'utf8')); } catch { process.exit(1); }
-          if (data.studioDriveUpload !== process.env.DRIVE_UPLOAD_RELEASE) process.exit(1);
-          if (data.studioDriveUploadMode !== 'direct-resumable-google-drive-v94') process.exit(1);
-          if (data.studioDriveUploadStorage !== 'google-drive-source-of-truth') process.exit(1);
-          NODE
-              then
-                if grep -Fq '/studio/drive-upload-v94.js?v=137' "/tmp/neptune-drive-upload-v137/$slug-clients.html" \
-                  && grep -Fq '/studio/drive-upload-v94.css?v=1' "/tmp/neptune-drive-upload-v137/$slug-clients.html" \
-                  && grep -Fqi "x-neptune-drive-upload-resilience: $DRIVE_UPLOAD_RESILIENCE_RELEASE" "/tmp/neptune-drive-upload-v137/$slug-clients.headers" \
-                  && grep -Fqi 'www.googleapis.com' "/tmp/neptune-drive-upload-v137/$slug-clients.headers" \
-                  && grep -Fq 'const MAX_CHUNK_RETRIES = 18;' "/tmp/neptune-drive-upload-v137/$slug-upload.js" \
-                  && grep -Fq 'rememberPendingRegistration({ orderId, category, fileId });' "/tmp/neptune-drive-upload-v137/$slug-upload.js" \
-                  && ! grep -Fq "const RELEASE = '$DRIVE_UPLOAD_RELEASE';" "/tmp/neptune-drive-upload-v137/$slug-upload.js" \
-                  && grep -Fq '/api/admin/drive-upload-v94/session' "/tmp/neptune-drive-upload-v137/$slug-upload.js" \
-                  && grep -Fq "dropzone('long', 'Long format'" "/tmp/neptune-drive-upload-v137/$slug-upload.js" \
-                  && grep -Fq "dropzone('short', 'Shorts'" "/tmp/neptune-drive-upload-v137/$slug-upload.js" \
-                  && grep -Fq 'grid-template-columns:repeat(2,minmax(0,1fr))' "/tmp/neptune-drive-upload-v137/$slug-upload.css"; then
-                  ready=1
-                  echo "$base: Studio Drive upload v94/v137 verified on attempt $attempt."
-                  break
-                fi
-              fi
-              sleep 5
-            done
-            test "$ready" = 1
-          }
-          verify_drive_upload "$WORKERS_URL" workers
-          verify_drive_upload "$PUBLIC_URL" public
-
-      - name: Verify editorial production asset
-        run: |
-          curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-            "$PUBLIC_URL/assets/neptune-editorial-workspace-v59.js?release=$GITHUB_SHA" > /tmp/neptune-editorial-workspace-v59.js
-          grep -Fq 'publishExpress' /tmp/neptune-editorial-workspace-v59.js
-
-      - name: Verify Resend authentication from production
-        run: |
-          curl --silent --show-error -H 'Cache-Control: no-cache, no-store' \
-            "$PUBLIC_URL/api/public/email-health?release=$GITHUB_SHA" > /tmp/email-health.json
-          grep -Fq '"configured":true' /tmp/email-health.json
-          grep -Fq '"providerKeyAccepted":true' /tmp/email-health.json
-          grep -Fq '"transport":"resend-node-6.18.0"' /tmp/email-health.json
-
-      - name: Verify client login cannot bypass OTP
-        shell: bash
-        run: |
-          set -euo pipefail
-          headers=/tmp/client-auth-probe.headers
-          body=/tmp/client-auth-probe.json
-          curl --fail --silent --show-error -D "$headers" \
-            -X POST "$PUBLIC_URL/api/client/request-code" \
-            -H "Origin: $PUBLIC_URL" -H 'Content-Type: application/json' \
-            --data '{"email":"security-probe-neptune@example.invalid"}' > "$body"
-          grep -Fq '"ok":true' "$body"
-          grep -Fq '"codeExpected":true' "$body"
-          ! grep -Fqi '^set-cookie:' "$headers"
-          ! grep -Fq '"authenticated":true' "$body"
-          ! grep -Fq '"trustedAccess":true' "$body"
+            then
+              ready=1
+              echo "Worker responded with a valid release payload on attempt $attempt."
+              break
+            fi
+            sleep 5
+          done
+          test "$ready" = 1

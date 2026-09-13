@@ -2,7 +2,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
-const manifestPath = path.join(root, 'migration', 'manifest.json');
 const failures = [];
 const warnings = [];
 const notes = [];
@@ -38,12 +37,18 @@ function walk(directory, predicate, output = []) {
   return output;
 }
 
-if (!exists('migration/manifest.json')) fail('migration/manifest.json is missing');
-if (!exists('MIGRATION.md')) fail('MIGRATION.md is missing');
-if (!exists('migration/COMPONENT_MAP.md')) fail('migration/COMPONENT_MAP.md is missing');
-if (!exists('migration/API_CONTRACTS.md')) fail('migration/API_CONTRACTS.md is missing');
-if (!exists('migration/DATA_OWNERSHIP.md')) fail('migration/DATA_OWNERSHIP.md is missing');
-if (!exists('migration/TARGET_VPS.md')) fail('migration/TARGET_VPS.md is missing');
+for (const required of [
+  'migration/manifest.json',
+  'MIGRATION.md',
+  'migration/COMPONENT_MAP.md',
+  'migration/API_CONTRACTS.md',
+  'migration/DATA_OWNERSHIP.md',
+  'migration/TARGET_VPS.md',
+  'migration/LEGACY_CLEANUP.md',
+  'migration/RUNTIME_GRAPH.md',
+]) {
+  if (!exists(required)) fail(`${required} is missing`);
+}
 
 let manifest = null;
 if (exists('migration/manifest.json')) {
@@ -73,6 +78,13 @@ if (manifest) {
       fail(`${wranglerFile} does not point to canonical entry ${expected}`);
     }
   }
+
+  const canonicalDeploy = manifest.current?.canonicalDeployWorkflow;
+  if (!canonicalDeploy || !exists(canonicalDeploy)) {
+    fail(`Canonical deploy workflow is missing: ${canonicalDeploy || '(undefined)'}`);
+  } else if (!read(canonicalDeploy).includes('wrangler deploy')) {
+    fail(`${canonicalDeploy} does not contain a Worker deployment step`);
+  }
 }
 
 const entryFiles = walk('neptune-tv-media-cloudflare/src', file => /(?:^|\/)entry-v\d+\.js$/u.test(file));
@@ -91,30 +103,30 @@ for (const [pattern, count] of Object.entries(coupling)) {
   if (count) note(`${pattern}: ${count} source file(s) currently platform-coupled.`);
 }
 
-const cloudflareWorkflow = '.github/workflows/deploy-cloudflare.yml';
-if (exists(cloudflareWorkflow) && manifest?.current?.workerEntry) {
-  const workflow = read(cloudflareWorkflow);
+const canonicalDeploy = manifest?.current?.canonicalDeployWorkflow;
+if (canonicalDeploy && exists(canonicalDeploy) && manifest?.current?.workerEntry) {
+  const workflow = read(canonicalDeploy);
   const expectedBasename = path.basename(manifest.current.workerEntry);
-  if (workflow.includes("entry-v47.js") && expectedBasename !== 'entry-v47.js') {
-    warn(`deploy-cloudflare.yml still references entry-v47.js while the canonical entry is ${expectedBasename}.`);
+  const staleEntryRefs = [...workflow.matchAll(/entry-v(\d+)\.js/gu)]
+    .map(match => match[0])
+    .filter(name => name !== expectedBasename);
+  if (staleEntryRefs.length) {
+    warn(`${canonicalDeploy} contains legacy entry references while canonical entry is ${expectedBasename}: ${[...new Set(staleEntryRefs)].join(', ')}`);
   }
 }
 
 const deployWorkflows = walk('.github/workflows', file => /deploy.*\.ya?ml$/iu.test(file));
-const workerDeployers = deployWorkflows.filter(file => {
-  const content = read(file);
-  return /wrangler\s+deploy/u.test(content);
-});
+const workerDeployers = deployWorkflows.filter(file => /wrangler\s+deploy/u.test(read(file)));
 if (workerDeployers.length > 1) {
   warn(`${workerDeployers.length} workflows can run wrangler deploy on the Media Worker: ${workerDeployers.join(', ')}`);
 }
 
-const rootCleanupCandidates = fs.readdirSync(root, { withFileTypes: true })
+const rootGeneratedArtifacts = fs.readdirSync(root, { withFileTypes: true })
   .filter(entry => entry.isFile())
   .map(entry => entry.name)
-  .filter(name => /(?:diagnostic|deployment-status|production-verification|import-status|trigger).*\.(?:json|txt)$/iu.test(name));
-if (rootCleanupCandidates.length) {
-  warn(`Root contains ${rootCleanupCandidates.length} historical diagnostic/trigger artifact(s) to archive after dependency review: ${rootCleanupCandidates.join(', ')}`);
+  .filter(name => /(?:diagnostic|deployment-status|production-verification|production-check|source-validation|import-status|production-status|trigger).*\.(?:json|txt)$/iu.test(name) || name === 'render-polish-production.json');
+if (rootGeneratedArtifacts.length) {
+  fail(`Generated diagnostic/deployment artifacts must not be committed at repository root: ${rootGeneratedArtifacts.join(', ')}`);
 }
 
 console.log('\nNeptune Media migration readiness\n');

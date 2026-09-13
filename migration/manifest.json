@@ -1,10 +1,11 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "project": "Neptune Media",
   "purpose": "Reference implementation being prepared for migration into the Neptune VPS monorepo",
   "current": {
     "applicationRoot": "neptune-tv-media-cloudflare",
     "workerEntry": "neptune-tv-media-cloudflare/src/entry-v48.js",
+    "canonicalDeployWorkflow": ".github/workflows/deploy-cloudflare.yml",
     "wranglerFiles": [
       "wrangler.jsonc",
       "neptune-tv-media-cloudflare/wrangler.jsonc"
@@ -17,6 +18,12 @@
       "neptune-tv-media-cloudflare/public/reserver",
       "neptune-tv-media-cloudflare/public/hors-norme",
       "neptune-tv-media-cloudflare/public/direct"
+    ],
+    "runtimeChain": [
+      "neptune-tv-media-cloudflare/src/entry-v48.js",
+      "neptune-tv-media-cloudflare/src/entry-v47.js",
+      "neptune-tv-media-cloudflare/src/entry-v46.js",
+      "legacy descendants imported transitively"
     ],
     "platformSpecificPatterns": [
       "env.STUDIO",
@@ -65,6 +72,7 @@
     "Do not duplicate pricing, capacity or availability rules in frontends",
     "HORS NORME must hand off through a persisted prospect and reservation token",
     "Migrate domain behavior before platform-specific implementation details",
-    "One business capability must have one canonical owner"
+    "One business capability must have one canonical owner",
+    "Generated diagnostics and deployment markers must not be committed at repository root"
   ]
 }

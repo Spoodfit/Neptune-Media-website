@@ -1,13 +1,14 @@
 {
-  "schemaVersion": 5,
+  "schemaVersion": 6,
   "project": "Neptune Media",
   "purpose": "Reference implementation being prepared for migration into the Neptune VPS monorepo",
   "current": {
     "sourceRepository": "Spoodfit/Neptune-Media-website",
     "sourceBranch": "main",
     "applicationRoot": "neptune-tv-media-cloudflare",
-    "workerEntry": "neptune-tv-media-cloudflare/src/entry-v48.js",
+    "workerEntry": "neptune-tv-media-cloudflare/src/worker.js",
     "siteRoot": "neptune-tv-media-cloudflare/public/index.html",
+    "canonicalBookingUrl": "https://neptune-media-webtv.neptunebusinessclub.workers.dev/reserver",
     "canonicalDeployWorkflow": ".github/workflows/deploy-cloudflare.yml",
     "postDeployVerificationWorkflow": ".github/workflows/verify-production-after-deploy.yml",
     "canonicalWorkflows": [
@@ -23,6 +24,7 @@
     ],
     "canonicalVerificationScripts": [
       "neptune-tv-media-cloudflare/scripts/verify-migration-readiness.mjs",
+      "neptune-tv-media-cloudflare/scripts/verify-repository-cleanliness.mjs",
       "neptune-tv-media-cloudflare/scripts/verify-production-contracts.mjs",
       "neptune-tv-media-cloudflare/scripts/visual-render-audit.mjs",
       "neptune-tv-media-cloudflare/scripts/qa-production-ui.mjs"
@@ -56,7 +58,7 @@
       "neptune-tv-media-cloudflare/public/direct"
     ],
     "runtimeChain": [
-      "neptune-tv-media-cloudflare/src/entry-v48.js",
+      "neptune-tv-media-cloudflare/src/worker.js",
       "neptune-tv-media-cloudflare/src/entry-v47.js",
       "neptune-tv-media-cloudflare/src/entry-v46.js",
       "legacy descendants imported transitively"
@@ -119,6 +121,9 @@
     "Exactly one GitHub workflow may perform the production Worker deployment",
     "Only workflows declared in current.canonicalWorkflows may exist",
     "Production media imports are manual-only",
-    "The six canonical Media surfaces must remain present until VPS parity is validated"
+    "The six canonical Media surfaces must remain present until VPS parity is validated",
+    "The active Cloudflare entrypoint must use the canonical worker.js filename",
+    "The HORS NORME and booking handoff must use current.canonicalBookingUrl",
+    "Generated visual audit output and one-shot mutation scripts must not be committed"
   ]
 }

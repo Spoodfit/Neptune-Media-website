@@ -20,6 +20,12 @@ Le périmètre de transfert comprend explicitement :
 
 La frontière exacte du transfert est décrite dans [`migration/TRANSFER_MANIFEST.md`](./migration/TRANSFER_MANIFEST.md).
 
+## Références canoniques actuelles
+
+- Worker : `neptune-tv-media-cloudflare/src/worker.js`
+- Tunnel de réservation : `https://neptune-media-webtv.neptunebusinessclub.workers.dev/reserver`
+- Runtime public de référence : `https://neptune-media-webtv.neptunebusinessclub.workers.dev`
+
 ## Objectif
 
 La version Cloudflare actuelle sert de runtime de développement et de référence comportementale. La cible définitive n'est pas de conserver une infrastructure Media parallèle : les fonctionnalités validées ici doivent être portées dans l'infrastructure Neptune existante.
@@ -37,7 +43,7 @@ Le cockpit **Studio** reste le point central de gestion pour l'équipe Neptune. 
 ## Runtime actuel
 
 - application principale : `neptune-tv-media-cloudflare/`
-- Worker actif : `neptune-tv-media-cloudflare/src/entry-v48.js`
+- Worker actif : `neptune-tv-media-cloudflare/src/worker.js`
 - surfaces principales :
   - `/`
   - `/studio/`
@@ -56,7 +62,7 @@ Le cockpit **Studio** reste le point central de gestion pour l'équipe Neptune. 
 3. Les frontends Studio, Espace client, Réservation et HORS NORME ne doivent pas devenir des sources de vérité.
 4. Aucun nouveau système parallèle de prospects, commandes, catalogue, disponibilités ou paiements ne doit être créé.
 5. Les wrappers historiques `entry-vXX.js`, injections HTML et shims de compatibilité sont considérés comme des détails du runtime actuel, pas comme l'architecture cible.
-6. La future landing HORS NORME doit créer/enrichir un prospect Neptune puis transmettre un `reservation_token` au tunnel de réservation canonique.
+6. HORS NORME doit transmettre vers le tunnel canonique déclaré dans `migration/manifest.json` ; aucune URL de réservation concurrente ne doit être réintroduite.
 
 ## Documentation de migration
 
@@ -81,4 +87,4 @@ npm run check
 npm run audit:migration
 ```
 
-`npm run audit:migration` vérifie notamment que les six surfaces canoniques sont présentes, que le dépôt source est bien identifié, que les documents de migration existent, que les workflows restent gouvernés et qu'un seul pipeline possède le déploiement Worker pendant la période de transition.
+`npm run audit:migration` vérifie les six surfaces canoniques, la gouvernance CI/CD, l'unicité du pipeline de déploiement, la propreté du dépôt, l'entrée Worker canonique et l'absence de références de réservation concurrentes dans les fichiers actifs contrôlés.

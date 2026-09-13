@@ -33,4 +33,4 @@ for(const replacement of replacements){
 }
 
 writeFileSync(path,source,'utf8');
-console.log('neptune_webtv_smoothness_v124_applied');
+console.log('neptune_webtv_smoothness_patch_applied');

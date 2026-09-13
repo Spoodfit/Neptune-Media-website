@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import threading
-import time
 from typing import Any
 
 import httpx
@@ -9,17 +8,17 @@ from fastapi import HTTPException
 from pydantic import HttpUrl
 
 import app as legacy
-import app_v69 as live
+import processor as live
 
 app = legacy.app
 executor = legacy.executor
 
 
-class JobRequestV71(legacy.JobRequest):
+class JobRequest(legacy.JobRequest):
     heartbeatUrl: HttpUrl | None = None
 
 
-# Replace the historical POST /jobs route while preserving health and status routes.
+# Replace the base POST /jobs route while preserving health and status routes.
 app.router.routes[:] = [
     route
     for route in app.router.routes
@@ -28,7 +27,7 @@ app.router.routes[:] = [
 
 
 @app.post("/jobs", status_code=202)
-def create_job_v71(job: JobRequestV71) -> dict[str, Any]:
+def create_job(job: JobRequest) -> dict[str, Any]:
     job_id = legacy.safe_id(job.jobId)
     if not job_id:
         raise HTTPException(status_code=400, detail="invalid_job_id")
@@ -49,11 +48,11 @@ def create_job_v71(job: JobRequestV71) -> dict[str, Any]:
             "stage": "queued",
             "progress": 5,
         }
-    executor.submit(process_job_v71, job)
+    executor.submit(process_job, job)
     return {"ok": True, "accepted": True, "jobId": job_id, "stage": "starting", "progress": 8}
 
 
-def process_job_v71(job: JobRequestV71) -> None:
+def process_job(job: JobRequest) -> None:
     job_id = legacy.safe_id(job.jobId)
     stopped = threading.Event()
     reporter = None
@@ -100,5 +99,5 @@ def report_heartbeat(job_id: str, heartbeat_url: str, stopped: threading.Event) 
                 timeout=httpx.Timeout(10, read=20),
             )
             response.raise_for_status()
-        except Exception as error:  # noqa: BLE001 - heartbeat failure must not stop rendering
+        except Exception as error:  # heartbeat failure must not stop rendering
             print(f"video_processor_heartbeat_failed:{type(error).__name__}:{str(error)[:300]}", flush=True)

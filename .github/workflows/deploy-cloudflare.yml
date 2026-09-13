@@ -64,7 +64,7 @@ jobs:
           const config = JSON.parse(fs.readFileSync('wrangler.jsonc', 'utf8'));
           delete config.route;
           delete config.routes;
-          const expected = 'neptune-tv-media-cloudflare/src/entry-v48.js';
+          const expected = 'neptune-tv-media-cloudflare/src/worker.js';
           if (config.main !== expected) {
             throw new Error(`Unexpected Worker entry: ${config.main}; expected ${expected}`);
           }

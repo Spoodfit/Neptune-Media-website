@@ -14,8 +14,8 @@ WORKDIR /app
 COPY requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 COPY app.py ./app.py
-COPY app_v69.py ./app_v69.py
-COPY app_v71.py ./app_v71.py
+COPY processor.py ./processor.py
+COPY entry.py ./entry.py
 
 EXPOSE 8080
-CMD ["uvicorn", "app_v71:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "1", "--timeout-keep-alive", "75"]
+CMD ["uvicorn", "entry:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "1", "--timeout-keep-alive", "75"]

@@ -5,10 +5,10 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY encoder-v118.mjs /app/encoder.mjs
-COPY encoder-smoothness-v124.mjs /tmp/encoder-smoothness-v124.mjs
-RUN node /tmp/encoder-smoothness-v124.mjs \
-  && rm /tmp/encoder-smoothness-v124.mjs
+COPY encoder.mjs /app/encoder.mjs
+COPY apply-smoothness-patch.mjs /tmp/apply-smoothness-patch.mjs
+RUN node /tmp/apply-smoothness-patch.mjs \
+  && rm /tmp/apply-smoothness-patch.mjs
 
 ENV NODE_ENV=production \
     PORT=8080

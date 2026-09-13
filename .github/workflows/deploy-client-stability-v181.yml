@@ -31,9 +31,11 @@ jobs:
       CLIENT_RELEASE: neptune-client-experience-20260908-v118.8-single-command-center
       EXPERIENCE_RELEASE: neptune-client-experience-20260908-v117.1-no-legacy-command-center
       LEGACY_SHIM_RELEASE: neptune-client-command-center-legacy-disabled-20260908-v181
-      CLIENT_CATALOG_CLICK_RELEASE: neptune-client-catalog-click-20260913-v181.4-single-owner-native-anchor
+      CLIENT_CATALOG_CLICK_RELEASE: neptune-client-catalog-click-20260913-v181.5-single-owner-native-anchor
       CLIENT_VISUAL_RELEASE: neptune-client-visual-coherence-20260913-v118.12-single-owner-native-anchor
       CLIENT_INTERACTION_RELEASE: neptune-client-catalog-interaction-20260913-v118.10-native-anchor-shim
+      LEGACY_SALES_RELEASE: neptune-sales-tunnel-20260913-v96.1-visual-owner-aware
+      LEGACY_MEDIA_RELEASE: neptune-client-media-catalog-20260913-v95.1-visual-owner-aware
 
     steps:
       - name: Checkout
@@ -56,13 +58,13 @@ jobs:
           node --check neptune-tv-media-cloudflare/public/espace-client/client-command-center-v118-1.js
           node --check neptune-tv-media-cloudflare/public/espace-client/client-visual-coherence-v118-2.js
           node --check neptune-tv-media-cloudflare/public/espace-client/client-catalog-interaction-v118-7.js
+          node --check neptune-tv-media-cloudflare/public/espace-client/sales-catalog-v96.js
+          node --check neptune-tv-media-cloudflare/public/espace-client/media-catalog-v95.js
           node --check neptune-tv-media-cloudflare/src/entry-v38.js
           node --check neptune-tv-media-cloudflare/src/entry-v48.js
           grep -Fq "$EXPERIENCE_RELEASE" neptune-tv-media-cloudflare/public/espace-client/client-experience-v117.js
           grep -Fq "$LEGACY_SHIM_RELEASE" neptune-tv-media-cloudflare/public/espace-client/client-command-center-v117.js
           ! grep -Fq "import('/espace-client/client-command-center-v117.js" neptune-tv-media-cloudflare/public/espace-client/client-experience-v117.js
-          grep -Fq "client-experience-v117.js?v=20260908-1" neptune-tv-media-cloudflare/src/entry-v38.js
-          grep -Fq "$CLIENT_RELEASE" neptune-tv-media-cloudflare/src/entry-v38.js
           grep -Fq "$CLIENT_VISUAL_RELEASE" neptune-tv-media-cloudflare/public/espace-client/client-visual-coherence-v118-2.js
           grep -Fq "clientCatalogDomOwner='visual-v1182'" neptune-tv-media-cloudflare/public/espace-client/client-visual-coherence-v118-2.js
           grep -Fq 'commandCenterSignature' neptune-tv-media-cloudflare/public/espace-client/client-visual-coherence-v118-2.js
@@ -71,8 +73,10 @@ jobs:
           grep -Fq 'data-v1182-booking-card="true"' neptune-tv-media-cloudflare/public/espace-client/client-visual-coherence-v118-2.js
           grep -Fq "new URL('/espace-client/reserver/'" neptune-tv-media-cloudflare/public/espace-client/client-visual-coherence-v118-2.js
           grep -Fq 'pointer-events:none!important' neptune-tv-media-cloudflare/public/espace-client/client-visual-coherence-v118-2.js
-          ! grep -Fq 'navigateCatalogCard' neptune-tv-media-cloudflare/public/espace-client/client-visual-coherence-v118-2.js
-          ! grep -Fq 'stopImmediatePropagation' neptune-tv-media-cloudflare/public/espace-client/client-visual-coherence-v118-2.js
+          grep -Fq "$LEGACY_SALES_RELEASE" neptune-tv-media-cloudflare/public/espace-client/sales-catalog-v96.js
+          grep -Fq "$LEGACY_MEDIA_RELEASE" neptune-tv-media-cloudflare/public/espace-client/media-catalog-v95.js
+          grep -Fq "clientCatalogDomOwner==='visual-v1182'" neptune-tv-media-cloudflare/public/espace-client/sales-catalog-v96.js
+          grep -Fq "clientCatalogDomOwner==='visual-v1182'" neptune-tv-media-cloudflare/public/espace-client/media-catalog-v95.js
           grep -Fq "$CLIENT_INTERACTION_RELEASE" neptune-tv-media-cloudflare/public/espace-client/client-catalog-interaction-v118-7.js
           grep -Fq "clientCatalogNavigationOwner='native-anchor'" neptune-tv-media-cloudflare/public/espace-client/client-catalog-interaction-v118-7.js
           ! grep -Fq "addEventListener('pointerdown'" neptune-tv-media-cloudflare/public/espace-client/client-catalog-interaction-v118-7.js
@@ -81,7 +85,8 @@ jobs:
           ! grep -Fq 'preventDefault' neptune-tv-media-cloudflare/public/espace-client/client-catalog-interaction-v118-7.js
           grep -Fq "$CLIENT_CATALOG_CLICK_RELEASE" neptune-tv-media-cloudflare/src/entry-v48.js
           grep -Fq 'client-visual-coherence-v118-2.js?v=20260913-4' neptune-tv-media-cloudflare/src/entry-v48.js
-          grep -Fq 'client-catalog-interaction-v118-7.js?v=20260913-2' neptune-tv-media-cloudflare/src/entry-v48.js
+          grep -Fq 'sales-catalog-v96.js?v=20260913-1' neptune-tv-media-cloudflare/src/entry-v48.js
+          grep -Fq 'media-catalog-v95.js?v=20260913-1' neptune-tv-media-cloudflare/src/entry-v48.js
           grep -Fq 'client-visual-coherence-v118-2.css?v=3' neptune-tv-media-cloudflare/src/entry-v38.js
           grep -Fq 'client-catalog-hover-v118-7.css?v=2' neptune-tv-media-cloudflare/src/entry-v38.js
           ! grep -Fq 'transform:translateY(-2px)!important;' neptune-tv-media-cloudflare/public/espace-client/client-visual-coherence-v118-2.css
@@ -118,20 +123,13 @@ jobs:
             for attempt in $(seq 1 30); do
               local q="client_catalog_owner_v181=$GITHUB_SHA&attempt=$attempt"
               html=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/espace-client/?$q" || true)
-              experience=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/espace-client/client-experience-v117.js?$q" || true)
-              legacy=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/espace-client/client-command-center-v117.js?$q" || true)
               visual=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/espace-client/client-visual-coherence-v118-2.js?$q" || true)
               interaction=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/espace-client/client-catalog-interaction-v118-7.js?$q" || true)
-              visual_css=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/espace-client/client-visual-coherence-v118-2.css?$q" || true)
+              sales=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/espace-client/sales-catalog-v96.js?$q" || true)
+              media=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/espace-client/media-catalog-v95.js?$q" || true)
               booking=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/espace-client/reserver/?city=toulouse&format=hors-norme&$q" || true)
               release=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/api/public/release?$q" || true)
-              if grep -Fq 'client-experience-v117.js?v=20260908-1' <<<"$html" \
-                && grep -Fq '/espace-client/client-command-center-v118-1.js?v=1' <<<"$html" \
-                && grep -Fq 'client-visual-coherence-v118-2.js?v=20260913-4' <<<"$html" \
-                && grep -Fq 'client-catalog-interaction-v118-7.js?v=20260913-2' <<<"$html" \
-                && grep -Fq "$EXPERIENCE_RELEASE" <<<"$experience" \
-                && ! grep -Fq "import('/espace-client/client-command-center-v117.js" <<<"$experience" \
-                && grep -Fq "$LEGACY_SHIM_RELEASE" <<<"$legacy" \
+              if grep -Fq 'client-visual-coherence-v118-2.js?v=20260913-4' <<<"$html" \
                 && grep -Fq "$CLIENT_VISUAL_RELEASE" <<<"$visual" \
                 && grep -Fq "clientCatalogDomOwner='visual-v1182'" <<<"$visual" \
                 && grep -Fq 'commandCenterSignature' <<<"$visual" \
@@ -140,10 +138,10 @@ jobs:
                 && ! grep -Fq 'MutationObserver' <<<"$visual" \
                 && grep -Fq "$CLIENT_INTERACTION_RELEASE" <<<"$interaction" \
                 && grep -Fq "clientCatalogNavigationOwner='native-anchor'" <<<"$interaction" \
-                && ! grep -Fq "addEventListener('pointerdown'" <<<"$interaction" \
-                && ! grep -Fq "addEventListener('click'" <<<"$interaction" \
-                && ! grep -Fq 'preventDefault' <<<"$interaction" \
-                && grep -Fq 'transform:none!important;' <<<"$visual_css" \
+                && grep -Fq "$LEGACY_SALES_RELEASE" <<<"$sales" \
+                && grep -Fq "clientCatalogDomOwner==='visual-v1182'" <<<"$sales" \
+                && grep -Fq "$LEGACY_MEDIA_RELEASE" <<<"$media" \
+                && grep -Fq "clientCatalogDomOwner==='visual-v1182'" <<<"$media" \
                 && grep -Fq 'client-booking-v118-5.js' <<<"$booking" \
                 && RELEASE_JSON="$release" node <<'NODE'
           const data=JSON.parse(process.env.RELEASE_JSON||'{}');

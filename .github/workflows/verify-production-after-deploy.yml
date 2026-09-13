@@ -32,6 +32,16 @@ jobs:
       HTML_RELEASE: 20260908-v181-scroll-stability
 
     steps:
+      - name: Checkout deployed revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
       - name: Verify public surfaces
         shell: bash
         run: |
@@ -42,6 +52,9 @@ jobs:
           done
           curl --fail --silent --show-error --location -H 'Cache-Control: no-cache, no-store' "$PUBLIC_URL/espace-client/?verify=$sha" >/dev/null
           curl --fail --silent --show-error --location -H 'Cache-Control: no-cache, no-store' "$MEDIA_URL/reserver?verify=$sha" >/dev/null
+
+      - name: Verify canonical Studio and Catalogue production contract
+        run: node neptune-tv-media-cloudflare/scripts/verify-studio-information-architecture-production-v65.mjs
 
       - name: Verify client catalog production contract
         shell: bash

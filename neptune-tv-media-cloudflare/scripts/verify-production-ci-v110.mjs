@@ -6,9 +6,10 @@ const workflowDir=path.join(root,'.github/workflows');
 const workflowPath=(name)=>path.join(workflowDir,name);
 const readWorkflow=(name)=>fs.readFileSync(workflowPath(name),'utf8');
 const deployWorkflow=readWorkflow('deploy-cloudflare.yml');
+const postDeployWorkflow=readWorkflow('verify-production-after-deploy.yml');
 const must=(condition,message)=>{if(!condition)throw new Error(`production-ci-v113: ${message}`);};
 
-must(deployWorkflow.includes('node neptune-tv-media-cloudflare/scripts/verify-studio-information-architecture-production-v65.mjs'),'deployment must call the canonical Studio/Catalogue production verifier');
+must(postDeployWorkflow.includes('node neptune-tv-media-cloudflare/scripts/verify-studio-information-architecture-production-v65.mjs'),'post-deploy verification must call the canonical Studio/Catalogue production verifier');
 must(!deployWorkflow.includes('mkdir -p /tmp/neptune-studio-v109'),'deployment must not keep the duplicated Studio/Catalogue verifier');
 must(!deployWorkflow.includes("grep -Fq 'let wasActive=active()'"),'deployment must not duplicate Catalogue implementation assertions');
 

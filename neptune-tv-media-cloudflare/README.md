@@ -1,53 +1,62 @@
-# Neptune Media — Cloudflare Native
+# Neptune Media — runtime Cloudflare de référence
 
-Application Web TV et Studio Admin sans Supabase.
+Ce dossier contient le runtime actuellement utilisé pour finaliser Neptune Media avant son portage dans l'infrastructure VPS Neptune.
 
-## Architecture
+Il ne représente **pas** l'architecture cible définitive.
 
-- Cloudflare Worker + Static Assets : Web TV et Studio Admin
-- Durable Object SQLite : catalogue, utilisateurs, sessions, campagnes, analytics, conversions et audit
-- Workers AI : Neptune Copilot avec `@cf/openai/gpt-oss-120b`
-- Cloudflare Assets : vidéos Web optimisées et miniatures
-- Resend : codes de connexion et e-mails transactionnels
+## Runtime actuel
 
-## Déploiement automatique
+- Cloudflare Worker + Static Assets ;
+- entrée canonique : `src/entry-v48.js` ;
+- Durable Object `StudioStore` / SQLite ;
+- R2 et fournisseurs externes pour les médias selon les domaines ;
+- Workers AI / OpenAI pour les fonctions IA ;
+- Resend pour les e-mails transactionnels ;
+- Stripe pour le paiement ;
+- Google Drive et autres intégrations de production.
 
-Le workflow `.github/workflows/deploy-cloudflare.yml` déploie chaque push sur `main`.
-
-Secrets GitHub requis :
-
-```text
-CLOUDFLARE_API_TOKEN
-CLOUDFLARE_ACCOUNT_ID
-RESEND_API_KEY
-```
-
-Le workflow synchronise `RESEND_API_KEY` comme secret du Worker `neptune-media-webtv`, puis vérifie automatiquement que la clé est acceptée par l’API Resend. Avec une clé `full_access`, le statut du domaine `neptunebusiness.com` est également contrôlé. Une clé `sending_access` reste compatible avec l’envoi des codes.
-
-Après le premier déploiement, ajouter le secret Worker `BOOTSTRAP_TOKEN` avec Wrangler ou le dashboard Cloudflare. Il sert uniquement à créer le premier administrateur.
-
-Secret facultatif pour relier les conversions du tunnel :
+Les principales surfaces sont :
 
 ```text
-CONVERSION_WEBHOOK_SECRET
+/studio/
+/espace-client/
+/reserver/
+/hors-norme/
+/direct/
 ```
 
-## Diagnostic e-mail
+## Architecture cible
 
-Le contrôle de production est disponible sur :
+Les comportements validés ici doivent être portés vers :
 
 ```text
-/api/public/email-health
+media.neptunebusiness.com
+→ NGINX VPS
+→ conteneur neptune-media
+→ neptune-backend / Express
+→ PostgreSQL / Prisma
 ```
 
-Il n’expose aucune clé. Il indique uniquement si Resend est configuré, si la clé est acceptée et, lorsque ses permissions le permettent, si le domaine expéditeur est validé.
+Voir à la racine :
 
-## Vérification locale
+- `MIGRATION.md`
+- `migration/COMPONENT_MAP.md`
+- `migration/API_CONTRACTS.md`
+- `migration/DATA_OWNERSHIP.md`
+- `migration/TARGET_VPS.md`
+
+## Règle de développement pendant la transition
+
+Éviter d'ajouter une nouvelle règle métier directement dans un wrapper `entry-vXX.js` ou uniquement dans un script frontend lorsqu'elle peut être exprimée comme un service de domaine portable.
+
+Les wrappers, transformations HTML et shims actuels sont tolérés pour stabiliser la production de référence, mais ils sont classés comme **dette de migration**.
+
+## Validation
 
 ```bash
-npm ci
+npm install
 npm run check
-npm run dev
+npm run audit:migration
 ```
 
-Le tunnel `https://media.neptunebusiness.com` reste séparé et inchangé.
+L'audit de migration contrôle notamment l'entrée Worker canonique, les surfaces à préserver, les couplages Cloudflare et les incohérences de déploiement connues.

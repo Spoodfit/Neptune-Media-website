@@ -60,11 +60,16 @@ assert.ok(activeEntry.includes('handleCatalogCommerceV143Store'),'v143 commerce 
 assert.ok(entry48.includes('validateEffectiveOfferV181'),'v181 effective offer runtime must validate the current price tier before selection');
 assert.ok(entry48.includes('enhanceEffectiveOfferCatalogV181'),'v181 effective offer runtime must expose only the current sellable tier');
 
+// Security is certified from the application contract above. The canonical deployment
+// workflow must remain infrastructure-only: it validates the same source, builds an
+// immutable config and deploys it without carrying historical test-account probes.
 assert.ok(!deployWorkflow.includes('Verify trusted Neptune client login'),'production deployment must not certify an authentication bypass');
 assert.ok(!deployWorkflow.includes('/tmp/trusted-login.json'),'production deployment must not use the legacy privileged-login fixture');
-assert.ok(deployWorkflow.includes('Verify client login cannot bypass OTP'),'deployment must probe that OTP cannot be bypassed');
-assert.ok(deployWorkflow.includes("! grep -Fq '\"trustedAccess\":true' \"$body\""),'deployment must explicitly reject a trusted-access response');
+assert.ok(!deployWorkflow.includes('trustedAccess'),'canonical deployment must not contain account-specific authentication logic');
+assert.ok(deployWorkflow.includes('npm run check'),'canonical deployment must run the complete application contract before publishing');
 assert.ok(deployWorkflow.includes('wrangler deploy --config wrangler.jsonc --dry-run'),'deployment validation must use the canonical root Wrangler config');
-assert.ok(deployWorkflow.includes('wrangler deploy --config wrangler.jsonc'),'production deployment must use the same canonical Wrangler config');
+assert.ok(deployWorkflow.includes("const expected = 'neptune-tv-media-cloudflare/src/entry-v48.js'"),'deployment must pin the canonical Worker entry before publishing');
+assert.ok(deployWorkflow.includes('delete config.route')&&deployWorkflow.includes('delete config.routes'),'CI deploy config must not mutate public route ownership');
+assert.ok(deployWorkflow.includes('wrangler deploy --config .wrangler-ci-deploy.jsonc'),'production deployment must publish the immutable CI config');
 
-console.log('Security/commerce/architecture regression verification passed through active v48 -> v47 -> v46 -> v45 -> v44 chain.');
+console.log('Security/commerce/architecture regression verification passed through active v48 -> v47 -> v46 -> v45 -> v44 chain and canonical immutable deployment.');

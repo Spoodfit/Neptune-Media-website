@@ -1,9 +1,8 @@
-const RELEASE='neptune-client-visual-coherence-20260908-v118.8';
+const RELEASE='neptune-client-visual-coherence-20260913-v118.10-native-anchor';
 const CATALOG_API='/api/reservation/catalog-v96';
 const ROOT=document.documentElement;
 let catalog=null;
 let selectedCity='';
-let queued=false;
 let refreshTimer=0;
 
 if(!window.__neptuneClientVisualCoherenceV1182){
@@ -22,41 +21,11 @@ function start(){
 function boot(){
   if(!home())return;
   retireLegacySnapshot();
-  document.addEventListener('click',navigateCatalogCard,true);
-  new MutationObserver(queue).observe(document.body,{childList:true,subtree:true});
   hydrateCatalog();
-  queue();
 }
 
 function home(){
   return ['/espace-client','/espace-client/','/espace-client/index.html'].includes(location.pathname);
-}
-
-function navigateCatalogCard(event){
-  const card=event.target?.closest?.('a.cc-v118-catalog-card-link');
-  if(!card||!card.closest('.formats-panel'))return;
-  if(event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
-  const raw=card.getAttribute('href')||'';
-  if(!raw)return;
-  let target='';
-  try{
-    const url=new URL(raw,location.origin);
-    if(url.origin!==location.origin)return;
-    target=`${url.pathname}${url.search}${url.hash}`;
-  }catch{return;}
-  event.preventDefault();
-  event.stopImmediatePropagation();
-  location.assign(target);
-}
-
-function queue(){
-  if(queued)return;
-  queued=true;
-  requestAnimationFrame(()=>{
-    queued=false;
-    retireLegacySnapshot();
-    renderCityCatalog();
-  });
 }
 
 function retireLegacySnapshot(){
@@ -95,13 +64,20 @@ function cityKey(city){
 
 function renderCityCatalog(){
   if(!catalog)return;
-  const panel=document.querySelector('.formats-panel.cc-v118-catalog-panel');
+  const panel=document.querySelector('.formats-panel');
   const grid=panel?.querySelector('.format-grid');
   if(!panel||!grid)return;
 
+  // This module is the sole owner of the catalogue DOM. The booking cards are
+  // ordinary same-origin anchors; no click interception, pointer gesture layer,
+  // DOM replacement on hover/focus, or synthetic navigation is required.
+  panel.hidden=false;
+  panel.classList.remove('cc-legacy-formats');
+  panel.classList.add('cc-v118-catalog-panel');
+
   const cities=catalogCities(catalog);
   if(!cities.length)return;
-  let city=cities.find(item=>cityKey(item)===selectedCity)||cities[0];
+  const city=cities.find(item=>cityKey(item)===selectedCity)||cities[0];
   selectedCity=cityKey(city);
 
   const label=panel.querySelector('.section-label');
@@ -115,7 +91,7 @@ function renderCityCatalog(){
 
   const cards=cityCards(city);
   const signature=[catalog.dataGuardRelease||'',selectedCity,...cards.map(({format,price})=>`${format.id||format.slug||format.name}:${format.imagePublicUrl||format.image||''}:${price}`)].join('|');
-  if(grid.dataset.v1182Signature===signature&&grid.querySelector('.cc-v118-catalog-card'))return;
+  if(grid.dataset.v1182Signature===signature&&grid.querySelector('a.cc-v118-catalog-card-link'))return;
   grid.dataset.v1182Signature=signature;
   grid.classList.add('cc-v118-catalog-grid');
   grid.innerHTML=cards.map(item=>catalogCard(item)).join('');
@@ -170,7 +146,7 @@ function catalogCard({city,format,price}){
   if(format.slug)url.searchParams.set('format',format.slug);
   const href=url.pathname+url.search;
   const label=`Réserver ${format.name||'ce format'} à ${city.name||'Neptune Media'}`;
-  return `<a class="cc-v118-catalog-card cc-v118-catalog-card-link" data-v1182-booking-card="true" data-v1182-city-card="${esc(cityKey(city))}" href="${esc(href)}" aria-label="${esc(label)}"><div class="cc-v118-catalog-visual">${img?`<img src="${esc(img)}" alt="" loading="lazy" decoding="async">`:'<span>NEPTUNE</span>'}<i>${esc(city.name||'Neptune Media')}</i></div><div class="cc-v118-catalog-copy"><span>${esc(format.concept||'NEPTUNE MEDIA')}</span><strong>${esc(format.name||'Format Neptune Media')}</strong>${format.durationLabel?`<small>${esc(format.durationLabel)}</small>`:''}<p>${esc(short(format.description||'Format Neptune Media disponible à la réservation.',130))}</p></div><footer><b>${price?`Dès ${money(price)}`:'Voir les offres'}</b><span class="cc-v118-catalog-cta">Choisir <span>→</span></span></footer></a>`;
+  return `<a class="cc-v118-catalog-card cc-v118-catalog-card-link" data-v1182-booking-card="true" data-v1182-city-card="${esc(cityKey(city))}" href="${esc(href)}" aria-label="${esc(label)}" draggable="false"><div class="cc-v118-catalog-visual">${img?`<img src="${esc(img)}" alt="" loading="lazy" decoding="async" draggable="false">`:'<span>NEPTUNE</span>'}<i>${esc(city.name||'Neptune Media')}</i></div><div class="cc-v118-catalog-copy"><span>${esc(format.concept||'NEPTUNE MEDIA')}</span><strong>${esc(format.name||'Format Neptune Media')}</strong>${format.durationLabel?`<small>${esc(format.durationLabel)}</small>`:''}<p>${esc(short(format.description||'Format Neptune Media disponible à la réservation.',130))}</p></div><footer><b>${price?`Dès ${money(price)}`:'Voir les offres'}</b><span class="cc-v118-catalog-cta">Choisir <span aria-hidden="true">→</span></span></footer></a>`;
 }
 
 function safeImage(value){

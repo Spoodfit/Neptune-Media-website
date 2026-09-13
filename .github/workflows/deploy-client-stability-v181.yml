@@ -31,8 +31,8 @@ jobs:
       CLIENT_RELEASE: neptune-client-experience-20260908-v118.8-single-command-center
       EXPERIENCE_RELEASE: neptune-client-experience-20260908-v117.1-no-legacy-command-center
       LEGACY_SHIM_RELEASE: neptune-client-command-center-legacy-disabled-20260908-v181
-      CLIENT_CATALOG_CLICK_RELEASE: neptune-client-catalog-click-20260913-v181.2-native-anchor
-      CLIENT_VISUAL_RELEASE: neptune-client-visual-coherence-20260913-v118.10-native-anchor
+      CLIENT_CATALOG_CLICK_RELEASE: neptune-client-catalog-click-20260913-v181.3-native-anchor-stable-view
+      CLIENT_VISUAL_RELEASE: neptune-client-visual-coherence-20260913-v118.11-native-anchor-stable-view
       CLIENT_INTERACTION_RELEASE: neptune-client-catalog-interaction-20260913-v118.10-native-anchor-shim
 
     steps:
@@ -47,7 +47,7 @@ jobs:
       - name: Install dependencies
         run: npm install --package-lock=false --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org
 
-      - name: Validate single command-center ownership and native catalog links
+      - name: Validate native catalog links and stable visual ownership
         shell: bash
         run: |
           set -euo pipefail
@@ -64,6 +64,7 @@ jobs:
           grep -Fq "client-experience-v117.js?v=20260908-1" neptune-tv-media-cloudflare/src/entry-v38.js
           grep -Fq "$CLIENT_RELEASE" neptune-tv-media-cloudflare/src/entry-v38.js
           grep -Fq "$CLIENT_VISUAL_RELEASE" neptune-tv-media-cloudflare/public/espace-client/client-visual-coherence-v118-2.js
+          grep -Fq 'observeCatalogStructure' neptune-tv-media-cloudflare/public/espace-client/client-visual-coherence-v118-2.js
           grep -Fq 'data-v1182-booking-card="true"' neptune-tv-media-cloudflare/public/espace-client/client-visual-coherence-v118-2.js
           grep -Fq "new URL('/espace-client/reserver/'" neptune-tv-media-cloudflare/public/espace-client/client-visual-coherence-v118-2.js
           ! grep -Fq 'navigateCatalogCard' neptune-tv-media-cloudflare/public/espace-client/client-visual-coherence-v118-2.js
@@ -75,7 +76,7 @@ jobs:
           ! grep -Fq "addEventListener('click'" neptune-tv-media-cloudflare/public/espace-client/client-catalog-interaction-v118-7.js
           ! grep -Fq 'preventDefault' neptune-tv-media-cloudflare/public/espace-client/client-catalog-interaction-v118-7.js
           grep -Fq "$CLIENT_CATALOG_CLICK_RELEASE" neptune-tv-media-cloudflare/src/entry-v48.js
-          grep -Fq 'client-visual-coherence-v118-2.js?v=20260913-2' neptune-tv-media-cloudflare/src/entry-v48.js
+          grep -Fq 'client-visual-coherence-v118-2.js?v=20260913-3' neptune-tv-media-cloudflare/src/entry-v48.js
           grep -Fq 'client-catalog-interaction-v118-7.js?v=20260913-2' neptune-tv-media-cloudflare/src/entry-v48.js
           grep -Fq 'client-visual-coherence-v118-2.css?v=3' neptune-tv-media-cloudflare/src/entry-v38.js
           grep -Fq 'client-catalog-hover-v118-7.css?v=2' neptune-tv-media-cloudflare/src/entry-v38.js
@@ -103,7 +104,7 @@ jobs:
       - name: Deploy current Worker and client assets
         run: npx wrangler deploy --config .wrangler-ci-client-v181.jsonc
 
-      - name: Verify native catalog navigation in production
+      - name: Verify native catalog navigation and visual card in production
         shell: bash
         run: |
           set -euo pipefail
@@ -111,7 +112,7 @@ jobs:
             local base="$1"
             local ready=0
             for attempt in $(seq 1 30); do
-              local q="client_catalog_native_v181=$GITHUB_SHA&attempt=$attempt"
+              local q="client_catalog_visual_v181=$GITHUB_SHA&attempt=$attempt"
               html=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/espace-client/?$q" || true)
               experience=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/espace-client/client-experience-v117.js?$q" || true)
               legacy=$(curl -fsS -H 'Cache-Control: no-cache, no-store' "$base/espace-client/client-command-center-v117.js?$q" || true)
@@ -124,12 +125,13 @@ jobs:
                 && grep -Fq '/espace-client/client-command-center-v118-1.js?v=1' <<<"$html" \
                 && grep -Fq 'client-visual-coherence-v118-2.css?v=3' <<<"$html" \
                 && grep -Fq 'client-catalog-hover-v118-7.css?v=2' <<<"$html" \
-                && grep -Fq 'client-visual-coherence-v118-2.js?v=20260913-2' <<<"$html" \
+                && grep -Fq 'client-visual-coherence-v118-2.js?v=20260913-3' <<<"$html" \
                 && grep -Fq 'client-catalog-interaction-v118-7.js?v=20260913-2' <<<"$html" \
                 && grep -Fq "$EXPERIENCE_RELEASE" <<<"$experience" \
                 && ! grep -Fq "import('/espace-client/client-command-center-v117.js" <<<"$experience" \
                 && grep -Fq "$LEGACY_SHIM_RELEASE" <<<"$legacy" \
                 && grep -Fq "$CLIENT_VISUAL_RELEASE" <<<"$visual" \
+                && grep -Fq 'observeCatalogStructure' <<<"$visual" \
                 && grep -Fq 'data-v1182-booking-card="true"' <<<"$visual" \
                 && grep -Fq "new URL('/espace-client/reserver/'" <<<"$visual" \
                 && ! grep -Fq 'navigateCatalogCard' <<<"$visual" \
@@ -147,7 +149,7 @@ jobs:
           NODE
               then
                 ready=1
-                echo "$base: native anchor catalog navigation verified on attempt $attempt"
+                echo "$base: native anchor + stable visual catalogue verified on attempt $attempt"
                 break
               fi
               sleep 4

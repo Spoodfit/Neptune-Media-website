@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "project": "Neptune Media",
+  "purpose": "Reference implementation being prepared for migration into the Neptune VPS monorepo",
+  "current": {
+    "applicationRoot": "neptune-tv-media-cloudflare",
+    "workerEntry": "neptune-tv-media-cloudflare/src/entry-v48.js",
+    "wranglerFiles": [
+      "wrangler.jsonc",
+      "neptune-tv-media-cloudflare/wrangler.jsonc"
+    ],
+    "persistence": "Cloudflare Durable Object StudioStore / SQLite",
+    "binaryStorage": "Cloudflare R2 and external providers depending on the domain",
+    "surfaces": [
+      "neptune-tv-media-cloudflare/public/studio",
+      "neptune-tv-media-cloudflare/public/espace-client",
+      "neptune-tv-media-cloudflare/public/reserver",
+      "neptune-tv-media-cloudflare/public/hors-norme",
+      "neptune-tv-media-cloudflare/public/direct"
+    ],
+    "platformSpecificPatterns": [
+      "env.STUDIO",
+      "env.MEDIA",
+      "env.AI",
+      "this.sql",
+      "@cloudflare/containers"
+    ]
+  },
+  "target": {
+    "deployment": "Neptune VPS / Docker",
+    "publicDomain": "media.neptunebusiness.com",
+    "frontendRoot": "apps/media",
+    "backendRoot": "apps/backend",
+    "persistence": "PostgreSQL / Prisma",
+    "ingress": "host NGINX -> 127.0.0.1:8081 -> neptune-media -> neptune-backend",
+    "existingBackendAnchors": [
+      "apps/backend/src/routes/media.js",
+      "apps/backend/src/routes/mediaClient.js",
+      "apps/backend/src/routes/mediaStudio.js",
+      "apps/backend/src/routes/mediaWebtv.js",
+      "apps/backend/src/services/mediaBookingService.js",
+      "apps/backend/prisma/schema.prisma"
+    ]
+  },
+  "domains": [
+    "catalog",
+    "prospect",
+    "reservation",
+    "availability",
+    "payment",
+    "order",
+    "client",
+    "studio",
+    "supplier",
+    "content",
+    "publication",
+    "webtv",
+    "notification",
+    "analytics"
+  ],
+  "rules": [
+    "Studio is the human cockpit, not the persistence layer",
+    "Backend domain services are the source of truth",
+    "Do not migrate the entry-vXX wrapper chain as architecture",
+    "Do not duplicate pricing, capacity or availability rules in frontends",
+    "HORS NORME must hand off through a persisted prospect and reservation token",
+    "Migrate domain behavior before platform-specific implementation details",
+    "One business capability must have one canonical owner"
+  ]
+}

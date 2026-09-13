@@ -1,10 +1,13 @@
 {
-  "schemaVersion": 4,
+  "schemaVersion": 5,
   "project": "Neptune Media",
   "purpose": "Reference implementation being prepared for migration into the Neptune VPS monorepo",
   "current": {
+    "sourceRepository": "Spoodfit/Neptune-Media-website",
+    "sourceBranch": "main",
     "applicationRoot": "neptune-tv-media-cloudflare",
     "workerEntry": "neptune-tv-media-cloudflare/src/entry-v48.js",
+    "siteRoot": "neptune-tv-media-cloudflare/public/index.html",
     "canonicalDeployWorkflow": ".github/workflows/deploy-cloudflare.yml",
     "postDeployVerificationWorkflow": ".github/workflows/verify-production-after-deploy.yml",
     "canonicalWorkflows": [
@@ -24,6 +27,19 @@
       "neptune-tv-media-cloudflare/scripts/visual-render-audit.mjs",
       "neptune-tv-media-cloudflare/scripts/qa-production-ui.mjs"
     ],
+    "migrationDocuments": [
+      "MIGRATION.md",
+      "migration/TRANSFER_MANIFEST.md",
+      "migration/PORTING_PLAN.md",
+      "migration/CUTOVER_CHECKLIST.md",
+      "migration/COMPONENT_MAP.md",
+      "migration/API_CONTRACTS.md",
+      "migration/DATA_OWNERSHIP.md",
+      "migration/TARGET_VPS.md",
+      "migration/LEGACY_CLEANUP.md",
+      "migration/RUNTIME_GRAPH.md",
+      "migration/WORKFLOW_OWNERSHIP.md"
+    ],
     "wranglerFiles": [
       "wrangler.jsonc",
       "neptune-tv-media-cloudflare/wrangler.jsonc"
@@ -31,6 +47,7 @@
     "persistence": "Cloudflare Durable Object StudioStore / SQLite",
     "binaryStorage": "Cloudflare R2 and external providers depending on the domain",
     "surfaces": [
+      "neptune-tv-media-cloudflare/public/index.html",
       "neptune-tv-media-cloudflare/public/studio",
       "neptune-tv-media-cloudflare/public/espace-client",
       "neptune-tv-media-cloudflare/public/reserver",
@@ -58,6 +75,12 @@
     "backendRoot": "apps/backend",
     "persistence": "PostgreSQL / Prisma",
     "ingress": "host NGINX -> 127.0.0.1:8081 -> neptune-media -> neptune-backend",
+    "existingFrontendAnchors": [
+      "apps/media/src/App.jsx",
+      "apps/media/src/pages/LandingPage.jsx",
+      "apps/media/src/pages/ReservationPage.jsx",
+      "apps/media/public"
+    ],
     "existingBackendAnchors": [
       "apps/backend/src/routes/media.js",
       "apps/backend/src/routes/mediaClient.js",
@@ -94,6 +117,7 @@
     "Generated diagnostics and deployment markers must not be committed at repository root",
     "Exactly one GitHub workflow may perform the production Worker deployment",
     "Only workflows declared in current.canonicalWorkflows may exist",
-    "Production media imports are manual-only"
+    "Production media imports are manual-only",
+    "The six canonical Media surfaces must remain present until VPS parity is validated"
   ]
 }

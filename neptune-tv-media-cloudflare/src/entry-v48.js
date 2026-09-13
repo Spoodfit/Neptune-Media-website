@@ -9,9 +9,9 @@ import {
 export {WebTvEncoder};
 
 const RELEASE='neptune-effective-offer-runtime-20260905-v181.1';
-const CLIENT_CATALOG_CLICK_RELEASE='neptune-client-catalog-click-20260913-v181.1';
-const CLIENT_VISUAL_ASSET='/espace-client/client-visual-coherence-v118-2.js?v=20260908-2';
-const CLIENT_INTERACTION_ASSET='/espace-client/client-catalog-interaction-v118-7.js?v=20260913-1';
+const CLIENT_CATALOG_CLICK_RELEASE='neptune-client-catalog-click-20260913-v181.2-native-anchor';
+const CLIENT_VISUAL_ASSET='/espace-client/client-visual-coherence-v118-2.js?v=20260913-2';
+const CLIENT_INTERACTION_ASSET='/espace-client/client-catalog-interaction-v118-7.js?v=20260913-2';
 
 export class StudioStore extends BaseStudioStore{
   async fetch(request){

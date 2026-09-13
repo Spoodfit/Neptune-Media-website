@@ -1,0 +1,85 @@
+name: Finalize HORS NORME
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/finalize-hors-norme.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event_name == 'workflow_dispatch' || github.event.head_commit.message == 'Finalize HORS NORME patch runner'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Finalize landing and reservation target
+        shell: bash
+        run: |
+          set -euo pipefail
+          python <<'PY'
+          from pathlib import Path
+
+          reserve = 'https://neptune-media-webtv.neptunebusinessclub.workers.dev/reserver'
+          public = 'https://neptune-media-webtv.neptunebusinessclub.workers.dev'
+          page = Path('neptune-tv-media-cloudflare/public/hors-norme/index.html')
+          text = page.read_text(encoding='utf-8')
+
+          replacements = {
+              'https://media.neptunebusiness.com/hors-norme': public + '/hors-norme/',
+              'https://media.neptunebusiness.com/assets/posters/hors-norme-wide.webp': public + '/assets/posters/hors-norme-wide.webp',
+              'href="/reserver?source=hors-norme"': f'href="{reserve}?source=hors-norme"',
+              'link.href="/reserver?"+q.toString();': f'link.href="{reserve}?"+q.toString();',
+              '"url":"https://media.neptunebusiness.com/"': f'"url":"{public}/"',
+          }
+          for old, new in replacements.items():
+              text = text.replace(old, new)
+
+          # Make the canonical reservation target explicit and centralized in the landing runtime.
+          marker = 'const push=(name,extra={})=>'
+          if 'const RESERVE_URL=' not in text and marker in text:
+              text = text.replace(marker, f'const RESERVE_URL="{reserve}";\n      '+marker, 1)
+          text = text.replace(f'link.href="{reserve}?"+q.toString();', 'link.href=RESERVE_URL+"?"+q.toString();')
+
+          # Add the exact target below the final CTA once, so there is no ambiguity for the user.
+          cta = f'<a class="btn btn-primary full" id="qualificationResult" href="{reserve}?source=hors-norme" data-track="hn_qualification_complete">Postuler pour l\'interview HORS NORME + diffusion Neptune →</a>'
+          note = '<div style="margin-top:10px;color:#718097;font-size:11px;text-align:center;word-break:break-all">Réservation sécurisée sur neptune-media-webtv.neptunebusinessclub.workers.dev/reserver</div>'
+          if cta in text and note not in text:
+              text = text.replace(cta, cta + note, 1)
+
+          if 'media.neptunebusiness.com/reserver' in text:
+              raise SystemExit('Legacy reservation target still present in HORS NORME landing')
+          if reserve not in text:
+              raise SystemExit('Canonical Workers reservation target missing from HORS NORME landing')
+          page.write_text(text, encoding='utf-8')
+
+          security = Path('neptune-tv-media-cloudflare/src/security.js')
+          sec = security.read_text(encoding='utf-8')
+          sec = sec.replace("form-action 'self' https://media.neptunebusiness.com", "form-action 'self' https://neptune-media-webtv.neptunebusinessclub.workers.dev")
+          security.write_text(sec, encoding='utf-8')
+          PY
+
+          grep -Fq 'https://neptune-media-webtv.neptunebusinessclub.workers.dev/reserver' neptune-tv-media-cloudflare/public/hors-norme/index.html
+          ! grep -Fq 'media.neptunebusiness.com/reserver' neptune-tv-media-cloudflare/public/hors-norme/index.html
+
+      - name: Commit finalization
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo 'No change required.'
+            exit 0
+          fi
+          git config user.name 'Neptune Media Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add neptune-tv-media-cloudflare/public/hors-norme/index.html neptune-tv-media-cloudflare/src/security.js
+          git commit -m 'Finalize HORS NORME landing and reservation target'
+          git push origin HEAD:main

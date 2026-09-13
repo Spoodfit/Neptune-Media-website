@@ -35,11 +35,11 @@ for (const stalePath of [
   'neptune-tv-media-cloudflare/CI_V110.md',
   'neptune-tv-media-cloudflare/deploy-trigger-manual-scheduling-v85-20260810.txt',
   'neptune-tv-media-cloudflare/deploy-trigger-v27.txt',
-  'neptune-tv-media-cloudflare/src/worker.js',
-  'neptune-tv-media-cloudflare/containers/video-ai/processor.py',
-  'neptune-tv-media-cloudflare/containers/video-ai/entry.py',
-  'neptune-tv-media-cloudflare/containers/webtv/encoder.mjs',
-  'neptune-tv-media-cloudflare/containers/webtv/apply-smoothness-patch.mjs',
+  'neptune-tv-media-cloudflare/src/entry-v48.js',
+  'neptune-tv-media-cloudflare/containers/video-ai/app_v69.py',
+  'neptune-tv-media-cloudflare/containers/video-ai/app_v71.py',
+  'neptune-tv-media-cloudflare/containers/webtv/encoder-v118.mjs',
+  'neptune-tv-media-cloudflare/containers/webtv/encoder-smoothness-v124.mjs',
 ]) {
   if (exists(stalePath)) fail(`Stale repository path must not exist: ${stalePath}`);
 }

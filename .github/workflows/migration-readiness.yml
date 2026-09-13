@@ -1,0 +1,40 @@
+name: Media Migration Readiness
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'README.md'
+      - 'MIGRATION.md'
+      - 'migration/**'
+      - 'package.json'
+      - 'wrangler.jsonc'
+      - 'neptune-tv-media-cloudflare/wrangler.jsonc'
+      - 'neptune-tv-media-cloudflare/src/**'
+      - 'neptune-tv-media-cloudflare/public/**'
+      - 'neptune-tv-media-cloudflare/scripts/verify-migration-readiness.mjs'
+      - '.github/workflows/migration-readiness.yml'
+      - '.github/workflows/deploy-*.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate migration manifest
+        run: npm run audit:migration
+
+      - name: Validate audit script syntax
+        run: node --check neptune-tv-media-cloudflare/scripts/verify-migration-readiness.mjs

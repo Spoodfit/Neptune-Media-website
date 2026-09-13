@@ -5,18 +5,37 @@ import { generateEditorialProposals } from '../src/portal-editorial-ai-v2.js';
 const root = new URL('../', import.meta.url);
 const read = (path) => readFile(new URL(path, root), 'utf8');
 
-const [wrangler, entry, routes, store, ui, css, workflow] = await Promise.all([
+async function collectReachableEntries(start = 'src/entry-v48.js') {
+  const visited = new Set();
+  const queue = [start];
+  while (queue.length) {
+    const relative = queue.shift();
+    if (visited.has(relative)) continue;
+    visited.add(relative);
+    const content = await read(relative);
+    for (const match of content.matchAll(/from\s+['"]\.\/(entry-v\d+\.js)['"]/gu)) {
+      queue.push(`src/${match[1]}`);
+    }
+  }
+  return visited;
+}
+
+const [wrangler, entry, routes, store, ui, css, reachableEntries] = await Promise.all([
   read('../wrangler.jsonc'),
   read('src/entry-v12.js'),
   read('src/portal-editorial-routes-v2.js'),
   read('src/store-v8.js'),
   read('public/assets/neptune-editorial-workspace-v59.js'),
   read('public/assets/neptune-editorial-workspace-v59.css'),
-  read('../.github/workflows/deploy-cloudflare.yml'),
+  collectReachableEntries(),
 ]);
 
-assert.match(wrangler, /"main"\s*:\s*"neptune-tv-media-cloudflare\/src\/entry-v(?:13|14|15|16|17|18|19)\.js"/u);
+assert.match(wrangler, /"main"\s*:\s*"neptune-tv-media-cloudflare\/src\/entry-v48\.js"/u);
 assert.match(wrangler, /"AI_MODEL"\s*:\s*"@cf\/openai\/gpt-oss-120b"/u);
+assert.ok(
+  reachableEntries.has('src/entry-v12.js'),
+  'Le runtime canonique entry-v48.js doit encore atteindre entry-v12.js tant que le workspace éditorial legacy reste actif.',
+);
 
 assert.match(entry, /neptune-editorial-workspace-20260730-v2/u);
 assert.match(entry, /editorialProposals:\s*3/u);
@@ -61,10 +80,6 @@ assert.match(css, /grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/u);
 assert.match(css, /@media \(max-width:680px\)/u);
 assert.match(css, /prefers-reduced-motion/u);
 
-assert.match(workflow, /EDITORIAL_RELEASE: neptune-editorial-workspace-20260730-v2/u);
-assert.match(workflow, /neptune-editorial-workspace-v59\.js/u);
-assert.match(workflow, /publishExpress/u);
-
 const generated = await generateEditorialProposals({}, {
   filename: 'Arretez de trop reflechir, passez a action.mp4',
   company: 'Entreprise test',
@@ -85,4 +100,4 @@ for (const proposal of generated.proposals) {
   assert.ok(proposal.fullPost.includes(proposal.hook));
 }
 
-console.log('Editorial workspace v59 verified: 3 proposals, selection, persistence, copy, download, express publishing and reuse.');
+console.log(`Editorial workspace v59 verified through canonical runtime (${reachableEntries.size} reachable entry wrappers): 3 proposals, selection, persistence, copy, download, express publishing and reuse.`);

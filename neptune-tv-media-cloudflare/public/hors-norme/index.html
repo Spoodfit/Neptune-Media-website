@@ -6,13 +6,13 @@
   <title>HORS NORME — 1 demi-journée pour 3 mois de communication</title>
   <meta name="description" content="Passez sur les chaînes Neptune et repartez avec 3 mois de communication créés, montés et diffusés pour vous en une demi-journée, avec 30 contenus minimum garantis et une livraison sous 15 jours.">
   <meta name="robots" content="index,follow,max-image-preview:large,max-video-preview:-1,max-snippet:-1">
-  <link rel="canonical" href="https://media.neptunebusiness.com/hors-norme">
+  <link rel="canonical" href="https://neptune-media-webtv.neptunebusinessclub.workers.dev/hors-norme/">
   <meta name="theme-color" content="#030611">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Neptune Media">
   <meta property="og:title" content="HORS NORME — 1 demi-journée. 3 mois de communication.">
   <meta property="og:description" content="Préparation guidée, tournage HORS NORME + Connexio, 30 contenus minimum et diffusion Neptune.">
-  <meta property="og:image" content="https://media.neptunebusiness.com/assets/posters/hors-norme-wide.webp">
+  <meta property="og:image" content="https://neptune-media-webtv.neptunebusinessclub.workers.dev/assets/posters/hors-norme-wide.webp">
   <link rel="icon" href="/assets/logo-neptune.svg">
   <link rel="preload" href="/assets/posters/hors-norme-wide.webp" as="image" fetchpriority="high">
   <style>
@@ -135,7 +135,7 @@
 
           <section class="form-stage" data-stage="3"><span class="question-num">Question 3 sur 3</span><h3>Quand souhaitez-vous tourner ?</h3><div class="choices" data-name="horizon"><button class="choice" type="button" data-value="Dès que possible">Dès que possible</button><button class="choice" type="button" data-value="Dans le mois">Dans le mois</button><button class="choice" type="button" data-value="Sous 3 mois">Sous 3 mois</button><button class="choice" type="button" data-value="Je me renseigne">Je me renseigne pour l'instant</button></div><div class="form-actions"><button class="btn btn-secondary back" type="button">← Retour</button><button class="btn btn-primary next" type="button" disabled>Voir mon éligibilité →</button></div></section>
 
-          <section class="form-stage" data-stage="4"><span class="question-num">Qualification terminée</span><h3>Votre demande peut passer à l'étape suivante.</h3><div class="final-answer"><b>Accédez maintenant au tunnel Neptune.</b><p>Vos réponses de qualification sont conservées pendant cette navigation afin d'éviter de vous redemander les mêmes informations inutilement.</p></div><a class="btn btn-primary full" id="qualificationResult" href="/reserver?source=hors-norme" data-track="hn_qualification_complete">Postuler pour l'interview HORS NORME + diffusion Neptune →</a><div class="form-actions"><button class="btn btn-secondary back" type="button">← Modifier mes réponses</button><span></span></div></section>
+          <section class="form-stage" data-stage="4"><span class="question-num">Qualification terminée</span><h3>Votre demande peut passer à l'étape suivante.</h3><div class="final-answer"><b>Accédez maintenant au tunnel Neptune.</b><p>Vos réponses de qualification sont conservées pendant cette navigation afin d'éviter de vous redemander les mêmes informations inutilement.</p></div><a class="btn btn-primary full" id="qualificationResult" href="https://neptune-media-webtv.neptunebusinessclub.workers.dev/reserver?source=hors-norme" data-track="hn_qualification_complete">Postuler pour l'interview HORS NORME + diffusion Neptune →</a><div style="margin-top:10px;color:#718097;font-size:11px;text-align:center;word-break:break-all">Réservation sécurisée sur neptune-media-webtv.neptunebusinessclub.workers.dev/reserver</div><div class="form-actions"><button class="btn btn-secondary back" type="button">← Modifier mes réponses</button><span></span></div></section>
         </div>
       </div>
     </section>
@@ -145,9 +145,10 @@
 
   <footer class="footer"><div class="container footer-inner"><span>© Neptune Media · HORS NORME</span><div><a href="/mentions-legales/">Mentions légales</a> · <a href="/confidentialite/">Confidentialité</a> · <a href="/espace-client/">Espace client</a></div></div></footer>
 
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"Service","name":"HORS NORME — Neptune Media","provider":{"@type":"Organization","name":"Neptune Media","url":"https://media.neptunebusiness.com/"},"url":"https://media.neptunebusiness.com/hors-norme","description":"Une heure de préparation, une demi-journée de tournage HORS NORME et Connexio, au moins 30 contenus garantis, livraison sous 15 jours et diffusion sur les canaux Neptune."}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"Service","name":"HORS NORME — Neptune Media","provider":{"@type":"Organization","name":"Neptune Media","url":"https://neptune-media-webtv.neptunebusinessclub.workers.dev/"},"url":"https://neptune-media-webtv.neptunebusinessclub.workers.dev/hors-norme/","description":"Une heure de préparation, une demi-journée de tournage HORS NORME et Connexio, au moins 30 contenus garantis, livraison sous 15 jours et diffusion sur les canaux Neptune."}</script>
   <script>
     (()=>{
+      const RESERVE_URL="https://neptune-media-webtv.neptunebusinessclub.workers.dev/reserver";
       const push=(name,extra={})=>{const payload={event:"neptune_hors_norme",hn_action:name,...extra};if(Array.isArray(window.dataLayer))window.dataLayer.push(payload);window.dispatchEvent(new CustomEvent("neptune:track",{detail:payload}))};
       document.querySelectorAll("[data-track]").forEach(el=>el.addEventListener("click",()=>push(el.dataset.track,{href:el.getAttribute("href")})));
       const video=document.querySelector("video[data-track]");if(video){let started=false;video.addEventListener("play",()=>{if(!started){started=true;push("hn_proof_video_play")}});video.addEventListener("ended",()=>push("hn_proof_video_complete"))}
@@ -155,7 +156,7 @@
       const shell=document.getElementById("qualifyForm");if(!shell)return;
       const answers={};let step=1;
       const stages=[...shell.querySelectorAll(".form-stage")];const dots=[...shell.querySelectorAll(".dot")];
-      const render=()=>{shell.dataset.step=String(step);stages.forEach(s=>s.classList.toggle("active",Number(s.dataset.stage)===step));dots.forEach((d,i)=>d.classList.toggle("active",i<step));if(step===4){try{sessionStorage.setItem("neptune_hn_qualification",JSON.stringify(answers))}catch(e){}const link=document.getElementById("qualificationResult");const q=new URLSearchParams({source:"hors-norme",secteur:answers.secteur||"",objectif:answers.objectif||"",horizon:answers.horizon||""});link.href="/reserver?"+q.toString();push("hn_qualification_ready",answers)}};
+      const render=()=>{shell.dataset.step=String(step);stages.forEach(s=>s.classList.toggle("active",Number(s.dataset.stage)===step));dots.forEach((d,i)=>d.classList.toggle("active",i<step));if(step===4){try{sessionStorage.setItem("neptune_hn_qualification",JSON.stringify(answers))}catch(e){}const link=document.getElementById("qualificationResult");const q=new URLSearchParams({source:"hors-norme",secteur:answers.secteur||"",objectif:answers.objectif||"",horizon:answers.horizon||""});link.href=RESERVE_URL+"?"+q.toString();push("hn_qualification_ready",answers)}};
       shell.querySelectorAll(".choices").forEach(group=>{group.querySelectorAll(".choice").forEach(choice=>choice.addEventListener("click",()=>{group.querySelectorAll(".choice").forEach(c=>c.classList.remove("selected"));choice.classList.add("selected");answers[group.dataset.name]=choice.dataset.value;const stage=choice.closest(".form-stage");stage.querySelector(".next").disabled=false;push("hn_qualification_answer",{question:group.dataset.name,value:choice.dataset.value})}))});
       shell.querySelectorAll(".next").forEach(btn=>btn.addEventListener("click",()=>{if(btn.disabled)return;step=Math.min(4,step+1);render()}));
       shell.querySelectorAll(".back").forEach(btn=>btn.addEventListener("click",()=>{step=Math.max(1,step-1);render()}));

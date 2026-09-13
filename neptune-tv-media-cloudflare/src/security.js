@@ -112,7 +112,7 @@ export function securityHeaders(headers = {}) {
       "frame-src https://www.youtube.com https://www.youtube-nocookie.com https://drive.google.com",
       "frame-ancestors 'none'",
       "base-uri 'self'",
-      "form-action 'self' https://media.neptunebusiness.com",
+      "form-action 'self' https://neptune-media-webtv.neptunebusinessclub.workers.dev",
       "upgrade-insecure-requests",
     ].join('; '),
     ...headers,

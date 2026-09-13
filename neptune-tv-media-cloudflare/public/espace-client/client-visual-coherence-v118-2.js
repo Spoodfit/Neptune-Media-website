@@ -1,9 +1,10 @@
-const RELEASE='neptune-client-visual-coherence-20260913-v118.10-native-anchor';
+const RELEASE='neptune-client-visual-coherence-20260913-v118.11-native-anchor-stable-view';
 const CATALOG_API='/api/reservation/catalog-v96';
 const ROOT=document.documentElement;
 let catalog=null;
 let selectedCity='';
 let refreshTimer=0;
+let renderQueued=false;
 
 if(!window.__neptuneClientVisualCoherenceV1182){
   window.__neptuneClientVisualCoherenceV1182=true;
@@ -21,6 +22,7 @@ function start(){
 function boot(){
   if(!home())return;
   retireLegacySnapshot();
+  observeCatalogStructure();
   hydrateCatalog();
 }
 
@@ -35,6 +37,34 @@ function retireLegacySnapshot(){
   snapshot.setAttribute('aria-hidden','true');
   snapshot.inert=true;
   snapshot.dataset.retiredBy='v118.2';
+}
+
+function observeCatalogStructure(){
+  // Several legacy dashboard runtimes still observe the whole document. Some of
+  // them can replace .format-grid after the catalogue has already rendered.
+  // Observe child-list changes only: never pointer/hover/focus/attributes. This
+  // keeps the visual catalogue authoritative without touching native link input.
+  const observer=new MutationObserver(mutations=>{
+    if(!catalog)return;
+    const relevant=mutations.some(mutation=>{
+      const target=mutation.target instanceof Element?mutation.target:null;
+      if(target?.closest?.('.formats-panel'))return true;
+      return [...mutation.addedNodes,...mutation.removedNodes].some(node=>
+        node instanceof Element&&(node.matches?.('.formats-panel,.format-grid')||node.querySelector?.('.formats-panel,.format-grid'))
+      );
+    });
+    if(relevant)queueCatalogRender();
+  });
+  observer.observe(document.body,{childList:true,subtree:true});
+}
+
+function queueCatalogRender(){
+  if(renderQueued)return;
+  renderQueued=true;
+  requestAnimationFrame(()=>{
+    renderQueued=false;
+    renderCityCatalog();
+  });
 }
 
 async function hydrateCatalog(){
@@ -68,9 +98,9 @@ function renderCityCatalog(){
   const grid=panel?.querySelector('.format-grid');
   if(!panel||!grid)return;
 
-  // This module is the sole owner of the catalogue DOM. The booking cards are
-  // ordinary same-origin anchors; no click interception, pointer gesture layer,
-  // DOM replacement on hover/focus, or synthetic navigation is required.
+  // This module owns catalogue presentation only. Booking cards remain ordinary
+  // same-origin anchors: no click interception, pointer gesture layer, DOM
+  // replacement on hover/focus, or synthetic navigation.
   panel.hidden=false;
   panel.classList.remove('cc-legacy-formats');
   panel.classList.add('cc-v118-catalog-panel');
@@ -91,7 +121,11 @@ function renderCityCatalog(){
 
   const cards=cityCards(city);
   const signature=[catalog.dataGuardRelease||'',selectedCity,...cards.map(({format,price})=>`${format.id||format.slug||format.name}:${format.imagePublicUrl||format.image||''}:${price}`)].join('|');
-  if(grid.dataset.v1182Signature===signature&&grid.querySelector('a.cc-v118-catalog-card-link'))return;
+  const expectedCards=cards.length;
+  const nativeCards=grid.querySelectorAll(':scope > a.cc-v118-catalog-card-link[data-v1182-booking-card="true"]');
+  const stable=grid.dataset.v1182Signature===signature&&nativeCards.length===expectedCards&&grid.children.length===expectedCards;
+  if(stable)return;
+
   grid.dataset.v1182Signature=signature;
   grid.classList.add('cc-v118-catalog-grid');
   grid.innerHTML=cards.map(item=>catalogCard(item)).join('');

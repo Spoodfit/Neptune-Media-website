@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "project": "Neptune Media",
   "purpose": "Reference implementation being prepared for migration into the Neptune VPS monorepo",
   "current": {
@@ -7,6 +7,23 @@
     "workerEntry": "neptune-tv-media-cloudflare/src/entry-v48.js",
     "canonicalDeployWorkflow": ".github/workflows/deploy-cloudflare.yml",
     "postDeployVerificationWorkflow": ".github/workflows/verify-production-after-deploy.yml",
+    "canonicalWorkflows": [
+      ".github/workflows/audit-application.yml",
+      ".github/workflows/client-dashboard-validation.yml",
+      ".github/workflows/configure-webtv-r2-cors.yml",
+      ".github/workflows/deploy-cloudflare.yml",
+      ".github/workflows/import-launch-emissions.yml",
+      ".github/workflows/validate.yml",
+      ".github/workflows/verify-production-after-deploy.yml",
+      ".github/workflows/video-engine.yml",
+      ".github/workflows/visual-render-audit.yml"
+    ],
+    "canonicalVerificationScripts": [
+      "neptune-tv-media-cloudflare/scripts/verify-migration-readiness.mjs",
+      "neptune-tv-media-cloudflare/scripts/verify-production-contracts.mjs",
+      "neptune-tv-media-cloudflare/scripts/visual-render-audit.mjs",
+      "neptune-tv-media-cloudflare/scripts/qa-production-ui.mjs"
+    ],
     "wranglerFiles": [
       "wrangler.jsonc",
       "neptune-tv-media-cloudflare/wrangler.jsonc"
@@ -75,6 +92,8 @@
     "Migrate domain behavior before platform-specific implementation details",
     "One business capability must have one canonical owner",
     "Generated diagnostics and deployment markers must not be committed at repository root",
-    "Exactly one GitHub workflow may perform the production Worker deployment"
+    "Exactly one GitHub workflow may perform the production Worker deployment",
+    "Only workflows declared in current.canonicalWorkflows may exist",
+    "Production media imports are manual-only"
   ]
 }

@@ -30,7 +30,7 @@ function walk(directory, predicate, output = []) {
   const absolute = path.join(root, directory);
   if (!fs.existsSync(absolute)) return output;
   for (const entry of fs.readdirSync(absolute, { withFileTypes: true })) {
-    const relative = path.join(directory, entry.name);
+    const relative = path.join(directory, entry.name).replaceAll('\\', '/');
     if (entry.isDirectory()) walk(relative, predicate, output);
     else if (!predicate || predicate(relative)) output.push(relative);
   }
@@ -50,6 +50,8 @@ for (const required of [
   'migration/TARGET_VPS.md',
   'migration/LEGACY_CLEANUP.md',
   'migration/RUNTIME_GRAPH.md',
+  'migration/WORKFLOW_OWNERSHIP.md',
+  'migration/PORTING_PLAN.md',
 ]) {
   if (!exists(required)) fail(`${required} is missing`);
 }
@@ -97,7 +99,7 @@ if (manifest) {
 }
 
 const entryFiles = walk('neptune-tv-media-cloudflare/src', file => /(?:^|\/)entry-v\d+\.js$/u.test(file));
-note(`${entryFiles.length} versioned entry wrappers are still present; they are migration debt, not target architecture.`);
+note(`${entryFiles.length} versioned entry wrappers are still present; they remain Cloudflare compatibility debt and are explicitly excluded from the VPS target architecture.`);
 
 const sourceFiles = walk('neptune-tv-media-cloudflare/src', file => file.endsWith('.js'));
 const platformPatterns = manifest?.current?.platformSpecificPatterns || [];
@@ -124,7 +126,18 @@ if (canonicalDeploy && exists(canonicalDeploy) && manifest?.current?.workerEntry
   }
 }
 
-const workflowFiles = walk('.github/workflows', file => /\.ya?ml$/iu.test(file));
+const workflowFiles = walk('.github/workflows', file => /\.ya?ml$/iu.test(file)).sort();
+const canonicalWorkflows = [...(manifest?.current?.canonicalWorkflows || [])].sort();
+if (!canonicalWorkflows.length) {
+  fail('migration manifest must declare current.canonicalWorkflows');
+} else {
+  const unexpected = workflowFiles.filter(file => !canonicalWorkflows.includes(file));
+  const missing = canonicalWorkflows.filter(file => !workflowFiles.includes(file));
+  if (unexpected.length) fail(`Unexpected workflow files remain: ${unexpected.join(', ')}`);
+  if (missing.length) fail(`Canonical workflow files are missing: ${missing.join(', ')}`);
+  if (!unexpected.length && !missing.length) note(`Workflow allowlist is clean: ${canonicalWorkflows.length} canonical workflow(s).`);
+}
+
 const workerDeployers = workflowFiles.filter(file => hasRealWorkerDeploy(read(file)));
 if (workerDeployers.length !== 1) {
   fail(`Exactly one workflow must deploy the Media Worker; found ${workerDeployers.length}: ${workerDeployers.join(', ') || '(none)'}`);
@@ -132,6 +145,11 @@ if (workerDeployers.length !== 1) {
   fail(`Worker deployer ${workerDeployers[0]} does not match canonical workflow ${canonicalDeploy}.`);
 } else {
   note(`Single Worker deploy owner: ${workerDeployers[0]}.`);
+}
+
+const importWorkflow = '.github/workflows/import-launch-emissions.yml';
+if (exists(importWorkflow) && /^\s*push\s*:/mu.test(read(importWorkflow))) {
+  fail(`${importWorkflow} must remain manual-only; production media imports must never run on push.`);
 }
 
 const rootGeneratedArtifacts = fs.readdirSync(root, { withFileTypes: true })

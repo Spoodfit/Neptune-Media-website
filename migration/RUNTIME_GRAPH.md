@@ -1,60 +1,77 @@
 # Graphe du runtime actif
 
-Ce document sépare le runtime de référence encore nécessaire de la dette historique qui ne doit pas être reproduite pendant la migration VPS.
+Ce document sépare le runtime Cloudflare encore nécessaire de l'architecture cible VPS. L'objectif n'est pas de rendre l'ancien runtime élégant avant la migration, mais de savoir exactement ce qui reste une dépendance de compatibilité et ce qui doit être reconstruit proprement dans la cible.
 
 ## Entrée canonique
 
-Les deux configurations Wrangler doivent pointer vers :
+Les configurations Wrangler de production pointent vers :
 
 ```text
 neptune-tv-media-cloudflare/src/entry-v48.js
 ```
 
-Le début de chaîne vérifié est :
+Le début de chaîne active est :
 
 ```text
 entry-v48.js
 ├─ entry-v47.js
 │  ├─ entry-v46.js
-│  │  └─ entry-v45.js puis descendants legacy
+│  │  └─ entry-v45.js puis descendants importés transitivement
 │  ├─ reservation-client-projection-v179.js
 │  └─ reservation-stripe-redirect-v180.js
 ├─ effective-offer-v181.js
 └─ security.js
 ```
 
-`entry-v48.js`, `entry-v47.js` et `entry-v46.js` importent explicitement leur prédécesseur. Les wrappers descendants doivent donc rester classés **LEGACY_REQUIRED** tant qu'une analyse d'atteignabilité n'a pas prouvé qu'ils sont hors de cette chaîne.
+Les `entry-vXX.js` descendants encore importés sont classés **LEGACY_REQUIRED**. Ils restent en place parce que l'application Cloudflare active en dépend ; ils sont explicitement exclus de l'architecture VPS. Le script `verify-migration-readiness.mjs` recompte cette dette à chaque validation afin qu'elle ne soit pas confondue avec du code cible.
+
+## Frontend et stores
+
+Les surfaces actives sont servies depuis `neptune-tv-media-cloudflare/public/`, notamment :
+
+```text
+public/studio/
+public/espace-client/
+public/reserver/
+public/hors-norme/
+public/direct/
+```
+
+Le dépôt contient encore plusieurs générations d'assets, de shims et de stores historiques. Leur présence n'autorise pas à les copier dans `apps/media/`. Une génération ancienne peut rester nécessaire parce qu'un wrapper ou une page active l'injecte encore ; elle ne doit être supprimée de l'ancienne plateforme qu'après suppression de cette dépendance ou après le cutover VPS.
 
 ## Classification
 
-| Classe | Règle | Action |
+| Classe | Définition | Traitement |
 | --- | --- | --- |
-| `ACTIVE` | entrée canonique, surfaces et modules directement utilisés | conserver et tester |
-| `MIGRATION_SOURCE` | logique métier à porter vers `apps/backend` / `apps/media` | conserver jusqu'au portage |
-| `LEGACY_REQUIRED` | wrapper, shim ou adaptateur historique encore atteint par le runtime actif | conserver temporairement, ne pas reproduire |
-| `DEAD` | aucun import, injection, workflow ou contrat actif | supprimer |
+| `ACTIVE` | entrée canonique, surfaces, contrats et modules utilisés directement | conserver et tester jusqu'au cutover |
+| `MIGRATION_SOURCE` | comportement métier ou UX à porter vers `apps/backend` / `apps/media` | porter par domaine puis vérifier la parité |
+| `LEGACY_REQUIRED` | wrapper, shim, asset ou adaptateur historique encore atteint | conserver temporairement ; ne jamais reproduire comme architecture cible |
+| `DEAD` | aucun import, injection, route, test canonique ou contrat actif | supprimer quand cette absence est démontrée |
 
-## Frontières de migration
+## Cible de recomposition
 
-La migration ne doit pas traduire la chaîne `entry-vXX.js` wrapper par wrapper. Les responsabilités doivent être redistribuées entre :
+La chaîne actuelle n'est pas traduite wrapper par wrapper. Les responsabilités convergent vers :
 
 ```text
 apps/media
-  public / espace-client / reserver / studio / direct
+  site public / HORS NORME / réservation / espace client / Studio / direct
 
 apps/backend
-  catalog / reservation / payment / client / studio / supplier / content / webtv / notification
+  routes Express
+  services catalogue / prospect / réservation / disponibilité / paiement / commande
+  services client / Studio / fournisseur / contenu / publication / WebTV / notification
+  adaptateurs stockage / e-mail / Drive / paiement / vidéo
 
 PostgreSQL / Prisma
-  source de vérité persistante
+  source de vérité métier persistante
 ```
 
-## Dette encore ouverte
+Le détail de l'ordre de bascule est dans `PORTING_PLAN.md`.
 
-- terminer l'analyse transitive de toute la chaîne `entry-vXX.js` ;
-- faire la même analyse pour `store-vXX.js` ;
-- inventorier les assets frontend injectés dynamiquement par les wrappers ;
-- réduire les workflows capables d'exécuter `wrangler deploy` à un pipeline canonique ;
-- extraire les règles métier des wrappers vers des services portables avant leur suppression.
+## État de nettoyage
 
-La présence d'un numéro de version ancien n'est jamais, à elle seule, une preuve qu'un fichier est mort.
+Le nettoyage CI/CD et la gouvernance du dépôt sont terminés : un seul workflow déploie le Worker, l'allowlist des workflows est contrôlée automatiquement et les diagnostics versionnés ne sont plus une architecture parallèle.
+
+La dette runtime restante est **intentionnelle et bornée au système Cloudflare actuel**. La supprimer maintenant reviendrait à réécrire l'application avant de la migrer et augmenterait le risque de régression. Elle est donc retirée au moment où chaque domaine est porté et validé sur le VPS, puis définitivement supprimée après le basculement de trafic et de données.
+
+Cette règle évite deux erreurs : considérer un ancien numéro de version comme une preuve de code mort, ou recopier une dépendance historique simplement parce qu'elle est encore nécessaire à l'ancien runtime.

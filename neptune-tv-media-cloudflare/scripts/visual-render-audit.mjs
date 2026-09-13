@@ -1,0 +1,115 @@
+import { chromium } from 'playwright';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+
+const base = (process.env.BASE_URL || 'https://tv.neptunebusiness.com').replace(/\/$/, '');
+const output = path.resolve(process.env.VISUAL_AUDIT_DIR || 'visual-audit/latest');
+await fs.mkdir(output, { recursive: true });
+
+const viewports = [
+  { name: 'desktop-1440', width: 1440, height: 1000 },
+  { name: 'laptop-1280', width: 1280, height: 800 },
+  { name: 'tablet-834', width: 834, height: 1112 },
+  { name: 'mobile-390', width: 390, height: 844 },
+  { name: 'mobile-360', width: 360, height: 800 },
+];
+const routes = [
+  { name: 'home', url: '/' },
+  { name: 'emissions', url: '/emissions/' },
+  { name: 'direct', url: '/direct/' },
+  { name: 'reserver', url: '/reserver' },
+];
+const report = { generatedAt: new Date().toISOString(), base, captures: [], issues: [] };
+const browser = await chromium.launch({ headless: true, args: ['--disable-dev-shm-usage'] });
+const safe = (value) => value.replace(/[^a-z0-9-]+/gi, '-').toLowerCase();
+
+for (const viewport of viewports) {
+  const context = await browser.newContext({
+    viewport: { width: viewport.width, height: viewport.height },
+    deviceScaleFactor: 1,
+    reducedMotion: 'reduce',
+  });
+  for (const route of routes) {
+    const page = await context.newPage();
+    const consoleErrors = [];
+    const failedRequests = [];
+    page.on('console', (message) => { if (message.type() === 'error') consoleErrors.push(message.text()); });
+    page.on('requestfailed', (request) => failedRequests.push({ url: request.url(), reason: request.failure()?.errorText || 'request_failed' }));
+    let status = 0;
+    try {
+      const response = await page.goto(`${base}${route.url}?visual_audit=${Date.now()}`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      status = response?.status() || 0;
+      await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+      await page.waitForTimeout(2500);
+    } catch (error) {
+      report.issues.push({ severity: 'error', viewport: viewport.name, route: route.name, type: 'navigation', message: String(error) });
+    }
+
+    const diagnostics = await page.evaluate(() => {
+      const visible = (el) => {
+        const style = getComputedStyle(el);
+        const rect = el.getBoundingClientRect();
+        return style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity) !== 0 && rect.width > 0 && rect.height > 0;
+      };
+      const selector = (el) => el.id ? `#${el.id}` : `${el.tagName.toLowerCase()}${[...el.classList].slice(0, 3).length ? `.${[...el.classList].slice(0, 3).join('.')}` : ''}`;
+      const doc = document.documentElement;
+      const horizontalOverflow = Math.max(doc.scrollWidth, document.body.scrollWidth) - innerWidth;
+      const brokenImages = [...document.images]
+        .filter((img) => visible(img) && img.complete && img.naturalWidth === 0)
+        .map((img) => ({ selector: selector(img), src: img.currentSrc || img.src }));
+      const clippedText = [...document.querySelectorAll('h1,h2,h3,p,blockquote,button,a,span')]
+        .filter((el) => visible(el) && (el.textContent || '').trim().length > 8)
+        .filter((el) => {
+          const style = getComputedStyle(el);
+          if (['auto', 'scroll'].includes(style.overflowX) || ['auto', 'scroll'].includes(style.overflowY)) return false;
+          return el.scrollWidth > el.clientWidth + 2 || el.scrollHeight > el.clientHeight + 2;
+        })
+        .slice(0, 30)
+        .map((el) => ({ selector: selector(el), text: el.textContent.trim().slice(0, 120) }));
+      const offscreen = [...document.querySelectorAll('main *')]
+        .filter(visible)
+        .filter((el) => {
+          const rect = el.getBoundingClientRect();
+          const style = getComputedStyle(el);
+          const allowed = el.closest('[data-rail-track], .seo-grid-shorts, .media-filter-row');
+          return !allowed && (rect.left < -3 || rect.right > innerWidth + 3) && style.position !== 'fixed';
+        })
+        .slice(0, 30)
+        .map((el) => ({ selector: selector(el) }));
+      return {
+        horizontalOverflow,
+        brokenImages,
+        clippedText,
+        offscreen,
+        iconHref: document.querySelector('link[rel~="icon"]')?.href || '',
+      };
+    });
+
+    const prefix = `${safe(route.name)}-${viewport.name}`;
+    await page.screenshot({ path: path.join(output, `${prefix}-fold.jpg`), type: 'jpeg', quality: 58, fullPage: false });
+    await page.screenshot({ path: path.join(output, `${prefix}-full.jpg`), type: 'jpeg', quality: 42, fullPage: true });
+    report.captures.push({ viewport, route, status, diagnostics, consoleErrors, failedRequests });
+    if (status >= 400 || status === 0) report.issues.push({ severity: 'error', viewport: viewport.name, route: route.name, type: 'http', message: `HTTP ${status}` });
+    if (diagnostics.horizontalOverflow > 3) report.issues.push({ severity: 'error', viewport: viewport.name, route: route.name, type: 'horizontal-overflow', message: `${diagnostics.horizontalOverflow}px` });
+    for (const issue of diagnostics.brokenImages) report.issues.push({ severity: 'error', viewport: viewport.name, route: route.name, type: 'broken-image', ...issue });
+    for (const issue of diagnostics.clippedText) report.issues.push({ severity: 'warning', viewport: viewport.name, route: route.name, type: 'clipped-text', ...issue });
+    for (const issue of diagnostics.offscreen) report.issues.push({ severity: 'warning', viewport: viewport.name, route: route.name, type: 'offscreen-element', ...issue });
+    for (const message of consoleErrors) report.issues.push({ severity: 'warning', viewport: viewport.name, route: route.name, type: 'console-error', message });
+    await page.close();
+  }
+  await context.close();
+}
+await browser.close();
+
+await fs.writeFile(path.join(output, 'audit.json'), `${JSON.stringify(report, null, 2)}\n`);
+const counts = report.issues.reduce((acc, issue) => {
+  acc[issue.severity] = (acc[issue.severity] || 0) + 1;
+  return acc;
+}, {});
+await fs.writeFile(path.join(output, 'README.md'), `# Audit visuel Neptune Media\n\nGénéré : ${report.generatedAt}\n\n- Captures : ${report.captures.length}\n- Erreurs : ${counts.error || 0}\n- Avertissements : ${counts.warning || 0}\n`);
+
+if (counts.error) {
+  console.error(`Visual render audit found ${counts.error} blocking error(s).`);
+  process.exit(1);
+}
+console.log(`Visual render audit passed: ${report.captures.length} captures, ${counts.warning || 0} warning(s).`);

@@ -16,6 +16,11 @@ Thumbs.db
 neptune-tv-media-cloudflare/local-video-engine/dist/
 .wrangler-ci-*.jsonc
 
+# Generated audit output belongs in CI artifacts/local workspaces, not in Git.
+/artifacts/
+/visual-audit/
+/ui-quality-status.json
+
 # Generated one-shot diagnostics and deployment markers must not live at repository root.
 /*diagnostic*.json
 /*deployment-status*.json

@@ -1,40 +1,37 @@
 # Gouvernance des workflows GitHub
 
-Le dépôt doit rester migrable sans faire dépendre le comportement métier d'une accumulation de workflows historiques.
+Le dépôt Neptune Media possède désormais un jeu fermé de workflows. Cette liste est déclarée dans `migration/manifest.json` et contrôlée par `npm run audit:migration`. Un nouveau workflow ne doit pas être ajouté pour corriger ponctuellement une fonctionnalité : sa vérification doit être rattachée au propriétaire canonique correspondant.
 
-## Propriétaires canoniques
+## Workflows canoniques
 
-| Responsabilité | Workflow canonique | Règle |
+| Responsabilité | Workflow | Déclenchement |
 | --- | --- | --- |
-| Validation source / PR | `.github/workflows/validate.yml` | contrôle `npm run check` et le bundle Worker, sans déployer |
-| Déploiement Cloudflare de référence | `.github/workflows/deploy-cloudflare.yml` | seul workflow autorisé à exécuter un vrai `wrangler deploy` du Worker Media |
-| Vérification après déploiement | `.github/workflows/verify-production-after-deploy.yml` | vérifie les surfaces, le contrôle d'accès Studio et les contrats de production après succès du déploiement canonique |
-| Audit visuel | `.github/workflows/visual-render-audit.yml` | s'exécute après un déploiement réussi, jamais avant lui |
-| Audit applicatif exhaustif | `.github/workflows/audit-entire-application-v60-20260730.yml` | contrôle lourd réservé aux PR concernées ou à un lancement manuel |
-| Validation détaillée espace client | `.github/workflows/client-dashboard-validation.yml` | contrôle Playwright spécialisé conservé sur PR / manuel tant que sa couverture n'est pas absorbée par les tests canoniques |
-| Configuration CORS WebTV R2 | `.github/workflows/configure-webtv-r2-cors.yml` | infrastructure spécialisée ; ne s'exécute que lorsque sa configuration change ou manuellement |
+| Validation source et architecture | `.github/workflows/validate.yml` | push `main` et pull request |
+| Déploiement Cloudflare de référence | `.github/workflows/deploy-cloudflare.yml` | pipeline de production ; seul propriétaire du vrai `wrangler deploy` |
+| Vérification fonctionnelle après déploiement | `.github/workflows/verify-production-after-deploy.yml` | succès du déploiement canonique ou manuel |
+| Audit UI et rendu Playwright | `.github/workflows/visual-render-audit.yml` | succès du déploiement canonique ou manuel |
+| Audit applicatif exhaustif | `.github/workflows/audit-application.yml` | pull request pertinente ou manuel |
+| Validation détaillée de l'espace client | `.github/workflows/client-dashboard-validation.yml` | pull request pertinente ou manuel |
+| Validation du moteur vidéo local | `.github/workflows/video-engine.yml` | pull request touchant le moteur/Studio vidéo ou manuel |
+| Configuration CORS WebTV R2 | `.github/workflows/configure-webtv-r2-cors.yml` | opération d'infrastructure spécialisée |
+| Import des émissions de lancement | `.github/workflows/import-launch-emissions.yml` | manuel uniquement, confirmation explicite |
 
-## Règles
+## Règles d'ownership
 
-1. Un workflow de diagnostic ne déploie jamais l'application.
-2. Un contrôle de production ne doit pas démarrer sur un simple `push` avant que le déploiement correspondant soit terminé.
-3. Une configuration d'infrastructure spécialisée ne doit pas s'exécuter à chaque commit applicatif.
-4. Les assertions fonctionnelles réutilisables doivent vivre dans `neptune-tv-media-cloudflare/scripts/` plutôt que dans de longs blocs shell dupliqués.
-5. Les workflows versionnés par fonctionnalité sont considérés comme dette de migration tant que leur assertion unique n'a pas été absorbée par un contrôle canonique.
-6. Les workflows devenus strictement redondants doivent être supprimés par lot après vérification de leur couverture.
-7. Les contrôles du déploiement Cloudflare doivent viser les ingress réellement servis par ce déploiement (`workers.dev` et `tv.neptunebusiness.com`). Les autres ingress restent vérifiés pour leur disponibilité, sans leur imposer l'arborescence d'assets du Worker.
-8. Les audits Playwright coûteux ne tournent pas automatiquement sur chaque commit lorsque le pipeline canonique couvre déjà la validation syntaxique et fonctionnelle.
+1. `deploy-cloudflare.yml` est l'unique workflow autorisé à exécuter un déploiement réel du Worker Media. Les autres usages de Wrangler restent des dry-runs ou des opérations d'infrastructure ciblées.
+2. `verify-production-after-deploy.yml` centralise les contrats de production réutilisables via `scripts/verify-production-contracts.mjs`; aucun workflow versionné par écran ou par release ne doit renaître.
+3. `visual-render-audit.yml` possède les audits Playwright de production, y compris le quality gate UI et les captures multi-viewports.
+4. `validate.yml` possède la validation source, `npm run check`, l'audit de migration et le dry-run Worker.
+5. `audit-application.yml` est le contrôle lourd du périmètre complet ; il ne tourne pas à chaque push.
+6. `client-dashboard-validation.yml` reste volontairement spécialisé tant que ses scénarios clients ne sont pas entièrement absorbés par l'audit applicatif.
+7. `video-engine.yml` est l'unique contrôle dédié au moteur vidéo : compatibilité Worker/Studio, build Docker, santé API et rendu déterministe.
+8. Les imports ou écritures opérationnelles en production sont manuels. Modifier un fichier source ne doit jamais déclencher un import média.
+9. Les assertions fonctionnelles doivent vivre dans `neptune-tv-media-cloudflare/scripts/` ou dans les tests ; les workflows orchestrent, ils ne deviennent pas une seconde couche applicative.
 
-## Nettoyage effectué
+## État du nettoyage
 
-- `validate-worker.yml` supprimé : doublon de `validate.yml` (`npm run check` + dry-run Wrangler).
-- `verify-production.yml` supprimé : son contrôle de présence de `/api/admin/control-room` a été absorbé par le vérificateur post-déploiement canonique.
-- `client-dashboard-production-check.yml` supprimé : contrôle ponctuel de l'ancien dashboard v37, remplacé depuis longtemps par les contrats client v118.x et le contrôle post-déploiement canonique.
-- `configure-webtv-r2-cors.yml` limité aux changements de sa configuration ou à un lancement manuel.
-- `visual-render-audit.yml` déplacé de `push` vers un déclenchement après succès du déploiement canonique.
-- `audit-entire-application-v60-20260730.yml` ne s'exécute plus à chaque push ; il reste disponible sur PR pertinente et manuellement comme audit lourd.
-- les anciens workflows de déploiement spécialisés Client, Réservation et HORS NORME ont été remplacés par le pipeline canonique unique.
+La consolidation des workflows historiques est terminée au niveau du dépôt. Les anciens diagnostics et vérificateurs `vXX`, les probes ponctuels, les contrôles catalogue/city/Studio/WebTV versionnés et les anciens pipelines vidéo ne font plus partie de l'architecture GitHub Actions.
 
-## Dette restante
+La garde-fou est automatique : toute réintroduction d'un fichier workflow en dehors de l'allowlist de `migration/manifest.json` fait échouer `npm run audit:migration`.
 
-Plusieurs workflows historiques de diagnostic ou de vérification post-déploiement existent encore. Ils doivent être consolidés progressivement selon cette règle : **déplacer d'abord toute assertion encore utile vers un script ou le vérificateur post-déploiement canonique, puis supprimer le workflow redondant**.
+Cette fermeture du pipeline ne signifie pas que la chaîne runtime Cloudflare est elle-même supprimée. Les wrappers `entry-vXX` encore importés restent nécessaires à l'application actuelle jusqu'au basculement VPS ; cette dette est décrite séparément dans `RUNTIME_GRAPH.md` et ne doit pas être confondue avec la gouvernance CI/CD.

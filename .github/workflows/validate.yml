@@ -8,21 +8,32 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: neptune-validate-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: '22'
           registry-url: https://registry.npmjs.org
+
       - name: Install production worker dependencies
         run: npm install --package-lock=false --registry=https://registry.npmjs.org --ignore-scripts --no-audit --no-fund
+
+      - name: Enforce migration and repository architecture
+        run: npm run audit:migration
+
       - name: Validate production application
         run: npm run check
+
       - name: Validate production Worker bundle
         run: npx wrangler deploy --config wrangler.jsonc --dry-run --outdir .wrangler-pr-dry-run

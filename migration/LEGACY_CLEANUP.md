@@ -1,105 +1,78 @@
 # Inventaire de nettoyage legacy
 
-Ce fichier distingue ce qui peut être nettoyé de ce qui doit rester disponible tant que la version Cloudflare sert encore de référence fonctionnelle.
+Le nettoyage du dépôt et de la CI/CD est terminé au niveau de l'architecture de référence. La dette qui reste dans le runtime Cloudflare est volontaire : elle sert encore l'application actuelle et sera retirée avec le basculement VPS, domaine par domaine.
 
-## Ne pas supprimer avant migration
+## Nettoyage terminé
 
-Même si leur architecture n'est pas la cible, les éléments suivants participent encore au runtime actif :
+Le dépôt ne conserve plus comme architecture active :
 
-- `src/entry-v48.js` et ses imports descendants ;
-- les modules Store appelés par la chaîne active ;
-- les assets réellement injectés dans Studio, Espace client et Réservation ;
-- le pipeline Cloudflare canonique pendant la finalisation ;
-- les scripts d'intégration Drive / Stripe / Resend / WebTV en production.
+- les sorties ponctuelles de diagnostic et de déploiement commitées à la racine ;
+- `ui-quality-status.json`, ancien instantané d'un audit UI d'août 2026 ;
+- les workflows versionnés par écran, release ou correctif ;
+- les anciens diagnostics Catalogue, City, Studio, WebTV, Drive, Client et Vidéo ;
+- les probes de production remplacées par les contrats de vérification canoniques ;
+- plusieurs propriétaires concurrents du déploiement Worker.
 
-Leur statut est **LEGACY_REQUIRED** : à documenter et encapsuler, pas à supprimer prématurément.
+Les sorties d'audit sont désormais produites comme artefacts GitHub Actions ou fichiers locaux ignorés par Git. Elles ne constituent plus une source de vérité versionnée.
 
-Voir `migration/RUNTIME_GRAPH.md` pour la classification et le début de chaîne vérifié.
+## CI/CD canonique
 
-## Nettoyage exécuté le 13 septembre 2026
+La liste fermée des workflows autorisés est déclarée dans `migration/manifest.json` et vérifiée par `neptune-tv-media-cloudflare/scripts/verify-migration-readiness.mjs`.
 
-Les sorties ponctuelles et déclencheurs historiques suivants ont été retirés de la racine du dépôt :
-
-```text
-accessibility-deployment-trigger.txt
-aida-production-diagnostic.json
-auth-apply-trigger.txt
-client-portal-production-diagnostic.json
-copy-hotfix-deployment-status.json
-copy-production-verification.json
-deployment-status.json
-media-import-status.json
-public-accessibility-production-diagnostic.json
-render-polish-production-check.json
-render-polish-production.json
-render-polish-source-validation.json
-story-home-production-diagnostic.json
-streaming-production-diagnostic.json
-streaming-source-validation.json
-studio-v65-production-status.json
-video-cloud-v67-diagnostic.json
-visual-audit-v11-trigger.txt
-visual-audit-v12-trigger.txt
-visual-audit-v13-trigger.txt
-visual-audit-v14-trigger.txt
-```
-
-Ils n'appartiennent ni au runtime ni au modèle de données à migrer. `.gitignore` empêche désormais leur réintroduction accidentelle à la racine.
-
-`ui-quality-status.json` n'est pas supprimé dans ce lot : il reste traité séparément tant que le workflow de qualité UI n'a pas été consolidé.
-
-## Déploiement Cloudflare consolidé
-
-Les trois déploiements spécialisés suivants ont été supprimés :
-
-```text
-.github/workflows/deploy-client-stability-v181.yml
-.github/workflows/deploy-reservation-v181.yml
-.github/workflows/deploy-hors-norme.yml
-```
-
-Le seul workflow autorisé à exécuter le déploiement Worker est désormais :
+Le seul propriétaire du déploiement Worker est :
 
 ```text
 .github/workflows/deploy-cloudflare.yml
 ```
 
-Les contrats critiques auparavant dispersés dans ces workflows sont conservés de deux façons :
+Les contrats de production sont regroupés dans :
 
-- validation source : `neptune-tv-media-cloudflare/scripts/verify-current-release-invariants.mjs` ;
-- validation après déploiement : `.github/workflows/verify-production-after-deploy.yml`.
+```text
+neptune-tv-media-cloudflare/scripts/verify-production-contracts.mjs
+.github/workflows/verify-production-after-deploy.yml
+```
 
-Le pipeline canonique utilise `entry-v48.js`, retire `route/routes` de sa configuration CI afin de ne pas muter les domaines, exécute l'audit de migration et la suite de tests avant le déploiement.
+Les audits visuels de production sont regroupés dans :
 
-## Dette de structure encore présente
+```text
+neptune-tv-media-cloudflare/scripts/qa-production-ui.mjs
+neptune-tv-media-cloudflare/scripts/visual-render-audit.mjs
+.github/workflows/visual-render-audit.yml
+```
 
-### Chaîne `entry-vXX.js`
+Les imports de médias de lancement sont manuels uniquement et demandent une confirmation explicite.
 
-Le Worker courant repose sur une succession de wrappers historiques. `entry-v48.js` importe `entry-v47.js`, qui importe `entry-v46.js`, qui importe `entry-v45.js`. Une suppression massive fondée uniquement sur les numéros de version casserait donc le runtime.
+## Legacy encore nécessaire
 
-Cible : routes par domaine + services métier + adaptateurs.
+Les éléments suivants ne sont pas supprimés tant que la version Cloudflare reste la référence en production :
 
-### Workflows historiques de diagnostic et vérification
+- `src/entry-v48.js` et les wrappers descendants réellement importés ;
+- les modules Store et bindings Cloudflare encore appelés par cette chaîne ;
+- les assets réellement injectés dans Studio, Espace client, Réservation, HORS NORME et Direct ;
+- les intégrations Drive, Stripe, Resend, R2, WebTV et vidéo dont les parcours actifs dépendent ;
+- les tests historiques encore utilisés comme garde-fous ou source de parité pour la migration.
 
-Il reste de nombreux workflows versionnés de diagnostic et de vérification. Ils ne déploient plus le Worker canonique, mais constituent encore une dette de maintenance. Ils doivent être classés entre contrôle encore utile et contrôle remplacé avant suppression par lots.
+Leur statut est **LEGACY_REQUIRED** ou **MIGRATION_SOURCE**, selon `migration/RUNTIME_GRAPH.md`. Leur présence est une contrainte de compatibilité de l'ancienne plateforme, pas une architecture à reproduire sur le VPS.
 
-## Politique de suppression
+## Règle de suppression runtime
 
-Avant de supprimer un fichier legacy :
+Un fichier runtime ancien n'est supprimé que lorsque l'une de ces conditions est démontrée :
 
-1. rechercher les imports/références ;
-2. vérifier les injections HTML du Worker ;
-3. vérifier les workflows GitHub ;
-4. vérifier les routes/API encore consommées ;
-5. vérifier la production de référence ;
-6. supprimer par lot cohérent avec un test de non-régression.
+1. il n'a plus aucun import, injection HTML, route, test canonique ni consommateur actif ;
+2. son comportement a été porté vers `apps/media` ou `apps/backend`, la parité a été vérifiée et le trafic concerné a basculé sur le VPS.
 
-## Ordre du nettoyage destructif restant
+Une version `vXX` élevée ou ancienne n'est jamais, à elle seule, une preuve de code mort.
 
-1. workflows de diagnostic/vérification manifestement remplacés ;
-2. assets frontend non injectés et non référencés ;
-3. shims frontend neutralisés ;
-4. anciens wrappers serveur non atteignables depuis l'entrée canonique ;
-5. anciennes tables/outils uniquement après export ou migration des données.
+## Fin de la dette Cloudflare
 
-Le nettoyage destructif doit rester séparé de la migration fonctionnelle afin de pouvoir attribuer rapidement une régression à l'un ou l'autre chantier.
+La suppression finale de la chaîne `entry-vXX`, du Store Durable Object, des bindings R2/Workers et des shims de compatibilité intervient après :
+
+- import idempotent des données dans PostgreSQL/Prisma ;
+- portage des services métier vers les modules Express de `apps/backend` ;
+- portage des surfaces vers `apps/media` ;
+- migration du stockage nécessaire ;
+- validation de parité des parcours critiques ;
+- basculement de `media.neptunebusiness.com` vers le VPS ;
+- confirmation qu'aucun trafic utile ni webhook ne dépend encore du runtime Cloudflare.
+
+L'ordre détaillé est défini dans `migration/PORTING_PLAN.md`.

@@ -1,23 +1,25 @@
-# Relance après activation du partage public Drive — 2026-07-16
 name: Import Neptune launch emissions
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/import-launch-emissions.yml'
-      - 'neptune-tv-media-cloudflare/scripts/import-launch-media.sh'
   workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Confirmer l’import des médias de lancement en production'
+        required: true
+        type: choice
+        options:
+          - IMPORT
 
 permissions:
   contents: read
 
 concurrency:
   group: neptune-media-import
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   import-media:
+    if: ${{ inputs.confirm == 'IMPORT' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     defaults:
@@ -31,14 +33,19 @@ jobs:
       R2_BUCKET: neptune-media-assets
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: '22'
           registry-url: https://registry.npmjs.org
-      - run: npm install --package-lock=false --registry=https://registry.npmjs.org
-      - run: npx wrangler r2 bucket create "$R2_BUCKET" 2>/dev/null || true
 
-      - name: Download, publish and register the two emissions
+      - name: Install import runtime
+        run: npm install --package-lock=false --registry=https://registry.npmjs.org --ignore-scripts --no-audit --no-fund
+
+      - name: Ensure R2 bucket exists
+        run: npx wrangler r2 bucket create "$R2_BUCKET" 2>/dev/null || true
+
+      - name: Download, publish and register launch emissions
         id: media_import
         shell: bash
         run: |
@@ -54,6 +61,7 @@ jobs:
           IMPORT_STATUS: ${{ job.status }}
           SOURCE_SHA: ${{ github.sha }}
           EXIT_CODE: ${{ steps.media_import.outputs.exit_code }}
+        shell: bash
         run: |
           cd "$GITHUB_WORKSPACE"
           tail -c 6000 /tmp/media-import.log 2>/dev/null > /tmp/media-import-tail.log || true

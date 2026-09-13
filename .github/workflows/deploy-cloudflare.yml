@@ -8,10 +8,13 @@ on:
       - 'neptune-tv-media-cloudflare/public/**'
       - 'neptune-tv-media-cloudflare/containers/**'
       - 'neptune-tv-media-cloudflare/local-video-engine/**'
+      - 'neptune-tv-media-cloudflare/scripts/**'
+      - 'neptune-tv-media-cloudflare/tests/**'
       - 'wrangler.jsonc'
       - 'neptune-tv-media-cloudflare/wrangler.jsonc'
       - 'package.json'
       - '.github/workflows/deploy-cloudflare.yml'
+      - '.github/workflows/verify-production-after-deploy.yml'
   workflow_dispatch:
 
 permissions:

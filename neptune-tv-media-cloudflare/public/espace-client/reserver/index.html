@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr" data-client-direct-booking="v118.5-v181">
+<html lang="fr" data-client-direct-booking="v118.6-shared-calendar">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#081d4e">
   <title>Réserver mon passage · Neptune Media</title>
   <link rel="icon" href="/assets/logo-neptune.svg">
-  <link rel="stylesheet" href="/espace-client/reserver/client-booking-v118-5.css?v=1">
+  <link rel="stylesheet" href="/espace-client/reserver/client-booking-v118-5.css?v=2">
 </head>
 <body>
   <header class="client-booking-header">
@@ -41,11 +41,6 @@
       </ol>
     </section>
 
-    <section id="bookingLoading" class="booking-loading" aria-live="polite">
-      <div></div><div></div><div></div>
-      <p>Préparation de votre réservation…</p>
-    </section>
-
     <section id="bookingError" class="booking-error" hidden role="alert">
       <strong>Impossible d’ouvrir cette réservation.</strong>
       <p id="bookingErrorText">Revenez à l’accueil et choisissez à nouveau votre format.</p>
@@ -70,21 +65,28 @@
           <div id="configurationChoices" class="configuration-grid" role="radiogroup" aria-label="Configuration du plateau"></div>
         </section>
 
-        <section class="booking-card booking-section">
-          <header><span class="booking-step-number">2</span><div><p class="booking-kicker">DATE DE PASSAGE</p><h2>Quand souhaitez-vous venir ?</h2><p>Choisissez un jour puis votre préférence de créneau. Neptune confirme ensuite l’horaire précis.</p></div></header>
-          <div class="date-field">
-            <label for="requestedDate">Jour souhaité</label>
-            <input id="requestedDate" name="requestedDate" type="date" required>
-            <small>Les passages sont proposés les jours ouvrés.</small>
-          </div>
-          <fieldset class="daypart-fieldset">
-            <legend>Préférence de créneau</legend>
-            <div class="daypart-grid">
-              <label><input type="radio" name="requestedDaypart" value="morning"><span><b>Matin</b><small>Je préfère passer le matin</small></span></label>
-              <label><input type="radio" name="requestedDaypart" value="afternoon"><span><b>Après-midi</b><small>Je préfère passer l’après-midi</small></span></label>
-              <label><input type="radio" name="requestedDaypart" value="flexible"><span><b>Flexible</b><small>Je m’adapte au meilleur créneau</small></span></label>
+        <section class="booking-card booking-section booking-date-section">
+          <header><span class="booking-step-number">2</span><div><p class="booking-kicker">DATE DE PASSAGE</p><h2>Quand souhaitez-vous tourner ?</h2><p>Choisissez un jour puis votre préférence de créneau. Le studio partenaire confirme ensuite définitivement le passage.</p></div></header>
+          <div class="booking-calendar-shell">
+            <div class="booking-calendar-card">
+              <div class="booking-calendar-head">
+                <button class="booking-calendar-nav" id="prevMonth" type="button" aria-label="Mois précédent">‹</button>
+                <strong id="monthLabel"></strong>
+                <button class="booking-calendar-nav" id="nextMonth" type="button" aria-label="Mois suivant">›</button>
+              </div>
+              <div class="booking-weekdays" aria-hidden="true"><span>Lun</span><span>Mar</span><span>Mer</span><span>Jeu</span><span>Ven</span><span>Sam</span><span>Dim</span></div>
+              <div class="booking-days" id="daysGrid" aria-label="Choisir un jour"></div>
             </div>
-          </fieldset>
+            <aside class="booking-slot-card">
+              <p class="booking-kicker">VOTRE DISPONIBILITÉ</p>
+              <h3 id="slotTitle">Choisissez un jour</h3>
+              <div class="booking-slots">
+                <button class="booking-slot" type="button" data-slot="morning" disabled><b>Matin</b><span>9h – 12h</span></button>
+                <button class="booking-slot" type="button" data-slot="afternoon" disabled><b>Après-midi</b><span>14h – 17h</span></button>
+              </div>
+              <p id="slotResult" class="booking-slot-result">Le créneau choisi apparaîtra ici.</p>
+            </aside>
+          </div>
           <p id="slotError" class="field-error" hidden></p>
         </section>
       </div>
@@ -100,7 +102,7 @@
           <div><dt>Créneau</dt><dd id="summaryDaypart">À choisir</dd></div>
         </dl>
         <div class="summary-total"><span>Total</span><strong id="summaryPrice">—</strong></div>
-        <button id="paymentButton" class="payment-button" type="submit">
+        <button id="paymentButton" class="payment-button" type="submit" disabled>
           <span>Continuer vers le paiement</span><b>→</b>
         </button>
         <p class="payment-note"><span>✓</span> Paiement sécurisé. Votre passage est rattaché automatiquement à cet espace client.</p>
@@ -109,6 +111,6 @@
     </form>
   </main>
 
-  <script type="module" src="/espace-client/reserver/client-booking-v118-5.js?v=2"></script>
+  <script type="module" src="/espace-client/reserver/client-booking-v118-5.js?v=3"></script>
 </body>
 </html>

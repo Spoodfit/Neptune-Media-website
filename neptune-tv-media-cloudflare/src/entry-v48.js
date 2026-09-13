@@ -9,9 +9,11 @@ import {
 export {WebTvEncoder};
 
 const RELEASE='neptune-effective-offer-runtime-20260905-v181.1';
-const CLIENT_CATALOG_CLICK_RELEASE='neptune-client-catalog-click-20260913-v181.4-single-owner-native-anchor';
+const CLIENT_CATALOG_CLICK_RELEASE='neptune-client-catalog-click-20260913-v181.5-single-owner-native-anchor';
 const CLIENT_VISUAL_ASSET='/espace-client/client-visual-coherence-v118-2.js?v=20260913-4';
 const CLIENT_INTERACTION_ASSET='/espace-client/client-catalog-interaction-v118-7.js?v=20260913-2';
+const LEGACY_SALES_ASSET='/espace-client/sales-catalog-v96.js?v=20260913-1';
+const LEGACY_MEDIA_ASSET='/espace-client/media-catalog-v95.js?v=20260913-1';
 
 export class StudioStore extends BaseStudioStore{
   async fetch(request){
@@ -93,6 +95,8 @@ async function pinClientCatalogRuntime(response){
   let body=await response.text();
   body=body.replace(/\/espace-client\/client-visual-coherence-v118-2\.js(?:\?[^"'<> ]*)?/gu,CLIENT_VISUAL_ASSET);
   body=body.replace(/\/espace-client\/client-catalog-interaction-v118-7\.js(?:\?[^"'<> ]*)?/gu,CLIENT_INTERACTION_ASSET);
+  body=body.replace(/\/espace-client\/sales-catalog-v96\.js(?:\?[^"'<> ]*)?/gu,LEGACY_SALES_ASSET);
+  body=body.replace(/\/espace-client\/media-catalog-v95\.js(?:\?[^"'<> ]*)?/gu,LEGACY_MEDIA_ASSET);
   const headers=new Headers(response.headers);
   for(const name of ['Content-Length','Content-Encoding','ETag','Last-Modified'])headers.delete(name);
   headers.set('Cache-Control','private, no-store, max-age=0');

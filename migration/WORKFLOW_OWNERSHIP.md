@@ -8,7 +8,8 @@ Le dépôt doit rester migrable sans faire dépendre le comportement métier d'u
 | --- | --- | --- |
 | Validation source / PR | `.github/workflows/validate.yml` | contrôle `npm run check` et le bundle Worker, sans déployer |
 | Déploiement Cloudflare de référence | `.github/workflows/deploy-cloudflare.yml` | seul workflow autorisé à exécuter un vrai `wrangler deploy` du Worker Media |
-| Vérification après déploiement | `.github/workflows/verify-production-after-deploy.yml` | vérifie les surfaces et contrats de production après succès du déploiement canonique |
+| Vérification après déploiement | `.github/workflows/verify-production-after-deploy.yml` | vérifie les surfaces, le contrôle d'accès Studio et les contrats de production après succès du déploiement canonique |
+| Audit visuel | `.github/workflows/visual-render-audit.yml` | s'exécute après un déploiement réussi, jamais avant lui |
 | Configuration CORS WebTV R2 | `.github/workflows/configure-webtv-r2-cors.yml` | infrastructure spécialisée ; ne s'exécute que lorsque sa configuration change ou manuellement |
 
 ## Règles
@@ -19,14 +20,15 @@ Le dépôt doit rester migrable sans faire dépendre le comportement métier d'u
 4. Les assertions fonctionnelles réutilisables doivent vivre dans `neptune-tv-media-cloudflare/scripts/` plutôt que dans de longs blocs shell dupliqués.
 5. Les workflows versionnés par fonctionnalité sont considérés comme dette de migration tant que leur assertion unique n'a pas été absorbée par un contrôle canonique.
 6. Les workflows devenus strictement redondants doivent être supprimés par lot après vérification de leur couverture.
+7. Les contrôles du déploiement Cloudflare doivent viser les ingress réellement servis par ce déploiement (`workers.dev` et `tv.neptunebusiness.com`). Les autres ingress restent vérifiés pour leur disponibilité, sans leur imposer l'arborescence d'assets du Worker.
 
 ## Nettoyage effectué
 
-Le workflow `validate-worker.yml` a été supprimé : il doublonnait `validate.yml` en exécutant les mêmes contrôles (`npm run check` + dry-run Wrangler).
-
-Le workflow `configure-webtv-r2-cors.yml` ne tourne plus à chaque push sur `main`. Il est déclenché uniquement par une modification de sa configuration ou manuellement.
-
-Les anciens workflows de déploiement spécialisés Client, Réservation et HORS NORME ont déjà été remplacés par le pipeline canonique unique.
+- `validate-worker.yml` supprimé : doublon de `validate.yml` (`npm run check` + dry-run Wrangler).
+- `verify-production.yml` supprimé : son contrôle de présence de `/api/admin/control-room` a été absorbé par le vérificateur post-déploiement canonique.
+- `configure-webtv-r2-cors.yml` limité aux changements de sa configuration ou à un lancement manuel.
+- `visual-render-audit.yml` déplacé de `push` vers un déclenchement après succès du déploiement canonique.
+- les anciens workflows de déploiement spécialisés Client, Réservation et HORS NORME ont été remplacés par le pipeline canonique unique.
 
 ## Dette restante
 

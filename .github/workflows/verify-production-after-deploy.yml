@@ -51,7 +51,21 @@ jobs:
             curl --fail --silent --show-error --location -H 'Cache-Control: no-cache, no-store' "$WORKERS_URL$path?verify=$sha" >/dev/null
           done
           curl --fail --silent --show-error --location -H 'Cache-Control: no-cache, no-store' "$PUBLIC_URL/espace-client/?verify=$sha" >/dev/null
+          # media.neptunebusiness.com is a separate ingress during the VPS migration.
+          # Keep its reservation entry reachable without assuming it serves the Worker asset tree.
           curl --fail --silent --show-error --location -H 'Cache-Control: no-cache, no-store' "$MEDIA_URL/reserver?verify=$sha" >/dev/null
+
+      - name: Verify Studio control-room route
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="$WORKERS_URL/api/admin/control-room"
+          status="$(curl --silent --show-error --output /tmp/control-room.json --write-out '%{http_code}' "$url" || true)"
+          if [[ "$status" != "401" && "$status" != "403" ]]; then
+            echo "Expected authenticated Studio control-room route; got HTTP $status"
+            cat /tmp/control-room.json || true
+            exit 1
+          fi
 
       - name: Verify canonical Studio and Catalogue production contract
         run: node neptune-tv-media-cloudflare/scripts/verify-studio-information-architecture-production-v65.mjs
@@ -121,25 +135,31 @@ jobs:
             done
             test "$ready" = 1
           }
+          # These are the two ingress points served by the canonical Cloudflare deployment.
           verify_base "$WORKERS_URL"
-          verify_base "$MEDIA_URL"
+          verify_base "$PUBLIC_URL"
 
       - name: Verify HORS NORME landing contract
         shell: bash
         run: |
           set -euo pipefail
           sha="${{ github.event.workflow_run.head_sha || github.sha }}"
-          ready=0
-          for attempt in $(seq 1 24); do
-            html=$(curl --fail --silent --show-error --location -H 'Cache-Control: no-cache, no-store' "$WORKERS_URL/hors-norme?release=$sha&attempt=$attempt" || true)
-            if grep -Fq '30 contenus minimum garantis' <<<"$html" \
-              && grep -Fq '3 mois de communication' <<<"$html" \
-              && grep -Fq 'Le parcours VIP clé en main' <<<"$html" \
-              && grep -Fq 'Vérifier mon éligibilité' <<<"$html"; then
-              ready=1
-              echo "HORS NORME landing verified on attempt $attempt."
-              break
-            fi
-            sleep 5
-          done
-          test "$ready" = 1
+          verify_base() {
+            local base="$1"
+            local ready=0
+            for attempt in $(seq 1 24); do
+              html=$(curl --fail --silent --show-error --location -H 'Cache-Control: no-cache, no-store' "$base/hors-norme?release=$sha&attempt=$attempt" || true)
+              if grep -Fq '30 contenus minimum garantis' <<<"$html" \
+                && grep -Fq '3 mois de communication' <<<"$html" \
+                && grep -Fq 'Le parcours VIP clé en main' <<<"$html" \
+                && grep -Fq 'Vérifier mon éligibilité' <<<"$html"; then
+                ready=1
+                echo "$base: HORS NORME landing verified on attempt $attempt."
+                break
+              fi
+              sleep 5
+            done
+            test "$ready" = 1
+          }
+          verify_base "$WORKERS_URL"
+          verify_base "$PUBLIC_URL"

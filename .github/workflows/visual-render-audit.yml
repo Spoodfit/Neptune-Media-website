@@ -1,8 +1,9 @@
 name: Visual Render Audit
 
 on:
-  push:
-    branches: [main]
+  workflow_run:
+    workflows: ['Deploy Neptune Media to Cloudflare']
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -14,12 +15,16 @@ concurrency:
 
 jobs:
   capture-and-audit:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
       BASE_URL: https://tv.neptunebusiness.com
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - uses: actions/setup-node@v4
         with:
@@ -43,7 +48,7 @@ jobs:
           done
           reserver_ready=0
           for attempt in $(seq 1 30); do
-            if curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$BASE_URL/reserver?visual_release=$GITHUB_SHA&attempt=$attempt" | grep -Fq '/assets/logo-neptune.svg?v=20260902'; then
+            if curl --fail --silent --show-error -H 'Cache-Control: no-cache, no-store' "$BASE_URL/reserver?visual_release=$DEPLOY_SHA&attempt=$attempt" | grep -Fq '/assets/logo-neptune.svg?v=20260902'; then
               reserver_ready=1
               break
             fi

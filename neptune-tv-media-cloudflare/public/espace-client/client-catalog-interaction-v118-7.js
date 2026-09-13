@@ -1,6 +1,10 @@
-const RELEASE='neptune-client-catalog-interaction-20260908-v118.8';
+const RELEASE='neptune-client-catalog-interaction-20260913-v118.9';
 const ROOT=document.documentElement;
+const CARD_SELECTOR='.formats-panel .cc-v118-catalog-card';
+const LINK_SELECTOR='.formats-panel a.cc-v118-catalog-card-link';
 let queued=false;
+let pointerGesture=null;
+let lastNavigationAt=0;
 
 if(!window.__neptuneClientCatalogInteractionV1187){
   window.__neptuneClientCatalogInteractionV1187=true;
@@ -18,6 +22,7 @@ function start(){
 
 function boot(){
   if(!home())return;
+  installInteractionOwner();
   normalizeCatalog();
   new MutationObserver(queue).observe(document.body,{
     childList:true,
@@ -34,15 +39,102 @@ function home(){
   return ['/espace-client','/espace-client/','/espace-client/index.html'].includes(location.pathname);
 }
 
+function installInteractionOwner(){
+  // Own the interaction at window capture level. Older client runtimes also
+  // listen on document capture and can cancel/replace the native anchor click.
+  // Handling the completed pointer gesture here makes the card deterministic
+  // without depending on listener registration order lower in the DOM tree.
+  window.addEventListener('pointerdown',event=>{
+    if(!plainPrimary(event))return;
+    const card=catalogCardFromTarget(event.target);
+    if(!card)return;
+    pointerGesture={
+      pointerId:event.pointerId,
+      href:bookingHrefFromCard(card),
+      x:event.clientX,
+      y:event.clientY,
+    };
+  },true);
+
+  window.addEventListener('pointerup',event=>{
+    const gesture=pointerGesture;
+    pointerGesture=null;
+    if(!gesture||gesture.pointerId!==event.pointerId||!plainPrimary(event))return;
+    if(Math.hypot(event.clientX-gesture.x,event.clientY-gesture.y)>14)return;
+    const card=catalogCardFromPoint(event.clientX,event.clientY)||catalogCardFromTarget(event.target);
+    if(!card)return;
+    const currentHref=bookingHrefFromCard(card);
+    if(!sameBookingTarget(gesture.href,currentHref))return;
+    navigateCatalog(event,gesture.href||currentHref);
+  },true);
+
+  window.addEventListener('pointercancel',()=>{pointerGesture=null;},true);
+
+  // Keyboard activation and browsers that do not emit Pointer Events still use
+  // click. It is also a fallback when the pointer gesture was not recorded.
+  window.addEventListener('click',event=>{
+    const card=catalogCardFromTarget(event.target);
+    if(!card||!plainPrimary(event))return;
+    if(Date.now()-lastNavigationAt<750){
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      return;
+    }
+    navigateCatalog(event,bookingHrefFromCard(card));
+  },true);
+}
+
+function catalogCardFromTarget(target){
+  if(!(target instanceof Element))return null;
+  return target.closest(CARD_SELECTOR);
+}
+
+function catalogCardFromPoint(x,y){
+  const target=document.elementFromPoint(x,y);
+  return catalogCardFromTarget(target);
+}
+
+function bookingHrefFromCard(card){
+  if(!card)return '/espace-client/reserver/';
+  const raw=card.getAttribute('href')||card.dataset.bookingHref||card.querySelector('a[href]')?.getAttribute('href')||'';
+  return clientBookingHref(raw);
+}
+
+function sameBookingTarget(a,b){
+  try{
+    return new URL(a,location.origin).href===new URL(b,location.origin).href;
+  }catch{
+    return a===b;
+  }
+}
+
+function plainPrimary(event){
+  return (typeof event.button!=='number'||event.button===0)
+    &&event.isPrimary!==false
+    &&!event.metaKey
+    &&!event.ctrlKey
+    &&!event.shiftKey
+    &&!event.altKey;
+}
+
+function navigateCatalog(event,rawHref){
+  const href=clientBookingHref(rawHref);
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  lastNavigationAt=Date.now();
+  window.location.assign(href);
+}
+
 function queueFromTarget(event){
   if(event.target?.closest?.('.cc-v118-catalog-card,.formats-panel'))queue();
 }
 
 function queue(){
-  if(queued)return;
+  if(queued||pointerGesture)return;
   queued=true;
   requestAnimationFrame(()=>{
     queued=false;
+    if(pointerGesture)return;
     normalizeCatalog();
   });
 }
@@ -59,6 +151,7 @@ function upgradeLegacyCard(article){
   const card=document.createElement('a');
   card.className='cc-v118-catalog-card cc-v118-catalog-card-link cc-v1187-format-card';
   card.href=href;
+  card.dataset.bookingHref=href;
   card.dataset.v1187Owner='true';
   if(article.dataset.v1182CityCard)card.dataset.v1182CityCard=article.dataset.v1182CityCard;
 
@@ -97,8 +190,9 @@ function stabilizeCard(card){
   if(card.hasAttribute('aria-current'))card.removeAttribute('aria-current');
   if(card.getAttribute('draggable')!=='false')card.setAttribute('draggable','false');
 
-  const href=clientBookingHref(card.getAttribute('href')||'');
+  const href=clientBookingHref(card.getAttribute('href')||card.dataset.bookingHref||'');
   if(card.getAttribute('href')!==href)card.setAttribute('href',href);
+  if(card.dataset.bookingHref!==href)card.dataset.bookingHref=href;
 
   card.querySelectorAll('a').forEach(nested=>{
     const span=document.createElement('span');
@@ -154,7 +248,7 @@ html[data-client-catalog-interaction-v1187="1"] .dashboard-v37 a.cc-v1187-format
   touch-action:manipulation;
   transition:border-color .12s ease,box-shadow .12s ease,background-color .12s ease!important;
 }
-html[data-client-catalog-interaction-v1187="1"] .dashboard-v37 a.cc-v1187-format-card>*{pointer-events:none}
+html[data-client-catalog-interaction-v1187="1"] .dashboard-v37 a.cc-v1187-format-card>*{pointer-events:none!important}
 html[data-client-catalog-interaction-v1187="1"] .dashboard-v37 a.cc-v1187-format-card::before,
 html[data-client-catalog-interaction-v1187="1"] .dashboard-v37 a.cc-v1187-format-card::after{display:none!important;content:none!important;pointer-events:none!important}
 html[data-client-catalog-interaction-v1187="1"] .dashboard-v37 a.cc-v1187-format-card .cc-v118-catalog-visual img{

@@ -5,7 +5,7 @@ import { generateEditorialProposals } from '../src/portal-editorial-ai-v2.js';
 const root = new URL('../', import.meta.url);
 const read = (path) => readFile(new URL(path, root), 'utf8');
 
-async function collectReachableEntries(start = 'src/entry-v48.js') {
+async function collectReachableEntries(start = 'src/worker.js') {
   const visited = new Set();
   const queue = [start];
   while (queue.length) {
@@ -34,7 +34,7 @@ assert.match(wrangler, /"main"\s*:\s*"neptune-tv-media-cloudflare\/src\/entry-v4
 assert.match(wrangler, /"AI_MODEL"\s*:\s*"@cf\/openai\/gpt-oss-120b"/u);
 assert.ok(
   reachableEntries.has('src/entry-v12.js'),
-  'Le runtime canonique entry-v48.js doit encore atteindre entry-v12.js tant que le workspace éditorial legacy reste actif.',
+  'Le runtime canonique worker.js doit encore atteindre entry-v12.js tant que le workspace éditorial legacy reste actif.',
 );
 
 assert.match(entry, /neptune-editorial-workspace-20260730-v2/u);

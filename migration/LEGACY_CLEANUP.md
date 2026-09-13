@@ -46,7 +46,7 @@ Les imports de médias de lancement sont manuels uniquement et demandent une con
 
 Les éléments suivants ne sont pas supprimés tant que la version Cloudflare reste la référence en production :
 
-- `src/entry-v48.js` et les wrappers descendants réellement importés ;
+- `src/worker.js` et les wrappers descendants réellement importés ;
 - les modules Store et bindings Cloudflare encore appelés par cette chaîne ;
 - les assets réellement injectés dans Studio, Espace client, Réservation, HORS NORME et Direct ;
 - les intégrations Drive, Stripe, Resend, R2, WebTV et vidéo dont les parcours actifs dépendent ;

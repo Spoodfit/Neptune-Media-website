@@ -64,7 +64,7 @@ function parseConst(source, name) {
   return match[1];
 }
 
-const entrySource = await readFile(new URL('../src/entry-v48.js', import.meta.url), 'utf8');
+const entrySource = await readFile(new URL('../src/worker.js', import.meta.url), 'utf8');
 const clientClickRelease = parseConst(entrySource, 'CLIENT_CATALOG_CLICK_RELEASE');
 const clientVisualAsset = parseConst(entrySource, 'CLIENT_VISUAL_ASSET');
 const clientInteractionAsset = parseConst(entrySource, 'CLIENT_INTERACTION_ASSET');

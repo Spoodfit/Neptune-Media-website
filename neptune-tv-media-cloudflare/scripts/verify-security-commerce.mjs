@@ -11,7 +11,7 @@ const activeEntry=read('neptune-tv-media-cloudflare/src/entry-v44.js');
 const entry45=read('neptune-tv-media-cloudflare/src/entry-v45.js');
 const entry46=read('neptune-tv-media-cloudflare/src/entry-v46.js');
 const entry47=read('neptune-tv-media-cloudflare/src/entry-v47.js');
-const entry48=read('neptune-tv-media-cloudflare/src/entry-v48.js');
+const entry48=read('neptune-tv-media-cloudflare/src/worker.js');
 const rootWrangler=read('wrangler.jsonc');
 const deployWorkflow=read('.github/workflows/deploy-cloudflare.yml');
 
@@ -36,7 +36,7 @@ assert.ok(activeEntry.includes("ensurePortalLifecycleV144(this)"),'the canonical
 
 const legacyWranglerPath='neptune-tv-media-cloudflare/wrangler.jsonc';
 assert.equal(read(legacyWranglerPath),rootWrangler,'Worker Wrangler compatibility copy must expose exactly the canonical root config');
-assert.ok(rootWrangler.includes('"main": "neptune-tv-media-cloudflare/src/entry-v48.js"'),'root Wrangler config must point to the active v48 entry');
+assert.ok(rootWrangler.includes('"main": "neptune-tv-media-cloudflare/src/worker.js"'),'root Wrangler config must point to the active v48 entry');
 assert.ok(entry48.includes("from './entry-v47.js'"),'active v48 entry must preserve the v47 reservation finalization wrapper');
 assert.ok(entry47.includes("from './entry-v46.js'"),'v47 entry must preserve the v46 reservation/zero-touch wrapper');
 assert.ok(entry46.includes("from './entry-v45.js'"),'v46 entry must preserve the v45 sales/callback wrapper');
@@ -68,7 +68,7 @@ assert.ok(!deployWorkflow.includes('/tmp/trusted-login.json'),'production deploy
 assert.ok(!deployWorkflow.includes('trustedAccess'),'canonical deployment must not contain account-specific authentication logic');
 assert.ok(deployWorkflow.includes('npm run check'),'canonical deployment must run the complete application contract before publishing');
 assert.ok(deployWorkflow.includes('wrangler deploy --config wrangler.jsonc --dry-run'),'deployment validation must use the canonical root Wrangler config');
-assert.ok(deployWorkflow.includes("const expected = 'neptune-tv-media-cloudflare/src/entry-v48.js'"),'deployment must pin the canonical Worker entry before publishing');
+assert.ok(deployWorkflow.includes("const expected = 'neptune-tv-media-cloudflare/src/worker.js'"),'deployment must pin the canonical Worker entry before publishing');
 assert.ok(deployWorkflow.includes('delete config.route')&&deployWorkflow.includes('delete config.routes'),'CI deploy config must not mutate public route ownership');
 assert.ok(deployWorkflow.includes('wrangler deploy --config .wrangler-ci-deploy.jsonc'),'production deployment must publish the immutable CI config');
 

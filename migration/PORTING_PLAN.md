@@ -13,7 +13,7 @@ La migration ne consiste pas à recopier `neptune-tv-media-cloudflare/`. Les com
 | `public/`, `public/hors-norme/`, `public/reserver/` | `apps/media/` | Porter les parcours et l'interface ; consommer les contrats backend au lieu de recalculer les règles métier. |
 | `public/espace-client/` | `apps/media/` + routes client backend | Garder la projection client, les contenus, le calendrier et les actions ; déplacer toute décision métier côté backend. |
 | `public/studio/` | `apps/media/` + routes Studio backend | Conserver le cockpit opérationnel ; le Studio déclenche des use cases, il ne devient pas une base de données. |
-| `src/entry-v48.js` + descendants | routes/middlewares Express dans `apps/backend/` | Reconstituer les routes par domaine. Ne pas reproduire l'empilement des wrappers. |
+| `src/worker.js` + descendants | routes/middlewares Express dans `apps/backend/` | Reconstituer les routes par domaine. Ne pas reproduire l'empilement des wrappers. |
 | `StudioStore` + SQL Durable Object | services/repositories Prisma | Migrer les entités, relations, contraintes et invariants ; ne pas translittérer les requêtes ligne par ligne. |
 | R2 / fichiers externes | adaptateur stockage Neptune | Garder les métadonnées métier en PostgreSQL et isoler le stockage binaire derrière un adaptateur. |
 | WebTV / HLS / container | `mediaWebtv` + service Docker si nécessaire | Séparer régie, état métier, stockage et diffusion publique. |

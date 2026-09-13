@@ -19,7 +19,7 @@ const entry40=read('src/entry-v40.js');
 const entry39=read('src/entry-v39.js');
 const entry38=read('src/entry-v38.js');
 const control=read('src/webtv-control-v118.js');
-const encoder=read('containers/webtv/encoder-v118.mjs');
+const encoder=read('containers/webtv/encoder.mjs');
 const docker=read('containers/webtv/Dockerfile');
 const studio=read('public/studio/webtv-native-v118.js');
 const wizard=read('public/studio/client-passage-wizard-v118.js');
@@ -49,7 +49,7 @@ expect('YouTube remains optional',control.includes('youtube_start')&&control.inc
 expect('WebTV activation has no YouTube prerequisite',!control.includes('state.enabled&&!youtubeConfigured(env)'));
 expect('public state exposes schedule',control.includes('schedule=[]')&&control.includes('estimatedEndAt'));
 
-expect('container runs v118 native encoder',docker.includes('encoder-v118.mjs'));
+expect('container runs v118 native encoder',docker.includes('encoder.mjs'));
 expect('encoder has independent native and YouTube relays',encoder.includes('nativeRelay')&&encoder.includes('youtubeRelay'));
 expect('encoder detects YouTube-only changes',encoder.includes('programChanged')&&encoder.includes('youtubeOnlyChange'));
 expect('YouTube-only changes preserve Neptune playout',encoder.includes("if((revisionChanged||next.forceRestart)&&!youtubeOnlyChange)restartPlayout"));

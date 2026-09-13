@@ -5,7 +5,7 @@ const read = path => fs.readFileSync(path, 'utf8');
 const contains = (content, needle, label) => assert.ok(content.includes(needle), `${label} is missing: ${needle}`);
 const excludes = (content, needle, label) => assert.ok(!content.includes(needle), `${label} must not contain: ${needle}`);
 
-const entry48 = read('neptune-tv-media-cloudflare/src/entry-v48.js');
+const entry48 = read('neptune-tv-media-cloudflare/src/worker.js');
 const entry38 = read('neptune-tv-media-cloudflare/src/entry-v38.js');
 const clientVisualJs = read('neptune-tv-media-cloudflare/public/espace-client/client-visual-coherence-v118-2.js');
 const clientVisualCss = read('neptune-tv-media-cloudflare/public/espace-client/client-visual-coherence-v118-2.css');

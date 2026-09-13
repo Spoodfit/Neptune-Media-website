@@ -23,7 +23,7 @@ Les fichiers VPS existants `apps/media/src/gtm.js`, `apps/media/src/pages/landin
 
 | Domaine | Source comportementale actuelle | Cible `Neptune-main` | Action |
 | --- | --- | --- | --- |
-| API Media publique | routes actives dans la chaîne `src/entry-v48.js` et descendants | `apps/backend/src/routes/media.js` | Reconstituer des routes Express explicites et déléguer la logique à des services. |
+| API Media publique | routes actives dans la chaîne `src/worker.js` et descendants | `apps/backend/src/routes/media.js` | Reconstituer des routes Express explicites et déléguer la logique à des services. |
 | Client | routes/session/commandes/contenus client du Store et Worker | `apps/backend/src/routes/mediaClient.js` | Centraliser authentification client, projection du passage, fichiers, actions et réservation récurrente. |
 | Studio | routes opérateur, clients, passages, catalogue, fournisseurs, contenus | `apps/backend/src/routes/mediaStudio.js` | Studio reste cockpit ; contrôles d'accès et use cases restent serveur. |
 | WebTV | régie, état antenne, HLS/import et programmation | `apps/backend/src/routes/mediaWebtv.js` + service Docker si nécessaire | Séparer API métier, stockage et processus vidéo long. |

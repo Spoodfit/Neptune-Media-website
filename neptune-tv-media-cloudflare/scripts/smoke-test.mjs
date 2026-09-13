@@ -23,7 +23,7 @@ const openAiAnalysis = await readFile(new URL('../src/openai-video-analysis-v1.j
 const liveMonitor = await readFile(new URL('../public/studio/video-ai-live-monitor-v69.js', import.meta.url), 'utf8');
 const simpleStory = await readFile(new URL('../public/studio/video-ai-story-v70.js', import.meta.url), 'utf8');
 const simpleStoryCss = await readFile(new URL('../public/studio/video-ai-story-v70.css', import.meta.url), 'utf8');
-const liveProcessor = await readFile(new URL('../containers/video-ai/app_v69.py', import.meta.url), 'utf8');
+const liveProcessor = await readFile(new URL('../containers/video-ai/processor.py', import.meta.url), 'utf8');
 const processorDockerfile = await readFile(new URL('../containers/video-ai/Dockerfile', import.meta.url), 'utf8');
 
 const failures = [];

@@ -4,7 +4,7 @@ Cette cartographie sert à migrer les comportements sans transporter aveuglémen
 
 | Domaine | Référence actuelle | Cible VPS | Stratégie |
 | --- | --- | --- | --- |
-| Entrée HTTP | `src/entry-v48.js` et chaîne `entry-vXX.js` | routes/middlewares Express | Recomposer les routes par domaine ; ne pas reproduire la chaîne de wrappers. |
+| Entrée HTTP | `src/worker.js` et chaîne `entry-vXX.js` | routes/middlewares Express | Recomposer les routes par domaine ; ne pas reproduire la chaîne de wrappers. |
 | Persistance | `StudioStore` + SQL Durable Object | Prisma + PostgreSQL | Traduire les entités et contraintes, pas les requêtes SQL ligne par ligne. |
 | Catalogue | `portal-media-catalog-*`, `portal-sales-tunnel-*`, `effective-offer-v181.js` | service catalogue Media | Conserver offre effective, capacité, visibilité, fournisseur, ville, concept et configuration. |
 | Réservation | `reservation-domain-*`, `reservation-slot-management-*`, tunnel `/reserver` | service réservation | Une seule politique de date, disponibilité, hold et confirmation. |

@@ -7,7 +7,7 @@ Il ne représente **pas** l'architecture cible définitive.
 ## Runtime actuel
 
 - Cloudflare Worker + Static Assets ;
-- entrée canonique : `src/entry-v48.js` ;
+- entrée canonique : `src/worker.js` ;
 - Durable Object `StudioStore` / SQLite ;
 - R2 et fournisseurs externes pour les médias selon les domaines ;
 - Workers AI / OpenAI pour les fonctions IA ;

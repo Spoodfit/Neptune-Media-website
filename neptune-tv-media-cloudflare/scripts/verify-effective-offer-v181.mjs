@@ -2,14 +2,14 @@ import fs from 'node:fs';
 
 const read=path=>fs.readFileSync(path,'utf8');
 const engine=read('neptune-tv-media-cloudflare/src/effective-offer-v181.js');
-const entry=read('neptune-tv-media-cloudflare/src/entry-v48.js');
+const entry=read('neptune-tv-media-cloudflare/src/worker.js');
 const clientServer=read('neptune-tv-media-cloudflare/src/portal-client-direct-booking-v118-5.js');
 const clientUi=read('neptune-tv-media-cloudflare/public/espace-client/reserver/client-booking-v118-5.js');
 const root=JSON.parse(read('wrangler.jsonc'));
 const nested=JSON.parse(read('neptune-tv-media-cloudflare/wrangler.jsonc'));
 
 const checks=[
-  ['both Worker configs activate v48',root.main==='neptune-tv-media-cloudflare/src/entry-v48.js'&&nested.main==='neptune-tv-media-cloudflare/src/entry-v48.js'],
+  ['both Worker configs activate v48',root.main==='neptune-tv-media-cloudflare/src/worker.js'&&nested.main==='neptune-tv-media-cloudflare/src/worker.js'],
   ['launch zero capacity means sold out',engine.includes("launch:{label:'Tarif de lancement',order:10,zeroMeansSoldOut:true}")],
   ['promo zero capacity means sold out',engine.includes("promo:{label:'Tarif préférentiel',order:20,zeroMeansSoldOut:true}")],
   ['base zero capacity remains fallback unlimited',engine.includes("base:{label:'Tarif de base',order:30,zeroMeansSoldOut:false}")],

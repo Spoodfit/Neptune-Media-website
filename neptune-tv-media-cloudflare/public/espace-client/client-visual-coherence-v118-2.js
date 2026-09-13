@@ -1,15 +1,15 @@
-const RELEASE='neptune-client-visual-coherence-20260913-v118.11-native-anchor-stable-view';
+const RELEASE='neptune-client-visual-coherence-20260913-v118.12-single-owner-native-anchor';
 const CATALOG_API='/api/reservation/catalog-v96';
 const ROOT=document.documentElement;
 let catalog=null;
 let selectedCity='';
 let refreshTimer=0;
-let renderQueued=false;
 
 if(!window.__neptuneClientVisualCoherenceV1182){
   window.__neptuneClientVisualCoherenceV1182=true;
   ROOT.dataset.clientVisualCoherenceV1182='1';
   ROOT.dataset.clientVisualCoherenceRelease=RELEASE;
+  ROOT.dataset.clientCatalogDomOwner='visual-v1182';
   start();
 }
 
@@ -22,7 +22,7 @@ function start(){
 function boot(){
   if(!home())return;
   retireLegacySnapshot();
-  observeCatalogStructure();
+  installPointerIsolation();
   hydrateCatalog();
 }
 
@@ -37,34 +37,6 @@ function retireLegacySnapshot(){
   snapshot.setAttribute('aria-hidden','true');
   snapshot.inert=true;
   snapshot.dataset.retiredBy='v118.2';
-}
-
-function observeCatalogStructure(){
-  // Several legacy dashboard runtimes still observe the whole document. Some of
-  // them can replace .format-grid after the catalogue has already rendered.
-  // Observe child-list changes only: never pointer/hover/focus/attributes. This
-  // keeps the visual catalogue authoritative without touching native link input.
-  const observer=new MutationObserver(mutations=>{
-    if(!catalog)return;
-    const relevant=mutations.some(mutation=>{
-      const target=mutation.target instanceof Element?mutation.target:null;
-      if(target?.closest?.('.formats-panel'))return true;
-      return [...mutation.addedNodes,...mutation.removedNodes].some(node=>
-        node instanceof Element&&(node.matches?.('.formats-panel,.format-grid')||node.querySelector?.('.formats-panel,.format-grid'))
-      );
-    });
-    if(relevant)queueCatalogRender();
-  });
-  observer.observe(document.body,{childList:true,subtree:true});
-}
-
-function queueCatalogRender(){
-  if(renderQueued)return;
-  renderQueued=true;
-  requestAnimationFrame(()=>{
-    renderQueued=false;
-    renderCityCatalog();
-  });
 }
 
 async function hydrateCatalog(){
@@ -98,12 +70,15 @@ function renderCityCatalog(){
   const grid=panel?.querySelector('.format-grid');
   if(!panel||!grid)return;
 
-  // This module owns catalogue presentation only. Booking cards remain ordinary
-  // same-origin anchors: no click interception, pointer gesture layer, DOM
-  // replacement on hover/focus, or synthetic navigation.
   panel.hidden=false;
   panel.classList.remove('cc-legacy-formats');
   panel.classList.add('cc-v118-catalog-panel');
+  panel.dataset.catalogDomOwner='visual-v1182';
+
+  // client-command-center-v118-1.js still contains a legacy catalogue renderer.
+  // Pin the exact signature it expects so that renderer becomes a read-only
+  // observer instead of rewriting .format-grid after this module has rendered.
+  panel.dataset.v118Signature=commandCenterSignature(catalog);
 
   const cities=catalogCities(catalog);
   if(!cities.length)return;
@@ -173,6 +148,23 @@ function cityCards(city){
   return cards.slice(0,16);
 }
 
+function commandCenterSignature(data){
+  const seen=new Set();
+  const list=[];
+  for(const city of data?.cities||[]){
+    for(const format of city?.formats||[]){
+      const key=String(format?.id||format?.slug||format?.name||'');
+      if(!key||seen.has(key))continue;
+      seen.add(key);
+      const prices=(format.offers||[]).map(offer=>Number(offer?.clientPriceCents||0)).filter(Boolean);
+      list.push({format,price:prices.length?Math.min(...prices):0});
+      if(list.length>=16)break;
+    }
+    if(list.length>=16)break;
+  }
+  return `${data?.dataGuardRelease||''}|${list.map(item=>`${item.format.id}:${item.format.imagePublicUrl||item.format.image||''}:${item.price}`).join('|')}`;
+}
+
 function catalogCard({city,format,price}){
   const img=safeImage(format.imagePublicUrl||format.image||'');
   const url=new URL('/espace-client/reserver/',location.origin);
@@ -181,6 +173,34 @@ function catalogCard({city,format,price}){
   const href=url.pathname+url.search;
   const label=`Réserver ${format.name||'ce format'} à ${city.name||'Neptune Media'}`;
   return `<a class="cc-v118-catalog-card cc-v118-catalog-card-link" data-v1182-booking-card="true" data-v1182-city-card="${esc(cityKey(city))}" href="${esc(href)}" aria-label="${esc(label)}" draggable="false"><div class="cc-v118-catalog-visual">${img?`<img src="${esc(img)}" alt="" loading="lazy" decoding="async" draggable="false">`:'<span>NEPTUNE</span>'}<i>${esc(city.name||'Neptune Media')}</i></div><div class="cc-v118-catalog-copy"><span>${esc(format.concept||'NEPTUNE MEDIA')}</span><strong>${esc(format.name||'Format Neptune Media')}</strong>${format.durationLabel?`<small>${esc(format.durationLabel)}</small>`:''}<p>${esc(short(format.description||'Format Neptune Media disponible à la réservation.',130))}</p></div><footer><b>${price?`Dès ${money(price)}`:'Voir les offres'}</b><span class="cc-v118-catalog-cta">Choisir <span aria-hidden="true">→</span></span></footer></a>`;
+}
+
+function installPointerIsolation(){
+  if(document.querySelector('style[data-client-catalog-pointer-isolation]'))return;
+  const style=document.createElement('style');
+  style.dataset.clientCatalogPointerIsolation='';
+  style.textContent=`
+html[data-client-visual-coherence-v1182="1"] .formats-panel a.cc-v118-catalog-card-link{
+  cursor:pointer!important;
+  pointer-events:auto!important;
+  transform:none!important;
+}
+html[data-client-visual-coherence-v1182="1"] .formats-panel a.cc-v118-catalog-card-link *,
+html[data-client-visual-coherence-v1182="1"] .formats-panel a.cc-v118-catalog-card-link::before,
+html[data-client-visual-coherence-v1182="1"] .formats-panel a.cc-v118-catalog-card-link::after{
+  pointer-events:none!important;
+  cursor:pointer!important;
+}
+html[data-client-visual-coherence-v1182="1"] .formats-panel a.cc-v118-catalog-card-link:hover,
+html[data-client-visual-coherence-v1182="1"] .formats-panel a.cc-v118-catalog-card-link:active{
+  transform:none!important;
+}
+html[data-client-visual-coherence-v1182="1"] .formats-panel a.cc-v118-catalog-card-link .cc-v118-catalog-visual img,
+html[data-client-visual-coherence-v1182="1"] .formats-panel a.cc-v118-catalog-card-link:hover .cc-v118-catalog-visual img{
+  transform:none!important;
+  transition:none!important;
+}`;
+  document.head.append(style);
 }
 
 function safeImage(value){

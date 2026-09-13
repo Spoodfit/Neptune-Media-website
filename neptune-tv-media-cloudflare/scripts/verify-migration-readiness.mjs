@@ -44,6 +44,8 @@ function hasRealWorkerDeploy(content) {
 for (const required of [
   'migration/manifest.json',
   'MIGRATION.md',
+  'migration/TRANSFER_MANIFEST.md',
+  'migration/CUTOVER_CHECKLIST.md',
   'migration/COMPONENT_MAP.md',
   'migration/API_CONTRACTS.md',
   'migration/DATA_OWNERSHIP.md',
@@ -66,11 +68,40 @@ if (exists('migration/manifest.json')) {
 }
 
 if (manifest) {
+  if (manifest.current?.sourceRepository !== 'Spoodfit/Neptune-Media-website') {
+    fail(`Unexpected canonical source repository: ${manifest.current?.sourceRepository || '(undefined)'}`);
+  }
+  if (manifest.current?.sourceBranch !== 'main') {
+    fail(`Unexpected canonical source branch: ${manifest.current?.sourceBranch || '(undefined)'}`);
+  }
+
   const entry = manifest.current?.workerEntry;
   if (!entry || !exists(entry)) fail(`Canonical Worker entry is missing: ${entry || '(undefined)'}`);
 
-  for (const surface of manifest.current?.surfaces || []) {
+  const siteRoot = manifest.current?.siteRoot;
+  if (!siteRoot || !exists(siteRoot)) fail(`Canonical Media site root is missing: ${siteRoot || '(undefined)'}`);
+
+  const surfaces = manifest.current?.surfaces || [];
+  const expectedSurfaces = [
+    'neptune-tv-media-cloudflare/public/index.html',
+    'neptune-tv-media-cloudflare/public/studio',
+    'neptune-tv-media-cloudflare/public/espace-client',
+    'neptune-tv-media-cloudflare/public/reserver',
+    'neptune-tv-media-cloudflare/public/hors-norme',
+    'neptune-tv-media-cloudflare/public/direct',
+  ];
+  for (const surface of expectedSurfaces) {
+    if (!surfaces.includes(surface)) fail(`Canonical transfer surface is not declared in manifest: ${surface}`);
+  }
+  for (const surface of surfaces) {
     if (!exists(surface)) fail(`Canonical surface is missing: ${surface}`);
+  }
+  if (surfaces.length === expectedSurfaces.length && expectedSurfaces.every(surface => surfaces.includes(surface))) {
+    note('Canonical transfer boundary is complete: site, HORS NORME, reservation, client, Studio and direct/WebTV.');
+  }
+
+  for (const document of manifest.current?.migrationDocuments || []) {
+    if (!exists(document)) fail(`Declared migration document is missing: ${document}`);
   }
 
   for (const wranglerFile of manifest.current?.wranglerFiles || []) {
@@ -80,7 +111,7 @@ if (manifest) {
     }
     const content = read(wranglerFile);
     const expected = String(entry || '').replaceAll('\\', '/');
-    if (expected && !content.includes(`"main": "${expected}"`)) {
+    if (expected && !content.includes(`\"main\": \"${expected}\"`)) {
       fail(`${wranglerFile} does not point to canonical entry ${expected}`);
     }
   }

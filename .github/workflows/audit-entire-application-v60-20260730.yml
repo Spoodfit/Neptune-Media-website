@@ -10,15 +10,6 @@ on:
       - 'neptune-tv-media-cloudflare/tests/audit-entire-application-v60.mjs'
       - 'neptune-tv-media-cloudflare/tests/evaluate-entire-application-v60.mjs'
       - 'wrangler.jsonc'
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/audit-entire-application-v60-20260730.yml'
-      - 'neptune-tv-media-cloudflare/public/**'
-      - 'neptune-tv-media-cloudflare/src/**'
-      - 'neptune-tv-media-cloudflare/tests/audit-entire-application-v60.mjs'
-      - 'neptune-tv-media-cloudflare/tests/evaluate-entire-application-v60.mjs'
-      - 'wrangler.jsonc'
   workflow_dispatch:
 
 permissions:

@@ -1,7 +1,23 @@
 import { readFile } from 'node:fs/promises';
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
-const [entry, store, backend, ui, css, html, rootWrangler, nestedWrangler] = await Promise.all([
+
+async function collectReachableEntries(start = 'src/worker.js') {
+  const visited = new Set();
+  const queue = [start];
+  while (queue.length) {
+    const relative = queue.shift();
+    if (visited.has(relative)) continue;
+    visited.add(relative);
+    const content = await read(relative);
+    for (const match of content.matchAll(/from\s+['"]\.\/(entry-v\d+\.js)['"]/gu)) {
+      queue.push(`src/${match[1]}`);
+    }
+  }
+  return visited;
+}
+
+const [entry, store, backend, ui, css, html, rootWrangler, nestedWrangler, reachableEntries] = await Promise.all([
   read('src/entry-v19.js'),
   read('src/store-v15.js'),
   read('src/portal-passage-admin-v80.js'),
@@ -10,6 +26,7 @@ const [entry, store, backend, ui, css, html, rootWrangler, nestedWrangler] = awa
   read('public/studio/clients.html'),
   read('../wrangler.jsonc'),
   read('wrangler.jsonc'),
+  collectReachableEntries(),
 ]);
 
 const failures = [];
@@ -64,12 +81,13 @@ for (const marker of [
 
 expect(html, '/studio/passage-editor-v80.css?v=1', 'la feuille du passage n’est pas chargée');
 expect(html, '/studio/passage-editor-v80.js?v=1', 'le runtime du passage n’est pas chargé');
-expect(rootWrangler, 'entry-v19.js', 'le Worker racine ne pointe pas vers entry-v19');
-expect(nestedWrangler, 'entry-v19.js', 'le Worker imbriqué ne pointe pas vers entry-v19');
+expect(rootWrangler, 'neptune-tv-media-cloudflare/src/worker.js', 'le Worker racine ne pointe pas vers worker.js');
+expect(nestedWrangler, 'neptune-tv-media-cloudflare/src/worker.js', 'le Worker imbriqué ne pointe pas vers worker.js');
+if (!reachableEntries.has('src/entry-v19.js')) failures.push('entry-v19.js doit rester atteignable depuis worker.js tant que l’éditeur de passage legacy reste actif');
 
 if (failures.length) {
   console.error(failures.map((failure) => `- ${failure}`).join('\n'));
   process.exit(1);
 }
 
-console.log('Studio passage editor v80 validé : identité, format, dates, statut, accès, commande, paiement, notification facultative et verrou anti-écrasement.');
+console.log(`Studio passage editor v80 validé via worker.js (${reachableEntries.size} wrappers atteignables) : identité, format, dates, statut, accès, commande, paiement, notification facultative et verrou anti-écrasement.`);

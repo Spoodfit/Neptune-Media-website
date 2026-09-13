@@ -30,7 +30,7 @@ const [wrangler, entry, routes, store, ui, css, reachableEntries] = await Promis
   collectReachableEntries(),
 ]);
 
-assert.match(wrangler, /"main"\s*:\s*"neptune-tv-media-cloudflare\/src\/entry-v48\.js"/u);
+assert.match(wrangler, /"main"\s*:\s*"neptune-tv-media-cloudflare\/src\/worker\.js"/u);
 assert.match(wrangler, /"AI_MODEL"\s*:\s*"@cf\/openai\/gpt-oss-120b"/u);
 assert.ok(
   reachableEntries.has('src/entry-v12.js'),

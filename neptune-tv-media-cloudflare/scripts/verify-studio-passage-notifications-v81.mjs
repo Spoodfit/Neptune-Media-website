@@ -1,7 +1,23 @@
 import { readFile } from 'node:fs/promises';
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
-const [entry, store, backend, emailLegacy, emailActive, routes, ui, css, rootWrangler, nestedWrangler] = await Promise.all([
+
+async function collectReachableEntries(start = 'src/worker.js') {
+  const visited = new Set();
+  const queue = [start];
+  while (queue.length) {
+    const relative = queue.shift();
+    if (visited.has(relative)) continue;
+    visited.add(relative);
+    const content = await read(relative);
+    for (const match of content.matchAll(/from\s+['"]\.\/(entry-v\d+\.js)['"]/gu)) {
+      queue.push(`src/${match[1]}`);
+    }
+  }
+  return visited;
+}
+
+const [entry, store, backend, emailLegacy, emailActive, routes, ui, css, rootWrangler, nestedWrangler, reachableEntries] = await Promise.all([
   read('src/entry-v20.js'),
   read('src/store-v16.js'),
   read('src/portal-passage-admin-v81.js'),
@@ -12,24 +28,19 @@ const [entry, store, backend, emailLegacy, emailActive, routes, ui, css, rootWra
   read('public/studio/passage-notifications-v81.css'),
   read('../wrangler.jsonc'),
   read('wrangler.jsonc'),
+  collectReachableEntries(),
 ]);
 
 const failures = [];
 const expect = (content, marker, message) => {
   if (!content.includes(marker)) failures.push(message);
 };
-const expectAny = (content, markers, message) => {
-  if (!markers.some((marker) => content.includes(marker))) failures.push(message);
-};
 
-expectAny(rootWrangler, [
-  'neptune-tv-media-cloudflare/src/entry-v20.js',
-  'neptune-tv-media-cloudflare/src/entry-v21.js',
-], 'le Worker racine ne prolonge pas le runtime de notifications v81');
-expectAny(nestedWrangler, [
-  'src/entry-v20.js',
-  'src/entry-v21.js',
-], 'le Worker local ne prolonge pas le runtime de notifications v81');
+expect(rootWrangler, 'neptune-tv-media-cloudflare/src/worker.js', 'le Worker racine ne pointe pas vers worker.js');
+expect(nestedWrangler, 'neptune-tv-media-cloudflare/src/worker.js', 'le Worker local ne pointe pas vers worker.js');
+if (!reachableEntries.has('src/entry-v20.js') && !reachableEntries.has('src/entry-v21.js')) {
+  failures.push('le runtime de notifications v81 doit rester atteignable depuis worker.js');
+}
 expect(entry, '/portal/admin-passage-update-v81', 'la route v81 du passage est absente');
 expect(entry, 'flushWorkflowOutbox', 'les notifications ne sont pas envoyées immédiatement');
 expect(entry, 'automatic-by-changed-field-v81', 'le mode de notification intelligent n’est pas déclaré');
@@ -78,4 +89,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Studio passage notifications v81 validées : détection des changements, destinataires ciblés, rendu actif v7 avec fallback v6, e-mails adaptés, aperçu avant validation et absence de mail pour les corrections internes.');
+console.log(`Studio passage notifications v81 validées via worker.js (${reachableEntries.size} wrappers atteignables) : détection des changements, destinataires ciblés, rendu actif v7 avec fallback v6, e-mails adaptés, aperçu avant validation et absence de mail pour les corrections internes.`);

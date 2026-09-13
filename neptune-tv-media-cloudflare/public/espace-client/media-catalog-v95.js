@@ -57,4 +57,4 @@ function card(format){
 
 function fallbackBooking(slug){const url=new URL('https://media.neptunebusiness.com/reserver');if(slug)url.searchParams.set('format',slug);return url.toString();}
 function money(cents){return new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR'}).format(Number(cents||0)/100);}
-function esc(value){return String(value??'').replace(/[&<>"']/gu,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]);}
+function esc(value){return String(value??'').replace(/[&<>"']/gu,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}

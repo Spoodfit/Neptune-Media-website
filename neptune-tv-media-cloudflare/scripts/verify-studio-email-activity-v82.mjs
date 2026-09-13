@@ -1,7 +1,23 @@
 import { readFile } from 'node:fs/promises';
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
-const [entry, store, tracking, routes, ui, css, rootWrangler, nestedWrangler] = await Promise.all([
+
+async function collectReachableEntries(start = 'src/worker.js') {
+  const visited = new Set();
+  const queue = [start];
+  while (queue.length) {
+    const relative = queue.shift();
+    if (visited.has(relative)) continue;
+    visited.add(relative);
+    const content = await read(relative);
+    for (const match of content.matchAll(/from\s+['"]\.\/(entry-v\d+\.js)['"]/gu)) {
+      queue.push(`src/${match[1]}`);
+    }
+  }
+  return visited;
+}
+
+const [entry, store, tracking, routes, ui, css, rootWrangler, nestedWrangler, reachableEntries] = await Promise.all([
   read('src/entry-v21.js'),
   read('src/store-v17.js'),
   read('src/portal-email-tracking-v82.js'),
@@ -10,6 +26,7 @@ const [entry, store, tracking, routes, ui, css, rootWrangler, nestedWrangler] = 
   read('public/studio/email-activity-v82.css'),
   read('../wrangler.jsonc'),
   read('wrangler.jsonc'),
+  collectReachableEntries(),
 ]);
 
 const failures = [];
@@ -66,12 +83,13 @@ for (const marker of [
   'prefers-reduced-motion',
 ]) expect(css, marker, `règle UX/UI e-mail absente : ${marker}`);
 
-expect(rootWrangler, 'neptune-tv-media-cloudflare/src/entry-v21.js', 'le Worker racine ne cible pas entry-v21');
-expect(nestedWrangler, 'src/entry-v21.js', 'le Worker local ne cible pas entry-v21');
+expect(rootWrangler, 'neptune-tv-media-cloudflare/src/worker.js', 'le Worker racine ne pointe pas vers worker.js');
+expect(nestedWrangler, 'neptune-tv-media-cloudflare/src/worker.js', 'le Worker local ne pointe pas vers worker.js');
+if (!reachableEntries.has('src/entry-v21.js')) failures.push('entry-v21.js doit rester atteignable depuis worker.js tant que le suivi e-mail v82 reste actif');
 
 if (failures.length) {
   console.error(failures.map((failure) => `- ${failure}`).join('\n'));
   process.exit(1);
 }
 
-console.log('Studio email activity v82 validé : animation provider-confirmed, historique détaillé, statuts Resend, webhook vérifié, synchronisation de secours et signal d’ouverture présenté avec prudence.');
+console.log(`Studio email activity v82 validé via worker.js (${reachableEntries.size} wrappers atteignables) : animation provider-confirmed, historique détaillé, statuts Resend, webhook vérifié, synchronisation de secours et signal d’ouverture présenté avec prudence.`);

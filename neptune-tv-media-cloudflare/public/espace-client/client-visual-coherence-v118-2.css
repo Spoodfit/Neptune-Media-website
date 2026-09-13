@@ -99,7 +99,12 @@ html[data-client-visual-coherence-v1182="1"] .cc-v1182-city-filter button[aria-p
   box-shadow:inset 0 0 0 1px rgba(118,93,255,.08);
 }
 
-/* v118.5 — the whole format card is the only interactive target. No sticky selected state. */
+/*
+ * The format card hitbox is immutable. Hover feedback must be paint-only.
+ * Moving the anchor itself creates a pointerenter/pointerleave feedback loop
+ * when the pointer sits on an edge: hover moves the card, hover is lost, the
+ * card returns, and hover starts again.
+ */
 html[data-client-visual-coherence-v1182="1"] .dashboard-v37 a.cc-v118-catalog-card-link,
 html[data-client-visual-coherence-v1182="1"] .dashboard-v37 a.cc-v118-catalog-card-link.active{
   color:inherit!important;
@@ -111,7 +116,7 @@ html[data-client-visual-coherence-v1182="1"] .dashboard-v37 a.cc-v118-catalog-ca
   transform:none!important;
   outline:0;
   -webkit-tap-highlight-color:transparent;
-  transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease!important;
+  transition:border-color .18s ease,box-shadow .18s ease,background-color .18s ease!important;
 }
 html[data-client-visual-coherence-v1182="1"] .dashboard-v37 a.cc-v118-catalog-card-link::after,
 html[data-client-visual-coherence-v1182="1"] .dashboard-v37 a.cc-v118-catalog-card-link.active::after{
@@ -121,6 +126,7 @@ html[data-client-visual-coherence-v1182="1"] .dashboard-v37 a.cc-v118-catalog-ca
 html[data-client-visual-coherence-v1182="1"] .dashboard-v37 a.cc-v118-catalog-card-link .cc-v118-catalog-visual img,
 html[data-client-visual-coherence-v1182="1"] .dashboard-v37 a.cc-v118-catalog-card-link.active .cc-v118-catalog-visual img{
   transform:none!important;
+  transition:none!important;
 }
 html[data-client-visual-coherence-v1182="1"] .cc-v118-catalog-cta{
   display:inline-flex;
@@ -144,17 +150,17 @@ html[data-client-visual-coherence-v1182="1"] .dashboard-v37 a.cc-v118-catalog-ca
   border-color:rgba(111,84,239,.55)!important;
 }
 html[data-client-visual-coherence-v1182="1"] .dashboard-v37 a.cc-v118-catalog-card-link:active{
-  transform:scale(.995)!important;
+  transform:none!important;
   box-shadow:0 8px 20px rgba(11,31,68,.07)!important;
 }
 @media(hover:hover) and (pointer:fine){
   html[data-client-visual-coherence-v1182="1"] .dashboard-v37 a.cc-v118-catalog-card-link:hover{
-    transform:translateY(-2px)!important;
+    transform:none!important;
     border-color:rgba(111,84,239,.32)!important;
     box-shadow:0 18px 38px rgba(26,41,82,.10)!important;
   }
   html[data-client-visual-coherence-v1182="1"] .dashboard-v37 a.cc-v118-catalog-card-link:hover .cc-v118-catalog-visual img{
-    transform:scale(1.012)!important;
+    transform:none!important;
   }
   html[data-client-visual-coherence-v1182="1"] .dashboard-v37 a.cc-v118-catalog-card-link:hover .cc-v118-catalog-cta{
     border-color:#bdb4fb;

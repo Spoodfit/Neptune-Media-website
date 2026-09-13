@@ -3,6 +3,9 @@ name: Configure WebTV R2 CORS
 on:
   push:
     branches: [main]
+    paths:
+      - 'neptune-tv-media-cloudflare/config/webtv-r2-cors-wrangler.json'
+      - '.github/workflows/configure-webtv-r2-cors.yml'
   workflow_dispatch:
 
 permissions:

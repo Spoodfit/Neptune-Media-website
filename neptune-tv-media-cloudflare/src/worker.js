@@ -14,7 +14,7 @@ import {
   runNeptuneJtScheduled,
   sendNeptuneJtCancellationNotifications,
   sendNeptuneJtReservationEmails,
-} from './neptune-jt-v185.js';
+} from './neptune-jt-v186.js';
 
 export {WebTvEncoder};
 
@@ -115,12 +115,7 @@ export default{
       const response=await callNeptuneJtStore(env,'/neptune-jt-v183/admin-reservation-action',{...payload,...adminAuth(request)});
       const data=await response.clone().json().catch(()=>({}));
       if(response.ok&&data.internal){
-        if(data.internal.confirmation){
-          const recipient=data.internal.confirmation;
-          ctx?.waitUntil?.(sendManualConfirmation(env,recipient).catch((error)=>console.error('neptune_jt_admin_confirmation_failed',safeError(error))));
-        }else{
-          ctx?.waitUntil?.(sendNeptuneJtReservationEmails(env,data.internal).catch((error)=>console.error('neptune_jt_admin_resend_failed',safeError(error))));
-        }
+        ctx?.waitUntil?.(sendNeptuneJtReservationEmails(env,data.internal).catch((error)=>console.error('neptune_jt_admin_reservation_email_failed',safeError(error))));
       }
       delete data.internal;
       return markNeptuneJt(json(data,response.status));
@@ -197,16 +192,6 @@ async function injectStudioJtShortcut(response){
   for(const name of ['Content-Length','Content-Encoding','ETag','Last-Modified'])headers.delete(name);
   headers.set('Cache-Control','private, no-store, max-age=0');
   return new Response(body,{status:response.status,statusText:response.statusText,headers});
-}
-
-async function sendManualConfirmation(env,recipient){
-  const {sendEmail}=await import('./email-service.js');
-  return sendEmail(env,{
-    to:[recipient.email],
-    subject:'Neptune JT · Votre place est confirmée',
-    text:`Bonjour ${recipient.firstName},\n\nVotre règlement de 200 € TTC est validé : votre place au Neptune JT est confirmée.\n\nNeptune vous recontactera pour la préparation éditoriale.\n\nÀ bientôt sur le plateau,\nNeptune Media`,
-    idempotencyKey:`neptune-jt-paid-manual-${recipient.id}-${recipient.messageNonce||Date.now()}`,
-  });
 }
 
 function isCommercialSelection(pathname){

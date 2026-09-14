@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 type Edition = {
   id: string; label?: string; eventAt?: string; cutoffAt?: string; location?: string; status?: string;
@@ -19,6 +19,7 @@ type Dashboard = {
 type Auth = { user?: { fullName?: string; email?: string; role?: string }; csrfToken?: string };
 
 const API = "/api/admin/neptune-jt-v183";
+const AUTO_SYNC_MS = 10_000;
 const euro = new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" });
 
 function formatDate(value?: string) {
@@ -35,6 +36,9 @@ function localInput(value?: string) {
   const d = new Date(value); if (Number.isNaN(d.getTime())) return "";
   const offset = d.getTimezoneOffset(); return new Date(d.getTime() - offset * 60000).toISOString().slice(0, 16);
 }
+function syncTime() {
+  return new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date());
+}
 
 export default function StudioPage() {
   const [csrf, setCsrf] = useState("");
@@ -49,8 +53,26 @@ export default function StudioPage() {
   const [moveTarget, setMoveTarget] = useState("");
   const [toast, setToast] = useState("");
   const [error, setError] = useState("");
+  const syncInFlight = useRef(false);
 
   useEffect(() => { void boot(); }, []);
+
+  useEffect(() => {
+    if (!auth?.user) return;
+    const refresh = () => {
+      if (document.visibilityState === "hidden") return;
+      void load(dashboard?.selectedEdition?.id || "", true).catch(() => {});
+    };
+    const onVisibility = () => { if (document.visibilityState === "visible") refresh(); };
+    const timer = window.setInterval(refresh, AUTO_SYNC_MS);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [auth?.user, dashboard?.selectedEdition?.id]);
 
   async function request<T = any>(url: string, init: RequestInit = {}, withCsrf = true): Promise<T> {
     const headers = new Headers(init.headers || {}); headers.set("Accept", "application/json");
@@ -74,13 +96,20 @@ export default function StudioPage() {
     finally { setLoading(false); }
   }
 
-  async function load(editionId = "") {
-    setSync("Synchronisation…");
+  async function load(editionId = "", silent = false) {
+    if (syncInFlight.current) return;
+    syncInFlight.current = true;
+    if (!silent) setSync("Synchronisation…");
     try {
       const suffix = editionId ? `?editionId=${encodeURIComponent(editionId)}` : "";
       const next = await request<Dashboard>(`${API}/dashboard${suffix}`);
-      setDashboard(next); setSync("Synchronisé");
-    } catch (e) { setSync("Erreur de synchronisation"); throw e; }
+      setDashboard(next); setSync(`Synchronisé automatiquement · ${syncTime()}`);
+    } catch (e) {
+      setSync("Erreur de synchronisation");
+      throw e;
+    } finally {
+      syncInFlight.current = false;
+    }
   }
 
   function notify(message: string) { setToast(message); window.setTimeout(() => setToast(""), 2800); }
@@ -120,7 +149,7 @@ export default function StudioPage() {
     if (action === "move" && !moveTarget) return notify("Choisissez une édition cible.");
     try {
       await request(`${API}/reservation-action`, { method: "POST", body: JSON.stringify({ reservationId: participant.id, action, targetEditionId: moveTarget || undefined, confirmPaidRisk: paid && action === "cancel" }) });
-      notify(action === "resend" ? "E-mail renvoyé." : action === "move" ? "Participant déplacé." : "Participation annulée.");
+      notify(action === "resend" ? "E-mail renvoyé." : action === "move" ? "Participant déplacé et notifié." : "Participation annulée et notification envoyée.");
       setParticipant(null); setMoveTarget(""); await load(dashboard.selectedEdition?.id || "");
     } catch (e) { notify(`Erreur : ${e instanceof Error ? e.message : "action_failed"}`); }
   }
@@ -156,7 +185,7 @@ export default function StudioPage() {
     <div className="jt-shell">
       <aside className="jt-sidebar">
         <a className="jt-brand" href="/studio/clients"><img src="/assets/logo-neptune.svg" alt="" /><div><b>Neptune</b><small>Media · Studio</small></div></a>
-        <div className="jt-sync"><i /><span>Studio synchronisé</span></div>
+        <div className="jt-sync"><i /><span>Studio synchronisé en continu</span></div>
         <a className="jt-feature-link active" href="/studio/neptune-jt"><span>JT</span><div><b>Neptune JT</b><small>Éditions & participants</small></div></a>
         <nav className="jt-nav"><a href="/studio/clients"><span>◎</span><strong>Parcours clients</strong></a><a href="/studio/webtv.html"><span>▶</span><strong>Diffusion</strong></a><a href="/studio/advanced.html#programs"><span>▦</span><strong>Catalogue Média</strong></a><a href="/studio/advanced.html#finances"><span>€</span><strong>Finance</strong></a><a href="/studio/advanced.html#settings"><span>⚙</span><strong>Réglage</strong></a></nav>
         <button className="jt-account" type="button" onClick={logout}><span className="jt-avatar">NM</span><span><b>{auth.user.fullName || auth.user.email || "Compte Studio"}</b><small>{auth.user.role || "Se déconnecter"}</small></span><i>↪</i></button>

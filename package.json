@@ -4,7 +4,8 @@
   "version": "2.16.2",
   "type": "module",
   "workspaces": [
-    "neptune-tv-media-cloudflare/react/hors-norme"
+    "neptune-tv-media-cloudflare/react/hors-norme",
+    "neptune-tv-media-cloudflare/react/neptune-jt"
   ],
   "scripts": {
     "dev": "npm run build:react-surfaces && npm run build:video-local && wrangler dev --config wrangler.jsonc",

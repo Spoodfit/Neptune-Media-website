@@ -48,6 +48,7 @@ for (const requiredPath of [
   'neptune-tv-media-cloudflare/containers/webtv/apply-smoothness-patch.mjs',
   `${horsNormeReactRoot}/package.json`,
   `${horsNormeReactRoot}/next.config.ts`,
+  `${horsNormeReactRoot}/source-assets.tar.gz`,
   `${horsNormeReactRoot}/src/app/page.tsx`,
   `${horsNormeReactRoot}/src/components/hero-section.tsx`,
   `${horsNormeReactRoot}/src/components/contact-form.tsx`,
@@ -97,6 +98,7 @@ if (!failures.length) {
   note('Container sources use canonical filenames without historical version aliases.');
   note(`Canonical booking URL is ${canonicalBookingUrl}.`);
   note('HORS NORME source of truth is React; public/hors-norme is generated only.');
+  note('HORS NORME Cursor media is source-controlled as a build-time bundle, not as generated public output.');
 }
 
 console.log('\nNeptune Media repository cleanliness\n');

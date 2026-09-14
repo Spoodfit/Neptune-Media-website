@@ -58,13 +58,14 @@ expect(html.includes('Gardez l’onglet ouvert pendant la création'), 'la contr
 expect(source.includes('processFileLocally'), 'la source navigateur locale ne contient plus son pipeline principal');
 expect(vite.includes('neptune-openai-semantic-assist-browser-local'), 'le build navigateur local n’utilise pas le plugin canonique');
 expect(vite.includes('__NEPTUNE_BROWSER_LOCAL_VIDEO__'), 'le build navigateur local n’expose pas sa release');
+expect(!vite.includes('const permanentEngineRuntime'), 'l’ancien bloc runtime permanent existe encore dans la configuration Vite');
+expect(!vite.includes('PERMANENT_ENGINE_RELEASE'), 'l’ancienne release permanente existe encore dans la configuration Vite');
 for (const forbidden of [
   'NeptuneVideoEngineBridge',
   'processFileWithPermanentEngine',
   'resumePermanentEngineJobs',
   'neptune-video-engine-bridge-20260802-v73',
 ]) {
-  expect(!vite.includes(forbidden), `le build source réintroduit le service permanent: ${forbidden}`);
   expect(!built.includes(forbidden), `le bundle généré réintroduit le service permanent: ${forbidden}`);
 }
 expect(built.includes('__NEPTUNE_BROWSER_LOCAL_VIDEO__'), 'le bundle construit n’est pas la version navigateur locale canonique');

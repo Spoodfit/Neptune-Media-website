@@ -18,7 +18,6 @@ const requiredNavigation = [
   'integrations/README.md',
   'migration/README.md',
   'neptune-tv-media-cloudflare/README.md',
-  'neptune-video-engine/README.md',
   'tests/README.md',
 ];
 
@@ -36,7 +35,6 @@ const allowedTopLevel = new Set([
   'integrations',
   'migration',
   'neptune-tv-media-cloudflare',
-  'neptune-video-engine',
   'package-lock.json',
   'package.json',
   'tests',
@@ -59,6 +57,10 @@ if (unexpectedTopLevel.length) {
   fail(`Unexpected top-level repository area(s): ${unexpectedTopLevel.join(', ')}. Reuse an existing owner or document the new area explicitly before adding it.`);
 }
 
+if (exists('neptune-video-engine')) {
+  fail('Obsolete root service neptune-video-engine/ must not exist. Browser-local video production lives under neptune-tv-media-cloudflare/local-video-engine/.');
+}
+
 if (exists('README.md')) {
   const rootReadme = read('README.md');
   for (const marker of [
@@ -67,7 +69,7 @@ if (exists('README.md')) {
     'neptune-tv-media-cloudflare/public/espace-client/',
     'neptune-tv-media-cloudflare/public/reserver/',
     'neptune-tv-media-cloudflare/react/hors-norme/',
-    'neptune-video-engine/',
+    'neptune-tv-media-cloudflare/local-video-engine/',
     'google-apps-script/',
     'integrations/google-drive/',
     'tests/',
@@ -85,8 +87,7 @@ if (exists('REPOSITORY_MAP.md')) {
     'MIGRATION_SOURCE',
     'DEAD',
     'src/worker.js',
-    'runtime_v75.py',
-    'runtime_v74.py',
+    'local-video-engine/',
   ]) {
     if (!repositoryMap.includes(marker)) fail(`REPOSITORY_MAP.md is missing architecture marker: ${marker}`);
   }
@@ -95,6 +96,7 @@ if (exists('REPOSITORY_MAP.md')) {
 if (!failures.length) {
   note(`Repository navigation is complete: ${requiredNavigation.length} entrypoint document(s).`);
   note(`Top-level structure is controlled: ${trackedTopLevel.length} tracked area(s), no unexplained root sprawl.`);
+  note('Obsolete root Neptune Video Engine is absent; browser-local video remains owned by the Cloudflare application.');
   note('Active, legacy-required, migration-source and dead-code semantics remain documented.');
 }
 

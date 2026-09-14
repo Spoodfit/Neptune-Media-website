@@ -13,7 +13,7 @@
 | HORS NORME | `neptune-tv-media-cloudflare/react/hors-norme/` | **ACTIVE — source React** |
 | Direct / WebTV | `neptune-tv-media-cloudflare/public/direct/` + `containers/webtv/` | **ACTIVE** |
 | Backend Cloudflare actuel | `neptune-tv-media-cloudflare/src/worker.js` et ses imports | **ACTIVE / LEGACY_REQUIRED** |
-| Moteur vidéo local Neptune | `neptune-video-engine/` | **ACTIVE SERVICE** |
+| Production vidéo locale navigateur | `neptune-tv-media-cloudflare/local-video-engine/` | **ACTIVE** |
 | Synchronisation Google Drive côté Apps Script | `google-apps-script/` | **ACTIVE AUTOMATION** |
 | Synchronisation Drive côté Node/Worker | `integrations/google-drive/` | **ACTIVE INTEGRATION** |
 | Tests UI et parcours client | `tests/` | **ACTIVE CI** |
@@ -22,10 +22,10 @@
 
 La cartographie détaillée, avec les règles de suppression et les pièges à éviter, est dans [`REPOSITORY_MAP.md`](./REPOSITORY_MAP.md).
 
-## Les 4 statuts à connaître
+## Les statuts à connaître
 
 - **ACTIVE** : utilisé directement par l'application, le déploiement ou les parcours actuels. À conserver et tester.
-- **ACTIVE SERVICE / INTEGRATION / CI** : dépendance opérationnelle active mais séparée du frontend principal.
+- **ACTIVE INTEGRATION / CI** : dépendance opérationnelle active mais séparée du frontend principal.
 - **LEGACY_REQUIRED** : ancien mécanisme encore atteint par le runtime Cloudflare. Ne pas supprimer avant déconnexion ou cutover.
 - **MIGRATION_SOURCE** : comportement, documentation ou garde-fou à préserver pour le portage VPS ; ce n'est pas l'architecture cible.
 - **DEAD** : aucun import, route, injection, workflow, test ou consommateur actif démontré. Seulement cette catégorie peut être supprimée immédiatement.
@@ -54,6 +54,10 @@ Les fichiers `entry-vXX.js` encore importés sont volontairement classés **LEGA
 /studio/
 /direct/
 ```
+
+## Production vidéo
+
+La production vidéo locale conservée dans ce dépôt est le moteur **navigateur** situé dans `neptune-tv-media-cloudflare/local-video-engine/`. Le service Docker séparé `neptune-video-engine/` a été retiré : il n'est plus une dépendance de Neptune Media.
 
 ## Architecture cible
 
@@ -99,7 +103,7 @@ Avant toute suppression d'un fichier historique, vérifier qu'il n'a plus :
 - de référence dans Wrangler ;
 - de test CI ;
 - de workflow GitHub ;
-- de consommateur Studio, client, réservation, WebTV, vidéo ou intégration.
+- de consommateur Studio, client, réservation, WebTV ou intégration.
 
 ## Documentation utile
 

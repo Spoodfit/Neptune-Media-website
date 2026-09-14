@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 7,
+  "schemaVersion": 8,
   "project": "Neptune Media",
   "purpose": "Reference implementation being prepared for migration into the Neptune VPS monorepo",
   "current": {
@@ -19,7 +19,6 @@
       ".github/workflows/import-launch-emissions.yml",
       ".github/workflows/validate.yml",
       ".github/workflows/verify-production-after-deploy.yml",
-      ".github/workflows/video-engine.yml",
       ".github/workflows/visual-render-audit.yml"
     ],
     "canonicalVerificationScripts": [
@@ -54,6 +53,7 @@
     "reactSourceSurfaces": {
       "horsNorme": "neptune-tv-media-cloudflare/react/hors-norme"
     },
+    "browserLocalVideoEngine": "neptune-tv-media-cloudflare/local-video-engine",
     "surfaces": [
       "neptune-tv-media-cloudflare/public/index.html",
       "neptune-tv-media-cloudflare/public/studio",
@@ -101,6 +101,7 @@
     "Generated visual audit output and one-shot mutation scripts must not be committed",
     "All target Media user-facing surfaces must be React",
     "Generated React output is not a frontend source of truth",
-    "Repository root must remain limited to documented canonical areas"
+    "Repository root must remain limited to documented canonical areas",
+    "The obsolete root neptune-video-engine service must not be reintroduced"
   ]
 }

@@ -14,12 +14,11 @@ Neptune-Media-website/
 │   ├── public/                         surfaces web servies
 │   ├── react/hors-norme/               source React HORS NORME
 │   ├── src/                            Worker, stores, routes et compatibilité legacy
-│   ├── containers/                     WebTV / vidéo exécutés en conteneur
-│   ├── local-video-engine/             interface locale liée au moteur vidéo
+│   ├── containers/                     WebTV exécutée en conteneur
+│   ├── local-video-engine/             production vidéo locale dans le navigateur
 │   ├── scripts/                        builds, validations, audits et garde-fous
 │   ├── integrations/                   adaptateurs propres au runtime Cloudflare
 │   └── config/                         configuration runtime
-├── neptune-video-engine/               service vidéo local permanent
 ├── tests/                              tests UI/parcours exécutés par GitHub Actions
 ├── package.json                        commandes canoniques dépôt complet
 ├── wrangler.jsonc                      configuration Cloudflare canonique racine
@@ -95,13 +94,15 @@ worker.js
 
 Les wrappers `entry-vXX.js` atteints par cette chaîne sont **LEGACY_REQUIRED**. Ne pas les fusionner, renommer ou supprimer sans preuve de déconnexion.
 
-### 8. Neptune Video Engine
+### 8. Production vidéo locale navigateur
 
-**Chemin** : `neptune-video-engine/`
+**Source** : `neptune-tv-media-cloudflare/local-video-engine/`
 
-Service local permanent utilisé pour la génération de shorts. `runtime.py` conserve l'entrypoint historique et délègue actuellement à `runtime_v75.py`, qui réutilise encore `runtime_v74.py`.
+**Sortie de build** : `neptune-tv-media-cloudflare/public/studio/local-engine/`
 
-Statut : **ACTIVE SERVICE + dette interne bornée**.
+Cette implémentation traite la vidéo directement dans le navigateur du Studio et conserve la source sur la machine utilisée. Le service Docker séparé `neptune-video-engine/` et son bridge localhost ont été retirés du dépôt car ils ne font plus partie du produit.
+
+Statut : **ACTIVE**.
 
 ### 9. Google Drive
 
@@ -154,6 +155,7 @@ Ils doivent disparaître **pendant le portage**, pas avant.
 
 Le dépôt ne doit plus accueillir :
 
+- service racine `neptune-video-engine/` ou bridge localhost équivalent sans besoin produit validé ;
 - fichiers `deploy-trigger-*` ;
 - snapshots d'audit ponctuels à la racine ;
 - scripts de mutation one-shot conservés après usage ;
@@ -177,7 +179,7 @@ Le dépôt actuel est donc une **référence fonctionnelle temporaire**, pas un 
 ## Règle simple pour l'équipe
 
 - Modifier une expérience utilisateur actuelle → commencer dans `neptune-tv-media-cloudflare/`.
-- Modifier la génération vidéo locale → `neptune-video-engine/`.
+- Modifier la production vidéo locale → `neptune-tv-media-cloudflare/local-video-engine/`.
 - Modifier la synchro Drive → `google-apps-script/` ou `integrations/google-drive/` selon le côté concerné.
 - Modifier les validations → `tests/`, `neptune-tv-media-cloudflare/scripts/` ou `.github/workflows/`.
 - Préparer le VPS → lire `migration/` avant de coder.

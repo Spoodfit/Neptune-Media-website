@@ -10,6 +10,26 @@
   const statusCount = document.getElementById('statusCount');
   const statusText = document.getElementById('statusText');
   const segments = document.getElementById('segments');
+  let registrationOpen = false;
+
+  installAbuseGuards();
+
+  function installAbuseGuards() {
+    const honeypot = document.createElement('input');
+    honeypot.name = '_companyWebsite';
+    honeypot.type = 'text';
+    honeypot.tabIndex = -1;
+    honeypot.autocomplete = 'off';
+    honeypot.setAttribute('aria-hidden', 'true');
+    honeypot.style.cssText = 'position:absolute!important;left:-10000px!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important';
+    form.append(honeypot);
+
+    const startedAt = document.createElement('input');
+    startedAt.type = 'hidden';
+    startedAt.name = '_formStartedAt';
+    startedAt.value = String(Date.now());
+    form.append(startedAt);
+  }
 
   function renderSegments(total = 0, confirmed = 0) {
     segments.innerHTML = '';
@@ -21,7 +41,26 @@
     }
   }
 
+  function renderEditionMeta(edition) {
+    let node = document.getElementById('editionMeta');
+    if (!node) {
+      node = document.createElement('div');
+      node.id = 'editionMeta';
+      node.style.cssText = 'margin-top:14px;padding-top:14px;border-top:1px solid rgba(172,193,228,.16);display:grid;gap:5px;color:#c6d1e3;font-size:.82rem;line-height:1.45';
+      statusText.insertAdjacentElement('afterend', node);
+    }
+    if (!edition?.eventAt) {
+      node.innerHTML = '<strong style="color:#fff">Prochaine date en préparation</strong><span>Les inscriptions ouvriront dès que la date et le lieu seront validés.</span>';
+      return;
+    }
+    const when = formatEditionDate(edition.eventAt);
+    const where = edition.location || 'Lieu à confirmer';
+    node.innerHTML = `<strong style="color:#fff">${escapeHtml(when)}</strong><span>${escapeHtml(where)}</span>`;
+  }
+
   async function loadStatus() {
+    registrationOpen = false;
+    submitBtn.disabled = true;
     try {
       const response = await fetch('/api/neptune-jt/status', { credentials: 'same-origin', cache: 'no-store' });
       const data = await response.json();
@@ -30,28 +69,42 @@
       const confirmed = Number(data.counts?.confirmed || 0);
       statusCount.textContent = `${Math.min(total, 4)} / 4`;
       renderSegments(total, confirmed);
-      if (data.edition?.status === 'cancelled') {
-        statusText.textContent = 'Cette édition est annulée. Une nouvelle date sera proposée prochainement.';
+      renderEditionMeta(data.edition);
+
+      registrationOpen = data.registrationOpen === true && total < 6;
+      if (!registrationOpen) {
+        const message = closedMessage(data.registrationReason, data.edition);
+        statusText.textContent = message;
         submitBtn.disabled = true;
-      } else if (total >= 6) {
-        statusText.textContent = `Édition complète · ${confirmed}/6 place(s) déjà confirmée(s) par paiement.`;
-        submitBtn.disabled = true;
-        submitBtn.textContent = 'Édition complète';
-      } else if (total >= 4) {
+        submitBtn.textContent = total >= 6 ? 'Édition complète' : 'Pré-réservations indisponibles';
+        return;
+      }
+
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Pré-réserver ma place';
+      if (total >= 4) {
         statusText.textContent = `Minimum atteint · ${confirmed}/${total} pré-réservation(s) déjà confirmée(s) par paiement.`;
       } else {
         const missing = 4 - total;
         statusText.textContent = `${total}/4 pré-réservation(s) · encore ${missing} pour déclencher les règlements.`;
       }
     } catch (error) {
-      statusText.textContent = 'Le compteur sera actualisé lors de votre pré-réservation.';
+      registrationOpen = false;
+      statusText.textContent = 'Impossible de vérifier l’édition en cours. Rechargez la page avant toute pré-réservation.';
       renderSegments(0, 0);
+      renderEditionMeta(null);
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Vérification indisponible';
     }
   }
 
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     formError.textContent = '';
+    if (!registrationOpen) {
+      formError.textContent = 'Les pré-réservations ne sont pas ouvertes pour le moment. Rechargez la page pour vérifier la prochaine édition.';
+      return;
+    }
     if (!form.reportValidity()) return;
     submitBtn.disabled = true;
     submitBtn.textContent = 'Pré-réservation en cours…';
@@ -72,8 +125,8 @@
       loadStatus();
     } catch (error) {
       formError.textContent = error.message || 'Impossible d’enregistrer la pré-réservation.';
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Pré-réserver ma place';
+      submitBtn.disabled = !registrationOpen;
+      submitBtn.textContent = registrationOpen ? 'Pré-réserver ma place' : 'Pré-réservations indisponibles';
     }
   });
 
@@ -99,17 +152,47 @@
     successCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
+  function closedMessage(reason, edition) {
+    const map = {
+      edition_not_ready: 'La prochaine édition est en préparation. Les pré-réservations ouvriront dès que sa date sera confirmée.',
+      edition_date_passed: 'Cette édition est terminée. La prochaine date sera affichée dès son ouverture.',
+      edition_unavailable: 'Cette édition n’est plus disponible. Une prochaine date sera proposée.',
+      registrations_closed: 'Les pré-réservations sont closes pour cette édition.',
+      edition_full: 'Cette édition a atteint ses 6 pré-réservations.',
+    };
+    if (!edition) return map.edition_not_ready;
+    return map[reason] || 'Les pré-réservations ne sont pas ouvertes pour cette édition.';
+  }
+
   function friendlyError(code) {
     const map = {
       edition_full: 'Cette édition a déjà atteint ses 6 pré-réservations.',
       edition_cancelled: 'Cette édition est annulée. Une nouvelle date sera proposée prochainement.',
+      edition_unavailable: 'Cette édition n’est plus disponible.',
+      edition_not_ready: 'La prochaine édition n’est pas encore ouverte aux pré-réservations.',
+      edition_date_passed: 'La date de cette édition est dépassée.',
       registrations_closed: 'Les pré-réservations sont closes pour cette édition.',
-      already_registered: 'Cette adresse e-mail est déjà pré-réservée pour cette édition.',
+      already_registered: 'Cette adresse e-mail est déjà rattachée à cette édition. Contactez Neptune si vous souhaitez modifier votre dossier.',
       required_fields_missing: 'Complétez au minimum votre identité, votre entreprise, votre e-mail et votre sujet.',
       consent_required: 'Les conditions et l’autorisation de captation doivent être acceptées.',
+      request_rejected: 'La demande n’a pas pu être validée. Rechargez la page puis réessayez.',
       origin_forbidden: 'Rechargez la page avant de réessayer.'
     };
     return map[code] || 'Impossible d’enregistrer la pré-réservation pour le moment.';
+  }
+
+  function formatEditionDate(value) {
+    const date = new Date(value || '');
+    if (Number.isNaN(date.getTime())) return 'Date à confirmer';
+    return new Intl.DateTimeFormat('fr-FR', {
+      dateStyle: 'full',
+      timeStyle: 'short',
+      timeZone: 'Europe/Paris',
+    }).format(date);
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/gu, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character]));
   }
 
   loadStatus();

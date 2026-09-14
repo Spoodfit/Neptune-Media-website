@@ -25,13 +25,16 @@
     "canonicalVerificationScripts": [
       "neptune-tv-media-cloudflare/scripts/verify-migration-readiness.mjs",
       "neptune-tv-media-cloudflare/scripts/verify-repository-cleanliness.mjs",
+      "neptune-tv-media-cloudflare/scripts/verify-repository-navigation.mjs",
       "neptune-tv-media-cloudflare/scripts/verify-react-surfaces.mjs",
       "neptune-tv-media-cloudflare/scripts/verify-production-contracts.mjs",
       "neptune-tv-media-cloudflare/scripts/visual-render-audit.mjs",
       "neptune-tv-media-cloudflare/scripts/qa-production-ui.mjs"
     ],
     "migrationDocuments": [
+      "REPOSITORY_MAP.md",
       "MIGRATION.md",
+      "migration/README.md",
       "migration/TRANSFER_MANIFEST.md",
       "migration/VPS_FILE_MAP.md",
       "migration/PORTING_PLAN.md",
@@ -97,6 +100,7 @@
     "The HORS NORME and booking handoff must use current.canonicalBookingUrl",
     "Generated visual audit output and one-shot mutation scripts must not be committed",
     "All target Media user-facing surfaces must be React",
-    "Generated React output is not a frontend source of truth"
+    "Generated React output is not a frontend source of truth",
+    "Repository root must remain limited to documented canonical areas"
   ]
 }

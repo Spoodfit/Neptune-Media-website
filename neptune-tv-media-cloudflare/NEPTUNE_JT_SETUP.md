@@ -9,6 +9,12 @@
 - Conditions spécifiques : `https://media.neptunebusiness.com/cgv-neptune-jt.html`
 - Payment Link : `https://buy.stripe.com/bJe28rcdngXw0586qi73G0d`
 
+## Architecture front
+
+La source de vérité des quatre surfaces Neptune JT est l'application **React / Next.js / TypeScript** située dans `react/neptune-jt` : landing, tunnel, confirmation de paiement et console Studio. `npm run build:react-surfaces` effectue l'export statique puis publie les pages vers leurs URLs historiques et les bundles sous `/neptune-jt-assets/_next/`.
+
+Les anciens runtimes UI impératifs (`status-v184.js`, `assets/app.js`, `release-guard-v184.js`) sont supprimés du répertoire de déploiement pendant le build. Ils ne doivent plus être chargés en production. Le backend Worker, le Durable Object, Stripe, Resend et les règles 4/6 restent indépendants du framework front et constituent toujours la source de vérité métier.
+
 ## Stripe
 
 Dans le Payment Link Neptune JT :

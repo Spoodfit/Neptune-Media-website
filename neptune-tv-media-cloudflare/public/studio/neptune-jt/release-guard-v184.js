@@ -1,6 +1,9 @@
 (() => {
   const EXPORT_ID = 'exportCsv';
 
+  enforceStrictMinimumUi();
+  new MutationObserver(enforceStrictMinimumUi).observe(document.documentElement, { childList: true, subtree: true });
+
   document.addEventListener('click', async (event) => {
     const button = event.target.closest?.(`#${EXPORT_ID}`);
     if (!button) return;
@@ -8,6 +11,17 @@
     event.stopImmediatePropagation();
     await exportSafeCsv(button);
   }, true);
+
+  function enforceStrictMinimumUi() {
+    for (const button of document.querySelectorAll('[data-edition-action="maintain"],[data-edition-action="unmaintain"]')) button.remove();
+    for (const card of document.querySelectorAll('.jt-rule-card')) {
+      const strong = card.querySelector('strong');
+      const paragraph = card.querySelector('p');
+      if (strong?.textContent?.trim() === 'Règle de maintien' && paragraph) {
+        paragraph.textContent = 'À J-7, l’édition est maintenue uniquement à partir de 4 paiements confirmés. En dessous de ce seuil, elle est annulée automatiquement.';
+      }
+    }
+  }
 
   async function exportSafeCsv(button) {
     const editionId = document.getElementById('editionSelect')?.value || '';

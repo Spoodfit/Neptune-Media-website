@@ -14,7 +14,7 @@ import {
   runNeptuneJtScheduled,
   sendNeptuneJtCancellationNotifications,
   sendNeptuneJtReservationEmails,
-} from './neptune-jt-v183.js';
+} from './neptune-jt-v184.js';
 
 export {WebTvEncoder};
 
@@ -96,15 +96,15 @@ export default{
     if(request.method==='POST'&&url.pathname==='/api/admin/neptune-jt-v183/edition'){
       if(!isSameOrigin(request))return markNeptuneJt(json({error:'origin_forbidden'},403));
       const payload=await request.json().catch(()=>({}));
-      return markNeptuneJt(await callNeptuneJtStore(env,'/neptune-jt-v183/admin-save-edition',{...adminAuth(request),...payload}));
+      return markNeptuneJt(await callNeptuneJtStore(env,'/neptune-jt-v183/admin-save-edition',{...payload,...adminAuth(request)}));
     }
     if(request.method==='POST'&&url.pathname==='/api/admin/neptune-jt-v183/edition-action'){
       if(!isSameOrigin(request))return markNeptuneJt(json({error:'origin_forbidden'},403));
       const payload=await request.json().catch(()=>({}));
-      const response=await callNeptuneJtStore(env,'/neptune-jt-v183/admin-edition-action',{...adminAuth(request),...payload});
+      const response=await callNeptuneJtStore(env,'/neptune-jt-v183/admin-edition-action',{...payload,...adminAuth(request)});
       const data=await response.clone().json().catch(()=>({}));
-      if(response.ok&&data.internal?.cancellationRecipients){
-        ctx?.waitUntil?.(sendNeptuneJtCancellationNotifications(env,data.internal,(path,body)=>callNeptuneJtStore(env,path,body)).catch((error)=>console.error('neptune_jt_admin_cancel_email_failed',safeError(error))));
+      if(response.ok&&data.internal){
+        ctx?.waitUntil?.(sendNeptuneJtCancellationNotifications(env,data.internal,(path,body)=>callNeptuneJtStore(env,path,body)).catch((error)=>console.error('neptune_jt_admin_edition_email_failed',safeError(error))));
       }
       delete data.internal;
       return markNeptuneJt(json(data,response.status));
@@ -112,14 +112,11 @@ export default{
     if(request.method==='POST'&&url.pathname==='/api/admin/neptune-jt-v183/reservation-action'){
       if(!isSameOrigin(request))return markNeptuneJt(json({error:'origin_forbidden'},403));
       const payload=await request.json().catch(()=>({}));
-      const response=await callNeptuneJtStore(env,'/neptune-jt-v183/admin-reservation-action',{...adminAuth(request),...payload});
+      const response=await callNeptuneJtStore(env,'/neptune-jt-v183/admin-reservation-action',{...payload,...adminAuth(request)});
       const data=await response.clone().json().catch(()=>({}));
       if(response.ok&&data.internal){
         if(data.internal.confirmation){
           const recipient=data.internal.confirmation;
-          data.internal.paymentRecipients=[];
-          data.internal.acknowledgement=null;
-          ctx?.waitUntil?.(sendNeptuneJtReservationEmails(env,{paymentRecipients:[],acknowledgement:null}).catch(()=>{}));
           ctx?.waitUntil?.(sendManualConfirmation(env,recipient).catch((error)=>console.error('neptune_jt_admin_confirmation_failed',safeError(error))));
         }else{
           ctx?.waitUntil?.(sendNeptuneJtReservationEmails(env,data.internal).catch((error)=>console.error('neptune_jt_admin_resend_failed',safeError(error))));

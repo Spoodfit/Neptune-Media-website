@@ -14,6 +14,11 @@ Thumbs.db
 .idea/
 
 neptune-tv-media-cloudflare/local-video-engine/dist/
+neptune-tv-media-cloudflare/react/*/.next/
+neptune-tv-media-cloudflare/react/*/out/
+neptune-tv-media-cloudflare/react/*/public/
+neptune-tv-media-cloudflare/public/hors-norme/*
+!neptune-tv-media-cloudflare/public/hors-norme/.gitkeep
 .wrangler-ci-*.jsonc
 
 # Generated audit output belongs in CI artifacts/local workspaces, not in Git.

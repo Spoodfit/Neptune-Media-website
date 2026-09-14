@@ -15,10 +15,16 @@ const MIN_PARTICIPANTS = 4;
 
 export async function handleNeptuneJtStore(store, request) {
   ensureNeptuneJtSchema(store);
+  enforceStrictMinimum(store);
   const url = new URL(request.url);
-  if (request.method.toUpperCase() === 'POST' && url.pathname === '/neptune-jt-v183/admin-reservation-action') {
+  if (request.method.toUpperCase() === 'POST') {
     const body = await request.clone().json().catch(() => ({}));
-    if (String(body.action || '') === 'move') {
+    if (url.pathname === '/neptune-jt-v183/admin-edition-action' && ['maintain', 'unmaintain'].includes(String(body.action || ''))) {
+      const access = await requireOperator(store, body);
+      if (!access.ok) return access.response;
+      return json({ error: 'manual_maintenance_disabled', minimumParticipants: MIN_PARTICIPANTS }, 409);
+    }
+    if (url.pathname === '/neptune-jt-v183/admin-reservation-action' && String(body.action || '') === 'move') {
       const access = await requireOperator(store, body);
       if (!access.ok) return access.response;
       const protectedMove = protectIssuedPaymentMove(store, body);
@@ -46,6 +52,26 @@ export function sendNeptuneJtReservationEmails(env, internal = {}) {
 
 export function sendNeptuneJtCancellationNotifications(env, internal = {}, storeCall) {
   return sendNeptuneJtCancellationNotificationsV184(env, internal, storeCall);
+}
+
+function enforceStrictMinimum(store) {
+  if (store.neptuneJtV185StrictMinimumReady) return;
+  const rows = store.sql.exec("SELECT id FROM neptune_jt_editions_v182 WHERE force_maintained<>0").toArray();
+  const now = new Date().toISOString();
+  for (const edition of rows) {
+    const counts = store.sql.exec(`SELECT
+      SUM(CASE WHEN status IN ('pre_registered','payment_requested','confirmed') THEN 1 ELSE 0 END) AS total,
+      SUM(CASE WHEN status='confirmed' THEN 1 ELSE 0 END) AS confirmed
+      FROM neptune_jt_reservations_v182 WHERE edition_id=?`, edition.id).toArray()[0] || {};
+    const total = Number(counts.total || 0);
+    const confirmed = Number(counts.confirmed || 0);
+    const status = confirmed >= MIN_PARTICIPANTS ? 'confirmed' : total >= MIN_PARTICIPANTS ? 'payment_open' : 'collecting';
+    if (total < MIN_PARTICIPANTS) {
+      store.sql.exec("UPDATE neptune_jt_reservations_v182 SET status='pre_registered',payment_sent_at=NULL,updated_at=? WHERE edition_id=? AND status='payment_requested'", now, edition.id);
+    }
+    store.sql.exec("UPDATE neptune_jt_editions_v182 SET force_maintained=0,status=?,payment_opened_at=CASE WHEN ?='collecting' THEN NULL ELSE payment_opened_at END,updated_at=? WHERE id=?", status, status, now, edition.id);
+  }
+  store.neptuneJtV185StrictMinimumReady = true;
 }
 
 function protectIssuedPaymentMove(store, body) {

@@ -41,8 +41,10 @@ contains(reservationScroll, 'neptune-reservation-scroll-stability-20260908-v181'
 contains(reservationScroll, 'unexpectedReset', 'reservation scroll runtime');
 contains(reservationScroll, 'restoreStablePosition', 'reservation scroll runtime');
 
-for (const text of ['30 contenus minimum garantis', '3 mois de communication', 'Le parcours VIP clé en main', 'Vérifier mon éligibilité']) {
-  contains(horsNorme, text, 'HORS NORME landing');
+for (const text of ['Une demi-journée.', '3 mois de contenus.', '30 contenus minimum', 'Demander mon créneau']) {
+  contains(horsNorme, text, 'HORS NORME React landing');
 }
+contains(horsNorme, '/hors-norme/_next/', 'HORS NORME React landing');
+excludes(horsNorme, 'release-v182.txt', 'HORS NORME React landing');
 
 console.log('Current Neptune Media release invariants: OK');

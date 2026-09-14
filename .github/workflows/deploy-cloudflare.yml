@@ -6,6 +6,7 @@ on:
     paths:
       - 'neptune-tv-media-cloudflare/src/**'
       - 'neptune-tv-media-cloudflare/public/**'
+      - 'neptune-tv-media-cloudflare/react/**'
       - 'neptune-tv-media-cloudflare/containers/**'
       - 'neptune-tv-media-cloudflare/local-video-engine/**'
       - 'neptune-tv-media-cloudflare/scripts/**'

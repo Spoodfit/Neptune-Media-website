@@ -7,7 +7,8 @@ const publicRoot = path.join(root, 'neptune-tv-media-cloudflare/public/hors-norm
 const assetRoot = path.join(root, 'neptune-tv-media-cloudflare/public');
 const deployWorkflow = path.join(root, '.github/workflows/deploy-cloudflare.yml');
 const canonicalBookingUrl = 'https://neptune-media-webtv.neptunebusinessclub.workers.dev/reserver';
-const canonicalEpisodeUrl = 'https://neptune-media-webtv.neptunebusinessclub.workers.dev/media/emissions/hors-norme.mp4';
+const canonicalWebTvEmbed = '/direct/?embed=1';
+const obsoleteEpisodeUrl = 'https://neptune-media-webtv.neptunebusinessclub.workers.dev/media/emissions/hors-norme.mp4';
 const failures = [];
 const fail = message => failures.push(message);
 const read = file => fs.readFileSync(file, 'utf8');
@@ -51,10 +52,12 @@ for (const component of ['<HeroSection />','<ProofSection />','<SeenOnStrip />',
 if (!hero.includes('Une demi-journée.') || !hero.includes('3 mois de contenus.')) fail('Cursor hero copy is not preserved.');
 if (!constants.includes(canonicalBookingUrl)) fail('HORS NORME React source does not use canonical Worker booking URL.');
 if (constants.includes('https://media.neptunebusiness.com/reserver')) fail('Deprecated media-domain booking URL remains in React source.');
+if (!constants.includes(canonicalWebTvEmbed)) fail('HORS NORME React source does not use the Neptune WebTV embed.');
+if (constants.includes(obsoleteEpisodeUrl) || heroMedia.includes(obsoleteEpisodeUrl) || heroMedia.includes('hors-norme.mp4')) fail('HORS NORME proof media still points to a static episode instead of the WebTV.');
+if (!heroMedia.includes('<iframe') || !heroMedia.includes('WEBTV_EMBED_URL')) fail('HORS NORME proof media is not implemented as the Neptune WebTV embed.');
 if (contact.includes('/api/leads')) fail('Demo-only Next lead endpoint remains active.');
 if (!contact.includes('neptune_hors_norme_contact')) fail('HORS NORME contact context is not preserved before booking handoff.');
 if (!config.includes('output: "export"') || !config.includes('basePath: "/hors-norme"') || !config.includes('images: { unoptimized: true }')) fail('HORS NORME is not configured as a deployable static React export under /hors-norme.');
-if (!heroMedia.includes(canonicalEpisodeUrl)) fail('Hero does not use the canonical HORS NORME episode media endpoint.');
 if (!deploy.includes("neptune-tv-media-cloudflare/react/**")) fail('Cloudflare deploy workflow does not watch React source changes.');
 
 const forbiddenMissingAssetPrefixes = ['/assets/media/showcase/', '/assets/posters/showcase/', '/assets/logo_neptune_blanc.png', '/assets/logo_neptune_le_N.png', '/assets/posters/connexio-concept.webp', '/assets/posters/hors-norme-episode.webp'];
@@ -89,6 +92,8 @@ if (!fs.existsSync(generatedIndex)) {
   const html = read(generatedIndex);
   if (!html.includes('/hors-norme/_next/')) fail('Generated HORS NORME page is not a Next/React client surface.');
   if (!html.includes('Une demi-journée.')) fail('Generated HORS NORME page does not match Cursor hero copy.');
+  if (!html.includes(canonicalWebTvEmbed)) fail('Generated HORS NORME page does not embed the Neptune WebTV.');
+  if (html.includes('hors-norme.mp4')) fail('Generated HORS NORME page still contains the obsolete static episode player.');
 }
 
 if (fs.existsSync(path.join(publicRoot, 'release-v182.txt'))) fail('Obsolete HORS NORME release marker is present.');
@@ -97,4 +102,4 @@ if (failures.length) {
   console.error(failures.map(item => `- ${item}`).join('\n'));
   process.exit(1);
 }
-console.log('HORS NORME React surface verified: Cursor composition, canonical booking/media handoff, existing runtime assets, deploy trigger and static export are aligned.');
+console.log('HORS NORME React surface verified: Cursor composition, canonical booking handoff, Neptune WebTV embed, existing runtime assets, deploy trigger and static export are aligned.');

@@ -17,6 +17,7 @@ type Dashboard = {
   paymentLinkFallback?: string;
 };
 type Auth = { user?: { fullName?: string; email?: string; role?: string }; csrfToken?: string };
+type CancellationOrigin = "participant" | "neptune";
 
 const API = "/api/admin/neptune-jt-v183";
 const AUTO_SYNC_MS = 10_000;
@@ -53,7 +54,7 @@ export default function StudioPage() {
   const [moveTarget, setMoveTarget] = useState("");
   const [toast, setToast] = useState("");
   const [error, setError] = useState("");
-  const syncInFlight = useRef(false);
+  const syncRequestId = useRef(0);
 
   useEffect(() => { void boot(); }, []);
 
@@ -97,18 +98,16 @@ export default function StudioPage() {
   }
 
   async function load(editionId = "", silent = false) {
-    if (syncInFlight.current) return;
-    syncInFlight.current = true;
+    const requestId = ++syncRequestId.current;
     if (!silent) setSync("Synchronisation…");
     try {
       const suffix = editionId ? `?editionId=${encodeURIComponent(editionId)}` : "";
       const next = await request<Dashboard>(`${API}/dashboard${suffix}`);
+      if (requestId !== syncRequestId.current) return;
       setDashboard(next); setSync(`Synchronisé automatiquement · ${syncTime()}`);
     } catch (e) {
-      setSync("Erreur de synchronisation");
+      if (requestId === syncRequestId.current) setSync("Erreur de synchronisation");
       throw e;
-    } finally {
-      syncInFlight.current = false;
     }
   }
 
@@ -116,7 +115,7 @@ export default function StudioPage() {
 
   async function editionAction(action: string) {
     const edition = dashboard?.selectedEdition; if (!edition || !dashboard?.canEdit) return;
-    if (action === "cancel" && !window.confirm("Annuler cette édition ? Les participants seront notifiés et tout paiement encaissé devra être remboursé ou reporté manuellement.")) return;
+    if (action === "cancel" && !window.confirm("Annuler cette édition ? Les participants seront notifiés et tout paiement encaissé devra être remboursé ou reporté uniquement avec leur accord.")) return;
     try {
       await request(`${API}/edition-action`, { method: "POST", body: JSON.stringify({ editionId: edition.id, action, confirmPaidRisk: action === "cancel" }) });
       notify("Édition mise à jour."); await load(edition.id);
@@ -142,13 +141,32 @@ export default function StudioPage() {
     } catch (e) { notify(`Erreur : ${e instanceof Error ? e.message : "save_failed"}`); }
   }
 
-  async function reservationAction(action: "resend" | "cancel" | "move") {
+  async function reservationAction(action: "resend" | "cancel" | "move", cancellationOrigin?: CancellationOrigin) {
     if (!participant || !dashboard?.canEdit) return;
     const paid = Number(participant.amountPaidCents || 0) > 0 || participant.status === "confirmed";
-    if (action === "cancel" && !window.confirm(paid ? "Ce participant a un paiement confirmé. Annuler créera une alerte de remboursement/report. Continuer ?" : "Annuler cette participation ?")) return;
+    if (action === "cancel") {
+      if (!cancellationOrigin) return notify("Précisez l’origine de l’annulation.");
+      const message = cancellationOrigin === "participant"
+        ? (paid
+          ? "Annulation demandée par le participant : le paiement déjà effectué n’est pas remboursable selon les conditions Neptune JT. Confirmer ?"
+          : "Confirmer l’annulation demandée par le participant ?")
+        : (paid
+          ? "Annulation décidée par Neptune : un remboursement ou un report avec accord du client devra être traité. Confirmer ?"
+          : "Confirmer l’annulation de cette participation par Neptune ?");
+      if (!window.confirm(message)) return;
+    }
     if (action === "move" && !moveTarget) return notify("Choisissez une édition cible.");
     try {
-      await request(`${API}/reservation-action`, { method: "POST", body: JSON.stringify({ reservationId: participant.id, action, targetEditionId: moveTarget || undefined, confirmPaidRisk: paid && action === "cancel" }) });
+      await request(`${API}/reservation-action`, {
+        method: "POST",
+        body: JSON.stringify({
+          reservationId: participant.id,
+          action,
+          targetEditionId: moveTarget || undefined,
+          cancellationOrigin: action === "cancel" ? cancellationOrigin : undefined,
+          confirmPaidRisk: paid && action === "cancel" && cancellationOrigin === "neptune",
+        }),
+      });
       notify(action === "resend" ? "E-mail renvoyé." : action === "move" ? "Participant déplacé et notifié." : "Participation annulée et notification envoyée.");
       setParticipant(null); setMoveTarget(""); await load(dashboard.selectedEdition?.id || "");
     } catch (e) { notify(`Erreur : ${e instanceof Error ? e.message : "action_failed"}`); }
@@ -180,6 +198,7 @@ export default function StudioPage() {
 
   const edition = dashboard?.selectedEdition;
   const referrals = (dashboard?.reservations || []).filter(r => r.referredBy);
+  const participantIsLive = participant ? ["pre_registered", "payment_requested", "confirmed"].includes(participant.status || "") : false;
 
   return (
     <div className="jt-shell">
@@ -207,9 +226,9 @@ export default function StudioPage() {
 
       {editionModal && <div className="jt-react-modal" role="dialog" aria-modal="true"><form className="jt-dialog-card" onSubmit={saveEdition}><div className="jt-dialog-head"><div><p className="jt-eyebrow">ÉDITION NEPTUNE JT</p><h2>{editionModal === "new" ? "Nouvelle édition" : "Modifier l’édition"}</h2></div><button className="jt-icon-btn" type="button" onClick={()=>setEditionModal(null)}>×</button></div><input type="hidden" name="id" defaultValue={editionModal === "new" ? "" : editionModal.id} /><label><span>Nom de l’édition</span><input name="label" required defaultValue={editionModal === "new" ? "" : editionModal.label} placeholder="Neptune JT · Octobre 2026" /></label><label><span>Date et heure du tournage</span><input name="eventAt" type="datetime-local" required defaultValue={editionModal === "new" ? "" : localInput(editionModal.eventAt)} /></label><label><span>Lieu</span><input name="location" required defaultValue={editionModal === "new" ? "REC BOX Studio · 11 Allée de Longueterre, 31850 Montrabé" : editionModal.location} /></label><label><span>Lien Stripe 200 € TTC</span><input name="paymentLink" type="url" required defaultValue={editionModal === "new" ? dashboard?.paymentLinkFallback || "https://buy.stripe.com/bJe28rcdngXw0586qi73G0d" : editionModal.paymentLink} /></label><label><span>Notes internes</span><textarea name="notes" rows={4} defaultValue={editionModal === "new" ? "" : editionModal.notes} /></label><label className="jt-check"><input name="activate" type="checkbox" defaultChecked={editionModal === "new" || editionModal.id===dashboard?.activeEditionId} /><span>Définir cette édition comme édition active du tunnel</span></label><div className="jt-dialog-actions"><button className="jt-btn jt-btn--ghost" type="button" onClick={()=>setEditionModal(null)}>Annuler</button><button className="jt-btn jt-btn--primary" type="submit">Enregistrer</button></div></form></div>}
 
-      {participant && <div className="jt-react-modal" role="dialog" aria-modal="true"><div className="jt-dialog-card jt-react-wide"><div className="jt-dialog-head"><div><p className="jt-eyebrow">DOSSIER PARTICIPANT</p><h2>{participant.firstName} {participant.lastName}</h2></div><button className="jt-icon-btn" type="button" onClick={()=>setParticipant(null)}>×</button></div><div className="jt-react-detail"><Info label="Entreprise" value={participant.company} /><Info label="Fonction" value={participant.role} /><Info label="E-mail" value={participant.email} /><Info label="Téléphone" value={participant.phone} /><Info label="Membre Neptune" value={participant.memberStatus === "member" ? "Oui" : "Non / 1 mois inclus"} /><Info label="Statut" value={statusLabel(participant.status)} /><Info label="Sujet" value={participant.topic} wide /><Info label="Contexte" value={participant.topicContext} wide /><Info label="CTA" value={participant.commercialCta} wide /><Info label="Source" value={participant.sourceLink} wide /></div>{dashboard?.canEdit && <div className="jt-dialog-actions jt-react-actions"><button className="jt-btn jt-btn--ghost" onClick={()=>void reservationAction("resend")}>Renvoyer l’e-mail</button>{participant.status !== "confirmed" && <><select value={moveTarget} onChange={e=>setMoveTarget(e.target.value)}><option value="">Déplacer vers…</option>{(dashboard.editions||[]).filter(e=>e.id!==edition?.id && !['cancelled','archived'].includes(e.status||'')).map(e=><option key={e.id} value={e.id}>{e.label}</option>)}</select><button className="jt-btn jt-btn--ghost" onClick={()=>void reservationAction("move")}>Déplacer</button></>}<button className="jt-btn jt-btn--danger" onClick={()=>void reservationAction("cancel")}>Annuler la participation</button></div>}</div></div>}
+      {participant && <div className="jt-react-modal" role="dialog" aria-modal="true"><div className="jt-dialog-card jt-react-wide"><div className="jt-dialog-head"><div><p className="jt-eyebrow">DOSSIER PARTICIPANT</p><h2>{participant.firstName} {participant.lastName}</h2></div><button className="jt-icon-btn" type="button" onClick={()=>setParticipant(null)}>×</button></div><div className="jt-react-detail"><Info label="Entreprise" value={participant.company} /><Info label="Fonction" value={participant.role} /><Info label="E-mail" value={participant.email} /><Info label="Téléphone" value={participant.phone} /><Info label="Membre Neptune" value={participant.memberStatus === "member" ? "Oui" : "Non / 1 mois inclus"} /><Info label="Statut" value={statusLabel(participant.status)} /><Info label="Sujet" value={participant.topic} wide /><Info label="Contexte" value={participant.topicContext} wide /><Info label="CTA" value={participant.commercialCta} wide /><Info label="Source" value={participant.sourceLink} wide /></div>{dashboard?.canEdit && <div className="jt-dialog-actions jt-react-actions"><button className="jt-btn jt-btn--ghost" onClick={()=>void reservationAction("resend")}>Renvoyer l’e-mail</button>{participant.status !== "confirmed" && participantIsLive && <><select value={moveTarget} onChange={e=>setMoveTarget(e.target.value)}><option value="">Déplacer vers…</option>{(dashboard.editions||[]).filter(e=>e.id!==edition?.id && !['cancelled','archived'].includes(e.status||'')).map(e=><option key={e.id} value={e.id}>{e.label}</option>)}</select><button className="jt-btn jt-btn--ghost" onClick={()=>void reservationAction("move")}>Déplacer</button></>}{participantIsLive && <div className="jt-cancel-split"><div><strong>Origine de l’annulation</strong><small>Participant : aucun remboursement après paiement. Neptune : remboursement ou report avec accord du client.</small></div><button className="jt-btn jt-btn--ghost" onClick={()=>void reservationAction("cancel", "participant")}>Demandée par le participant</button><button className="jt-btn jt-btn--danger" onClick={()=>void reservationAction("cancel", "neptune")}>Annuler par Neptune</button></div>}</div>}</div></div>}
       {toast && <div className="jt-toast">{toast}</div>}
-      <style jsx global>{`.jt-react-modal{position:fixed;inset:0;z-index:9999;background:rgba(10,18,38,.58);display:grid;place-items:center;padding:24px}.jt-react-modal .jt-dialog-card{max-height:90vh;overflow:auto;width:min(620px,100%);background:#fff}.jt-react-wide{width:min(860px,100%)!important}.jt-react-detail{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.jt-react-info{padding:14px;border:1px solid #e7eaf0;border-radius:14px}.jt-react-info.wide{grid-column:1/-1}.jt-react-info small{display:block;color:#667085;margin-bottom:5px}.jt-react-info strong{white-space:pre-wrap;word-break:break-word}.jt-react-actions{flex-wrap:wrap}.jt-react-actions select{min-height:42px;border:1px solid #d0d5dd;border-radius:10px;padding:0 10px}@media(max-width:720px){.jt-react-detail{grid-template-columns:1fr}}`}</style>
+      <style jsx global>{`.jt-react-modal{position:fixed;inset:0;z-index:9999;background:rgba(10,18,38,.58);display:grid;place-items:center;padding:24px}.jt-react-modal .jt-dialog-card{max-height:90vh;overflow:auto;width:min(620px,100%);background:#fff}.jt-react-wide{width:min(860px,100%)!important}.jt-react-detail{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.jt-react-info{padding:14px;border:1px solid #e7eaf0;border-radius:14px}.jt-react-info.wide{grid-column:1/-1}.jt-react-info small{display:block;color:#667085;margin-bottom:5px}.jt-react-info strong{white-space:pre-wrap;word-break:break-word}.jt-react-actions{flex-wrap:wrap}.jt-react-actions select{min-height:42px;border:1px solid #d0d5dd;border-radius:10px;padding:0 10px}.jt-cancel-split{width:100%;display:grid;grid-template-columns:minmax(220px,1fr) auto auto;gap:10px;align-items:center;margin-top:8px;padding-top:14px;border-top:1px solid #e7eaf0}.jt-cancel-split strong,.jt-cancel-split small{display:block}.jt-cancel-split small{margin-top:3px;color:#667085;line-height:1.35}@media(max-width:850px){.jt-cancel-split{grid-template-columns:1fr}.jt-cancel-split .jt-btn{width:100%}}@media(max-width:720px){.jt-react-detail{grid-template-columns:1fr}}`}</style>
     </div>
   );
 }

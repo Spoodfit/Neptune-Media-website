@@ -12,7 +12,6 @@
   <link rel="stylesheet" href="/studio/video-ai-local-v3.css?v=1">
   <link rel="stylesheet" href="/studio/studio-information-architecture-v65.css?v=1">
   <link rel="stylesheet" href="/studio/video-ai-openai-v1.css?v=1">
-  <link rel="stylesheet" href="/studio/video-ai-engine-v73.css?v=1">
 </head>
 <body>
   <div class="video-ai-shell">
@@ -21,7 +20,7 @@
         <img src="/assets/logo-neptune.svg" alt="">
         <span><b>Neptune</b><small>Media · Studio</small></span>
       </a>
-      <div class="video-ai-status"><i></i><span>Production autonome</span></div>
+      <div class="video-ai-status"><i></i><span>Production locale</span></div>
       <nav aria-label="Navigation principale du Studio">
         <a href="/studio/clients"><span>◎</span><strong>Parcours clients</strong></a>
         <a class="active" href="/studio/video-ai.html" aria-current="page"><span>✦</span><strong>Production vidéo</strong></a>
@@ -34,14 +33,14 @@
     <main class="video-ai-main">
       <header class="video-ai-topbar">
         <div><p class="eyebrow">NEPTUNE MEDIA STUDIO</p><h1>Production vidéo IA</h1></div>
-        <div class="topbar-actions"><span id="runtimeState" class="runtime-state"><i></i> Vérification du moteur…</span><button id="refreshButton" class="icon-button" type="button" aria-label="Actualiser">↻</button></div>
+        <div class="topbar-actions"><span id="runtimeState" class="runtime-state"><i></i> Vérification locale…</span><button id="refreshButton" class="icon-button" type="button" aria-label="Actualiser">↻</button></div>
       </header>
 
       <section class="video-ai-hero local-hero">
         <div>
-          <p class="eyebrow">NEPTUNE VIDEO ENGINE</p>
-          <h2>Importez la vidéo. Neptune s’occupe du reste.<br><span>La production continue même après fermeture du Studio.</span></h2>
-          <p>Le moteur Neptune transcrit l’interview, repère les meilleurs passages, choisit l’angle TOFU, MOFU ou BOFU, recadre les intervenants, ajoute les sous-titres et prépare les shorts à valider.</p>
+          <p class="eyebrow">PRODUCTION LOCALE NAVIGATEUR</p>
+          <h2>Importez la vidéo. Neptune prépare les contenus.<br><span>La source reste sur cet ordinateur.</span></h2>
+          <p>Neptune transcrit l’interview, repère les meilleurs passages, choisit l’angle TOFU, MOFU ou BOFU, prépare le format vertical et les sous-titres puis présente les shorts à valider.</p>
         </div>
         <div class="hero-metrics" aria-label="Résumé de production">
           <div><b id="activeJobsCount">0</b><span>en traitement</span></div>
@@ -50,36 +49,9 @@
         </div>
       </section>
 
-      <section class="engine-setup" aria-labelledby="engineConnectionStatus">
-        <div>
-          <div class="engine-setup__status">
-            <i aria-hidden="true"></i>
-            <div>
-              <h3 id="engineConnectionStatus" data-state="checking">Vérification…</h3>
-              <p id="engineConnectionDetail">Recherche du moteur Neptune sur cet ordinateur.</p>
-            </div>
-          </div>
-          <div class="engine-setup__benefits" aria-label="Fonctions du moteur">
-            <span>File persistante</span><span>Reprise automatique</span><span>Whisper local</span><span>OpenAI ou Ollama</span><span>FFmpeg</span><span>Recadrage visage</span>
-          </div>
-          <p class="engine-mode-note">Le service permanent est prioritaire. S’il n’est pas connecté, Neptune bascule automatiquement sur le moteur navigateur de secours.</p>
-        </div>
-        <div class="engine-setup__actions">
-          <div class="engine-setup__fields">
-            <label>Adresse du moteur<input id="engineEndpoint" type="url" value="http://127.0.0.1:4318" autocomplete="off"></label>
-            <label>Code de connexion<input id="engineToken" type="password" autocomplete="off" placeholder="Coller le code généré par l’installateur"></label>
-          </div>
-          <div class="engine-setup__buttons">
-            <a id="engineInstallButton" href="/studio/install-neptune-video-engine.ps1" download>Installer sur Windows</a>
-            <button id="engineConnectButton" type="button">Connecter</button>
-            <button id="engineForgetButton" class="quiet" type="button">Oublier le code</button>
-          </div>
-        </div>
-      </section>
-
       <section class="local-privacy-banner" aria-label="Confidentialité du traitement">
-        <strong>Vidéo source 100 % locale sur la machine Neptune</strong>
-        <span>OpenAI renforce la sélection éditoriale sans recevoir la vidéo. Aucun fichier vidéo source n’est envoyé à OpenAI. Seule la transcription horodatée peut être transmise avec <code>store: false</code>. Les rendus restent dans le stockage local permanent jusqu’à validation.</span>
+        <strong>Vidéo source traitée localement sur la machine Neptune</strong>
+        <span>La vidéo source n’est pas envoyée à OpenAI. Seule la transcription horodatée peut être utilisée pour renforcer la sélection éditoriale avec <code>store: false</code>. Gardez l’onglet ouvert pendant la création.</span>
       </section>
 
       <section class="video-ai-grid">
@@ -101,8 +73,8 @@
             <div id="selectedFile" class="selected-file" hidden></div>
             <div class="local-requirements">
               <span><b>1.</b> Importer la vidéo</span>
-              <span><b>2.</b> Garder l’onglet ouvert uniquement pendant l’import</span>
-              <span><b>3.</b> Revenir quand les shorts sont prêts</span>
+              <span><b>2.</b> Garder l’onglet ouvert pendant la création</span>
+              <span><b>3.</b> Valider les shorts retenus</span>
             </div>
             <div id="uploadProgress" class="upload-progress" hidden><div><span id="uploadStage">Préparation…</span><b id="uploadPercent">0 %</b></div><progress id="uploadProgressBar" max="100" value="0"></progress></div>
             <button id="startUpload" class="primary-button" type="submit" disabled>Lancer la production</button>
@@ -130,8 +102,6 @@
 
   <div id="toast" class="toast" hidden role="status"></div>
   <script type="module" src="/studio/video-ai-openai-v1.js?v=1"></script>
-  <script type="module" src="/studio/video-ai-engine-v73.js?v=75"></script>
-  <script type="module" src="/studio/video-ai-generation-v75.js?v=1"></script>
   <script type="module" src="/studio/local-engine/neptune-video-local-engine-v1.js?v=73"></script>
 </body>
 </html>

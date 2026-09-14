@@ -35,10 +35,11 @@
       try{
         const response=await fetch(`/api/neptune-jt/payment-status?session_id=${encodeURIComponent(sessionId)}`,{cache:'no-store',credentials:'same-origin'});
         const data=await response.json().catch(()=>({}));
+        if(response.ok&&data.financialReviewRequired){finish(false,'Paiement reçu · vérification nécessaire.','Stripe a signalé un règlement, mais ce dossier nécessite un contrôle manuel avant validation. N’effectuez pas de second paiement. Neptune Media vérifiera la transaction et vous recontactera si une action est nécessaire.');return;}
         if(response.ok&&data.confirmed){finish(true,'Votre place est confirmée.','Paiement validé. Votre passage au Neptune JT est désormais confirmé. Neptune vous recontactera pour le formulaire éditorial et l’appel de préparation.');return;}
         if(response.ok&&String(data.paymentStatus||'').toLowerCase()!=='paid'){finish(false,'Paiement en cours de validation.','Stripe n’a pas encore confirmé le règlement. Vous pouvez fermer cette page : nous traiterons automatiquement la confirmation dès réception du paiement.');return;}
-        finish(false,'Nous devons vérifier votre paiement.','Votre session a bien été retrouvée, mais la confirmation automatique n’a pas abouti. Neptune Media vérifiera le règlement avant de valider votre place.');
-      }catch(error){finish(false,'Vérification temporairement indisponible.','Votre paiement Stripe n’est pas annulé pour autant. Conservez votre reçu : Neptune Media pourra vérifier la transaction.');}
+        finish(false,'Nous devons vérifier votre paiement.','Votre session a bien été retrouvée, mais la confirmation automatique n’a pas abouti. Neptune Media vérifiera le règlement avant de valider votre place. N’effectuez pas de second paiement.');
+      }catch(error){finish(false,'Vérification temporairement indisponible.','Votre paiement Stripe n’est pas annulé pour autant. Conservez votre reçu et n’effectuez pas de second paiement : Neptune Media pourra vérifier la transaction.');}
     })();
   </script>
 </body>

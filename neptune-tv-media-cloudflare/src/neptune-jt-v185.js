@@ -1,5 +1,6 @@
 import { json, sanitizeText } from './security.js';
 import { requireOperator } from './workflow-db-v5.js';
+import { ensureNeptuneJtSchema } from './neptune-jt-v183.js';
 import {
   handleNeptuneJtStore as handleNeptuneJtStoreV184,
   handleNeptuneJtStripeWebhook as handleNeptuneJtStripeWebhookV184,
@@ -13,6 +14,7 @@ export const NEPTUNE_JT_RELEASE = 'neptune-jt-20260914-v185-premerge';
 const MIN_PARTICIPANTS = 4;
 
 export async function handleNeptuneJtStore(store, request) {
+  ensureNeptuneJtSchema(store);
   const url = new URL(request.url);
   if (request.method.toUpperCase() === 'POST' && url.pathname === '/neptune-jt-v183/admin-reservation-action') {
     const body = await request.clone().json().catch(() => ({}));

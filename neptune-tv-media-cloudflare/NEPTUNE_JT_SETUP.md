@@ -27,20 +27,25 @@ Le tunnel ajoute à chaque URL de paiement :
 
 La page de retour n'est jamais utilisée seule comme preuve de paiement : le Worker vérifie la Checkout Session côté serveur et le webhook Stripe reste la source de confirmation asynchrone. Le Studio ne propose volontairement aucun bouton « marquer payé » afin d'éviter de créer une divergence avec Stripe.
 
+En cas de paiement anormal (lien utilisé après annulation, deuxième paiement, mauvaise situation de réservation, dépassement de capacité), le système ne valide pas silencieusement la place : il ouvre une alerte financière interne et demande un contrôle humain.
+
 ## Règles du tunnel
 
 - 4 participants minimum.
 - 6 participants maximum.
 - La pré-réservation est gratuite.
+- Une édition sans date future valide n'accepte aucune pré-réservation.
 - À la 4e pré-réservation, les participants éligibles reçoivent automatiquement leur lien de paiement.
 - Les 5e et 6e pré-réservations reçoivent également leur lien tant que l'édition est ouverte.
 - Une place est confirmée uniquement après un paiement Stripe de 200 EUR TTC.
-- À J-7, si moins de 4 paiements sont confirmés, l'édition est annulée automatiquement sauf maintien manuel explicite depuis le Studio.
+- À J-7, l'édition est maintenue uniquement si au moins 4 paiements sont confirmés.
+- Si moins de 4 paiements sont confirmés à J-7, l'édition est annulée automatiquement.
+- Aucun maintien manuel sous le seuil de 4 n'est autorisé : la règle publique, les CGV et le backend appliquent le même seuil.
 - Si des paiements ont déjà été encaissés lors d'une annulation de l'édition, les participants sont prévenus et un e-mail interne demande le traitement des remboursements ou du report. Aucun remboursement financier n'est déclenché silencieusement par le Worker.
 
 ## Gestion des éditions depuis le Studio
 
-La source de vérité opérationnelle est désormais **Studio > Neptune JT**.
+La source de vérité opérationnelle est **Studio > Neptune JT**.
 
 Depuis cet écran, un administrateur ou un éditeur peut :
 
@@ -49,13 +54,12 @@ Depuis cet écran, un administrateur ou un éditeur peut :
 - choisir l'édition active affichée dans le tunnel public ;
 - modifier une édition existante ;
 - fermer ou réouvrir les inscriptions ;
-- maintenir manuellement une édition lorsque Neptune décide de déroger au seuil automatique ;
 - annuler une édition avec garde-fou lorsqu'il existe des paiements à rembourser ou reporter ;
 - archiver une édition terminée/annulée ;
 - consulter les compteurs 4/6, les paiements confirmés et le CA encaissé ;
 - consulter chaque dossier participant, son sujet, son CTA, sa source, son statut membre et son parrainage ;
 - renvoyer l'e-mail utile à un participant ;
-- déplacer un participant non payé vers une autre édition ;
+- déplacer un participant non payé vers une autre édition lorsque son état de paiement reste cohérent ;
 - annuler une participation avec contrôle renforcé si un paiement existe ;
 - exporter les participants en CSV.
 
@@ -78,15 +82,19 @@ Le système utilise le service Resend déjà configuré pour :
 - confirmer un paiement ;
 - renvoyer manuellement l'e-mail utile depuis le Studio ;
 - notifier une annulation automatique ou manuelle ;
-- alerter Neptune lorsqu'un remboursement/report doit être traité.
+- alerter Neptune lorsqu'un remboursement/report ou une anomalie Stripe doit être traité.
 
 ## Sécurité d'exploitation
 
 - Les écritures Studio sont protégées par la session administrateur existante, le jeton CSRF et le contrôle same-origin.
+- Les données d'authentification issues de la session serveur prennent priorité sur tout champ envoyé par le navigateur.
 - Les actions destructrices demandent une confirmation dans l'interface et sont revalidées côté serveur.
 - Un participant payé ne peut pas être déplacé automatiquement.
+- Un participant ayant déjà reçu un lien de paiement ne peut pas être déplacé vers une édition où le paiement redeviendrait fermé.
 - Une annulation contenant des paiements exige une confirmation explicite et ne simule jamais un remboursement Stripe.
 - Le paiement reste confirmé uniquement par Stripe.
+- Le tunnel public reste fermé lorsque l'état de l'édition ne peut pas être vérifié et applique un garde anti-robot léger en complément des validations serveur.
+- L'export CSV neutralise les valeurs pouvant être interprétées comme des formules par un tableur.
 
 ## CGV
 

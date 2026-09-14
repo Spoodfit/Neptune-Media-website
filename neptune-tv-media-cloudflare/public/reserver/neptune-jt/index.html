@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Pré-réserver · Neptune JT</title>
+  <meta name="description" content="Pré-réservez votre passage au Neptune JT. Aucun paiement tant que le minimum de 4 participants n'est pas atteint.">
+  <link rel="icon" href="/assets/logo-neptune.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/reserver/neptune-jt/assets/styles.css?v=20260914-1">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="/neptune-jt/"><img src="/assets/logo-neptune.svg" alt=""><span>Neptune Media</span></a>
+      <div class="secure">Neptune JT · Pré-réservation</div>
+    </header>
+
+    <main>
+      <aside class="summary">
+        <div class="live-kicker"><i></i> PROCHAINE ÉDITION</div>
+        <h1>Réservez votre sujet.<br><span>Le paiement vient après.</span></h1>
+        <p>Vous pré-réservez gratuitement. Dès que 4 participants sont inscrits, vous recevez le lien de paiement de <strong>200 € TTC</strong> pour confirmer votre place.</p>
+
+        <div class="status-card" id="statusCard" aria-live="polite">
+          <div class="status-head"><span>Minimum de maintien</span><b id="statusCount">— / 4</b></div>
+          <div class="segments" id="segments" aria-hidden="true"></div>
+          <p id="statusText">Chargement de la prochaine édition…</p>
+        </div>
+
+        <div class="facts">
+          <div><strong>15–20 min</strong><span>sur le plateau</span></div>
+          <div><strong>10+</strong><span>shorts livrés</span></div>
+          <div><strong>6 max.</strong><span>par édition</span></div>
+          <div><strong>J-7</strong><span>date limite de maintien</span></div>
+        </div>
+
+        <div class="rule-box">
+          <b>Pourquoi partager votre lien ?</b>
+          <p>Si 4 places ne sont pas confirmées et réglées à J-7, l'édition est annulée. Inviter un entrepreneur pertinent aide donc directement à sécuriser le tournage.</p>
+        </div>
+      </aside>
+
+      <section class="form-card" id="formCard">
+        <div class="step-label">ÉTAPE UNIQUE · 4 MINUTES</div>
+        <h2>Parlez-nous de votre actualité.</h2>
+        <p class="intro">Pas besoin d'avoir déjà l'angle parfait. Donnez-nous le sujet qui touche votre entreprise ou votre marché ; Neptune affinera l'interview avec vous.</p>
+
+        <form id="jtForm" novalidate>
+          <div class="grid two">
+            <label>Prénom<input name="firstName" autocomplete="given-name" required></label>
+            <label>Nom<input name="lastName" autocomplete="family-name" required></label>
+          </div>
+          <div class="grid two">
+            <label>Entreprise<input name="company" autocomplete="organization" required></label>
+            <label>Fonction<input name="role" autocomplete="organization-title" placeholder="Dirigeant, photographe, expert…"></label>
+          </div>
+          <div class="grid two">
+            <label>E-mail<input type="email" name="email" autocomplete="email" required></label>
+            <label>Téléphone<input type="tel" name="phone" autocomplete="tel"></label>
+          </div>
+          <label>Site ou profil principal<input type="url" name="website" placeholder="https://"></label>
+
+          <fieldset>
+            <legend>Êtes-vous déjà membre Neptune Business ?</legend>
+            <div class="choice-row">
+              <label class="choice"><input type="radio" name="memberStatus" value="member" required><span><b>Oui</b><small>Mon adhésion est déjà active</small></span></label>
+              <label class="choice"><input type="radio" name="memberStatus" value="non_member" required><span><b>Non</b><small>1 mois d'adhésion est inclus dans le tarif</small></span></label>
+            </div>
+          </fieldset>
+
+          <label class="featured">Quelle actualité souhaitez-vous décrypter ?<textarea name="topic" rows="4" required placeholder="Ex. L'IA générative bouleverse-t-elle réellement le métier de photographe ?"></textarea><small>Un sujet actuel lié directement à votre entreprise, votre métier ou votre marché.</small></label>
+          <label>Pourquoi ce sujet vous concerne-t-il maintenant ?<textarea name="topicContext" rows="3" placeholder="Ce que vous observez sur le terrain, ce qui change pour vos clients, votre secteur…"></textarea></label>
+          <label>Lien vers une actualité ou une source utile <span class="optional">(facultatif)</span><input type="url" name="sourceLink" placeholder="Article, étude, annonce officielle…"></label>
+          <label>Votre CTA à la fin du passage <span class="optional">(facultatif)</span><textarea name="commercialCta" rows="2" placeholder="Où voulez-vous renvoyer les personnes qui souhaitent vous contacter ?"></textarea></label>
+
+          <input type="hidden" name="referredBy" id="referredBy">
+
+          <div class="consents">
+            <label><input type="checkbox" name="acceptTerms" required><span>J'accepte les <a href="https://media.neptunebusiness.com/cgv-neptune-media.html" target="_blank" rel="noopener">CGV Neptune Media</a> et les <a href="https://media.neptunebusiness.com/cgv-neptune-jt.html" target="_blank" rel="noopener">conditions spécifiques Neptune JT</a>.</span></label>
+            <label><input type="checkbox" name="acceptMediaRights" required><span>J'autorise la captation et la diffusion de mon image, de ma voix et de mon intervention dans le cadre de Neptune JT et de sa promotion.</span></label>
+          </div>
+
+          <div class="notice"><b>Aucun paiement aujourd'hui.</b> Votre pré-réservation déclenche le règlement uniquement lorsque le seuil minimum de 4 participants est atteint. Votre place devient définitive après paiement.</div>
+          <button class="submit" type="submit" id="submitBtn">Pré-réserver ma place</button>
+          <div class="form-error" id="formError" role="alert"></div>
+        </form>
+      </section>
+
+      <section class="success-card" id="successCard" hidden>
+        <div class="success-icon">✓</div>
+        <div class="step-label">PRÉ-RÉSERVATION ENREGISTRÉE</div>
+        <h2 id="successTitle">Votre sujet est dans la sélection.</h2>
+        <p id="successText"></p>
+        <div class="share-card">
+          <span>Aidez l'édition à atteindre son minimum</span>
+          <strong>Invitez une personne dont l'actualité mérite le plateau.</strong>
+          <div class="share-url"><input id="shareUrl" readonly><button type="button" id="copyBtn">Copier</button></div>
+          <div class="share-actions">
+            <a id="whatsappBtn" target="_blank" rel="noopener">WhatsApp</a>
+            <a id="linkedinBtn" target="_blank" rel="noopener">LinkedIn</a>
+          </div>
+        </div>
+        <a class="back-link" href="/neptune-jt/">← Revenir à Neptune JT</a>
+      </section>
+    </main>
+  </div>
+  <script src="/reserver/neptune-jt/assets/app.js?v=20260914-1"></script>
+</body>
+</html>

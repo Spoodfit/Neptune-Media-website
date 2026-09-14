@@ -1,5 +1,6 @@
 import base,{StudioStore as BaseStudioStore,WebTvEncoder} from './entry-v47.js';
 import {isSameOrigin,json} from './security.js';
+import {adminAuth} from './portal-http-utils.js';
 import {
   EFFECTIVE_OFFER_V181_RELEASE,
   enhanceEffectiveOfferCatalogV181,
@@ -11,8 +12,9 @@ import {
   handleNeptuneJtStripeWebhook,
   reconcileNeptuneJtCheckoutSession,
   runNeptuneJtScheduled,
+  sendNeptuneJtCancellationNotifications,
   sendNeptuneJtReservationEmails,
-} from './neptune-jt-v182.js';
+} from './neptune-jt-v183.js';
 
 export {WebTvEncoder};
 
@@ -22,11 +24,12 @@ const CLIENT_VISUAL_ASSET='/espace-client/client-visual-coherence-v118-2.js?v=20
 const CLIENT_INTERACTION_ASSET='/espace-client/client-catalog-interaction-v118-7.js?v=20260913-2';
 const LEGACY_SALES_ASSET='/espace-client/sales-catalog-v96.js?v=20260913-1';
 const LEGACY_MEDIA_ASSET='/espace-client/media-catalog-v95.js?v=20260913-1';
+const STUDIO_JT_SHORTCUT='/studio/neptune-jt/studio-shortcut.js?v=20260914-1';
 
 export class StudioStore extends BaseStudioStore{
   async fetch(request){
     const url=new URL(request.url),method=request.method.toUpperCase();
-    if(url.pathname.startsWith('/neptune-jt-v182/')){
+    if(url.pathname.startsWith('/neptune-jt-v183/')){
       const handled=await handleNeptuneJtStore(this,request);
       if(handled)return handled;
     }
@@ -57,13 +60,18 @@ export default{
   async fetch(request,env,ctx){
     const url=new URL(request.url);
 
+    if(request.method==='GET'&&(url.pathname==='/studio/neptune-jt'||url.pathname==='/studio/neptune-jt/')){
+      const assetUrl=new URL('/studio/neptune-jt/index.html',request.url);
+      return markNeptuneJt(await env.ASSETS.fetch(new Request(assetUrl,request)));
+    }
+
     if(request.method==='GET'&&url.pathname==='/api/neptune-jt/status'){
-      return markNeptuneJt(await callNeptuneJtStore(env,'/neptune-jt-v182/status',null,'GET'));
+      return markNeptuneJt(await callNeptuneJtStore(env,'/neptune-jt-v183/status',null,'GET'));
     }
     if(request.method==='POST'&&url.pathname==='/api/neptune-jt/pre-register'){
       if(!isSameOrigin(request))return markNeptuneJt(json({error:'origin_forbidden'},403));
       const payload=await request.json().catch(()=>({}));
-      const response=await callNeptuneJtStore(env,'/neptune-jt-v182/pre-register',payload);
+      const response=await callNeptuneJtStore(env,'/neptune-jt-v183/pre-register',payload);
       const data=await response.clone().json().catch(()=>({}));
       if(response.ok&&data.internal){
         ctx?.waitUntil?.(sendNeptuneJtReservationEmails(env,data.internal).catch((error)=>console.error('neptune_jt_reservation_email_failed',safeError(error))));
@@ -80,10 +88,54 @@ export default{
       if(handled)return markNeptuneJt(handled);
     }
 
+    if(request.method==='GET'&&url.pathname==='/api/admin/neptune-jt-v183/dashboard'){
+      const auth=adminAuth(request);
+      const editionId=url.searchParams.get('editionId')||'';
+      return markNeptuneJt(await callNeptuneJtStore(env,'/neptune-jt-v183/admin-dashboard',{...auth,editionId}));
+    }
+    if(request.method==='POST'&&url.pathname==='/api/admin/neptune-jt-v183/edition'){
+      if(!isSameOrigin(request))return markNeptuneJt(json({error:'origin_forbidden'},403));
+      const payload=await request.json().catch(()=>({}));
+      return markNeptuneJt(await callNeptuneJtStore(env,'/neptune-jt-v183/admin-save-edition',{...adminAuth(request),...payload}));
+    }
+    if(request.method==='POST'&&url.pathname==='/api/admin/neptune-jt-v183/edition-action'){
+      if(!isSameOrigin(request))return markNeptuneJt(json({error:'origin_forbidden'},403));
+      const payload=await request.json().catch(()=>({}));
+      const response=await callNeptuneJtStore(env,'/neptune-jt-v183/admin-edition-action',{...adminAuth(request),...payload});
+      const data=await response.clone().json().catch(()=>({}));
+      if(response.ok&&data.internal?.cancellationRecipients){
+        ctx?.waitUntil?.(sendNeptuneJtCancellationNotifications(env,data.internal,(path,body)=>callNeptuneJtStore(env,path,body)).catch((error)=>console.error('neptune_jt_admin_cancel_email_failed',safeError(error))));
+      }
+      delete data.internal;
+      return markNeptuneJt(json(data,response.status));
+    }
+    if(request.method==='POST'&&url.pathname==='/api/admin/neptune-jt-v183/reservation-action'){
+      if(!isSameOrigin(request))return markNeptuneJt(json({error:'origin_forbidden'},403));
+      const payload=await request.json().catch(()=>({}));
+      const response=await callNeptuneJtStore(env,'/neptune-jt-v183/admin-reservation-action',{...adminAuth(request),...payload});
+      const data=await response.clone().json().catch(()=>({}));
+      if(response.ok&&data.internal){
+        if(data.internal.confirmation){
+          const recipient=data.internal.confirmation;
+          data.internal.paymentRecipients=[];
+          data.internal.acknowledgement=null;
+          ctx?.waitUntil?.(sendNeptuneJtReservationEmails(env,{paymentRecipients:[],acknowledgement:null}).catch(()=>{}));
+          ctx?.waitUntil?.(sendManualConfirmation(env,recipient).catch((error)=>console.error('neptune_jt_admin_confirmation_failed',safeError(error))));
+        }else{
+          ctx?.waitUntil?.(sendNeptuneJtReservationEmails(env,data.internal).catch((error)=>console.error('neptune_jt_admin_resend_failed',safeError(error))));
+        }
+      }
+      delete data.internal;
+      return markNeptuneJt(json(data,response.status));
+    }
+
     let response=await base.fetch(request,env,ctx);
     const type=response.headers.get('Content-Type')||'';
     if(request.method==='GET'&&response.ok&&type.includes('text/html')&&isClientHome(url.pathname)){
       response=await pinClientCatalogRuntime(response);
+    }
+    if(request.method==='GET'&&response.ok&&type.includes('text/html')&&isStudioDocument(url.pathname)&&!url.pathname.startsWith('/studio/neptune-jt')){
+      response=await injectStudioJtShortcut(response);
     }
     if(request.method==='GET'&&url.pathname==='/api/public/release'&&response.ok){
       const data=await response.json().catch(()=>({}));
@@ -141,12 +193,32 @@ async function pinClientCatalogRuntime(response){
   return new Response(body,{status:response.status,statusText:response.statusText,headers});
 }
 
+async function injectStudioJtShortcut(response){
+  let body=await response.text();
+  if(!body.includes(STUDIO_JT_SHORTCUT.split('?')[0]))body=body.replace('</body>',`<script src="${STUDIO_JT_SHORTCUT}"></script></body>`);
+  const headers=new Headers(response.headers);
+  for(const name of ['Content-Length','Content-Encoding','ETag','Last-Modified'])headers.delete(name);
+  headers.set('Cache-Control','private, no-store, max-age=0');
+  return new Response(body,{status:response.status,statusText:response.statusText,headers});
+}
+
+async function sendManualConfirmation(env,recipient){
+  const {sendEmail}=await import('./email-service.js');
+  return sendEmail(env,{
+    to:[recipient.email],
+    subject:'Neptune JT · Votre place est confirmée',
+    text:`Bonjour ${recipient.firstName},\n\nVotre règlement de 200 € TTC est validé : votre place au Neptune JT est confirmée.\n\nNeptune vous recontactera pour la préparation éditoriale.\n\nÀ bientôt sur le plateau,\nNeptune Media`,
+    idempotencyKey:`neptune-jt-paid-manual-${recipient.id}-${recipient.messageNonce||Date.now()}`,
+  });
+}
+
 function isCommercialSelection(pathname){
   return pathname.endsWith('/selection-v96')||pathname==='/sales-v173/validate-selection'||pathname==='/sales-v172/hold';
 }
 function isClientHome(pathname){
   return pathname==='/espace-client'||pathname==='/espace-client/'||pathname==='/espace-client/index.html';
 }
+function isStudioDocument(pathname){return pathname==='/studio'||pathname==='/studio/'||pathname.startsWith('/studio/');}
 function callNeptuneJtStore(env,path,body,method='POST'){
   const studio=env.STUDIO.get(env.STUDIO.idFromName('neptune-media-main'));
   return studio.fetch(`https://store${path}`,{

@@ -9,6 +9,7 @@ const premerge = read('neptune-tv-media-cloudflare/src/neptune-jt-v185.js');
 const hardened = read('neptune-tv-media-cloudflare/src/neptune-jt-v184.js');
 const base = read('neptune-tv-media-cloudflare/src/neptune-jt-v183.js');
 const tunnel = read('neptune-tv-media-cloudflare/public/reserver/neptune-jt/assets/app.js');
+const confirmation = read('neptune-tv-media-cloudflare/public/reserver/neptune-jt/confirmation/index.html');
 const landing = read('neptune-tv-media-cloudflare/public/neptune-jt/index.html');
 const landingStatus = read('neptune-tv-media-cloudflare/public/neptune-jt/status-v184.js');
 const studio = read('neptune-tv-media-cloudflare/public/studio/neptune-jt/index.html');
@@ -38,10 +39,12 @@ assert.ok(tunnel.includes('registrationOpen = data.registrationOpen === true'), 
 assert.ok(tunnel.includes("honeypot.name = '_companyWebsite'"), 'public tunnel must include a lightweight abuse trap');
 assert.ok(tunnel.includes("startedAt.name = '_formStartedAt'"), 'public tunnel must reject implausibly fast automated submissions');
 assert.ok(tunnel.includes('renderEditionMeta(data.edition)'), 'public tunnel must show the actual edition date and location');
+assert.ok(confirmation.indexOf('data.financialReviewRequired') < confirmation.indexOf('data.confirmed'), 'financial anomalies must be shown before any success confirmation');
+assert.ok(confirmation.includes('N’effectuez pas de second paiement'), 'payment anomaly UX must explicitly prevent a second charge attempt');
 assert.ok(landing.includes('/neptune-jt/status-v184.js'), 'public landing must load live edition status');
 assert.ok(landingStatus.includes("fetch('/api/neptune-jt/status'"), 'landing must use the same source of truth as the tunnel');
 assert.ok(studio.includes('/studio/neptune-jt/release-guard-v184.js'), 'Studio must load the release guard');
 assert.ok(studioGuard.includes('/^[=+\\-@\\t\\r]/u'), 'CSV export must neutralize spreadsheet formula injection');
 assert.ok(!exists('neptune-tv-media-cloudflare/src/neptune-jt-v182.js'), 'obsolete v182 runtime must not ship beside the active Neptune JT runtime');
 
-console.log('Neptune JT premerge verification passed: payments, editions, moves, Studio, public tunnel and export guards are locked.');
+console.log('Neptune JT premerge verification passed: payments, editions, moves, Studio, public tunnel, confirmation and export guards are locked.');

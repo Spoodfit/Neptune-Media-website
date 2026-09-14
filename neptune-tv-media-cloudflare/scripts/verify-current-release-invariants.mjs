@@ -45,6 +45,8 @@ for (const text of ['Une demi-journée.', '3 mois de contenus.', '30 contenus mi
   contains(horsNorme, text, 'HORS NORME React landing');
 }
 contains(horsNorme, '/hors-norme/_next/', 'HORS NORME React landing');
+contains(horsNorme, '/direct/?embed=1', 'HORS NORME WebTV embed');
+excludes(horsNorme, 'hors-norme.mp4', 'HORS NORME React landing');
 excludes(horsNorme, 'release-v182.txt', 'HORS NORME React landing');
 
 console.log('Current Neptune Media release invariants: OK');

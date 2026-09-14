@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 6,
+  "schemaVersion": 7,
   "project": "Neptune Media",
   "purpose": "Reference implementation being prepared for migration into the Neptune VPS monorepo",
   "current": {
@@ -25,6 +25,7 @@
     "canonicalVerificationScripts": [
       "neptune-tv-media-cloudflare/scripts/verify-migration-readiness.mjs",
       "neptune-tv-media-cloudflare/scripts/verify-repository-cleanliness.mjs",
+      "neptune-tv-media-cloudflare/scripts/verify-react-surfaces.mjs",
       "neptune-tv-media-cloudflare/scripts/verify-production-contracts.mjs",
       "neptune-tv-media-cloudflare/scripts/visual-render-audit.mjs",
       "neptune-tv-media-cloudflare/scripts/qa-production-ui.mjs"
@@ -41,14 +42,15 @@
       "migration/TARGET_VPS.md",
       "migration/LEGACY_CLEANUP.md",
       "migration/RUNTIME_GRAPH.md",
-      "migration/WORKFLOW_OWNERSHIP.md"
+      "migration/WORKFLOW_OWNERSHIP.md",
+      "migration/REACT_SURFACE_ARCHITECTURE.md"
     ],
-    "wranglerFiles": [
-      "wrangler.jsonc",
-      "neptune-tv-media-cloudflare/wrangler.jsonc"
-    ],
+    "wranglerFiles": ["wrangler.jsonc", "neptune-tv-media-cloudflare/wrangler.jsonc"],
     "persistence": "Cloudflare Durable Object StudioStore / SQLite",
     "binaryStorage": "Cloudflare R2 and external providers depending on the domain",
+    "reactSourceSurfaces": {
+      "horsNorme": "neptune-tv-media-cloudflare/react/hors-norme"
+    },
     "surfaces": [
       "neptune-tv-media-cloudflare/public/index.html",
       "neptune-tv-media-cloudflare/public/studio",
@@ -63,52 +65,21 @@
       "neptune-tv-media-cloudflare/src/entry-v46.js",
       "legacy descendants imported transitively"
     ],
-    "platformSpecificPatterns": [
-      "env.STUDIO",
-      "env.MEDIA",
-      "env.AI",
-      "this.sql",
-      "@cloudflare/containers"
-    ]
+    "platformSpecificPatterns": ["env.STUDIO", "env.MEDIA", "env.AI", "this.sql", "@cloudflare/containers"]
   },
   "target": {
     "deployment": "Neptune VPS / Docker",
     "publicDomain": "media.neptunebusiness.com",
     "frontendRoot": "apps/media",
+    "frontendArchitecture": "React",
+    "requiredReactSurfaces": ["site", "hors-norme", "reservation", "client", "studio", "direct-webtv"],
     "backendRoot": "apps/backend",
     "persistence": "PostgreSQL / Prisma",
     "ingress": "host NGINX -> 127.0.0.1:8081 -> neptune-media -> neptune-backend",
-    "existingFrontendAnchors": [
-      "apps/media/src/App.jsx",
-      "apps/media/src/pages/LandingPage.jsx",
-      "apps/media/src/pages/ReservationPage.jsx",
-      "apps/media/public"
-    ],
-    "existingBackendAnchors": [
-      "apps/backend/src/routes/media.js",
-      "apps/backend/src/routes/mediaClient.js",
-      "apps/backend/src/routes/mediaStudio.js",
-      "apps/backend/src/routes/mediaWebtv.js",
-      "apps/backend/src/services/mediaBookingService.js",
-      "apps/backend/prisma/schema.prisma"
-    ]
+    "existingFrontendAnchors": ["apps/media/src/App.jsx", "apps/media/src/pages/LandingPage.jsx", "apps/media/src/pages/ReservationPage.jsx", "apps/media/public"],
+    "existingBackendAnchors": ["apps/backend/src/routes/media.js", "apps/backend/src/routes/mediaClient.js", "apps/backend/src/routes/mediaStudio.js", "apps/backend/src/routes/mediaWebtv.js", "apps/backend/src/services/mediaBookingService.js", "apps/backend/prisma/schema.prisma"]
   },
-  "domains": [
-    "catalog",
-    "prospect",
-    "reservation",
-    "availability",
-    "payment",
-    "order",
-    "client",
-    "studio",
-    "supplier",
-    "content",
-    "publication",
-    "webtv",
-    "notification",
-    "analytics"
-  ],
+  "domains": ["catalog", "prospect", "reservation", "availability", "payment", "order", "client", "studio", "supplier", "content", "publication", "webtv", "notification", "analytics"],
   "rules": [
     "Studio is the human cockpit, not the persistence layer",
     "Backend domain services are the source of truth",
@@ -124,6 +95,8 @@
     "The six canonical Media surfaces must remain present until VPS parity is validated",
     "The active Cloudflare entrypoint must use the canonical worker.js filename",
     "The HORS NORME and booking handoff must use current.canonicalBookingUrl",
-    "Generated visual audit output and one-shot mutation scripts must not be committed"
+    "Generated visual audit output and one-shot mutation scripts must not be committed",
+    "All target Media user-facing surfaces must be React",
+    "Generated React output is not a frontend source of truth"
   ]
 }

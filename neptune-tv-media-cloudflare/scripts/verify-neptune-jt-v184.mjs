@@ -5,6 +5,7 @@ const read = (path) => fs.readFileSync(path, 'utf8');
 const exists = (path) => fs.existsSync(path);
 
 const worker = read('neptune-tv-media-cloudflare/src/worker.js');
+const premerge = read('neptune-tv-media-cloudflare/src/neptune-jt-v185.js');
 const hardened = read('neptune-tv-media-cloudflare/src/neptune-jt-v184.js');
 const base = read('neptune-tv-media-cloudflare/src/neptune-jt-v183.js');
 const tunnel = read('neptune-tv-media-cloudflare/public/reserver/neptune-jt/assets/app.js');
@@ -13,9 +14,11 @@ const landingStatus = read('neptune-tv-media-cloudflare/public/neptune-jt/status
 const studio = read('neptune-tv-media-cloudflare/public/studio/neptune-jt/index.html');
 const studioGuard = read('neptune-tv-media-cloudflare/public/studio/neptune-jt/release-guard-v184.js');
 
-assert.ok(worker.includes("from './neptune-jt-v184.js'"), 'active Worker must use Neptune JT v184 hardening');
+assert.ok(worker.includes("from './neptune-jt-v185.js'"), 'active Worker must use the final Neptune JT premerge runtime');
 assert.ok(!worker.includes("from './neptune-jt-v183.js'"), 'active Worker must not bypass Neptune JT hardening');
 assert.ok(worker.includes('{...payload,...adminAuth(request)}'), 'trusted Studio auth must override untrusted JSON fields');
+assert.ok(premerge.includes('payment_requested_move_requires_open_target'), 'an issued payment link must not be moved into a target where payment would become closed');
+assert.ok(premerge.includes("reservation.status !== 'payment_requested'"), 'the move guard must only constrain reservations whose payment link was already issued');
 
 assert.ok(hardened.includes("SELECT id,status FROM neptune_jt_reservations_v182 WHERE edition_id=? AND email=? LIMIT 1"), 'duplicate e-mail must be handled before the UNIQUE constraint');
 assert.ok(hardened.includes("row.status !== 'payment_requested'"), 'paid sessions must only confirm reservations that were actually invited to pay');
@@ -39,6 +42,6 @@ assert.ok(landing.includes('/neptune-jt/status-v184.js'), 'public landing must l
 assert.ok(landingStatus.includes("fetch('/api/neptune-jt/status'"), 'landing must use the same source of truth as the tunnel');
 assert.ok(studio.includes('/studio/neptune-jt/release-guard-v184.js'), 'Studio must load the release guard');
 assert.ok(studioGuard.includes('/^[=+\\-@\\t\\r]/u'), 'CSV export must neutralize spreadsheet formula injection');
-assert.ok(!exists('neptune-tv-media-cloudflare/src/neptune-jt-v182.js'), 'obsolete v182 runtime must not ship beside v183/v184');
+assert.ok(!exists('neptune-tv-media-cloudflare/src/neptune-jt-v182.js'), 'obsolete v182 runtime must not ship beside the active Neptune JT runtime');
 
-console.log('Neptune JT v184 release hardening verified: payments, editions, Studio, public tunnel and export guards are locked.');
+console.log('Neptune JT premerge verification passed: payments, editions, moves, Studio, public tunnel and export guards are locked.');

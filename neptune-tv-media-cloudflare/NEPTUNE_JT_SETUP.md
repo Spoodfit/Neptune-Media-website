@@ -61,13 +61,13 @@ Depuis cet écran, un administrateur ou un éditeur peut :
 
 Les rôles `admin` et `editor` peuvent agir. Le rôle `analyst` peut consulter sans modifier.
 
-## Variables Cloudflare
+## Source de vérité et initialisation
 
-Les variables `NEPTUNE_JT_*` dans `wrangler.jsonc` servent uniquement à amorcer la toute première édition et à fournir des valeurs de repli. Elles ne sont plus le moyen normal d'exploiter Neptune JT.
+Les paramètres d'exploitation courante ne sont pas stockés dans `wrangler.jsonc`. Le backend possède seulement des valeurs de repli pour amorcer la première édition si la base est vide.
 
-Après initialisation, la date, le lieu, le statut, le cutoff J-7 et l'édition active sont persistés dans le Durable Object du Studio et se gèrent depuis l'interface.
+Dès qu'une édition existe, sa date, son lieu, son statut, son cutoff J-7, son lien de paiement et le choix de l'édition active sont persistés dans le Durable Object du Studio et se gèrent depuis l'interface.
 
-Il n'est donc plus nécessaire de modifier `NEPTUNE_JT_EVENT_AT` ou `NEPTUNE_JT_EDITION_ID` à chaque trimestre.
+Il n'est donc pas nécessaire de modifier une configuration Cloudflare à chaque trimestre : une nouvelle édition se crée directement depuis **Studio > Neptune JT**.
 
 ## E-mails
 

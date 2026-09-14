@@ -31,7 +31,8 @@ export async function handleNeptuneJtStore(store, request) {
       if (protectedMove) return protectedMove;
     }
   }
-  return handleNeptuneJtStoreV184(store, request);
+  const delegated = await handleNeptuneJtStoreV184(store, request);
+  return withActiveRelease(delegated);
 }
 
 export function handleNeptuneJtStripeWebhook(request, env, storeCall) {
@@ -52,6 +53,23 @@ export function sendNeptuneJtReservationEmails(env, internal = {}) {
 
 export function sendNeptuneJtCancellationNotifications(env, internal = {}, storeCall) {
   return sendNeptuneJtCancellationNotificationsV184(env, internal, storeCall);
+}
+
+async function withActiveRelease(response) {
+  if (!response) return response;
+  const type = response.headers.get('Content-Type') || '';
+  if (!type.includes('application/json')) return response;
+  const data = await response.clone().json().catch(() => null);
+  if (!data || typeof data !== 'object' || Array.isArray(data) || !Object.prototype.hasOwnProperty.call(data, 'release')) return response;
+  data.release = NEPTUNE_JT_RELEASE;
+  const headers = new Headers(response.headers);
+  headers.delete('Content-Length');
+  headers.set('Content-Type', 'application/json; charset=utf-8');
+  return new Response(JSON.stringify(data), {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 }
 
 function enforceStrictMinimum(store) {

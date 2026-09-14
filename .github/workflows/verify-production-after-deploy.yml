@@ -38,6 +38,9 @@ jobs:
       - name: Verify production contracts
         run: node neptune-tv-media-cloudflare/scripts/verify-production-contracts.mjs
 
+      - name: Verify Neptune JT production smoke
+        run: node neptune-tv-media-cloudflare/scripts/verify-neptune-jt-production.mjs
+
       - name: Verify canonical Studio information architecture
         run: node neptune-tv-media-cloudflare/scripts/verify-studio-information-architecture-production-v65.mjs
 

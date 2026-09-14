@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="theme-color" content="#f5f7fb">
+  <title>Neptune JT · Studio Neptune Media</title>
+  <link rel="icon" href="/assets/logo-neptune.svg">
+  <link rel="stylesheet" href="/studio/studio-shell-v105.css?v=4">
+  <link rel="stylesheet" href="/studio/neptune-jt/assets/styles.css?v=20260914-1">
+</head>
+<body class="jt-studio-body">
+  <div id="loading" class="jt-loading"><div class="jt-loader"></div><strong>Synchronisation Neptune JT…</strong></div>
+
+  <main id="authGate" class="jt-auth-gate" hidden>
+    <div class="jt-auth-card">
+      <img src="/assets/logo-neptune.svg" alt="">
+      <p class="jt-eyebrow">NEPTUNE MEDIA STUDIO</p>
+      <h1>Session Studio requise</h1>
+      <p>Connectez-vous au Studio pour administrer Neptune JT.</p>
+      <a class="jt-btn jt-btn--primary" href="/studio/advanced.html">Se connecter au Studio</a>
+    </div>
+  </main>
+
+  <div id="app" class="jt-shell" hidden>
+    <aside class="jt-sidebar" id="jtSidebar">
+      <a class="jt-brand" href="/studio/clients" aria-label="Neptune Media Studio">
+        <img src="/assets/logo-neptune.svg" alt="">
+        <div><b>Neptune</b><small>Media · Studio</small></div>
+      </a>
+      <div class="jt-sync"><i></i><span>Studio synchronisé</span></div>
+      <a class="jt-feature-link active" href="/studio/neptune-jt"><span>JT</span><div><b>Neptune JT</b><small>Éditions & participants</small></div></a>
+      <nav class="jt-nav" aria-label="Navigation principale du Studio">
+        <a href="/studio/clients"><span>◎</span><strong>Parcours clients</strong></a>
+        <a href="/studio/webtv.html"><span>▶</span><strong>Diffusion</strong></a>
+        <a href="/studio/advanced.html#programs"><span>▦</span><strong>Catalogue Média</strong></a>
+        <a href="/studio/advanced.html#finances"><span>€</span><strong>Finance</strong></a>
+        <a href="/studio/advanced.html#settings"><span>⚙</span><strong>Réglage</strong></a>
+      </nav>
+      <button class="jt-account" id="logout" type="button"><span class="jt-avatar">NM</span><span><b id="accountName">Compte Studio</b><small id="accountRole">Se déconnecter</small></span><i>↪</i></button>
+    </aside>
+
+    <button class="jt-menu-toggle" id="menuToggle" type="button" aria-label="Ouvrir le menu"><span></span></button>
+    <button class="jt-backdrop" id="backdrop" type="button" aria-label="Fermer le menu"></button>
+
+    <main class="jt-main">
+      <header class="jt-topbar">
+        <div>
+          <p class="jt-eyebrow">NEPTUNE MEDIA STUDIO</p>
+          <h1>Neptune JT</h1>
+          <p class="jt-subtitle">Pilotez les éditions, les participants et le seuil 4/6 depuis un seul endroit.</p>
+        </div>
+        <div class="jt-top-actions">
+          <span class="jt-status-dot"><i></i><span id="syncState">Synchronisé</span></span>
+          <button class="jt-btn jt-btn--secondary" id="refresh" type="button">Actualiser</button>
+          <button class="jt-btn jt-btn--primary" id="newEdition" type="button">Nouvelle édition</button>
+        </div>
+      </header>
+
+      <section class="jt-toolbar">
+        <label class="jt-edition-select"><span>Édition affichée</span><select id="editionSelect"></select></label>
+        <div class="jt-toolbar-actions">
+          <button class="jt-btn jt-btn--ghost" id="editEdition" type="button">Modifier l’édition</button>
+          <button class="jt-btn jt-btn--ghost" id="exportCsv" type="button">Exporter CSV</button>
+        </div>
+      </section>
+
+      <section id="editionBanner" class="jt-edition-banner"></section>
+      <section id="metrics" class="jt-metrics" aria-label="Indicateurs Neptune JT"></section>
+
+      <div class="jt-grid">
+        <section class="jt-panel jt-panel--participants">
+          <div class="jt-panel-head">
+            <div><p class="jt-eyebrow">PARTICIPANTS</p><h2>Réservations</h2><p id="participantsSummary">—</p></div>
+            <div class="jt-filters">
+              <input id="search" type="search" placeholder="Rechercher nom, entreprise, sujet…" aria-label="Rechercher">
+              <select id="statusFilter" aria-label="Filtrer par statut">
+                <option value="">Tous les statuts</option>
+                <option value="confirmed">Payé</option>
+                <option value="payment_requested">Paiement demandé</option>
+                <option value="pre_registered">Pré-réservé</option>
+                <option value="cancelled_participant">Annulé</option>
+                <option value="cancelled_event">Édition annulée</option>
+              </select>
+            </div>
+          </div>
+          <div class="jt-table-wrap">
+            <table class="jt-table">
+              <thead><tr><th>Participant</th><th>Sujet</th><th>Statut</th><th>Parrainage</th><th>Montant</th><th></th></tr></thead>
+              <tbody id="participantRows"></tbody>
+            </table>
+          </div>
+          <div id="emptyParticipants" class="jt-empty" hidden><strong>Aucune réservation pour cette édition.</strong><span>Le tunnel alimentera automatiquement cet écran.</span></div>
+        </section>
+
+        <aside class="jt-panel jt-panel--control">
+          <div class="jt-panel-head"><div><p class="jt-eyebrow">CONTRÔLE</p><h2>Édition</h2><p>Actions sensibles protégées côté serveur.</p></div></div>
+          <div id="editionControl" class="jt-control-list"></div>
+          <div class="jt-rule-card">
+            <strong>Règle de maintien</strong>
+            <p>À J-7, l’édition est maintenue à partir de 4 paiements confirmés. Sinon elle est annulée automatiquement, sauf maintien manuel explicite.</p>
+          </div>
+          <div class="jt-rule-card jt-rule-card--stripe">
+            <strong>Stripe reste la source de vérité</strong>
+            <p>Le Studio ne permet pas de marquer manuellement un client comme payé. Les confirmations viennent de Stripe.</p>
+          </div>
+        </aside>
+      </div>
+
+      <section class="jt-panel jt-panel--referrals">
+        <div class="jt-panel-head"><div><p class="jt-eyebrow">DISTRIBUTION</p><h2>Parrainages & partage</h2><p>Qui contribue réellement à remplir l’édition.</p></div></div>
+        <div id="referralList" class="jt-referrals"></div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="editionDialog" class="jt-dialog">
+    <form id="editionForm" method="dialog" class="jt-dialog-card">
+      <div class="jt-dialog-head"><div><p class="jt-eyebrow">ÉDITION NEPTUNE JT</p><h2 id="editionDialogTitle">Nouvelle édition</h2></div><button class="jt-icon-btn" value="cancel" type="submit" aria-label="Fermer">×</button></div>
+      <input type="hidden" name="id">
+      <label><span>Nom de l’édition</span><input name="label" required placeholder="Neptune JT · Octobre 2026"></label>
+      <label><span>Date et heure du tournage</span><input name="eventAt" type="datetime-local" required></label>
+      <label><span>Lieu</span><input name="location" required placeholder="REC BOX Studio · Montrabé"></label>
+      <label><span>Lien Stripe 200 € TTC</span><input name="paymentLink" type="url" required></label>
+      <label><span>Notes internes</span><textarea name="notes" rows="4" placeholder="Informations de production, présentateur, contraintes…"></textarea></label>
+      <label class="jt-check"><input name="activate" type="checkbox"><span>Définir cette édition comme édition active du tunnel</span></label>
+      <div class="jt-dialog-actions"><button class="jt-btn jt-btn--ghost" value="cancel" type="submit">Annuler</button><button class="jt-btn jt-btn--primary" id="saveEdition" type="button">Enregistrer</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="participantDialog" class="jt-dialog jt-dialog--wide">
+    <div class="jt-dialog-card">
+      <div class="jt-dialog-head"><div><p class="jt-eyebrow">DOSSIER PARTICIPANT</p><h2 id="participantTitle">Participant</h2></div><button class="jt-icon-btn" id="closeParticipant" type="button" aria-label="Fermer">×</button></div>
+      <div id="participantDetail"></div>
+    </div>
+  </dialog>
+
+  <div id="toast" class="jt-toast" hidden></div>
+  <script src="/studio/neptune-jt/assets/app.js?v=20260914-1"></script>
+  <script src="/studio/neptune-jt/release-guard-v184.js?v=20260914-1"></script>
+</body>
+</html>

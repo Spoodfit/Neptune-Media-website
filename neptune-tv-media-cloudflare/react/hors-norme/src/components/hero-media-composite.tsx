@@ -4,8 +4,8 @@ import { useEffect, useRef } from "react"
 import { VisibilityShowcase } from "@/components/visibility-showcase"
 
 const LONG_FORM = {
-  src: "/assets/media/showcase/hors-norme-hero.mp4",
-  poster: "/assets/posters/hors-norme-episode.webp",
+  src: "https://neptune-media-webtv.neptunebusinessclub.workers.dev/media/emissions/hors-norme.mp4",
+  poster: "/assets/posters/hors-norme-wide.webp",
 }
 
 function forcePlay(video: HTMLVideoElement) {
@@ -44,7 +44,7 @@ export function HeroMediaComposite() {
         <div className="relative z-0 overflow-hidden rounded-[18px] border border-white/20 bg-black shadow-[0_30px_90px_#00000061] sm:rounded-[22px]">
           <div className="relative aspect-video w-full bg-[#050b16]">
             <img src={LONG_FORM.poster} alt="" className="absolute inset-0 h-full w-full object-cover" decoding="async" />
-            <video ref={videoRef} id="player" className="pointer-events-none absolute inset-0 z-[1] h-full w-full object-cover [&::-webkit-media-controls]:hidden [&::-webkit-media-controls-enclosure]:hidden" autoPlay muted loop playsInline preload="auto" controls={false} disablePictureInPicture controlsList="nodownload nofullscreen noremoteplayback noplaybackrate" tabIndex={-1} poster={LONG_FORM.poster} src={LONG_FORM.src} />
+            <video ref={videoRef} id="player" className="pointer-events-none absolute inset-0 z-[1] h-full w-full object-cover [&::-webkit-media-controls]:hidden [&::-webkit-media-controls-enclosure]:hidden" autoPlay muted loop playsInline preload="metadata" controls={false} disablePictureInPicture controlsList="nodownload nofullscreen noremoteplayback noplaybackrate" tabIndex={-1} poster={LONG_FORM.poster} src={LONG_FORM.src} />
           </div>
         </div>
       </div>

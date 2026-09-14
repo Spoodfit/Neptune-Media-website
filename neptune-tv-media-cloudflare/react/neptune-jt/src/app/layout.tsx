@@ -10,7 +10,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="fr">
-      <head><link rel="icon" href="/assets/logo-neptune.svg" type="image/svg+xml" /></head>
+      <head>
+        <link rel="icon" href="/assets/logo-neptune.svg" type="image/svg+xml" />
+        <link rel="stylesheet" href="/neptune-jt/neptune-jt.css?v=20260914-1" />
+      </head>
       <body>{children}</body>
     </html>
   );

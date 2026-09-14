@@ -4,26 +4,34 @@ import { useEffect, useRef } from "react"
 
 type ShowcaseItem = { src: string; poster: string; label: string; size: "large" | "small" }
 
+const MEDIA = {
+  light: { src: "/assets/media/neptune-media-mis-en-lumiere.mp4", poster: "/assets/posters/poster-neptune-media.webp" },
+  accident: { src: "/assets/media/accident-moto-entreprise.mp4", poster: "/assets/posters/poster-accident.webp" },
+  video: { src: "/assets/media/solution-video-pro.mp4", poster: "/assets/posters/poster-video-pro.webp" },
+  story: { src: "/assets/media/storytelling-efficace.mp4", poster: "/assets/posters/poster-storytelling.webp" },
+  human: { src: "/assets/media/humain-avant-business.mp4", poster: "/assets/posters/poster-humain.webp" },
+} as const
+
 const TOP_ITEMS: ShowcaseItem[] = [
-  { src: "/assets/media/showcase/short-01.mp4", poster: "/assets/posters/showcase/short-01.webp", label: "Votre entrepreneuriat mis en lumière", size: "large" },
-  { src: "/assets/media/showcase/short-02.mp4", poster: "/assets/posters/showcase/short-02.webp", label: "Hors Norme · Émission complète", size: "large" },
-  { src: "/assets/media/showcase/short-03.mp4", poster: "/assets/posters/showcase/short-03.webp", label: "Accident et renaissance", size: "large" },
-  { src: "/assets/media/showcase/short-04.mp4", poster: "/assets/posters/showcase/short-04.webp", label: "La solution vidéo professionnelle", size: "large" },
-  { src: "/assets/media/showcase/short-05.mp4", poster: "/assets/posters/showcase/short-05.webp", label: "Le secret d’un storytelling efficace", size: "large" },
-  { src: "/assets/media/showcase/short-06.mp4", poster: "/assets/posters/showcase/short-06.webp", label: "Jeu Connexio · Émission complète", size: "large" },
-  { src: "/assets/media/showcase/short-07.mp4", poster: "/assets/posters/showcase/short-07.webp", label: "L’humain avant le business", size: "large" },
-  { src: "/assets/media/showcase/short-08.mp4", poster: "/assets/posters/showcase/short-08.webp", label: "Une histoire hors norme", size: "large" },
+  { ...MEDIA.light, label: "Votre entrepreneuriat mis en lumière", size: "large" },
+  { ...MEDIA.human, label: "Hors Norme · Émission complète", size: "large" },
+  { ...MEDIA.accident, label: "Accident et renaissance", size: "large" },
+  { ...MEDIA.video, label: "La solution vidéo professionnelle", size: "large" },
+  { ...MEDIA.story, label: "Le secret d’un storytelling efficace", size: "large" },
+  { ...MEDIA.light, label: "Jeu Connexio · Émission complète", size: "large" },
+  { ...MEDIA.human, label: "L’humain avant le business", size: "large" },
+  { ...MEDIA.accident, label: "Une histoire hors norme", size: "large" },
 ]
 
 const BOTTOM_ITEMS: ShowcaseItem[] = [
-  { src: "/assets/media/showcase/short-09.mp4", poster: "/assets/posters/showcase/short-09.webp", label: "Raconter une épreuve", size: "small" },
-  { src: "/assets/media/showcase/short-10.mp4", poster: "/assets/posters/showcase/short-10.webp", label: "Créer de l’interaction", size: "small" },
-  { src: "/assets/media/showcase/short-11.mp4", poster: "/assets/posters/showcase/short-11.webp", label: "Le premier direct", size: "small" },
-  { src: "/assets/media/showcase/short-12.mp4", poster: "/assets/posters/showcase/short-12.webp", label: "Première expérience TV", size: "small" },
-  { src: "/assets/media/showcase/short-13.mp4", poster: "/assets/posters/showcase/short-13.webp", label: "Élever la qualité", size: "small" },
-  { src: "/assets/media/showcase/short-14.mp4", poster: "/assets/posters/showcase/short-14.webp", label: "Une histoire hors norme", size: "small" },
-  { src: "/assets/media/showcase/short-15.mp4", poster: "/assets/posters/showcase/short-15.webp", label: "Votre entrepreneuriat mis en lumière", size: "small" },
-  { src: "/assets/media/showcase/short-16.mp4", poster: "/assets/posters/showcase/short-16.webp", label: "Rebondir après une association", size: "small" },
+  { ...MEDIA.accident, label: "Raconter une épreuve", size: "small" },
+  { ...MEDIA.light, label: "Créer de l’interaction", size: "small" },
+  { ...MEDIA.video, label: "Le premier direct", size: "small" },
+  { ...MEDIA.human, label: "Première expérience TV", size: "small" },
+  { ...MEDIA.story, label: "Élever la qualité", size: "small" },
+  { ...MEDIA.human, label: "Une histoire hors norme", size: "small" },
+  { ...MEDIA.light, label: "Votre entrepreneuriat mis en lumière", size: "small" },
+  { ...MEDIA.story, label: "Rebondir après une association", size: "small" },
 ]
 
 function forcePlay(video: HTMLVideoElement) {
@@ -56,7 +64,7 @@ function AutoPlayVideo({ src, poster, label }: { src: string; poster: string; la
       window.clearInterval(interval)
     }
   }, [src])
-  return <video ref={ref} muted loop autoPlay playsInline preload="auto" poster={poster} src={src} aria-label={label} />
+  return <video ref={ref} muted loop autoPlay playsInline preload="metadata" poster={poster} src={src} aria-label={label} />
 }
 
 function ShortCard({ item }: { item: ShowcaseItem }) {
@@ -64,7 +72,7 @@ function ShortCard({ item }: { item: ShowcaseItem }) {
 }
 
 function MarqueeRow({ items, direction }: { items: ShowcaseItem[]; direction: "top" | "bottom" }) {
-  return <div className={`visibility-marquee visibility-marquee--${direction}`}><div className="visibility-marquee__track">{[0, 1].map((copy) => <div key={copy} className="visibility-marquee__group" aria-hidden={copy > 0 || undefined}>{items.map((item, index) => <ShortCard key={`${copy}-${item.src}-${index}`} item={item} />)}</div>)}</div></div>
+  return <div className={`visibility-marquee visibility-marquee--${direction}`}><div className="visibility-marquee__track">{[0, 1].map((copy) => <div key={copy} className="visibility-marquee__group" aria-hidden={copy > 0 || undefined}>{items.map((item, index) => <ShortCard key={`${copy}-${item.label}-${index}`} item={item} />)}</div>)}</div></div>
 }
 
 export function VisibilityShowcase() {

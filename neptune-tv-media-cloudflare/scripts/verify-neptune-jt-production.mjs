@@ -5,7 +5,7 @@ const WORKERS_URL = (process.env.WORKERS_URL || 'https://neptune-media-webtv.nep
 const DEPLOY_SHA = process.env.DEPLOY_SHA || process.env.GITHUB_SHA || 'manual';
 const bases = [...new Set([WORKERS_URL, PUBLIC_URL])];
 
-const runtimeSource = await readFile(new URL('../src/neptune-jt-v185.js', import.meta.url), 'utf8');
+const runtimeSource = await readFile(new URL('../src/neptune-jt-v187.js', import.meta.url), 'utf8');
 const expectedRelease = runtimeSource.match(/export const NEPTUNE_JT_RELEASE\s*=\s*['"]([^'"]+)['"]/)?.[1];
 if (!expectedRelease) throw new Error('Unable to resolve Neptune JT release from source');
 

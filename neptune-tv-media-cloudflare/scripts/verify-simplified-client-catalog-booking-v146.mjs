@@ -40,9 +40,9 @@ assert(historicalStripeRedirect.includes("after_completion[redirect][url]"), 'hi
 assert(salesCatalog.includes('ensureStripeConfirmationRedirectV146'), 'historical sales catalogue compatibility hook is missing');
 assert(salesCatalog.includes('stripeConfirmation'), 'historical sales catalogue does not expose safe redirect-sync status');
 
-// Canonical production return now stays in the active media-domain tunnel, where payment state is server verified.
-const expectedStripeUrl='https://media.neptunebusiness.com/reserver?payment=success&session_id={CHECKOUT_SESSION_ID}';
-assert(canonicalStripeRedirect.includes(`RESERVATION_STRIPE_RETURN_URL='${expectedStripeUrl}'`), 'canonical Stripe return URL is not the media-domain reservation tunnel');
+// Canonical production return stays on the currently deployed Worker reservation tunnel, where payment state is server verified.
+const expectedStripeUrl='https://neptune-media-webtv.neptunebusinessclub.workers.dev/reserver?payment=success&session_id={CHECKOUT_SESSION_ID}';
+assert(canonicalStripeRedirect.includes(`RESERVATION_STRIPE_RETURN_URL='${expectedStripeUrl}'`), 'canonical Stripe return URL is not the active Worker reservation tunnel');
 assert(canonicalStripeRedirect.includes("after_completion[redirect][url]"), 'canonical Stripe Payment Link redirect synchronizer missing');
 assert(canonicalStripeRedirect.includes("LEGACY_STATE_KEY='stripe_redirect_version'"), 'canonical synchronizer does not freeze the legacy redirect state');
 assert(entry47.includes('ensureCanonicalStripeRedirectV180'), 'active entry does not invoke the canonical Stripe redirect synchronizer');

@@ -15,6 +15,8 @@ const landingStatus = read('neptune-tv-media-cloudflare/public/neptune-jt/status
 const studio = read('neptune-tv-media-cloudflare/public/studio/neptune-jt/index.html');
 const studioGuard = read('neptune-tv-media-cloudflare/public/studio/neptune-jt/release-guard-v184.js');
 const setup = read('neptune-tv-media-cloudflare/NEPTUNE_JT_SETUP.md');
+const productionSmoke = read('neptune-tv-media-cloudflare/scripts/verify-neptune-jt-production.mjs');
+const productionWorkflow = read('.github/workflows/verify-production-after-deploy.yml');
 
 assert.ok(worker.includes("from './neptune-jt-v185.js'"), 'active Worker must use the final Neptune JT premerge runtime');
 assert.ok(!worker.includes("from './neptune-jt-v183.js'"), 'active Worker must not bypass Neptune JT hardening');
@@ -50,6 +52,14 @@ assert.ok(studioGuard.includes('[data-edition-action="maintain"]'), 'Studio must
 assert.ok(studioGuard.includes('uniquement à partir de 4 paiements confirmés'), 'Studio copy must state the strict four-payment rule');
 assert.ok(studioGuard.includes('/^[=+\\-@\\t\\r]/u'), 'CSV export must neutralize spreadsheet formula injection');
 assert.ok(setup.includes('Aucun maintien manuel sous le seuil de 4'), 'operations documentation must match the strict four-participant rule');
+
+assert.ok(productionSmoke.includes("/api/neptune-jt/status"), 'post-deploy smoke must verify the Neptune JT public status endpoint');
+assert.ok(productionSmoke.includes("/api/admin/neptune-jt-v183/dashboard"), 'post-deploy smoke must verify Studio auth remains closed to anonymous requests');
+assert.ok(productionSmoke.includes('X-Neptune-JT release header mismatch'), 'post-deploy smoke must verify the deployed Neptune JT release header');
+assert.ok(productionSmoke.includes('invalid Stripe session must fail closed'), 'post-deploy smoke must verify invalid payment reconciliation fails closed');
+assert.ok(productionWorkflow.includes('Verify Neptune JT production smoke'), 'post-deploy workflow must execute the Neptune JT production smoke');
+assert.ok(productionWorkflow.includes('verify-neptune-jt-production.mjs'), 'post-deploy workflow must call the Neptune JT production smoke script');
+
 assert.ok(!exists('neptune-tv-media-cloudflare/src/neptune-jt-v182.js'), 'obsolete v182 runtime must not ship beside the active Neptune JT runtime');
 
-console.log('Neptune JT premerge verification passed: strict 4/6 rule, payments, editions, moves, Studio, public tunnel, confirmation and export guards are locked.');
+console.log('Neptune JT premerge verification passed: strict 4/6 rule, payments, editions, moves, Studio, public tunnel, confirmation, export guards and post-deploy smoke are locked.');

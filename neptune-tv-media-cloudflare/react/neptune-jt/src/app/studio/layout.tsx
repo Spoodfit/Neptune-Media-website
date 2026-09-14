@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function StudioLayout({ children }: { children: ReactNode }) {
-  return children;
+  return <><link rel="stylesheet" href="/studio/studio-shell-v105.css?v=4" /><link rel="stylesheet" href="/studio/neptune-jt/assets/styles.css?v=20260914-1" />{children}</>;
 }

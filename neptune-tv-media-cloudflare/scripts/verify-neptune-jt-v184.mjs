@@ -1,68 +1,118 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-const read = (path) => fs.readFileSync(path, 'utf8');
-const exists = (path) => fs.existsSync(path);
+const read = path => fs.readFileSync(path, 'utf8');
+const exists = path => fs.existsSync(path);
 
 const worker = read('neptune-tv-media-cloudflare/src/worker.js');
+const active = read('neptune-tv-media-cloudflare/src/neptune-jt-v187.js');
+const audited = read('neptune-tv-media-cloudflare/src/neptune-jt-v186.js');
 const premerge = read('neptune-tv-media-cloudflare/src/neptune-jt-v185.js');
 const hardened = read('neptune-tv-media-cloudflare/src/neptune-jt-v184.js');
 const base = read('neptune-tv-media-cloudflare/src/neptune-jt-v183.js');
-const tunnel = read('neptune-tv-media-cloudflare/public/reserver/neptune-jt/assets/app.js');
-const confirmation = read('neptune-tv-media-cloudflare/public/reserver/neptune-jt/confirmation/index.html');
-const landing = read('neptune-tv-media-cloudflare/public/neptune-jt/index.html');
-const landingStatus = read('neptune-tv-media-cloudflare/public/neptune-jt/status-v184.js');
-const studio = read('neptune-tv-media-cloudflare/public/studio/neptune-jt/index.html');
-const studioGuard = read('neptune-tv-media-cloudflare/public/studio/neptune-jt/release-guard-v184.js');
+const landing = read('neptune-tv-media-cloudflare/react/neptune-jt/src/app/page.tsx');
+const tunnel = read('neptune-tv-media-cloudflare/react/neptune-jt/src/app/reserver/page.tsx');
+const confirmation = read('neptune-tv-media-cloudflare/react/neptune-jt/src/app/confirmation/page.tsx');
+const studio = read('neptune-tv-media-cloudflare/react/neptune-jt/src/app/studio/page.tsx');
+const config = read('neptune-tv-media-cloudflare/react/neptune-jt/next.config.ts');
 const setup = read('neptune-tv-media-cloudflare/NEPTUNE_JT_SETUP.md');
+const terms = read('neptune-tv-media-cloudflare/public/cgv-neptune-jt.html');
 const productionSmoke = read('neptune-tv-media-cloudflare/scripts/verify-neptune-jt-production.mjs');
 const productionWorkflow = read('.github/workflows/verify-production-after-deploy.yml');
+const packageJson = read('package.json');
 
-assert.ok(worker.includes("from './neptune-jt-v185.js'"), 'active Worker must use the final Neptune JT premerge runtime');
-assert.ok(!worker.includes("from './neptune-jt-v183.js'"), 'active Worker must not bypass Neptune JT hardening');
+assert.ok(packageJson.includes('neptune-tv-media-cloudflare/react/neptune-jt'), 'root workspace must include Neptune JT React');
+assert.ok(config.includes('output: "export"'), 'Neptune JT must use a static Next export');
+assert.ok(config.includes('assetPrefix: "/neptune-jt-assets"'), 'Neptune JT assets must use their isolated public prefix');
+for (const source of [landing, tunnel, confirmation, studio]) assert.ok(source.includes('react') || source.includes('useState') || source.includes('useEffect'), 'all Neptune JT UI surfaces must be React source');
+
+assert.ok(worker.includes("from './neptune-jt-v187.js'"), 'active Worker must use Neptune JT v187 runtime');
 assert.ok(worker.includes('{...payload,...adminAuth(request)}'), 'trusted Studio auth must override untrusted JSON fields');
-assert.ok(premerge.includes('payment_requested_move_requires_open_target'), 'an issued payment link must not be moved into a target where payment would become closed');
-assert.ok(premerge.includes("reservation.status !== 'payment_requested'"), 'the move guard must only constrain reservations whose payment link was already issued');
-assert.ok(premerge.includes('manual_maintenance_disabled'), 'manual maintenance below the four-participant rule must be rejected server-side');
-assert.ok(premerge.includes('enforceStrictMinimum(store)'), 'legacy manual-override state must be normalized before requests are processed');
-assert.ok(premerge.includes('force_maintained=0'), 'strict minimum normalization must clear legacy override state');
-assert.ok(premerge.includes('withActiveRelease(delegated)'), 'delegated Neptune JT responses must be normalized to the active release');
-assert.ok(premerge.includes('data.release = NEPTUNE_JT_RELEASE'), 'public and Studio JSON release fields must expose the active Neptune JT release');
+assert.ok(worker.includes('sendNeptuneJtReservationEmails(env,data.internal)'), 'all Studio reservation mail actions must use the audited mail dispatcher');
+assert.ok(premerge.includes('manual_maintenance_disabled'), 'manual maintenance below four must remain disabled');
+assert.ok(premerge.includes('enforceStrictMinimum(store)'), 'strict 4/6 rule must be normalized server-side');
+assert.ok(hardened.includes('duplicate_paid_session'), 'double Stripe payment must enter financial review');
+assert.ok(hardened.includes('neptune_jt_financial_alerts_v184'), 'financial anomalies must persist');
+assert.ok(hardened.includes("url.hostname === 'buy.stripe.com'"), 'Studio must accept only Stripe Payment Links');
+assert.ok(hardened.includes('edition_date_must_be_future'), 'past edition dates must be rejected');
+assert.ok(base.includes('verifyStripeWebhook'), 'signed Stripe verification must remain available in the backend lineage');
+assert.ok(base.includes('amountTotal || 0) !== 20000'), 'exact 200 EUR payment validation must remain enabled');
 
-assert.ok(hardened.includes("SELECT id,status FROM neptune_jt_reservations_v182 WHERE edition_id=? AND email=? LIMIT 1"), 'duplicate e-mail must be handled before the UNIQUE constraint');
-assert.ok(hardened.includes("row.status !== 'payment_requested'"), 'paid sessions must only confirm reservations that were actually invited to pay');
-assert.ok(hardened.includes('duplicate_paid_session'), 'a second Stripe payment must enter financial review instead of overwriting the first payment');
-assert.ok(hardened.includes('neptune_jt_financial_alerts_v184'), 'financial anomalies must be persisted');
-assert.ok(hardened.includes("url.hostname === 'buy.stripe.com'"), 'Studio must only accept Stripe Payment Link URLs');
-assert.ok(hardened.includes('edition_date_must_be_future'), 'Studio must reject past edition dates');
-assert.ok(hardened.includes("event_at IS NOT NULL AND event_at>?"), 'automatic active-edition recovery must prefer a future edition');
-assert.ok(hardened.includes("registrations_closed_at=COALESCE(registrations_closed_at,?)"), 'J-7 processing must close registrations consistently');
-assert.ok(hardened.includes('paid_participant_cancelled'), 'paid participant cancellation must create a financial review alert');
-assert.ok(base.includes('verifyStripeWebhook'), 'signed Stripe webhook verification must remain in the underlying runtime');
-assert.ok(base.includes('amountTotal || 0) !== 20000'), 'underlying runtime must retain exact 200 EUR payment validation');
+assert.ok(audited.includes("NEPTUNE_JT_RELEASE = 'neptune-jt-20260915-v186-live-sync-email-audit'"), 'email-audited runtime must remain below the active wrapper');
+assert.ok(audited.includes('participantMoved'), 'moving a participant must generate a dedicated notification');
+assert.ok(audited.includes('minimum de 4 paiements confirmés n’a pas été atteint à J-7'), 'J-7 cancellation email must explain the actual cancellation rule');
+assert.ok(audited.includes('tout règlement déjà encaissé est remboursé, ou reporté uniquement avec votre accord'), 'payment request email must explain refund/report semantics');
+assert.ok(audited.includes("Math.max(0, Number(alert.amountCents || 0)) / 100"), 'financial alert emails must display euros, not raw cents');
 
-assert.ok(tunnel.includes('registrationOpen = data.registrationOpen === true'), 'public tunnel must fail closed when the active edition is not open');
-assert.ok(tunnel.includes("honeypot.name = '_companyWebsite'"), 'public tunnel must include a lightweight abuse trap');
-assert.ok(tunnel.includes("startedAt.name = '_formStartedAt'"), 'public tunnel must reject implausibly fast automated submissions');
-assert.ok(tunnel.includes('renderEditionMeta(data.edition)'), 'public tunnel must show the actual edition date and location');
-assert.ok(confirmation.indexOf('data.financialReviewRequired') < confirmation.indexOf('data.confirmed'), 'financial anomalies must be shown before any success confirmation');
-assert.ok(confirmation.includes('N’effectuez pas de second paiement'), 'payment anomaly UX must explicitly prevent a second charge attempt');
-assert.ok(landing.includes('/neptune-jt/status-v184.js'), 'public landing must load live edition status');
-assert.ok(landingStatus.includes("fetch('/api/neptune-jt/status'"), 'landing must use the same source of truth as the tunnel');
-assert.ok(studio.includes('/studio/neptune-jt/release-guard-v184.js'), 'Studio must load the release guard');
-assert.ok(studioGuard.includes('[data-edition-action="maintain"]'), 'Studio must remove obsolete manual-maintenance controls');
-assert.ok(studioGuard.includes('uniquement à partir de 4 paiements confirmés'), 'Studio copy must state the strict four-payment rule');
-assert.ok(studioGuard.includes('/^[=+\\-@\\t\\r]/u'), 'CSV export must neutralize spreadsheet formula injection');
-assert.ok(setup.includes('Aucun maintien manuel sous le seuil de 4'), 'operations documentation must match the strict four-participant rule');
+assert.ok(active.includes("NEPTUNE_JT_RELEASE = 'neptune-jt-20260915-v187-studio-canonical-promo'"), 'active v187 canonical Studio release must be present');
+assert.ok(active.includes("PROMO_CODE = 'NEPTUNEJT'"), 'Neptune JT non-member promo code must remain explicit in the server-side email layer');
+assert.ok(active.includes("recipient.memberStatus === 'non_member'"), 'promo must be restricted to participants declared as non-members');
+assert.ok(active.includes('Code promotionnel : ${PROMO_CODE}'), 'paid confirmation email must contain the promo code');
+assert.ok(active.includes('verifyStripeWebhook'), 'active runtime must verify Stripe webhook signatures before materialization');
+assert.ok(active.includes("amount_paid_cents=20000"), 'canonical backfill must only accept exact verified 200 EUR JT payments');
+assert.ok(active.includes('materializeStudioParticipant'), 'verified JT payments must materialize into canonical Studio records');
+assert.ok(active.includes("PRODUCT_CODE = 'neptune-jt'"), 'Studio orders must have a stable Neptune JT product code');
+assert.ok(active.includes('portal_client_id'), 'JT participation must persist its canonical Studio client reference');
+assert.ok(active.includes('portal_order_id'), 'JT participation must persist its canonical Studio order reference');
+assert.ok(active.includes('canonical_materialized_at'), 'JT participation must record canonical materialization time');
+assert.ok(active.includes('syncSteps(store, order.id'), 'canonical Studio workflow steps must be initialized after payment');
+assert.ok(active.includes("payment_status='refund_pending'"), 'Neptune-side paid cancellation must enter refund-pending state');
+assert.ok(active.includes('portal_refund_requests'), 'Neptune-side paid cancellation must create a canonical refund request');
+assert.ok(active.includes("CANCELLATION_ORIGINS = new Set(['participant', 'neptune'])"), 'cancellation origin must remain explicit');
+assert.ok(active.includes("return json({ error: 'cancellation_origin_required' }, 400)"), 'ambiguous Studio cancellations must fail closed');
+assert.ok(active.includes('le paiement n’est pas remboursable dans ce cas'), 'participant-requested paid cancellation must remain non-refundable');
+assert.ok(active.includes('Neptune procédera au remboursement Stripe'), 'Neptune cancellation mail must state actual refund/report treatment');
+assert.ok(active.includes('terms_version'), 'accepted JT terms version must be persisted');
+assert.ok(active.includes('media_release_version'), 'accepted media-rights version must be persisted');
 
-assert.ok(productionSmoke.includes("/api/neptune-jt/status"), 'post-deploy smoke must verify the Neptune JT public status endpoint');
-assert.ok(productionSmoke.includes("/api/admin/neptune-jt-v183/dashboard"), 'post-deploy smoke must verify Studio auth remains closed to anonymous requests');
-assert.ok(productionSmoke.includes('X-Neptune-JT release header mismatch'), 'post-deploy smoke must verify the deployed Neptune JT release header');
-assert.ok(productionSmoke.includes('status?.release === expectedRelease'), 'post-deploy smoke must verify the public status body exposes the active release');
-assert.ok(productionSmoke.includes('invalid Stripe session must fail closed'), 'post-deploy smoke must verify invalid payment reconciliation fails closed');
-assert.ok(productionWorkflow.includes('Verify Neptune JT production smoke'), 'post-deploy workflow must execute the Neptune JT production smoke');
-assert.ok(productionWorkflow.includes('verify-neptune-jt-production.mjs'), 'post-deploy workflow must call the Neptune JT production smoke script');
+assert.ok(landing.includes('fetch("/api/neptune-jt/status"'), 'React landing must use live Neptune JT status');
+assert.ok(tunnel.includes('fetch("/api/neptune-jt/status"'), 'React tunnel must fail closed from live status');
+assert.ok(tunnel.includes('fetch("/api/neptune-jt/pre-register"'), 'React tunnel must submit to the production API');
+assert.ok(tunnel.includes('_companyWebsite'), 'React tunnel must keep the honeypot');
+assert.ok(tunnel.includes('_formStartedAt'), 'React tunnel must keep minimum-time abuse guard');
+assert.ok(confirmation.includes('/api/neptune-jt/payment-status'), 'React confirmation must reconcile Stripe server-side');
+assert.ok(confirmation.indexOf('financialReviewRequired') < confirmation.indexOf('data.confirmed'), 'financial review must be handled before confirmation success');
+assert.ok(confirmation.includes('N’effectuez pas de second paiement'), 'confirmation must prevent duplicate-charge behavior');
+assert.ok(studio.includes('/api/auth/status'), 'React Studio must require the existing Studio session');
+assert.ok(studio.includes('/api/admin/neptune-jt-v183'), 'React Studio must use the existing protected Neptune JT admin API');
+assert.ok(!studio.includes('Maintenir manuellement'), 'React Studio must not expose obsolete manual maintenance');
+assert.ok(studio.includes('/^[=+\\-@\\t\\r]/u'), 'React Studio CSV export must neutralize spreadsheet formula injection');
+assert.ok(studio.includes('AUTO_SYNC_MS = 10_000'), 'React Studio must refresh live state automatically');
+assert.ok(studio.includes('visibilitychange'), 'React Studio must resync immediately when the tab becomes visible');
+assert.ok(studio.includes('window.addEventListener("focus", refresh)'), 'React Studio must resync immediately on focus');
+assert.ok(studio.includes('const requestId = ++syncRequestId.current'), 'Studio refresh races must be latest-request-wins');
+assert.ok(studio.includes('cancellationOrigin: action === "cancel" ? cancellationOrigin : undefined'), 'Studio must send cancellation origin to backend');
+assert.ok(studio.includes('Demandée par le participant'), 'Studio must expose participant-requested cancellation explicitly');
+assert.ok(studio.includes('Annuler par Neptune'), 'Studio must expose Neptune-requested cancellation explicitly');
 
-assert.ok(!exists('neptune-tv-media-cloudflare/src/neptune-jt-v182.js'), 'obsolete v182 runtime must not ship beside the active Neptune JT runtime');
+for (const generated of [
+  'neptune-tv-media-cloudflare/public/neptune-jt/index.html',
+  'neptune-tv-media-cloudflare/public/reserver/neptune-jt/index.html',
+  'neptune-tv-media-cloudflare/public/reserver/neptune-jt/confirmation/index.html',
+  'neptune-tv-media-cloudflare/public/studio/neptune-jt/index.html',
+]) {
+  assert.ok(exists(generated), `generated React page missing: ${generated}`);
+  const html = read(generated);
+  assert.ok(html.includes('/neptune-jt-assets/_next/'), `generated page is not the Neptune JT Next/React export: ${generated}`);
+  assert.ok(!html.includes('NEPTUNEJT'), `promo code must not be exposed in generated public/Studio HTML: ${generated}`);
+}
+for (const legacy of [
+  'neptune-tv-media-cloudflare/public/neptune-jt/status-v184.js',
+  'neptune-tv-media-cloudflare/public/reserver/neptune-jt/assets/app.js',
+  'neptune-tv-media-cloudflare/public/studio/neptune-jt/assets/app.js',
+  'neptune-tv-media-cloudflare/public/studio/neptune-jt/release-guard-v184.js',
+]) assert.ok(!exists(legacy), `legacy imperative Neptune JT runtime must not ship: ${legacy}`);
 
-console.log('Neptune JT premerge verification passed: strict 4/6 rule, active release, payments, editions, moves, Studio, public tunnel, confirmation, export guards and post-deploy smoke are locked.');
+assert.ok(!landing.includes('NEPTUNEJT'), 'landing React source must not expose the promo code before payment');
+assert.ok(!tunnel.includes('NEPTUNEJT'), 'reservation React source must not expose the promo code before payment');
+assert.ok(!studio.includes('NEPTUNEJT'), 'Studio React UI does not need to expose the customer promo code');
+assert.ok(terms.includes('code promotionnel envoyé par e-mail après confirmation effective du paiement'), 'specific terms must describe promo delivery after paid confirmation');
+assert.ok(setup.includes('Aucun maintien manuel sous le seuil de 4'), 'operations documentation must match strict 4/6 rule');
+assert.ok(setup.includes('https://tv.neptunebusiness.com/reserver/neptune-jt/confirmation/?session_id={CHECKOUT_SESSION_ID}'), 'setup must keep the exact Stripe confirmation URL');
+assert.ok(productionSmoke.includes('/api/neptune-jt/status'), 'post-deploy smoke must verify public status');
+assert.ok(productionSmoke.includes('/api/admin/neptune-jt-v183/dashboard'), 'post-deploy smoke must verify Studio auth');
+assert.ok(productionSmoke.includes('status?.release === expectedRelease'), 'production smoke must verify active release body');
+assert.ok(productionWorkflow.includes('Verify Neptune JT production smoke'), 'post-deploy workflow must run Neptune JT smoke');
+assert.ok(!exists('neptune-tv-media-cloudflare/src/neptune-jt-v182.js'), 'obsolete v182 backend must remain absent');
+
+console.log('Neptune JT verified: React surfaces, strict 4/6 lifecycle, signed Stripe confirmation, canonical Studio materialization, refund-pending workflow and non-member promo email are aligned.');

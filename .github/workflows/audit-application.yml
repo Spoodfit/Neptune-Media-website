@@ -6,9 +6,12 @@ on:
     paths:
       - '.github/workflows/audit-application.yml'
       - 'neptune-tv-media-cloudflare/public/**'
+      - 'neptune-tv-media-cloudflare/react/**'
       - 'neptune-tv-media-cloudflare/src/**'
+      - 'neptune-tv-media-cloudflare/scripts/build-react-surfaces.mjs'
       - 'neptune-tv-media-cloudflare/tests/audit-entire-application-v60.mjs'
       - 'neptune-tv-media-cloudflare/tests/evaluate-entire-application-v60.mjs'
+      - 'package.json'
       - 'wrangler.jsonc'
   workflow_dispatch:
 

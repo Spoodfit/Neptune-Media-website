@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" role="img" aria-labelledby="title desc">
+  <title id="title">Plateau Neptune JT</title>
+  <desc id="desc">Plateau TV Neptune JT, écrans, desk central et lumières bleues, violettes et roses.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#030713"/><stop offset=".48" stop-color="#09184a"/><stop offset="1" stop-color="#17051f"/></linearGradient>
+    <linearGradient id="neon" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#31c8ff"/><stop offset=".35" stop-color="#635dff"/><stop offset=".65" stop-color="#f74bd2"/><stop offset="1" stop-color="#ff9c42"/></linearGradient>
+    <linearGradient id="desk" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ff665c"/><stop offset=".5" stop-color="#ea2878"/><stop offset="1" stop-color="#46198e"/></linearGradient>
+    <radialGradient id="earth" cx="50%" cy="35%" r="70%"><stop stop-color="#47c8ff"/><stop offset=".35" stop-color="#1466ff"/><stop offset=".72" stop-color="#09217d"/><stop offset="1" stop-color="#020a2e"/></radialGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="10" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="shadow"><feDropShadow dx="0" dy="24" stdDeviation="22" flood-color="#000" flood-opacity=".65"/></filter>
+  </defs>
+  <rect width="1440" height="900" fill="url(#bg)"/>
+  <rect x="0" y="0" width="1440" height="185" fill="#02040d"/>
+  <g opacity=".95" filter="url(#glow)">
+    <path d="M0 145H410" stroke="#3bbdff" stroke-width="8"/><path d="M1030 145H1440" stroke="#3bbdff" stroke-width="8"/>
+    <path d="M0 675H420" stroke="#6559ff" stroke-width="7"/><path d="M1020 675H1440" stroke="#6559ff" stroke-width="7"/>
+    <path d="M35 158V660M1405 158V660" stroke="url(#neon)" stroke-width="7"/>
+  </g>
+  <g fill="#0c1230" stroke="#475cff" stroke-width="4" filter="url(#shadow)">
+    <rect x="22" y="170" width="205" height="135" rx="8"/><rect x="72" y="350" width="185" height="125" rx="8"/><rect x="18" y="520" width="205" height="140" rx="8"/>
+    <rect x="1213" y="170" width="205" height="135" rx="8"/><rect x="1183" y="350" width="185" height="125" rx="8"/><rect x="1217" y="520" width="205" height="140" rx="8"/>
+  </g>
+  <g font-family="Arial, Helvetica, sans-serif" text-anchor="middle">
+    <g fill="#fff" font-size="27" font-weight="700"><text x="124" y="242">Neptune</text><text x="164" y="420">Neptune</text><text x="120" y="598">Neptune</text><text x="1316" y="242">Neptune</text><text x="1276" y="420">Neptune</text><text x="1320" y="598">Neptune</text></g>
+    <g fill="none" stroke="url(#neon)" stroke-width="4" opacity=".9"><path d="M50 278c45-35 95 35 145 0"/><path d="M90 450c35-25 90 28 142 0"/><path d="M45 632c42-32 95 32 150 0"/><path d="M1242 278c45-35 95 35 145 0"/><path d="M1205 450c35-25 90 28 142 0"/><path d="M1243 632c42-32 95 32 150 0"/></g>
+  </g>
+  <g filter="url(#shadow)">
+    <rect x="414" y="155" width="612" height="390" rx="8" fill="#020922" stroke="#4c83ff" stroke-width="5"/>
+    <circle cx="720" cy="356" r="225" fill="url(#earth)" opacity=".98"/>
+    <path d="M505 330c85-55 170-65 250-10 70 46 128 45 198 6" fill="none" stroke="#64d5ff" stroke-width="3" opacity=".45"/>
+    <path d="M542 400c88-42 170-43 251-5 73 34 124 31 174 4" fill="none" stroke="#a15cff" stroke-width="3" opacity=".34"/>
+    <rect x="414" y="155" width="612" height="7" fill="url(#neon)" filter="url(#glow)"/>
+  </g>
+  <g font-family="Arial, Helvetica, sans-serif" text-anchor="middle" fill="#fff" filter="url(#glow)">
+    <text x="720" y="382" font-size="94" font-weight="800">Neptune</text>
+    <text x="792" y="474" font-size="86" font-weight="900">JT</text>
+  </g>
+  <rect x="608" y="397" width="132" height="6" rx="3" fill="url(#neon)"/>
+  <g filter="url(#shadow)">
+    <path d="M465 570H975L930 790H510Z" fill="#dfe8ff" stroke="#fff" stroke-width="4"/>
+    <path d="M510 615H930L900 785H540Z" fill="url(#desk)"/>
+    <path d="M465 570H975L915 616H525Z" fill="#f8faff"/>
+    <path d="M623 570H817L770 605H670Z" fill="#d429ba"/>
+  </g>
+  <g fill="#161a2e" stroke="#8189b4" stroke-width="4" filter="url(#shadow)">
+    <ellipse cx="355" cy="655" rx="88" ry="45" transform="rotate(8 355 655)"/><ellipse cx="1085" cy="655" rx="88" ry="45" transform="rotate(-8 1085 655)"/>
+  </g>
+  <g stroke="#aeb8dc" stroke-width="9"><path d="M365 687L350 825"/><path d="M1075 687L1090 825"/></g>
+  <g fill="none" stroke="#d8ddf1" stroke-width="7"><ellipse cx="348" cy="825" rx="72" ry="17"/><ellipse cx="1092" cy="825" rx="72" ry="17"/></g>
+  <g fill="#fff" opacity=".96" filter="url(#glow)"><rect x="205" y="32" width="95" height="54" rx="8" transform="rotate(18 205 32)"/><rect x="1140" y="32" width="95" height="54" rx="8" transform="rotate(-18 1140 32)"/><rect x="420" y="58" width="65" height="38" rx="7"/><rect x="955" y="58" width="65" height="38" rx="7"/></g>
+  <rect x="0" y="0" width="1440" height="900" fill="none" stroke="#3f53ff" stroke-opacity=".22" stroke-width="4"/>
+</svg>

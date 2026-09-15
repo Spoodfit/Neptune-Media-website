@@ -60,7 +60,7 @@ assert.ok(active.includes("payment_status='refund_pending'"), 'Neptune-side paid
 assert.ok(active.includes('portal_refund_requests'), 'Neptune-side paid cancellation must create a canonical refund request');
 assert.ok(active.includes("CANCELLATION_ORIGINS = new Set(['participant', 'neptune'])"), 'cancellation origin must remain explicit');
 assert.ok(active.includes("return json({ error: 'cancellation_origin_required' }, 400)"), 'ambiguous Studio cancellations must fail closed');
-assert.ok(active.includes('le paiement n’est pas remboursable selon les conditions acceptées'), 'participant-requested paid cancellation must remain non-refundable');
+assert.ok(active.includes('le paiement n’est pas remboursable dans ce cas'), 'participant-requested paid cancellation must remain non-refundable');
 assert.ok(active.includes('Neptune procédera au remboursement Stripe'), 'Neptune cancellation mail must state actual refund/report treatment');
 assert.ok(active.includes('terms_version'), 'accepted JT terms version must be persisted');
 assert.ok(active.includes('media_release_version'), 'accepted media-rights version must be persisted');
@@ -94,7 +94,7 @@ for (const generated of [
   assert.ok(exists(generated), `generated React page missing: ${generated}`);
   const html = read(generated);
   assert.ok(html.includes('/neptune-jt-assets/_next/'), `generated page is not the Neptune JT Next/React export: ${generated}`);
-  assert.ok(!html.includes('NEPTUNEJT'), `private promo code must not be exposed in generated public/Studio HTML: ${generated}`);
+  assert.ok(!html.includes('NEPTUNEJT'), `promo code must not be exposed in generated public/Studio HTML: ${generated}`);
 }
 for (const legacy of [
   'neptune-tv-media-cloudflare/public/neptune-jt/status-v184.js',
@@ -103,9 +103,9 @@ for (const legacy of [
   'neptune-tv-media-cloudflare/public/studio/neptune-jt/release-guard-v184.js',
 ]) assert.ok(!exists(legacy), `legacy imperative Neptune JT runtime must not ship: ${legacy}`);
 
-assert.ok(!landing.includes('NEPTUNEJT'), 'landing React source must not expose the private promo code');
-assert.ok(!tunnel.includes('NEPTUNEJT'), 'reservation React source must not expose the private promo code');
-assert.ok(!studio.includes('NEPTUNEJT'), 'Studio React UI does not need to expose the customer promo secret');
+assert.ok(!landing.includes('NEPTUNEJT'), 'landing React source must not expose the promo code before payment');
+assert.ok(!tunnel.includes('NEPTUNEJT'), 'reservation React source must not expose the promo code before payment');
+assert.ok(!studio.includes('NEPTUNEJT'), 'Studio React UI does not need to expose the customer promo code');
 assert.ok(terms.includes('code promotionnel envoyé par e-mail après confirmation effective du paiement'), 'specific terms must describe promo delivery after paid confirmation');
 assert.ok(setup.includes('Aucun maintien manuel sous le seuil de 4'), 'operations documentation must match strict 4/6 rule');
 assert.ok(setup.includes('https://tv.neptunebusiness.com/reserver/neptune-jt/confirmation/?session_id={CHECKOUT_SESSION_ID}'), 'setup must keep the exact Stripe confirmation URL');

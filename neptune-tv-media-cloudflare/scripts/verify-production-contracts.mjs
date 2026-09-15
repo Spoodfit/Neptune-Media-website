@@ -130,6 +130,7 @@ async function verifyBase(base) {
   const clientHtml = await clientResponse.text();
   must(/no-store/i.test(clientResponse.headers.get('cache-control') || ''), `${base}: client no-store`);
   must(/noindex/i.test(clientResponse.headers.get('x-robots-tag') || ''), `${base}: client noindex`);
+  void clientHtml;
 
   await retry(`${base} client runtime`, async (attempt) => {
     const suffix = `verify=${q}&attempt=${attempt}`;
@@ -157,7 +158,7 @@ async function verifyBase(base) {
   }, 24, 5000);
 
   const horsNorme = (await text(`${base}/hors-norme?verify=${q}`)).body;
-  for (const marker of ['30 contenus minimum garantis', '3 mois de communication', 'Le parcours VIP clé en main', 'Vérifier mon éligibilité']) {
+  for (const marker of ['Une demi-journée.', '3 mois de contenus.', 'Calendrier éditorial 90 jours', 'Demander mon créneau']) {
     must(horsNorme.includes(marker), `${base}: HORS NORME marker`, marker);
   }
 

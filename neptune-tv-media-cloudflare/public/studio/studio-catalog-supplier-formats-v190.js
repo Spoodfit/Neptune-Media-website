@@ -1,5 +1,5 @@
 (() => {
-  const RELEASE='neptune-studio-supplier-physical-formats-20260915-v190';
+  const RELEASE='neptune-studio-supplier-physical-formats-20260915-v190.1';
   const CONTEXT_API='/api/admin/media-catalog-v98/context';
   const SAVE_API='/api/admin/media-catalog-v190/physical-format/save';
   const ASSET_API='/api/admin/media-catalog-v98/asset/upload';
@@ -15,8 +15,9 @@
   scheduleAdapt();
 
   function onClick(event){
-    const target=event.target?.closest?.('[data-v147-list="physical"],[data-v147-new="physical"],[data-v190-physical-edit],[data-v190-physical-new],[data-v147-create-physical]');
+    const target=event.target?.closest?.('[data-v147-list="physical"],[data-v147-new="physical"],[data-v190-physical-edit],[data-v190-physical-new],[data-v147-create-physical],[data-v190-delete]');
     if(!target)return;
+    if(target.matches('[data-v190-delete]'))return consume(event,()=>deletePhysical(target.dataset.v190Delete||'',target.dataset.label||''));
     if(target.matches('[data-v147-list="physical"]'))return consume(event,renderPhysicalList);
     if(target.matches('[data-v147-new="physical"],[data-v190-physical-new]'))return consume(event,()=>openPhysicalForm());
     if(target.matches('[data-v190-physical-edit]'))return consume(event,()=>openPhysicalForm(target.dataset.v190PhysicalEdit||''));
@@ -77,7 +78,7 @@
     const dialog=ensureDialog(),data=await loadContext(true),item=(data.supplierPhysicalFormats||[]).find(row=>String(row.id)===String(id))||null;
     const supplierId=String(preset.supplierId||item?.supplierId||''),formatId=String(preset.formatId||item?.formatId||'');
     dialog.dataset.view='physical-v190';
-    dialog.innerHTML=`<form class="v147-card" data-v190-form="physical"><header><div><span>FORMAT PHYSIQUE</span><h2>${item?'Modifier le format':'Nouveau format physique'}</h2><p>Un format est une capacité réelle d’un fournisseur pour un concept : canapé, chaise, plateau, bar, sur-mesure…</p></div><button type="button" data-v147-close>×</button></header><div class="v147-form v147-two"><input type="hidden" name="id" value="${attr(item?.id||'')}"><label><span>Fournisseur</span><select name="supplierId" required>${selectOptions(data.suppliers||[],supplierId,'Choisir un fournisseur')}</select></label><label><span>Concept éditorial</span><select name="formatId" required>${selectOptions(data.formats||[],formatId,'Choisir un concept')}</select></label><label class="wide"><span>Nom du format</span><input name="label" required maxlength="80" value="${attr(item?.label||'')}" placeholder="Canapé"></label><label class="wide"><span>Description</span><textarea name="description" rows="3">${html(item?.description||'')}</textarea></label><label class="wide"><span>Visuel</span><input name="visual" type="file" accept="image/jpeg,image/png,image/webp"><small>${item?.imageUrl?'Le visuel actuel est conservé si aucun fichier n’est choisi.':'Optionnel.'}</small></label><label class="v147-toggle wide"><input type="checkbox" name="active" ${item?.active===false?'':'checked'}><span>Format disponible pour ce fournisseur</span></label></div><div class="v147-feedback" data-v147-feedback hidden></div><footer><button type="button" class="quiet" data-v147-list="physical">← Formats</button><button type="submit" class="primary">Enregistrer</button></footer></form>`;
+    dialog.innerHTML=`<form class="v147-card" data-v190-form="physical"><header><div><span>FORMAT PHYSIQUE</span><h2>${item?'Modifier le format':'Nouveau format physique'}</h2><p>Un format est une capacité réelle d’un fournisseur pour un concept : canapé, chaise, plateau, bar, sur-mesure…</p></div><button type="button" data-v147-close>×</button></header><div class="v147-form v147-two"><input type="hidden" name="id" value="${attr(item?.id||'')}"><label><span>Fournisseur</span><select name="supplierId" required>${selectOptions(data.suppliers||[],supplierId,'Choisir un fournisseur')}</select></label><label><span>Concept éditorial</span><select name="formatId" required>${selectOptions(data.formats||[],formatId,'Choisir un concept')}</select></label><label class="wide"><span>Nom du format</span><input name="label" required maxlength="80" value="${attr(item?.label||'')}" placeholder="Canapé"></label><label class="wide"><span>Description</span><textarea name="description" rows="3">${html(item?.description||'')}</textarea></label><label class="wide"><span>Visuel</span><input name="visual" type="file" accept="image/jpeg,image/png,image/webp"><small>${item?.imageUrl?'Le visuel actuel est conservé si aucun fichier n’est choisi.':'Optionnel.'}</small></label><label class="v147-toggle wide"><input type="checkbox" name="active" ${item?.active===false?'':'checked'}><span>Format disponible pour ce fournisseur</span></label></div><div class="v147-feedback" data-v147-feedback hidden></div><footer>${item?`<button type="button" class="quiet" data-v190-delete="${attr(item.id)}" data-label="${attr(item.label||'ce format')}">Supprimer</button>`:''}<button type="button" class="quiet" data-v147-list="physical">← Formats</button><button type="submit" class="primary">Enregistrer</button></footer></form>`;
     dialog.showModal?.();
   }
 
@@ -90,6 +91,16 @@
       await api(SAVE_API,{id:String(data.get('id')||''),supplierId:String(data.get('supplierId')||''),formatId:String(data.get('formatId')||''),label:String(data.get('label')||'').trim(),description:String(data.get('description')||'').trim(),imageUrl,active:data.get('active')==='on',publicOrder:Number(existing?.publicOrder||100)});
       context=null;showFeedback(feedback,'Format physique enregistré et synchronisé avec les offres du fournisseur.');setTimeout(renderPhysicalList,350);
     }finally{setBusy(button,false)}
+  }
+
+  async function deletePhysical(id,label){
+    if(!id)return;
+    const confirmed=window.confirm(`Supprimer définitivement « ${label||'ce format'} » ?\n\nLa suppression est autorisée uniquement si ce format n’est utilisé dans aucune offre.`);
+    if(!confirmed)return;
+    await api(SAVE_API,{action:'delete',id});
+    context=null;
+    if(window.neptuneToast)window.neptuneToast('Format physique supprimé.','success');
+    await renderPhysicalList();
   }
 
   async function loadContext(force=false){
@@ -115,7 +126,7 @@
   function showFormError(form,error){const node=form?.querySelector?.('[data-v147-feedback]');if(node){node.hidden=false;node.textContent=String(error?.message||error);node.classList.remove('success');node.classList.add('error')}else showFatal(error)}
   function showFatal(error){console.error('supplier_physical_formats_v190',error);const message=String(error?.message||error||'Erreur catalogue');if(window.neptuneToast)window.neptuneToast(message,'error');else alert(message)}
   function setBusy(button,busy){if(!button)return;button.disabled=busy;button.dataset.v190Original=button.dataset.v190Original||button.textContent||'';button.textContent=busy?'Enregistrement…':button.dataset.v190Original}
-  function messageFor(data){const code=String(data?.error||'');const map={supplier_physical_format_fields_required:'Fournisseur, concept et nom du format sont requis.',supplier_physical_format_reference_invalid:'Le fournisseur ou le concept n’existe plus.',supplier_physical_format_already_exists:'Ce fournisseur propose déjà un format portant ce nom pour ce concept.',supplier_physical_format_relation_in_use:'Retirez d’abord ce format des offres actives avant de changer son fournisseur ou son concept.',supplier_physical_format_used_by_active_offer:'Retirez d’abord ce format des offres actives avant de le masquer.',supplier_physical_format_unavailable:'Un format sélectionné n’est pas proposé par ce fournisseur pour ce concept.'};return map[code]||code||'La modification n’a pas pu être enregistrée.'}
+  function messageFor(data){const code=String(data?.error||'');const map={supplier_physical_format_fields_required:'Fournisseur, concept et nom du format sont requis.',supplier_physical_format_reference_invalid:'Le fournisseur ou le concept n’existe plus.',supplier_physical_format_already_exists:'Ce fournisseur propose déjà un format portant ce nom pour ce concept.',supplier_physical_format_relation_in_use:'Retirez d’abord ce format des offres actives avant de changer son fournisseur ou son concept.',supplier_physical_format_used_by_active_offer:'Retirez d’abord ce format des offres actives avant de le masquer.',supplier_physical_format_unavailable:'Un format sélectionné n’est pas proposé par ce fournisseur pour ce concept.',supplier_physical_format_id_required:'Le format à supprimer est introuvable.',supplier_physical_format_not_found:'Ce format n’existe plus.',supplier_physical_format_in_use:`Ce format est encore utilisé dans ${Number(data?.usedByOffers||0)} offre(s). Retirez-le de ces offres avant de le supprimer.`};return map[code]||code||'La modification n’a pas pu être enregistrée.'}
   function html(value){return String(value??'').replace(/[&<>"']/gu,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
   function attr(value){return html(value)}
 })();

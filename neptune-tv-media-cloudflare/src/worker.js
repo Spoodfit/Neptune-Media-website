@@ -31,7 +31,7 @@ const CLIENT_INTERACTION_ASSET='/espace-client/client-catalog-interaction-v118-7
 const LEGACY_SALES_ASSET='/espace-client/sales-catalog-v96.js?v=20260913-1';
 const LEGACY_MEDIA_ASSET='/espace-client/media-catalog-v95.js?v=20260913-1';
 const STUDIO_JT_CATALOG_INTEGRATION='/studio/neptune-jt/studio-shortcut.js?v=20260915-188';
-const STUDIO_SUPPLIER_FORMATS='/studio/studio-catalog-supplier-formats-v190.js?v=20260915-1';
+const STUDIO_SUPPLIER_FORMATS='/studio/studio-catalog-supplier-formats-v190.js?v=20260915-2';
 
 export class StudioStore extends BaseStudioStore{
   async fetch(request){

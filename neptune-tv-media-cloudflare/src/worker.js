@@ -7,6 +7,12 @@ import {
   validateEffectiveOfferV181,
 } from './effective-offer-v181.js';
 import {
+  SUPPLIER_PHYSICAL_FORMATS_V190_RELEASE,
+  enhanceMediaCatalogContextV190,
+  handleSupplierPhysicalFormatsV190Store,
+  validateOfferPhysicalFormatsV190,
+} from './supplier-physical-formats-v190.js';
+import {
   NEPTUNE_JT_RELEASE,
   handleNeptuneJtStore,
   handleNeptuneJtStripeWebhook,
@@ -25,6 +31,7 @@ const CLIENT_INTERACTION_ASSET='/espace-client/client-catalog-interaction-v118-7
 const LEGACY_SALES_ASSET='/espace-client/sales-catalog-v96.js?v=20260913-1';
 const LEGACY_MEDIA_ASSET='/espace-client/media-catalog-v95.js?v=20260913-1';
 const STUDIO_JT_CATALOG_INTEGRATION='/studio/neptune-jt/studio-shortcut.js?v=20260915-188';
+const STUDIO_SUPPLIER_FORMATS='/studio/studio-catalog-supplier-formats-v190.js?v=20260915-1';
 
 export class StudioStore extends BaseStudioStore{
   async fetch(request){
@@ -32,6 +39,13 @@ export class StudioStore extends BaseStudioStore{
     if(url.pathname.startsWith('/neptune-jt-v183/')){
       const handled=await handleNeptuneJtStore(this,request);
       if(handled)return handled;
+    }
+    const supplierFormatHandled=await handleSupplierPhysicalFormatsV190Store(this,request);
+    if(supplierFormatHandled)return supplierFormatHandled;
+    if(method==='POST'&&url.pathname==='/api/admin/media-catalog-v143/family/save'){
+      const body=await request.clone().json().catch(()=>({}));
+      const gate=validateOfferPhysicalFormatsV190(this,body);
+      if(!gate.ok)return gate.response;
     }
     if(method==='POST'&&isCommercialSelection(url.pathname)){
       const body=await request.clone().json().catch(()=>({}));
@@ -48,6 +62,9 @@ export class StudioStore extends BaseStudioStore{
     let response=await super.fetch(request);
     if(method==='GET'&&url.pathname.endsWith('/catalog-v96')&&response.ok){
       response=await enhanceEffectiveOfferCatalogV181(this,response);
+    }
+    if(method==='POST'&&url.pathname==='/api/admin/media-catalog-v98/context'&&response.ok){
+      response=await enhanceMediaCatalogContextV190(this,response);
     }
     if(method==='POST'&&url.pathname==='/api/admin/media-catalog-v143/policies'&&response.ok){
       response=await alignStudioPolicySemantics(response);
@@ -80,6 +97,11 @@ export default{
     if(request.method==='POST'&&url.pathname==='/api/webhooks/stripe'){
       const handled=await handleNeptuneJtStripeWebhook(request,env,(path,body)=>callNeptuneJtStore(env,path,body));
       if(handled)return markNeptuneJt(handled);
+    }
+    if(request.method==='POST'&&url.pathname==='/api/admin/media-catalog-v190/physical-format/save'){
+      if(!isSameOrigin(request))return markSupplierFormats(json({error:'origin_forbidden'},403));
+      const payload=await request.json().catch(()=>({}));
+      return markSupplierFormats(await callStudioStore(env,'/api/admin/media-catalog-v190/physical-format/save',{...payload,...adminAuth(request)}));
     }
     if(request.method==='GET'&&url.pathname==='/api/admin/neptune-jt-v183/dashboard'){
       const auth=adminAuth(request);
@@ -128,13 +150,14 @@ export default{
       headers.delete('Content-Length');
       headers.set('Content-Type','application/json; charset=utf-8');
       headers.set('Cache-Control','no-store');
-      response=new Response(JSON.stringify({...data,effectiveOffer:EFFECTIVE_OFFER_V181_RELEASE,clientCatalogClick:CLIENT_CATALOG_CLICK_RELEASE,neptuneJt:NEPTUNE_JT_RELEASE}),{status:response.status,statusText:response.statusText,headers});
+      response=new Response(JSON.stringify({...data,effectiveOffer:EFFECTIVE_OFFER_V181_RELEASE,clientCatalogClick:CLIENT_CATALOG_CLICK_RELEASE,neptuneJt:NEPTUNE_JT_RELEASE,supplierPhysicalFormats:SUPPLIER_PHYSICAL_FORMATS_V190_RELEASE}),{status:response.status,statusText:response.statusText,headers});
     }
     const headers=new Headers(response.headers);
     headers.set('X-Neptune-Effective-Offer',EFFECTIVE_OFFER_V181_RELEASE);
     headers.set('X-Neptune-Effective-Offer-Runtime',RELEASE);
     headers.set('X-Neptune-Client-Catalog-Click',CLIENT_CATALOG_CLICK_RELEASE);
     headers.set('X-Neptune-JT',NEPTUNE_JT_RELEASE);
+    headers.set('X-Neptune-Supplier-Physical-Formats',SUPPLIER_PHYSICAL_FORMATS_V190_RELEASE);
     return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
   },
   scheduled(controller,env,ctx){
@@ -181,6 +204,7 @@ async function pinClientCatalogRuntime(response){
 async function injectStudioJtCatalogIntegration(response){
   let body=await response.text();
   if(!body.includes(STUDIO_JT_CATALOG_INTEGRATION.split('?')[0]))body=body.replace('</body>',`<script src="${STUDIO_JT_CATALOG_INTEGRATION}"></script></body>`);
+  if(!body.includes(STUDIO_SUPPLIER_FORMATS.split('?')[0]))body=body.replace('</body>',`<script src="${STUDIO_SUPPLIER_FORMATS}"></script></body>`);
   const headers=new Headers(response.headers);
   for(const name of ['Content-Length','Content-Encoding','ETag','Last-Modified'])headers.delete(name);
   headers.set('Cache-Control','private, no-store, max-age=0');
@@ -194,7 +218,7 @@ function isClientHome(pathname){
   return pathname==='/espace-client'||pathname==='/espace-client/'||pathname==='/espace-client/index.html';
 }
 function isStudioDocument(pathname){return pathname==='/studio'||pathname==='/studio/'||pathname.startsWith('/studio/');}
-function callNeptuneJtStore(env,path,body,method='POST'){
+function callStudioStore(env,path,body,method='POST'){
   const studio=env.STUDIO.get(env.STUDIO.idFromName('neptune-media-main'));
   return studio.fetch(`https://store${path}`,{
     method,
@@ -202,9 +226,16 @@ function callNeptuneJtStore(env,path,body,method='POST'){
     body:method==='GET'?undefined:JSON.stringify(body||{}),
   });
 }
+function callNeptuneJtStore(env,path,body,method='POST'){return callStudioStore(env,path,body,method);}
 function markNeptuneJt(response){
   const headers=new Headers(response.headers);
   headers.set('X-Neptune-JT',NEPTUNE_JT_RELEASE);
+  headers.set('Cache-Control','no-store');
+  return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
+}
+function markSupplierFormats(response){
+  const headers=new Headers(response.headers);
+  headers.set('X-Neptune-Supplier-Physical-Formats',SUPPLIER_PHYSICAL_FORMATS_V190_RELEASE);
   headers.set('Cache-Control','no-store');
   return new Response(response.body,{status:response.status,statusText:response.statusText,headers});
 }

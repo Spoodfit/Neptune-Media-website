@@ -3,7 +3,7 @@ import { requireOperator } from './workflow-db-v5.js';
 import { json, sanitizeText } from './security.js';
 import { safeVisualUrl } from './media-catalog-visuals-v98.js';
 
-export const SUPPLIER_PHYSICAL_FORMATS_V190_RELEASE='neptune-supplier-physical-formats-20260915-v190';
+export const SUPPLIER_PHYSICAL_FORMATS_V190_RELEASE='neptune-supplier-physical-formats-20260915-v190.1';
 
 export function ensureSupplierPhysicalFormatsV190Schema(store){
   ensureMediaCatalogV98Schema(store);
@@ -34,7 +34,8 @@ export async function handleSupplierPhysicalFormatsV190Store(store,request){
   const url=new URL(request.url);
   if(request.method!=='POST'||url.pathname!=='/api/admin/media-catalog-v190/physical-format/save')return null;
   ensureSupplierPhysicalFormatsV190Schema(store);
-  return saveSupplierPhysicalFormatV190(store,await request.json().catch(()=>({})));
+  const body=await request.json().catch(()=>({}));
+  return payload(body).action==='delete'?deleteSupplierPhysicalFormatV190(store,body):saveSupplierPhysicalFormatV190(store,body);
 }
 
 export async function enhanceMediaCatalogContextV190(store,response){
@@ -115,6 +116,18 @@ async function saveSupplierPhysicalFormatV190(store,body){
   }
   store.audit?.(access.actor?.id||'studio','supplier_physical_format_saved_v190','supplier_physical_format',id,{supplierId,formatId,label,active:Boolean(active)});
   return json({ok:true,release:SUPPLIER_PHYSICAL_FORMATS_V190_RELEASE,savedId:id,supplierPhysicalFormats:supplierPhysicalFormatsV190(store)});
+}
+
+async function deleteSupplierPhysicalFormatV190(store,body){
+  const access=await requireOperator(store,body);if(!access.ok)return access.response;
+  const p=payload(body),id=cleanId(p.id);if(!id)return json({error:'supplier_physical_format_id_required'},400);
+  const current=store.sql.exec('SELECT id,supplier_id AS supplierId,format_id AS formatId,label FROM portal_supplier_physical_formats_v190 WHERE id=? LIMIT 1',id).toArray()[0]||null;
+  if(!current)return json({error:'supplier_physical_format_not_found'},404);
+  const used=selectedByOffers(store,current.supplierId,current.formatId,current.label,false);
+  if(used>0)return json({error:'supplier_physical_format_in_use',usedByOffers:used},409);
+  store.sql.exec('DELETE FROM portal_supplier_physical_formats_v190 WHERE id=?',id);
+  store.audit?.(access.actor?.id||'studio','supplier_physical_format_deleted_v190','supplier_physical_format',id,{supplierId:current.supplierId,formatId:current.formatId,label:current.label});
+  return json({ok:true,release:SUPPLIER_PHYSICAL_FORMATS_V190_RELEASE,deletedId:id,supplierPhysicalFormats:supplierPhysicalFormatsV190(store)});
 }
 
 function backfillLegacySupplierFormats(store){

@@ -87,7 +87,7 @@ export default function NeptuneJtLanding() {
         </section>
 
         <section className="section value-wrap">
-          <div className="value-copy"><div className="eyebrow">CE QUE VOUS RÉCUPÉREZ</div><h2>Un passage. Une vraie réserve de contenu.</h2><ul><li><b>Votre passage individuel</b> de 15 à 20 minutes environ</li><li><b>10 shorts minimum</b> prêts à exploiter sur vos réseaux</li><li>Votre présence dans <b>l&apos;édition complète Neptune JT</b></li><li><b>Diffusion Neptune Business</b> + contenus courts de promotion</li><li>Pour les non-membres : <b>1 mois d&apos;adhésion Neptune inclus</b></li></ul></div>
+          <div className="value-copy"><div className="eyebrow">CE QUE VOUS RÉCUPÉREZ</div><h2>Un passage. Une vraie réserve de contenu.</h2><ul><li><b>Votre passage individuel</b> de 15 à 20 minutes environ</li><li><b>10 shorts minimum</b> prêts à exploiter sur vos réseaux</li><li>Votre présence dans <b>l&apos;édition complète Neptune JT</b></li><li><b>Diffusion Neptune Business</b> + contenus courts de promotion</li><li>Pour les non-membres : <b>1 mois Neptune offert via un code envoyé après confirmation du paiement</b></li></ul></div>
           <div className="price-card"><span>VOTRE PASSAGE</span><strong>200 € <small>TTC</small></strong><p>Préparation + plateau + montage quasi-live + diffusion + passage individuel + 10 shorts minimum.</p><a className="btn primary full" href="/reserver/neptune-jt/">Pré-réserver sans payer</a></div>
         </section>
 

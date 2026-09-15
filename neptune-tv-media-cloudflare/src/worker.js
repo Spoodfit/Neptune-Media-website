@@ -24,7 +24,7 @@ const CLIENT_VISUAL_ASSET='/espace-client/client-visual-coherence-v118-2.js?v=20
 const CLIENT_INTERACTION_ASSET='/espace-client/client-catalog-interaction-v118-7.js?v=20260913-2';
 const LEGACY_SALES_ASSET='/espace-client/sales-catalog-v96.js?v=20260913-1';
 const LEGACY_MEDIA_ASSET='/espace-client/media-catalog-v95.js?v=20260913-1';
-const STUDIO_JT_SHORTCUT='/studio/neptune-jt/studio-shortcut.js?v=20260914-1';
+const STUDIO_JT_CATALOG_INTEGRATION='/studio/neptune-jt/studio-shortcut.js?v=20260915-188';
 
 export class StudioStore extends BaseStudioStore{
   async fetch(request){
@@ -59,12 +59,6 @@ export class StudioStore extends BaseStudioStore{
 export default{
   async fetch(request,env,ctx){
     const url=new URL(request.url);
-
-    if(request.method==='GET'&&(url.pathname==='/studio/neptune-jt'||url.pathname==='/studio/neptune-jt/')){
-      const assetUrl=new URL('/studio/neptune-jt/index.html',request.url);
-      return markNeptuneJt(await env.ASSETS.fetch(new Request(assetUrl,request)));
-    }
-
     if(request.method==='GET'&&url.pathname==='/api/neptune-jt/status'){
       return markNeptuneJt(await callNeptuneJtStore(env,'/neptune-jt-v183/status',null,'GET'));
     }
@@ -87,7 +81,6 @@ export default{
       const handled=await handleNeptuneJtStripeWebhook(request,env,(path,body)=>callNeptuneJtStore(env,path,body));
       if(handled)return markNeptuneJt(handled);
     }
-
     if(request.method==='GET'&&url.pathname==='/api/admin/neptune-jt-v183/dashboard'){
       const auth=adminAuth(request);
       const editionId=url.searchParams.get('editionId')||'';
@@ -127,7 +120,7 @@ export default{
       response=await pinClientCatalogRuntime(response);
     }
     if(request.method==='GET'&&response.ok&&type.includes('text/html')&&isStudioDocument(url.pathname)&&!url.pathname.startsWith('/studio/neptune-jt')){
-      response=await injectStudioJtShortcut(response);
+      response=await injectStudioJtCatalogIntegration(response);
     }
     if(request.method==='GET'&&url.pathname==='/api/public/release'&&response.ok){
       const data=await response.json().catch(()=>({}));
@@ -185,9 +178,9 @@ async function pinClientCatalogRuntime(response){
   return new Response(body,{status:response.status,statusText:response.statusText,headers});
 }
 
-async function injectStudioJtShortcut(response){
+async function injectStudioJtCatalogIntegration(response){
   let body=await response.text();
-  if(!body.includes(STUDIO_JT_SHORTCUT.split('?')[0]))body=body.replace('</body>',`<script src="${STUDIO_JT_SHORTCUT}"></script></body>`);
+  if(!body.includes(STUDIO_JT_CATALOG_INTEGRATION.split('?')[0]))body=body.replace('</body>',`<script src="${STUDIO_JT_CATALOG_INTEGRATION}"></script></body>`);
   const headers=new Headers(response.headers);
   for(const name of ['Content-Length','Content-Encoding','ETag','Last-Modified'])headers.delete(name);
   headers.set('Cache-Control','private, no-store, max-age=0');

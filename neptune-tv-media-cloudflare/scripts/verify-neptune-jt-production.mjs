@@ -52,7 +52,7 @@ async function verifyBase(base) {
     assert((response.headers.get('x-neptune-jt') || '') === expectedRelease, 'X-Neptune-JT release header mismatch');
   });
 
-  await verifyReactPage(base, `/neptune-jt/?verify=${nonce}`, "L'actu vue par");
+  await verifyReactPage(base, `/neptune-jt/?verify=${nonce}`, 'Votre expertise,');
   await verifyReactPage(base, `/reserver/neptune-jt/?verify=${nonce}`, 'Parlez-nous de votre actualité');
   await verifyReactPage(base, `/reserver/neptune-jt/confirmation/?verify=${nonce}`, 'Vérification du paiement');
 

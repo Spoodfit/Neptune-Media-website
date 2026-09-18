@@ -1,4 +1,3 @@
-import { Container, getContainer } from '@cloudflare/containers';
 import { isSameOrigin, json } from './security.js';
 
 const STATE_KEY='webtv/control/state-v118.json';
@@ -12,28 +11,14 @@ const ALLOWED_ROLES=new Set(['admin','editor']);
 const DEFAULT_YOUTUBE='https://youtube.com/live/-k3rG7R8gtc';
 export const WEBTV_V118_RELEASE='neptune-native-webtv-20260814-v118';
 
-export class WebTvEncoder extends Container{
-  defaultPort=8080;
-  requiredPorts=[8080];
-  sleepAfter='5m';
-  enableInternet=true;
-  onStart(){console.log('webtv_v118_encoder_started');}
-  onStop({exitCode,reason}){console.log('webtv_v118_encoder_stopped',{exitCode,reason});}
-  onError(error){console.error('webtv_v118_encoder_error',String(error?.message||error));throw error;}
-  async onActivityExpired(){
-    try{
-      const response=await this.containerFetch('http://localhost/health');
-      const runtime=await response.json().catch(()=>({}));
-      if(response.ok&&['starting','streaming','running','live','reconnecting'].includes(String(runtime.status||''))){this.renewActivityTimeout();return;}
-    }catch{}
-    await this.stop();
-  }
-}
+export class WebTvEncoder{}
 
 export async function handleWebTvV118(request,env,ctx,delegateFetch){
   const url=new URL(request.url);
   if(url.pathname!==STATE_PATH&&url.pathname!==ENCODER_PATH)return null;
   const auth=await verifyStudio(request,env,ctx,delegateFetch);if(!auth.ok)return auth.response;
+  if(url.pathname===STATE_PATH&&request.method==='GET')return secure(json(await readState(env)));
+  return secure(json({error:'webtv_retired',disabled:true,message:'La WebTV Cloudflare est désactivée. Les vidéos restent stockées dans R2.'},410));
   if(url.pathname===STATE_PATH){
     if(request.method==='GET')return secure(json(await readState(env)));
     if(request.method!=='PUT')return secure(json({error:'method_not_allowed'},405));
@@ -72,40 +57,19 @@ export async function maintainWebTvV118(env,options={}){
 }
 
 export async function publicWebTvStateV118(env){
-  const state=await readState(env),active=(state.playlist||[]).filter(item=>item.enabled!==false),current=state.encoder?.currentItem||null;
-  let currentIndex=current?active.findIndex(item=>String(item.id)===String(current.id)):-1;if(currentIndex<0)currentIndex=0;
-  const next=active.length?active[(currentIndex+1)%active.length]:null;
-  const startedAt=current?.startedAt||null,nowMs=Date.now();
-  const currentItem=active[currentIndex]||null;
-  const durationSeconds=Number(currentItem?.durationSeconds||0);
-  const estimatedEndAt=startedAt&&durationSeconds?new Date(Date.parse(startedAt)+durationSeconds*1000).toISOString():null;
-  const schedule=[];let cursor=estimatedEndAt?Date.parse(estimatedEndAt):nowMs;
-  for(let offset=1;offset<=Math.min(active.length,8);offset+=1){const item=active[(currentIndex+offset)%active.length];if(!item)break;schedule.push({id:item.id,title:item.title,type:item.type,startsAt:new Date(cursor).toISOString(),durationSeconds:Number(item.durationSeconds||0)});cursor+=Number(item.durationSeconds||0)*1000;}
-  return {ok:true,release:WEBTV_V118_RELEASE,enabled:state.enabled,mode:'loop',stream:{protocol:'hls',manifestUrl:'/direct/live/index.m3u8',watchUrl:'/direct/'},current:current?{...current,estimatedEndAt}:null,next:next?{id:next.id,title:next.title,type:next.type,durationSeconds:Number(next.durationSeconds||0)}:null,schedule,youtube:{configured:Boolean(state.output?.youtube?.configured),enabled:Boolean(state.output?.youtube?.enabled),watchUrl:state.output?.youtube?.watchUrl||''},encoder:{status:state.encoder?.status||'not_connected',lastHeartbeatAt:state.encoder?.lastHeartbeatAt||null,lastError:state.encoder?.lastError||null,youtubeStatus:state.encoder?.youtubeStatus||'off'}};
+  const state=await readState(env);
+  return {ok:true,release:WEBTV_V118_RELEASE,enabled:false,retired:true,mode:'off',stream:{protocol:'none',manifestUrl:'',watchUrl:'/direct/'},current:null,next:null,schedule:[],youtube:{configured:Boolean(state.output?.youtube?.configured),enabled:false,watchUrl:''},encoder:{status:'stopped',lastHeartbeatAt:null,lastError:null,youtubeStatus:'off'}};
 }
 
-export async function proxyLiveAssetV118(request,env){
-  const url=new URL(request.url),suffix=url.pathname.replace(/^\/direct\/live\/?/u,'');
-  if(!/^(index\.m3u8|segment-\d+\.ts)$/u.test(suffix))return new Response('Not found',{status:404});
-  const container=getContainer(env.WEBTV_ENCODER,INSTANCE);
-  try{
-    const upstream=await container.fetch(`http://encoder/live/${suffix}`);
-    const headers=new Headers(upstream.headers);headers.set('Access-Control-Allow-Origin','*');headers.set('X-Content-Type-Options','nosniff');headers.set('X-Neptune-WebTV',WEBTV_V118_RELEASE);
-    headers.set('Cache-Control',suffix.endsWith('.m3u8')?'no-store, max-age=0':'public, max-age=8');
-    return new Response(upstream.body,{status:upstream.status,statusText:upstream.statusText,headers});
-  }catch{return new Response('Antenne en cours de démarrage',{status:503,headers:{'Cache-Control':'no-store','Retry-After':'2'}});}
+export async function proxyLiveAssetV118(){
+  return new Response('WebTV désactivée',{status:410,headers:{'Cache-Control':'no-store','X-Neptune-WebTV':WEBTV_V118_RELEASE}});
 }
 
-async function syncEncoder(env,state,{forceRestart=false}={}){
-  const container=getContainer(env.WEBTV_ENCODER,INSTANCE);
-  const response=await container.fetch('http://encoder/control/apply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(encoderConfig(env,state,forceRestart))});
-  const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.error||`encoder_http_${response.status}`);
-  return writeRuntime(env,runtimeFromContainer(data));
+async function syncEncoder(env){
+  return writeRuntime(env,{status:'stopped',lastHeartbeatAt:new Date().toISOString(),lastError:null,currentItem:null,youtubeStatus:'off'});
 }
-async function stopEncoder(env,reason){
-  const container=getContainer(env.WEBTV_ENCODER,INSTANCE);let runtime={status:'stopped',lastHeartbeatAt:new Date().toISOString(),lastError:null,currentItem:null};
-  try{const response=await container.fetch('http://encoder/control/stop',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reason})}),data=await response.json().catch(()=>({}));runtime=runtimeFromContainer({...data,status:'stopped',lastError:null});}catch{}
-  try{await container.stop();}catch{}return writeRuntime(env,runtime);
+async function stopEncoder(env){
+  return writeRuntime(env,{status:'stopped',lastHeartbeatAt:new Date().toISOString(),lastError:null,currentItem:null,youtubeStatus:'off'});
 }
 function encoderConfig(env,state,forceRestart){
   return {release:WEBTV_V118_RELEASE,revision:state.updatedAt||new Date().toISOString(),enabled:state.enabled===true,forceRestart:forceRestart===true,mode:'loop',playlist:state.playlist.filter(item=>item.enabled!==false).map(item=>({id:item.id,title:item.title,type:item.type,mediaUrl:absoluteMediaUrl(item.mediaUrl,env),durationSeconds:item.durationSeconds||0})),fallback:{title:state.fallback?.title||'Neptune Media',mediaUrl:absoluteMediaUrl(state.fallback?.mediaUrl,env)},output:{provider:'neptune',protocol:'hls',youtube:{enabled:Boolean(state.output?.youtube?.enabled),ingestUrl:youtubeRtmpsUrl(env),streamKey:String(env.YOUTUBE_STREAM_KEY||'').trim()}},encoding:{width:intEnv(env.WEBTV_WIDTH,1280,640,1920),height:intEnv(env.WEBTV_HEIGHT,720,360,1080),fps:intEnv(env.WEBTV_FPS,30,24,60),videoBitrateKbps:intEnv(env.WEBTV_VIDEO_BITRATE_KBPS,4000,1500,12000),audioBitrateKbps:intEnv(env.WEBTV_AUDIO_BITRATE_KBPS,128,96,320),preset:allowedPreset(env.WEBTV_X264_PRESET)}};
@@ -117,7 +81,7 @@ async function readState(env){
   if(!parsed){object=await env.MEDIA.get(LEGACY_STATE_KEY);const legacy=object?await object.json().catch(()=>null):null;if(legacy)parsed=migrateLegacy(legacy,env);}
   if(!parsed)return {...base,encoder:runtime};
   const youtube={...base.output.youtube,...(parsed.output?.youtube||{}),configured:youtubeConfigured(env)};
-  return {...base,...parsed,output:{...base.output,...(parsed.output||{}),provider:'neptune',protocol:'hls',configured:true,watchUrl:'/direct/',manifestUrl:'/direct/live/index.m3u8',youtube},encoder:runtime,release:WEBTV_V118_RELEASE};
+  return {...base,...parsed,enabled:false,output:{...base.output,...(parsed.output||{}),provider:'neptune',protocol:'none',configured:false,watchUrl:'/direct/',manifestUrl:'',youtube:{...youtube,enabled:false}},encoder:defaultRuntime(),release:WEBTV_V118_RELEASE};
 }
 async function writeState(env,state){await env.MEDIA.put(STATE_KEY,JSON.stringify(stripRuntime(state)),{httpMetadata:{contentType:'application/json; charset=utf-8'},customMetadata:{release:WEBTV_V118_RELEASE}});}
 async function readRuntime(env){let object=await env.MEDIA.get(RUNTIME_KEY);if(!object)object=await env.MEDIA.get(LEGACY_RUNTIME_KEY);if(!object)return defaultRuntime();const parsed=await object.json().catch(()=>null);return parsed&&typeof parsed==='object'?{...defaultRuntime(),...parsed,currentItem:parsed.currentItem&&typeof parsed.currentItem==='object'?parsed.currentItem:null}:defaultRuntime();}
@@ -126,11 +90,11 @@ function runtimeFromContainer(data){return {status:clean(data.status,40)||'start
 function runtimeError(lastError){return {status:'error',lastHeartbeatAt:new Date().toISOString(),lastError,currentItem:null};}
 function defaultRuntime(){return {status:'not_connected',lastHeartbeatAt:null,lastError:null,currentItem:null,revision:null,ffmpegPid:null,uptimeSeconds:0,youtubeStatus:'off',youtubeLastError:null};}
 function defaultState(env){const viewer=youtubeViewer(DEFAULT_YOUTUBE);return {release:WEBTV_V118_RELEASE,enabled:false,mode:'loop',output:{provider:'neptune',protocol:'hls',configured:true,watchUrl:'/direct/',manifestUrl:'/direct/live/index.m3u8',youtube:{configured:youtubeConfigured(env),enabled:false,...viewer}},playlist:[],fallback:{title:'Neptune Media — La suite arrive dans un instant',mediaUrl:''},encoder:defaultRuntime(),updatedAt:null,updatedBy:null};}
-function migrateLegacy(legacy,env){const viewer=youtubeViewer(legacy.output?.watchUrl||DEFAULT_YOUTUBE);return {...legacy,output:{provider:'neptune',protocol:'hls',configured:true,watchUrl:'/direct/',manifestUrl:'/direct/live/index.m3u8',youtube:{configured:youtubeConfigured(env),enabled:false,...viewer}}};}
+function migrateLegacy(legacy,env){const viewer=youtubeViewer(legacy.output?.watchUrl||DEFAULT_YOUTUBE);return {...legacy,enabled:false,output:{provider:'neptune',protocol:'none',configured:false,watchUrl:'/direct/',manifestUrl:'',youtube:{configured:youtubeConfigured(env),enabled:false,...viewer}}};}
 function normalizeState(raw,user,env){
   const playlist=Array.isArray(raw.playlist)?raw.playlist.slice(0,250).map((item,index)=>({id:clean(item.id,100)||`item-${index+1}`,title:clean(item.title,180)||`Programme ${index+1}`,mediaUrl:safeMediaUrl(item.mediaUrl,env),durationSeconds:clampNumber(item.durationSeconds,0,12*60*60),type:['episode','jingle','ad','fallback'].includes(item.type)?item.type:'episode',enabled:item.enabled!==false})).filter(item=>item.mediaUrl):[];
   const existingYoutube=raw.output?.youtube||{},viewer=youtubeViewer(existingYoutube.watchUrl||raw.output?.watchUrl||DEFAULT_YOUTUBE);
-  return {release:WEBTV_V118_RELEASE,enabled:raw.enabled===true,mode:'loop',output:{provider:'neptune',protocol:'hls',configured:true,watchUrl:'/direct/',manifestUrl:'/direct/live/index.m3u8',youtube:{configured:youtubeConfigured(env),enabled:existingYoutube.enabled===true,...viewer}},playlist,fallback:{title:clean(raw.fallback?.title,180)||'Neptune Media — La suite arrive dans un instant',mediaUrl:safeMediaUrl(raw.fallback?.mediaUrl,env)},encoder:defaultRuntime(),updatedAt:new Date().toISOString(),updatedBy:clean(user.fullName||user.email,180)||'Studio Admin'};
+  return {release:WEBTV_V118_RELEASE,enabled:false,mode:'off',output:{provider:'neptune',protocol:'none',configured:false,watchUrl:'/direct/',manifestUrl:'',youtube:{configured:youtubeConfigured(env),enabled:false,...viewer}},playlist,fallback:{title:clean(raw.fallback?.title,180)||'Neptune Media — La suite arrive dans un instant',mediaUrl:safeMediaUrl(raw.fallback?.mediaUrl,env)},encoder:defaultRuntime(),updatedAt:new Date().toISOString(),updatedBy:clean(user.fullName||user.email,180)||'Studio Admin'};
 }
 function stripRuntime(state){const {encoder,...control}=state;return control;}
 async function verifyStudio(request,env,ctx,delegateFetch){const url=new URL(request.url);url.pathname='/api/auth/status';url.search='';const response=await delegateFetch(new Request(url.toString(),{method:'GET',headers:request.headers}),env,ctx);if(!response.ok)return {ok:false,response:secure(json({error:'studio_forbidden'},response.status===401?401:403))};const data=await response.json().catch(()=>({})),user=data.user||{};if(data.authenticated===false||!ALLOWED_ROLES.has(String(user.role||'')))return {ok:false,response:secure(json({error:'studio_forbidden'},403))};return {ok:true,user};}

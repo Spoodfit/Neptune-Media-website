@@ -6,44 +6,106 @@
   "workers_dev": true,
   "keep_vars": true,
   "routes": [
-    { "pattern": "tv.neptunebusiness.com", "custom_domain": true },
-    { "pattern": "media.neptunebusiness.com", "custom_domain": true }
+    {
+      "pattern": "tv.neptunebusiness.com",
+      "custom_domain": true
+    },
+    {
+      "pattern": "media.neptunebusiness.com",
+      "custom_domain": true
+    }
   ],
-  "triggers": { "crons": ["*/5 * * * *", "* * * * *"] },
+  "triggers": {
+    "crons": [
+      "*/5 * * * *"
+    ]
+  },
   "assets": {
     "directory": "./neptune-tv-media-cloudflare/public",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
     "run_worker_first": [
-      "/", "/reserver", "/reserver/*", "/studio/*", "/espace-client/*", "/confirmation-studio/*", "/api/*",
-      "/media/*", "/direct/*", "/emissions/*", "/programmes/*", "/mentions-legales/*", "/confidentialite/*", "/contact/*",
-      "/robots.txt", "/sitemap.xml", "/video-sitemap.xml", "/llms.txt"
+      "/",
+      "/reserver",
+      "/reserver/*",
+      "/studio/*",
+      "/espace-client/*",
+      "/confirmation-studio/*",
+      "/api/*",
+      "/media/*",
+      "/direct/*",
+      "/emissions/*",
+      "/programmes/*",
+      "/mentions-legales/*",
+      "/confidentialite/*",
+      "/contact/*",
+      "/robots.txt",
+      "/sitemap.xml",
+      "/video-sitemap.xml",
+      "/llms.txt"
     ]
   },
-  "containers": [
-    {
-      "class_name": "WebTvEncoder",
-      "image": "./neptune-tv-media-cloudflare/containers/webtv/Dockerfile",
-      "instance_type": "standard-2",
-      "max_instances": 1
-    }
-  ],
   "durable_objects": {
     "bindings": [
-      { "name": "STUDIO", "class_name": "StudioStore" },
-      { "name": "WEBTV_ENCODER", "class_name": "WebTvEncoder" }
+      {
+        "name": "STUDIO",
+        "class_name": "StudioStore"
+      }
     ]
   },
   "migrations": [
-    { "tag": "v1", "new_sqlite_classes": ["StudioStore"] },
-    { "tag": "v2", "new_sqlite_classes": ["VideoProcessor"] },
-    { "tag": "v3", "deleted_classes": ["VideoProcessor"] },
-    { "tag": "v4", "new_sqlite_classes": ["VideoProcessorV2"] },
-    { "tag": "v5", "deleted_classes": ["VideoProcessorV2"] },
-    { "tag": "v6", "new_sqlite_classes": ["WebTvEncoder"] }
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "StudioStore"
+      ]
+    },
+    {
+      "tag": "v2",
+      "new_sqlite_classes": [
+        "VideoProcessor"
+      ]
+    },
+    {
+      "tag": "v3",
+      "deleted_classes": [
+        "VideoProcessor"
+      ]
+    },
+    {
+      "tag": "v4",
+      "new_sqlite_classes": [
+        "VideoProcessorV2"
+      ]
+    },
+    {
+      "tag": "v5",
+      "deleted_classes": [
+        "VideoProcessorV2"
+      ]
+    },
+    {
+      "tag": "v6",
+      "new_sqlite_classes": [
+        "WebTvEncoder"
+      ]
+    },
+    {
+      "tag": "v7",
+      "deleted_classes": [
+        "WebTvEncoder"
+      ]
+    }
   ],
-  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "neptune-media-assets" }],
-  "ai": { "binding": "AI" },
+  "r2_buckets": [
+    {
+      "binding": "MEDIA",
+      "bucket_name": "neptune-media-assets"
+    }
+  ],
+  "ai": {
+    "binding": "AI"
+  },
   "vars": {
     "BOOKING_URL": "https://neptune-media-webtv.neptunebusinessclub.workers.dev/reserver",
     "PREPARATION_BOOKING_URL": "https://calendar.app.google/X9q1T5JT9ngMfZY67",
@@ -66,5 +128,7 @@
     "WEBTV_AUDIO_BITRATE_KBPS": "128",
     "WEBTV_X264_PRESET": "superfast"
   },
-  "observability": { "enabled": true }
+  "observability": {
+    "enabled": true
+  }
 }

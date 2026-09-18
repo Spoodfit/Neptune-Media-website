@@ -22,13 +22,13 @@ const expect = (condition, message) => { if (!condition) failures.push(message);
 
 for (const [name, current] of [['root', rootConfig], ['nested', config]]) {
   const containers = Array.isArray(current.containers) ? current.containers : [];
-  expect(containers.every((item) => item.class_name === 'WebTvEncoder'), `${name}: un Container autre que WebTvEncoder est configuré`);
-  expect(containers.filter((item) => item.class_name === 'WebTvEncoder').length === 1, `${name}: la Web TV doit utiliser exactement un Container déclaré`);
+  expect(containers.length === 0, `${name}: aucun Container Cloudflare ne doit rester actif`);
+  expect(!current.durable_objects?.bindings?.some((item) => item.name === 'WEBTV_ENCODER'), `${name}: WEBTV_ENCODER doit être retiré`);
+  expect(current.r2_buckets?.some((item) => item.binding === 'MEDIA' && item.bucket_name === 'neptune-media-assets'), `${name}: le stockage R2 Neptune Media doit rester configuré`);
+  expect(!current.triggers?.crons?.includes('* * * * *'), `${name}: le watchdog WebTV minute doit être retiré`);
+  expect(current.migrations?.some((item) => item.deleted_classes?.includes('WebTvEncoder')), `${name}: la migration de suppression WebTvEncoder est absente`);
   expect(!current.queues, `${name}: la Queue Cloudflare vidéo est encore configurée`);
   expect(!current.durable_objects?.bindings?.some((item) => item.name === 'VIDEO_PROCESSOR'), `${name}: VIDEO_PROCESSOR est encore lié`);
-}
-for (const [name, current] of [['root', rootPackage], ['nested', nestedPackage]]) {
-  expect(Boolean(current.dependencies?.['@cloudflare/containers']), `${name}: la dépendance Containers requise par la Web TV est absente`);
 }
 
 expect(entry.includes("videoAiEngineMode: 'persistent-local-service-with-browser-fallback'"), 'le Worker ne déclare pas le service permanent primaire');
@@ -99,4 +99,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log('Neptune Video Engine v75 validé : moteur vidéo local préservé et Cloudflare Containers strictement réservé à la Web TV.');
+console.log('Neptune Video Engine v75 validé : moteur vidéo local préservé, WebTV Cloudflare retirée et stockage R2 conservé.');

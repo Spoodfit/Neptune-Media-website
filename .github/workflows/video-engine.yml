@@ -51,7 +51,9 @@ jobs:
             neptune-video-engine/runtime.py \
             neptune-video-engine/runtime_v74.py \
             neptune-video-engine/runtime_v75.py
-          grep -Fq '"class_name": "WebTvEncoder"' wrangler.jsonc
+          ! grep -Fq '"class_name": "WebTvEncoder"' wrangler.jsonc
+          ! grep -Fq '"WEBTV_ENCODER"' wrangler.jsonc
+          grep -Fq '"bucket_name": "neptune-media-assets"' wrangler.jsonc
           ! grep -Fq '"class_name": "VideoProcessor"' wrangler.jsonc
           ! grep -Fq '"class_name": "VideoProcessorV2"' wrangler.jsonc
           ! grep -Fq '"VIDEO_PROCESSOR"' wrangler.jsonc

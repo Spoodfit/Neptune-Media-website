@@ -1,4 +1,3 @@
-import {getContainer} from '@cloudflare/containers';
 import base,{StudioStore as BaseStudioStore,WebTvEncoder} from './entry-v39.js';
 import {maintainWebTvV118} from './webtv-control-v118.js';
 import {
@@ -135,27 +134,9 @@ function webTvStats(sql){
 function metrics(row,keys){const out={};for(const key of keys)out[key]=Number(row?.[key]||0);return out;}
 function emptyWebTvStats(){return{views:0,watchSeconds:0,bookingClicks:0,completions:0,uniqueViewers:0,byEpisode:{},daily:[],adStats:{}};}
 
-async function resilientLiveFetch(request,env,ctx,pathname){
-  const manifest=pathname.endsWith('/index.m3u8');
-  let response=await base.fetch(request,env,ctx);
-  let retries=0;
-  if(!retryableLiveResponse(response,manifest))return markLiveResponse(response,retries);
-
-  const container=getContainer(env.WEBTV_ENCODER,WEBTV_INSTANCE);
-  try{
-    await container.startAndWaitForPorts({cancellationOptions:{instanceGetTimeoutMS:3000,portReadyTimeoutMS:8000,waitInterval:200}});
-  }catch(error){console.warn('webtv_v1197_container_readiness_failed',String(error?.message||error));}
-
-  try{await maintainWebTvV118(env);}catch(error){console.warn('webtv_v1197_state_resync_failed',String(error?.message||error));}
-
-  const delays=manifest?[150,300,600,1200,2000,3000]:[100,200,400,800];
-  for(const delay of delays){
-    await sleep(delay);
-    retries+=1;
-    response=await base.fetch(request,env,ctx);
-    if(!retryableLiveResponse(response,manifest))return markLiveResponse(response,retries);
-  }
-  return markLiveResponse(response,retries);
+async function resilientLiveFetch(request,env,ctx){
+  const response=await base.fetch(request,env,ctx);
+  return markLiveResponse(response,0);
 }
 
 function retryableLiveResponse(response,manifest){if([502,503,504].includes(response.status))return true;return manifest&&[404,425].includes(response.status);}
